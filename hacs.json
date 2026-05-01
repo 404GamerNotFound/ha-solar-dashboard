@@ -1,0 +1,7 @@
+{
+  "name": "HA Solar Dashboard Card",
+  "content_in_root": false,
+  "filename": "dist/ha-solar-dashboard-card.js",
+  "render_readme": true,
+  "homeassistant": ">=2023.8.0"
+}

@@ -58,3 +58,8 @@ units:
 - `entities.wallbox_power` (entity id)
 - `units.power` (string, default: `W`)
 - `units.battery` (string, default: `%`)
+
+## Troubleshooting HACS install
+
+If HACS shows an "Unknown error" while downloading, make sure you selected repository type **Dashboard** (frontend) and then clear the failed download from HACS before retrying.
+This repository ships the card file directly at the repository root (`ha-solar-dashboard-card.js`), which is required by HACS frontend installs.

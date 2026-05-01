@@ -1,14 +1,18 @@
 # HA Solar Dashboard Card
 
-A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy overview inspired by the provided design.
+A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy overview with an image-based layout.
 
 ## Features
 
-- Dark glass-style dashboard card
-- Top KPIs: grid, solar, home
-- Simple animated energy flow lines
-- Bottom status chips for grid and solar power
-- Optional time-range badge (e.g. `Today`)
+- Hero background image (your house/pv design)
+- Overlay widgets placed on matching points in the image
+- Configurable entities for:
+  - PV Dach (roof PV)
+  - PV Schuppen (shed PV)
+  - Batterie
+  - Wechselrichter Leistung
+  - Wallbox Leistung
+- Dark glass style matching the provided design
 
 ## Installation (HACS)
 
@@ -28,31 +32,29 @@ type: module
 
 ```yaml
 type: custom:ha-solar-dashboard-card
-title: Energy
-time_label: Today
+title: Solar Dashboard
+time_label: Live
+image: /local/images/home.png
 entities:
-  grid_energy: sensor.grid_energy_today
-  solar_energy: sensor.solar_energy_today
-  home_energy: sensor.home_energy_today
-  grid_power: sensor.grid_power
-  solar_power: sensor.solar_power
+  pv_roof_power: sensor.pv_dach_leistung
+  pv_shed_power: sensor.pv_schuppen_leistung
+  battery_level: sensor.batterie_soc
+  inverter_power: sensor.wechselrichter_leistung
+  wallbox_power: sensor.wallbox_leistung
 units:
-  energy: kWh
   power: W
+  battery: "%"
 ```
 
 ## Card options
 
-- `title` (string, default: `Energy`)
-- `time_label` (string, default: `Today`)
-- `entities.grid_energy` (entity id)
-- `entities.solar_energy` (entity id)
-- `entities.home_energy` (entity id)
-- `entities.grid_power` (entity id)
-- `entities.solar_power` (entity id)
-- `units.energy` (string, default: `kWh`)
+- `title` (string, default: `Energy Flow`)
+- `time_label` (string, default: `Live`)
+- `image` (string, default: `/local/images/home.png`)
+- `entities.pv_roof_power` (entity id)
+- `entities.pv_shed_power` (entity id)
+- `entities.battery_level` (entity id)
+- `entities.inverter_power` (entity id)
+- `entities.wallbox_power` (entity id)
 - `units.power` (string, default: `W`)
-
-## Notes
-
-This card intentionally focuses on the first visual dashboard section (energy + flow) from your reference image, with a clean and lightweight implementation.
+- `units.battery` (string, default: `%`)

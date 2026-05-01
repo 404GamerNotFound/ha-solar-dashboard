@@ -2,14 +2,15 @@ class HaSolarDashboardCard extends HTMLElement {
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
     this.config = {
-      title: "Energy",
-      time_label: "Today",
-      units: { energy: "kWh", power: "W" },
+      title: "Energy Flow",
+      time_label: "Live",
+      units: { power: "W", battery: "%" },
+      image: "/local/images/home.png",
       entities: {},
       ...config,
       units: {
-        energy: "kWh",
         power: "W",
+        battery: "%",
         ...(config.units || {}),
       },
       entities: {
@@ -28,14 +29,22 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 5;
+    return 6;
   }
 
   static getStubConfig() {
     return {
       type: "custom:ha-solar-dashboard-card",
-      title: "Energy",
-      time_label: "Today",
+      title: "Energy Flow",
+      time_label: "Live",
+      image: "/local/images/home.png",
+      entities: {
+        pv_roof_power: "sensor.pv_roof_power",
+        pv_shed_power: "sensor.pv_shed_power",
+        battery_level: "sensor.battery_level",
+        inverter_power: "sensor.inverter_power",
+        wallbox_power: "sensor.wallbox_power",
+      },
     };
   }
 
@@ -44,39 +53,42 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._hass.states[entityId].state;
   }
 
+  _formatValue(value) {
+    if (value === undefined || value === null || value === "unknown" || value === "unavailable") return "—";
+    return value;
+  }
+
   renderCard() {
     if (!this.config || !this.shadowRoot) return;
 
-    const { title, time_label, entities, units } = this.config;
+    const { title, time_label, entities, units, image } = this.config;
 
-    const gridEnergy = this._getEntityValue(entities.grid_energy, "6.6");
-    const solarEnergy = this._getEntityValue(entities.solar_energy, "6.4");
-    const homeEnergy = this._getEntityValue(entities.home_energy, "13");
-
-    const gridPower = this._getEntityValue(entities.grid_power, "467");
-    const solarPower = this._getEntityValue(entities.solar_power, "564");
+    const pvRoofPower = this._formatValue(this._getEntityValue(entities.pv_roof_power, "0"));
+    const pvShedPower = this._formatValue(this._getEntityValue(entities.pv_shed_power, "0"));
+    const batteryLevel = this._formatValue(this._getEntityValue(entities.battery_level, "0"));
+    const inverterPower = this._formatValue(this._getEntityValue(entities.inverter_power, "0"));
+    const wallboxPower = this._formatValue(this._getEntityValue(entities.wallbox_power, "0"));
 
     this.shadowRoot.innerHTML = `
       <style>
         :host {
-          --card-bg: linear-gradient(180deg, #1e2230 0%, #171b28 100%);
           --text-main: #f3f6ff;
           --text-muted: #9ba3b8;
-          --glass: rgba(255, 255, 255, 0.08);
-          --chip: #2a2e3d;
-          --blue: #1f8fff;
-          --yellow: #ffc233;
-          --line: rgba(255,255,255,0.14);
+          --glass: rgba(8, 16, 38, 0.65);
+          --glass-soft: rgba(255, 255, 255, 0.08);
+          --accent-yellow: #ffc233;
+          --accent-blue: #1f8fff;
+          --accent-green: #34d399;
           display: block;
         }
 
         ha-card {
           border-radius: 24px;
           overflow: hidden;
-          background: var(--card-bg);
+          background: radial-gradient(110% 80% at 15% 0%, #232b44 0%, #111727 70%);
           color: var(--text-main);
-          box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45);
-          padding: 18px;
+          box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+          padding: 16px;
           font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         }
 
@@ -84,109 +96,75 @@ class HaSolarDashboardCard extends HTMLElement {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 14px;
+          margin-bottom: 12px;
         }
 
-        .title {
-          font-size: 2rem;
-          line-height: 1.1;
-          font-weight: 700;
-          letter-spacing: 0.01em;
-        }
+        .title { font-size: 1.4rem; font-weight: 700; }
 
         .badge {
-          background: var(--glass);
-          border: 1px solid rgba(255,255,255,0.15);
-          color: var(--text-main);
+          background: var(--glass-soft);
+          border: 1px solid rgba(255,255,255,0.2);
           border-radius: 12px;
-          padding: 8px 12px;
-          font-size: 0.95rem;
-          font-weight: 600;
+          padding: 6px 10px;
+          font-size: 0.9rem;
+          color: var(--text-main);
         }
-
-        .kpis {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-          margin-bottom: 18px;
-        }
-
-        .kpi-value { font-size: 1.9rem; font-weight: 700; }
-        .kpi-unit { font-size: 1.1rem; opacity: 0.95; }
-        .kpi-label { font-size: 1rem; color: var(--text-muted); margin-top: -2px; }
 
         .scene {
           position: relative;
-          height: 240px;
+          aspect-ratio: 16 / 10;
           border-radius: 18px;
-          background:
-            radial-gradient(120% 80% at 35% 25%, rgba(120,130,180,0.30), transparent 55%),
-            radial-gradient(100% 70% at 75% 35%, rgba(90,95,125,0.30), transparent 60%),
-            linear-gradient(165deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-          border: 1px solid rgba(255,255,255,0.08);
-          margin-bottom: 14px;
           overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.1);
+          margin-bottom: 12px;
         }
 
-        .line {
+        .scene img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          filter: saturate(1.03) contrast(1.03);
+        }
+
+        .metric {
           position: absolute;
-          background: var(--line);
+          min-width: 120px;
+          background: var(--glass);
+          border: 1px solid rgba(255,255,255,0.18);
+          backdrop-filter: blur(4px);
+          border-radius: 12px;
+          padding: 8px 10px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
         }
 
-        .line.h { height: 2px; }
-        .line.v { width: 2px; }
+        .metric .label { font-size: 0.76rem; color: var(--text-muted); }
+        .metric .value { font-size: 1rem; font-weight: 700; }
 
-        .line.l1 { left: 54%; top: 32%; width: 2px; height: 43%; background: linear-gradient(180deg, transparent, #ffc233 55%, transparent); animation: pulseY 2.8s ease-in-out infinite; }
-        .line.l2 { left: 54%; top: 67%; width: 28%; height: 2px; background: linear-gradient(90deg, #1f8fff, rgba(31,143,255,0.25)); animation: pulseX 3s ease-in-out infinite; }
-        .line.l3 { left: 24%; top: 70%; width: 30%; height: 2px; }
+        .pv-roof { left: 26%; top: 17%; }
+        .pv-shed { right: 8%; bottom: 16%; }
+        .battery { left: 47%; top: 48%; }
+        .inverter { left: 58%; top: 54%; }
+        .wallbox { left: 19%; top: 57%; }
 
-        .icon {
-          position: absolute;
-          width: 78px;
-          height: 78px;
-          border-radius: 14px;
+        .value.yellow { color: var(--accent-yellow); }
+        .value.blue { color: var(--accent-blue); }
+        .value.green { color: var(--accent-green); }
+
+        .grid {
           display: grid;
-          place-items: center;
-          font-size: 2rem;
-          background: rgba(0, 0, 0, 0.24);
-          border: 1px solid rgba(255,255,255,0.12);
-          backdrop-filter: blur(2px);
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
         }
 
-        .solar { left: 37%; top: 16%; }
-        .home { right: 14%; top: 43%; }
-        .grid { left: 16%; bottom: 16%; }
-
-        .chips {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-bottom: 6px;
-        }
-
-        .chip {
-          border-radius: 14px;
-          background: var(--chip);
+        .tile {
+          background: rgba(12, 20, 38, 0.72);
           border: 1px solid rgba(255,255,255,0.08);
-          padding: 10px 12px;
-          display: flex;
-          align-items: center;
-          gap: 9px;
+          border-radius: 12px;
+          padding: 10px;
         }
 
-        .chip .emoji { font-size: 1.35rem; }
-        .chip .label { font-weight: 700; font-size: 1rem; }
-        .chip .sub { color: var(--text-muted); font-size: 0.95rem; }
-
-        @keyframes pulseY {
-          0%, 100% { opacity: 0.55; transform: translateY(0); }
-          50% { opacity: 1; transform: translateY(3px); }
-        }
-
-        @keyframes pulseX {
-          0%, 100% { opacity: 0.55; transform: translateX(0); }
-          50% { opacity: 1; transform: translateX(4px); }
-        }
+        .tile .name { font-size: 0.8rem; color: var(--text-muted); }
+        .tile .num { font-size: 1.02rem; font-weight: 700; }
       </style>
 
       <ha-card>
@@ -195,45 +173,40 @@ class HaSolarDashboardCard extends HTMLElement {
           <div class="badge">${time_label}</div>
         </div>
 
-        <div class="kpis">
-          <div>
-            <div><span class="kpi-value">${gridEnergy}</span> <span class="kpi-unit">${units.energy}</span></div>
-            <div class="kpi-label">Grid</div>
-          </div>
-          <div>
-            <div><span class="kpi-value">${solarEnergy}</span> <span class="kpi-unit">${units.energy}</span></div>
-            <div class="kpi-label">Solar Panels</div>
-          </div>
-          <div>
-            <div><span class="kpi-value">${homeEnergy}</span> <span class="kpi-unit">${units.energy}</span></div>
-            <div class="kpi-label">Home</div>
-          </div>
-        </div>
-
         <div class="scene">
-          <div class="icon solar">☀️</div>
-          <div class="icon home">🏠</div>
-          <div class="icon grid">⚡</div>
-          <div class="line l1"></div>
-          <div class="line l2"></div>
-          <div class="line l3"></div>
+          <img src="${image}" alt="Solar house overview" />
+
+          <div class="metric pv-roof">
+            <div class="label">PV Roof</div>
+            <div class="value yellow">${pvRoofPower} ${units.power}</div>
+          </div>
+
+          <div class="metric pv-shed">
+            <div class="label">PV Shed</div>
+            <div class="value yellow">${pvShedPower} ${units.power}</div>
+          </div>
+
+          <div class="metric battery">
+            <div class="label">Battery</div>
+            <div class="value green">${batteryLevel} ${units.battery}</div>
+          </div>
+
+          <div class="metric inverter">
+            <div class="label">Inverter</div>
+            <div class="value blue">${inverterPower} ${units.power}</div>
+          </div>
+
+          <div class="metric wallbox">
+            <div class="label">Wallbox</div>
+            <div class="value blue">${wallboxPower} ${units.power}</div>
+          </div>
         </div>
 
-        <div class="chips">
-          <div class="chip">
-            <div class="emoji">⚡</div>
-            <div>
-              <div class="label">Electricity</div>
-              <div class="sub">${gridPower}${units.power} • Importing</div>
-            </div>
-          </div>
-          <div class="chip">
-            <div class="emoji">☀️</div>
-            <div>
-              <div class="label">Solar</div>
-              <div class="sub">${solarPower}${units.power}</div>
-            </div>
-          </div>
+        <div class="grid">
+          <div class="tile"><div class="name">PV Roof</div><div class="num">${pvRoofPower} ${units.power}</div></div>
+          <div class="tile"><div class="name">PV Shed</div><div class="num">${pvShedPower} ${units.power}</div></div>
+          <div class="tile"><div class="name">Inverter Power</div><div class="num">${inverterPower} ${units.power}</div></div>
+          <div class="tile"><div class="name">Wallbox Power</div><div class="num">${wallboxPower} ${units.power}</div></div>
         </div>
       </ha-card>
     `;

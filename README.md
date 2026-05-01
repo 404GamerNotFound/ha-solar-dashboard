@@ -16,7 +16,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 
 ## Installation (HACS)
 
-1. Add this repository as a **Custom repository** in HACS with type **Dashboard**.
+1. Add this repository as a **Custom repository** in HACS with type **Plugin** (this is the correct HACS type for Lovelace custom cards).
 2. Install **HA Solar Dashboard Card**.
 3. Restart Home Assistant (or reload resources).
 4. Add the card in Lovelace.
@@ -61,5 +61,5 @@ units:
 
 ## Troubleshooting HACS install
 
-If HACS shows an "Unknown error" while downloading, make sure you selected repository type **Dashboard** (frontend) and then clear the failed download from HACS before retrying.
+If HACS shows an "Unknown error" while downloading, make sure you selected repository type **Plugin**. If you previously added it as Dashboard, remove the failed entry in HACS and add it again as Plugin before retrying.
 This repository ships the card file directly at the repository root (`ha-solar-dashboard-card.js`), which is required by HACS frontend installs.

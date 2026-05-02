@@ -6,6 +6,10 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 
 - Hero background image (your house/pv design)
 - Overlay widgets placed on matching points in the image
+- Selectable house layouts from the `images` folder:
+  - `home`
+  - `doppelhaus`
+  - `stadtvilla`
 - Configurable entities for:
   - PV Dach (roof PV)
   - PV Schuppen (shed PV)
@@ -24,7 +28,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 ## Lovelace resource (if needed)
 
 ```yaml
-url: /hacsfiles/ha-solar-dashboard/ha-solar-dashboard-card.js
+url: /hacsfiles/ha-solar-dashboard/ha-solar-dashboard.js
 type: module
 ```
 
@@ -34,7 +38,8 @@ type: module
 type: custom:ha-solar-dashboard-card
 title: Solar Dashboard
 time_label: Live
-image: /local/images/home.png
+house: home
+show_house_selector: true
 entities:
   pv_roof_power: sensor.pv_dach_leistung
   pv_shed_power: sensor.pv_schuppen_leistung
@@ -50,7 +55,10 @@ units:
 
 - `title` (string, default: `Energy Flow`)
 - `time_label` (string, default: `Live`)
-- `image` (string, default: `/local/images/home.png`)
+- `house` (string, default: `home`; options: `home`, `doppelhaus`, `stadtvilla`)
+- `show_house_selector` (boolean, default: `true`)
+- `image` (string, optional custom image override)
+- `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)
 - `entities.battery_level` (entity id)
@@ -63,4 +71,4 @@ units:
 
 If HACS shows an "Unknown error" while downloading, make sure you selected repository type **Dashboard**. If you previously added it as a different type, remove the failed entry in HACS and add it again as Dashboard before retrying.
 
-This repository ships the card file in `dist/ha-solar-dashboard-card.js` and declares `ha-solar-dashboard-card.js` in `hacs.json`, which is the HACS frontend plugin layout. Tagged GitHub releases must also include `ha-solar-dashboard-card.js` as a release asset; the release workflow publishes that asset automatically for new `v*` tags.
+This repository ships the HACS entry file in `dist/ha-solar-dashboard.js` and declares `ha-solar-dashboard.js` in `hacs.json`. The filename must match the repository name (`ha-solar-dashboard`) so HACS can identify it as a valid Dashboard plugin. Tagged GitHub releases must include `ha-solar-dashboard.js` as a release asset; the release workflow publishes that asset automatically for new `v*` tags.

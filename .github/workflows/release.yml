@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify HACS plugin file
+        run: test -f dist/ha-solar-dashboard-card.js
+
+      - name: Publish release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ha-solar-dashboard-card.js

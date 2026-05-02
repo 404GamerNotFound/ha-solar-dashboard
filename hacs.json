@@ -1,7 +1,5 @@
 {
   "name": "HA Solar Dashboard Card",
-  "type": "plugin",
-  "content_in_root": true,
   "filename": "ha-solar-dashboard-card.js",
   "render_readme": true,
   "homeassistant": ">=2023.8.0"

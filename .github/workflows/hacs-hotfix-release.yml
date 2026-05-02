@@ -1,0 +1,34 @@
+name: HACS Hotfix Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  publish-v006:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify HACS plugin package
+        run: |
+          test -f dist/ha-solar-dashboard.js
+          test "$(find dist -maxdepth 1 -name '*.js' | wc -l)" -eq 1
+
+      - name: Publish v0.0.6
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.0.6 >/dev/null 2>&1; then
+            gh release upload v0.0.6 dist/ha-solar-dashboard.js --clobber
+          else
+            gh release create v0.0.6 dist/ha-solar-dashboard.js \
+              --target "$GITHUB_SHA" \
+              --title "v0.0.6" \
+              --notes "Fix HACS Dashboard plugin package by publishing only ha-solar-dashboard.js."
+          fi

@@ -22,5 +22,5 @@ jobs:
       - name: Publish release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.js
+          files: dist/ha-solar-dashboard.js
           overwrite_files: true

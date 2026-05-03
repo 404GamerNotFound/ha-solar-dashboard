@@ -1,4 +1,5 @@
 const CARD_TYPE = "ha-solar-dashboard-card";
+const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
 const REPOSITORY_IMAGE_BASE =
   "https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/images";
 
@@ -47,6 +48,27 @@ const METRICS = [
 ];
 
 class HaSolarDashboardCard extends HTMLElement {
+  static getConfigElement() {
+    return document.createElement(CARD_EDITOR_TYPE);
+  }
+
+  static getStubConfig() {
+    return {
+      type: `custom:${CARD_TYPE}`,
+      title: "Solar Dashboard",
+      time_label: "Live",
+      house: "home",
+      show_house_selector: true,
+      entities: {
+        pv_roof_power: "sensor.pv_roof_power",
+        pv_shed_power: "sensor.pv_shed_power",
+        battery_level: "sensor.battery_level",
+        inverter_power: "sensor.wechselrichter_power",
+        wallbox_power: "sensor.wallbox_power",
+      },
+    };
+  }
+
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
 
@@ -89,23 +111,6 @@ class HaSolarDashboardCard extends HTMLElement {
 
   getCardSize() {
     return 6;
-  }
-
-  static getStubConfig() {
-    return {
-      type: `custom:${CARD_TYPE}`,
-      title: "Solar Dashboard",
-      time_label: "Live",
-      house: "home",
-      show_house_selector: true,
-      entities: {
-        pv_roof_power: "sensor.pv_roof_power",
-        pv_shed_power: "sensor.pv_shed_power",
-        battery_level: "sensor.battery_level",
-        inverter_power: "sensor.inverter_power",
-        wallbox_power: "sensor.wallbox_power",
-      },
-    };
   }
 
   _normalizeHouse(value) {
@@ -235,179 +240,29 @@ class HaSolarDashboardCard extends HTMLElement {
       `,
     ).join("");
 
+    this.shadowRoot.innerHTML = `...`;
     this.shadowRoot.innerHTML = `
       <style>
-        :host {
-          --text-main: #f3f6ff;
-          --text-muted: #9ba3b8;
-          --glass: rgba(8, 16, 38, 0.65);
-          --glass-soft: rgba(255, 255, 255, 0.08);
-          --accent-yellow: #ffc233;
-          --accent-blue: #1f8fff;
-          --accent-green: #34d399;
-          display: block;
-        }
-
-        ha-card {
-          border-radius: 18px;
-          overflow: hidden;
-          background: radial-gradient(110% 80% at 15% 0%, #232b44 0%, #111727 70%);
-          color: var(--text-main);
-          box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
-          padding: 16px;
-          font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-
-        .header {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto auto;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 12px;
-        }
-
-        .title {
-          min-width: 0;
-          overflow-wrap: anywhere;
-          font-size: 1.28rem;
-          font-weight: 700;
-          line-height: 1.2;
-        }
-
-        .badge,
-        .house-select {
-          background: var(--glass-soft);
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 8px;
-          color: var(--text-main);
-          font: inherit;
-          font-size: 0.88rem;
-          min-height: 34px;
-        }
-
-        .badge {
-          display: inline-flex;
-          align-items: center;
-          padding: 0 10px;
-          white-space: nowrap;
-        }
-
-        .house-select {
-          max-width: 140px;
-          padding: 0 30px 0 10px;
-        }
-
-        .scene {
-          position: relative;
-          aspect-ratio: 91 / 64;
-          border-radius: 14px;
-          overflow: hidden;
-          border: 1px solid rgba(255,255,255,0.1);
-          margin-bottom: 12px;
-          background: #101626;
-        }
-
-        .scene-image {
-          display: block;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          filter: saturate(1.03) contrast(1.03);
-        }
-
-        .metric {
-          position: absolute;
-          width: clamp(92px, 18%, 132px);
-          transform: translate(-50%, -50%);
-          background: var(--glass);
-          border: 1px solid rgba(255,255,255,0.18);
-          backdrop-filter: blur(4px);
-          border-radius: 10px;
-          padding: 8px 10px;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-          pointer-events: none;
-        }
-
-        .metric .label,
-        .tile .name {
-          color: var(--text-muted);
-          font-size: 0.74rem;
-          line-height: 1.2;
-        }
-
-        .metric .value,
-        .tile .num {
-          font-size: 0.98rem;
-          font-weight: 700;
-          line-height: 1.25;
-          overflow-wrap: anywhere;
-        }
-
-        .value.yellow { color: var(--accent-yellow); }
-        .value.blue { color: var(--accent-blue); }
-        .value.green { color: var(--accent-green); }
-
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
-          gap: 8px;
-        }
-
-        .tile {
-          background: rgba(12, 20, 38, 0.72);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 8px;
-          padding: 10px;
-          min-width: 0;
-        }
-
-        @media (max-width: 700px) {
-          .header {
-            grid-template-columns: minmax(0, 1fr);
-            align-items: stretch;
-          }
-
-          .badge,
-          .house-select {
-            width: 100%;
-          }
-
-          .metric {
-            width: clamp(76px, 22%, 108px);
-            padding: 6px 8px;
-          }
-
-          .metric .label {
-            font-size: 0.66rem;
-          }
-
-          .metric .value {
-            font-size: 0.82rem;
-          }
-
-          .grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-        }
+        :host { display:block; --text-main:#f3f6ff; --text-muted:#9ba3b8; --glass:rgba(8,16,38,.65); --glass-soft:rgba(255,255,255,.08); --accent-yellow:#ffc233; --accent-blue:#1f8fff; --accent-green:#34d399; }
+        ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 80% at 15% 0%, #232b44 0%, #111727 70%); color:var(--text-main); box-shadow:0 18px 45px rgba(0,0,0,.55); padding:16px; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+        .header { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:10px; margin-bottom:12px; }
+        .title { min-width:0; overflow-wrap:anywhere; font-size:1.28rem; font-weight:700; line-height:1.2; }
+        .badge,.house-select { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
+        .badge { display:inline-flex; align-items:center; padding:0 10px; white-space:nowrap; }
+        .house-select { max-width:140px; padding:0 30px 0 10px; }
+        .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
+        .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
+        .metric { position:absolute; width:clamp(92px,18%,132px); transform:translate(-50%,-50%); background:var(--glass); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(4px); border-radius:10px; padding:8px 10px; box-shadow:0 8px 24px rgba(0,0,0,.35); pointer-events:none; }
+        .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
+        .metric .value,.tile .num { font-size:.98rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
+        .value.yellow{color:var(--accent-yellow)} .value.blue{color:var(--accent-blue)} .value.green{color:var(--accent-green)}
+        .grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+        .tile { background:rgba(12,20,38,.72); border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:10px; min-width:0; }
+        @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select{width:100%;} .metric{width:clamp(76px,22%,108px);padding:6px 8px;} .metric .label{font-size:.66rem;} .metric .value{font-size:.82rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
       </style>
-
       <ha-card>
-        <div class="header">
-          <div class="title">${this._escape(this.config.title)}</div>
-          ${this._renderHouseSelector(activeHouse)}
-          <div class="badge">${this._escape(this.config.time_label)}</div>
-        </div>
-
-        <div class="scene">
-          <img
-            class="scene-image"
-            src="${this._escape(imageSrc)}"
-            data-fallback="${this._escape(imageFallback || "")}"
-            alt="${this._escape(variant.label)}"
-          />
-          ${metricHtml}
-        </div>
-
+        <div class="header"><div class="title">${this._escape(this.config.title)}</div>${this._renderHouseSelector(activeHouse)}<div class="badge">${this._escape(this.config.time_label)}</div></div>
+        <div class="scene"><img class="scene-image" src="${this._escape(imageSrc)}" data-fallback="${this._escape(imageFallback || "")}" alt="${this._escape(variant.label)}" />${metricHtml}</div>
         <div class="grid">${gridHtml}</div>
       </ha-card>
     `;
@@ -416,9 +271,89 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 }
 
-if (!customElements.get(CARD_TYPE)) {
-  customElements.define(CARD_TYPE, HaSolarDashboardCard);
+class HaSolarDashboardCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = { entities: {}, ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _onInput(path, value, isCheckbox = false) {
+    const next = structuredClone(this._config || {});
+    if (path.includes(".")) {
+      const [section, key] = path.split(".");
+      next[section] = next[section] || {};
+      next[section][key] = isCheckbox ? Boolean(value) : value;
+    } else {
+      next[path] = isCheckbox ? Boolean(value) : value;
+    }
+    this._config = next;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next } }));
+  }
+
+  _entityOptions() {
+    return Object.keys(this._hass?.states || {}).sort();
+  }
+
+  _renderEntityField(metric) {
+    const selected = this._config?.entities?.[metric.key] || "";
+    const options = this._entityOptions()
+      .map((entityId) => `<option value="${entityId}"${entityId === selected ? " selected" : ""}>${entityId}</option>`)
+      .join("");
+    return `
+      <label>
+        ${metric.label}
+        <select data-path="entities.${metric.key}">
+          <option value="">-- select entity --</option>
+          ${options}
+        </select>
+      </label>
+    `;
+  }
+
+  _render() {
+    if (!this._config) return;
+    if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+    const house = this._config.house || "home";
+    const houseOptions = Object.entries(HOUSE_VARIANTS)
+      .map(([key, value]) => `<option value="${key}"${key === house ? " selected" : ""}>${value.label}</option>`)
+      .join("");
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        .editor{display:grid;gap:12px;font-family:system-ui,sans-serif}
+        label{display:grid;gap:4px;font-size:13px}
+        input,select{padding:8px;border:1px solid #bbb;border-radius:8px}
+        .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      </style>
+      <div class="editor">
+        <label>Title <input data-path="title" value="${this._config.title || ""}" /></label>
+        <label>Time Label <input data-path="time_label" value="${this._config.time_label || ""}" /></label>
+        <label>House Type <select data-path="house">${houseOptions}</select></label>
+        <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> Show house selector</label>
+        <div class="grid">${METRICS.map((metric) => this._renderEntityField(metric)).join("")}</div>
+      </div>
+    `;
+
+    this.shadowRoot.querySelectorAll("input,select").forEach((element) => {
+      element.addEventListener("change", (event) => {
+        const target = event.target;
+        const path = target.dataset.path;
+        if (!path) return;
+        const isCheckbox = target.type === "checkbox";
+        const value = isCheckbox ? target.checked : target.value;
+        this._onInput(path, value, isCheckbox);
+      });
+    });
+  }
 }
+
+if (!customElements.get(CARD_TYPE)) customElements.define(CARD_TYPE, HaSolarDashboardCard);
+if (!customElements.get(CARD_EDITOR_TYPE)) customElements.define(CARD_EDITOR_TYPE, HaSolarDashboardCardEditor);
 
 window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === CARD_TYPE)) {

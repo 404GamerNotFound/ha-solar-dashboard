@@ -2,6 +2,5 @@
   "name": "HA Solar Dashboard Card",
   "filename": "ha-solar-dashboard.js",
   "render_readme": true,
-  "homeassistant": ">=2023.8.0",
-  "zip_release": true
+  "homeassistant": ">=2023.8.0"
 }

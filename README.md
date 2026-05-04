@@ -74,3 +74,5 @@ If HACS shows an "Unknown error" while downloading, make sure you selected repos
 This repository ships the HACS entry file in `dist/ha-solar-dashboard.js` and declares `ha-solar-dashboard.js` in `hacs.json`. The filename must match the repository name (`ha-solar-dashboard`) so HACS can identify it as a valid Dashboard plugin. Do not enable `zip_release` for this repository: HACS only supports that mode for integrations, not Dashboard plugins. For Dashboard plugins, HACS scans `dist/` first, then the latest release, then the repository root, and downloads the matching JavaScript file.
 
 When publishing a GitHub release, attach `ha-solar-dashboard.js` as a release asset. The included Release workflow does this automatically for tag pushes and published releases. If a release already exists without the asset, run the workflow manually with that tag.
+
+The `homeassistant` value in `hacs.json` must be a plain minimum version such as `2023.8.0`, not a comparator expression like `>=2023.8.0`.

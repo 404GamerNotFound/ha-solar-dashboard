@@ -37,6 +37,17 @@ const HOUSE_VARIANTS = {
       wallbox_power: { left: 25, top: 57 },
     },
   },
+  stadtvilla2: {
+    label: "Stadtvilla ohne Flachdach",
+    file: "stadtvilla_dach.png",
+    positions: {
+      pv_roof_power: { left: 58, top: 18 },
+      pv_shed_power: { left: 15, top: 80 },
+      battery_level: { left: 41, top: 66 },
+      inverter_power: { left: 55, top: 56 },
+      wallbox_power: { left: 25, top: 60 },
+    },
+  },
 };
 
 const METRICS = [
@@ -124,6 +135,11 @@ class HaSolarDashboardCard extends HTMLElement {
       "doppel-haus": "doppelhaus",
       villa: "stadtvilla",
       "stadt-villa": "stadtvilla",
+      stadtvilla_2: "stadtvilla2",
+      "stadtvilla-2": "stadtvilla2",
+      "stadtvilla-ohne-flachdach": "stadtvilla2",
+      stadtvilla_dach: "stadtvilla2",
+      "stadtvilla-dach": "stadtvilla2",
     };
     const key = aliases[normalized] || normalized;
     return HOUSE_VARIANTS[key] ? key : undefined;

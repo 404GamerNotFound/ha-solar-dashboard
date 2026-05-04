@@ -10,6 +10,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - `home`
   - `doppelhaus`
   - `stadtvilla`
+  - `stadtvilla2`
 - Configurable entities for:
   - PV Dach (roof PV)
   - PV Schuppen (shed PV)
@@ -55,7 +56,7 @@ units:
 
 - `title` (string, default: `Energy Flow`)
 - `time_label` (string, default: `Live`)
-- `house` (string, default: `home`; options: `home`, `doppelhaus`, `stadtvilla`)
+- `house` (string, default: `home`; options: `home`, `doppelhaus`, `stadtvilla`, `stadtvilla2`)
 - `show_house_selector` (boolean, default: `true`)
 - `image` (string, optional custom image override)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides)

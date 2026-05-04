@@ -4,7 +4,16 @@ on:
   push:
     tags:
       - "v*"
+  release:
+    types:
+      - published
+      - edited
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish assets for"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -13,14 +22,37 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve release tag
+        id: release
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
 
-      - name: Verify HACS plugin file
-        run: test -f dist/ha-solar-dashboard.js
+      - name: Verify HACS plugin package
+        run: |
+          test -f dist/ha-solar-dashboard.js
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          cp dist/ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
+          if [ -d dist/images ]; then
+            cp dist/images/*.png release-assets/ 2>/dev/null || true
+          fi
 
       - name: Publish release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/ha-solar-dashboard.js
+          tag_name: ${{ steps.release.outputs.tag }}
+          files: release-assets/*
           overwrite_files: true

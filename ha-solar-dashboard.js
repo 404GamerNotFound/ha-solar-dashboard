@@ -103,12 +103,12 @@ class HaSolarDashboardCard extends HTMLElement {
       this.attachShadow({ mode: "open" });
     }
 
-    this._layoutSignature = "";
+    this._renderCardShell(this._layoutState());
   }
 
   set hass(hass) {
     this._hass = hass;
-    this.renderCard();
+    this._updateReadings();
   }
 
   getCardSize() {
@@ -182,18 +182,6 @@ class HaSolarDashboardCard extends HTMLElement {
     return { activeHouse, variant, imageSrc, imageFallback };
   }
 
-  _layoutSignatureFor(state) {
-    return JSON.stringify({
-      title: this.config.title,
-      time_label: this.config.time_label,
-      show_house_selector: this.config.show_house_selector,
-      activeHouse: state.activeHouse,
-      imageSrc: state.imageSrc,
-      imageFallback: state.imageFallback,
-      positions: this.config.positions,
-    });
-  }
-
   _escape(value) {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -236,8 +224,7 @@ class HaSolarDashboardCard extends HTMLElement {
         const nextHouse = this._normalizeHouse(event.target.value);
         if (!nextHouse || nextHouse === this._selectedHouse) return;
         this._selectedHouse = nextHouse;
-        this._layoutSignature = "";
-        this.renderCard();
+        this._renderCardShell(this._layoutState());
       });
     }
 
@@ -303,15 +290,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   renderCard() {
     if (!this.config || !this.shadowRoot) return;
-
-    const state = this._layoutState();
-    const signature = this._layoutSignatureFor(state);
-    if (signature !== this._layoutSignature) {
-      this._layoutSignature = signature;
-      this._renderCardShell(state);
-    } else {
-      this._updateReadings();
-    }
+    this._renderCardShell(this._layoutState());
   }
 }
 
@@ -340,7 +319,13 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       next[path] = isCheckbox ? Boolean(value) : value;
     }
     this._config = next;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next } }));
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        bubbles: true,
+        composed: true,
+        detail: { config: next },
+      }),
+    );
   }
 
   _cloneConfig(config) {

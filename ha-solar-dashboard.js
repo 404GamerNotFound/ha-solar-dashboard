@@ -71,6 +71,8 @@ class HaSolarDashboardCard extends HTMLElement {
       house: "home",
       show_house_selector: true,
       show_metric_tiles: true,
+      hud_box_opacity: 0.65,
+      hud_box_scale: 1,
       entities: {
         pv_roof_power: "sensor.pv_roof_power",
         pv_shed_power: "sensor.pv_shed_power",
@@ -92,6 +94,8 @@ class HaSolarDashboardCard extends HTMLElement {
       house,
       show_house_selector: true,
       show_metric_tiles: true,
+      hud_box_opacity: 0.65,
+      hud_box_scale: 1,
       units: { power: "W", battery: "%" },
       entities: {},
       positions: {},
@@ -109,6 +113,9 @@ class HaSolarDashboardCard extends HTMLElement {
         ...(config.positions || {}),
       },
     };
+
+    this.config.hud_box_opacity = this._clampNumber(this.config.hud_box_opacity, 0.65, 0, 1);
+    this.config.hud_box_scale = this._clampNumber(this.config.hud_box_scale, 1, 0.6, 1.8);
 
     this._selectedHouse = house;
 
@@ -188,6 +195,12 @@ class HaSolarDashboardCard extends HTMLElement {
   _toPercent(value, fallback) {
     const number = Number(value);
     return Number.isFinite(number) ? Math.min(96, Math.max(4, number)) : fallback;
+  }
+
+  _clampNumber(value, fallback, min, max) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.min(max, Math.max(min, number));
   }
 
   _layoutState() {
@@ -270,7 +283,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display:block; --text-main:#f3f6ff; --text-muted:#9ba3b8; --glass:rgba(8,16,38,.65); --glass-soft:rgba(255,255,255,.08); --accent-yellow:#ffc233; --accent-blue:#1f8fff; --accent-green:#34d399; }
+        :host { display:block; --text-main:#f3f6ff; --text-muted:#9ba3b8; --glass:rgba(8,16,38,.65); --glass-soft:rgba(255,255,255,.08); --accent-yellow:#ffc233; --accent-blue:#1f8fff; --accent-green:#34d399; --hud-box-opacity:${this.config.hud_box_opacity}; --hud-box-scale:${this.config.hud_box_scale}; }
         ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 80% at 15% 0%, #232b44 0%, #111727 70%); color:var(--text-main); box-shadow:0 18px 45px rgba(0,0,0,.55); padding:16px; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
         .header { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:10px; margin-bottom:12px; }
         .title { min-width:0; overflow-wrap:anywhere; font-size:1.28rem; font-weight:700; line-height:1.2; }
@@ -279,7 +292,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select { max-width:140px; padding:0 30px 0 10px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
-        .metric { position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%); background:var(--glass); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35); pointer-events:none; box-sizing:border-box; }
+        .metric { position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:var(--glass); border:1px solid rgba(255,255,255,.18); opacity:var(--hud-box-opacity); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35); pointer-events:none; box-sizing:border-box; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
         .metric .value,.tile .num { font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
         .value.yellow{color:var(--accent-yellow)} .value.blue{color:var(--accent-blue)} .value.green{color:var(--accent-green)}
@@ -329,12 +342,14 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _onInput(path, value, isCheckbox = false) {
     const next = this._cloneConfig(this._config || {});
+    const numericFields = new Set(["hud_box_opacity", "hud_box_scale"]);
+    const nextValue = numericFields.has(path) ? Number(value) : value;
     if (path.includes(".")) {
       const [section, key] = path.split(".");
       next[section] = next[section] || {};
-      next[section][key] = isCheckbox ? Boolean(value) : value;
+      next[section][key] = isCheckbox ? Boolean(nextValue) : nextValue;
     } else {
-      next[path] = isCheckbox ? Boolean(value) : value;
+      next[path] = isCheckbox ? Boolean(nextValue) : nextValue;
     }
     this._config = next;
     this.dispatchEvent(
@@ -401,6 +416,12 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>House Type <select data-path="house">${houseOptions}</select></label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> Show house selector</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> Show metric boxes below chart</label>
+        <label>HUD box opacity (${this._escape((Number(this._config.hud_box_opacity ?? 0.65)).toFixed(2))})
+          <input type="range" min="0" max="1" step="0.05" data-path="hud_box_opacity" value="${this._escape(this._config.hud_box_opacity ?? 0.65)}" />
+        </label>
+        <label>HUD box scale (${this._escape((Number(this._config.hud_box_scale ?? 1)).toFixed(2))})
+          <input type="range" min="0.6" max="1.8" step="0.05" data-path="hud_box_scale" value="${this._escape(this._config.hud_box_scale ?? 1)}" />
+        </label>
         <div class="grid">${METRICS.map((metric) => this._renderEntityField(metric)).join("")}</div>
       </div>
     `;

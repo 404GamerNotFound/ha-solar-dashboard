@@ -70,6 +70,7 @@ class HaSolarDashboardCard extends HTMLElement {
       time_label: "Live",
       house: "home",
       show_house_selector: true,
+      show_metric_tiles: true,
       entities: {
         pv_roof_power: "sensor.pv_roof_power",
         pv_shed_power: "sensor.pv_shed_power",
@@ -90,6 +91,7 @@ class HaSolarDashboardCard extends HTMLElement {
       time_label: "Live",
       house,
       show_house_selector: true,
+      show_metric_tiles: true,
       units: { power: "W", battery: "%" },
       entities: {},
       positions: {},
@@ -288,7 +290,7 @@ class HaSolarDashboardCard extends HTMLElement {
       <ha-card>
         <div class="header"><div class="title">${this._escape(this.config.title)}</div>${this._renderHouseSelector(state.activeHouse)}<div class="badge">${this._escape(this.config.time_label)}</div></div>
         <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallback="${this._escape(state.imageFallback || "")}" alt="${this._escape(state.variant.label)}" />${metricHtml}</div>
-        <div class="grid">${gridHtml}</div>
+        ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
       </ha-card>
     `;
 
@@ -398,6 +400,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>Time Label <input data-path="time_label" value="${this._escape(this._config.time_label || "")}" /></label>
         <label>House Type <select data-path="house">${houseOptions}</select></label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> Show house selector</label>
+        <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> Show metric boxes below chart</label>
         <div class="grid">${METRICS.map((metric) => this._renderEntityField(metric)).join("")}</div>
       </div>
     `;

@@ -6,18 +6,20 @@ const REPOSITORY_IMAGE_BASE =
 const HOUSE_VARIANTS = {
   home: {
     label: "Home",
-    file: "home.png",
+    file: "home_neu.png",
+    dayFile: "home_neu_tag.png",
     positions: {
-      pv_roof_power: { left: 39, top: 22 },
-      pv_shed_power: { left: 80, top: 73 },
-      battery_level: { left: 50, top: 71 },
-      inverter_power: { left: 66, top: 57 },
-      wallbox_power: { left: 25, top: 62 },
+      pv_roof_power: { left: 64, top: 28 },
+      pv_shed_power: { left: 14, top: 80 },
+      battery_level: { left: 49, top: 66 },
+      inverter_power: { left: 53, top: 72 },
+      wallbox_power: { left: 23, top: 57 },
     },
   },
   doppelhaus: {
     label: "Doppelhaus",
     file: "doppelhaus.png",
+    dayFile: "doppelhaus_tag.png",
     positions: {
       pv_roof_power: { left: 46, top: 23 },
       pv_shed_power: { left: 15, top: 80 },
@@ -29,6 +31,7 @@ const HOUSE_VARIANTS = {
   stadtvilla: {
     label: "Stadtvilla",
     file: "stadtvilla.png",
+    dayFile: "stadtvilla_tag.png",
     positions: {
       pv_roof_power: { left: 55, top: 16 },
       pv_shed_power: { left: 15, top: 80 },
@@ -40,6 +43,7 @@ const HOUSE_VARIANTS = {
   stadtvilla2: {
     label: "Stadtvilla ohne Flachdach",
     file: "stadtvilla_dach.png",
+    dayFile: "stadtvilla_dach_tag.png",
     positions: {
       pv_roof_power: { left: 58, top: 18 },
       pv_shed_power: { left: 15, top: 80 },
@@ -73,6 +77,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_metric_tiles: true,
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
+      daylight_entity: "sun.sun",
       entities: {
         pv_roof_power: "sensor.pv_roof_power",
         pv_shed_power: "sensor.pv_shed_power",
@@ -96,6 +101,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_metric_tiles: true,
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
+      daylight_entity: "sun.sun",
       units: { power: "W", battery: "%" },
       entities: {},
       positions: {},
@@ -127,7 +133,13 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const wasDaylight = this._isDaylight();
     this._hass = hass;
+    const isDaylight = this._isDaylight();
+    if (this.shadowRoot && wasDaylight !== isDaylight) {
+      this._renderCardShell(this._layoutState());
+      return;
+    }
     this._updateReadings();
   }
 
@@ -172,9 +184,16 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _variantImage(variant) {
-    const localUrl = this._localImageUrl(variant.file);
-    const remoteUrl = `${REPOSITORY_IMAGE_BASE}/${variant.file}`;
-    return { src: localUrl || remoteUrl, fallback: localUrl ? remoteUrl : "" };
+    const file = this._isDaylight() && variant.dayFile ? variant.dayFile : variant.file;
+    const localUrl = this._localImageUrl(file);
+    const remoteUrl = `${REPOSITORY_IMAGE_BASE}/${file}`;
+    const fallbackFile = file === variant.file ? "" : variant.file;
+    const localFallback = fallbackFile ? this._localImageUrl(fallbackFile) : "";
+    const remoteFallback = fallbackFile ? `${REPOSITORY_IMAGE_BASE}/${fallbackFile}` : "";
+    return {
+      src: localUrl || remoteUrl,
+      fallback: localFallback || (localUrl ? remoteUrl : remoteFallback),
+    };
   }
 
   _localImageUrl(file) {
@@ -201,6 +220,12 @@ class HaSolarDashboardCard extends HTMLElement {
     const number = Number(value);
     if (!Number.isFinite(number)) return fallback;
     return Math.min(max, Math.max(min, number));
+  }
+
+  _isDaylight() {
+    const entityId = this.config?.daylight_entity || "sun.sun";
+    const state = this._hass?.states?.[entityId]?.state;
+    return state === "above_horizon" || state === "on";
   }
 
   _layoutState() {

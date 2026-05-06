@@ -5,6 +5,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 ## Features
 
 - Hero background image (your house/pv design)
+- Automatic day image variants via `sun.sun` after sunrise (`*_tag.png`)
 - Overlay widgets placed on matching points in the image
 - Selectable house layouts from the `images` folder:
   - `home`
@@ -58,6 +59,7 @@ units:
 - `time_label` (string, default: `Live`)
 - `house` (string, default: `home`; options: `home`, `doppelhaus`, `stadtvilla`, `stadtvilla2`)
 - `show_house_selector` (boolean, default: `true`)
+- `daylight_entity` (string, default: `sun.sun`; uses `_tag` images when state is `above_horizon` or `on`)
 - `image` (string, optional custom image override)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides)
 - `entities.pv_roof_power` (entity id)

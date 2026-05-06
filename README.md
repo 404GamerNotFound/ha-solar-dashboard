@@ -95,6 +95,16 @@ units:
 - `units.power` (string, default: `W`)
 - `units.battery` (string, default: `%`)
 
+## Validation
+
+Run the local package checks before pushing or releasing:
+
+```bash
+npm test
+```
+
+The CI workflow runs the same checks on pull requests and pushes to `main`. The HACS validation workflow runs `hacs/action` with `category: plugin`, including a daily scheduled run so future HACS validation changes are caught early.
+
 ## Troubleshooting HACS install
 
 If HACS shows an "Unknown error" while downloading, make sure you selected repository type **Dashboard**. If you previously added it as a different type, remove the failed entry in HACS and add it again as Dashboard before retrying.

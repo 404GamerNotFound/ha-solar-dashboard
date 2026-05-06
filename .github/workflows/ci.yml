@@ -1,24 +1,24 @@
-name: HACS Validation
+name: CI
 
 on:
   pull_request:
   push:
     branches:
       - main
-    tags:
-      - "v*"
-  schedule:
-    - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:
-  validate:
+  package-tests:
+    name: Package tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate with HACS
-        uses: hacs/action@main
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          category: plugin
+          node-version: "20"
+
+      - name: Run tests
+        run: npm test

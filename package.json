@@ -1,0 +1,12 @@
+{
+  "name": "ha-solar-dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Validation checks for the HA Solar Dashboard HACS dashboard card.",
+  "scripts": {
+    "test": "node tests/validate-hacs-package.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -91,6 +91,8 @@ class HaSolarDashboardCard extends HTMLElement {
       title: "Solar Dashboard",
       time_label: "Live",
       house: "home",
+      show_title: true,
+      show_time_label: true,
       show_house_selector: true,
       show_metric_tiles: true,
       hud_box_opacity: 0.65,
@@ -123,6 +125,8 @@ class HaSolarDashboardCard extends HTMLElement {
       title: "Energy Flow",
       time_label: "Live",
       house,
+      show_title: true,
+      show_time_label: true,
       show_house_selector: true,
       show_metric_tiles: true,
       hud_box_opacity: 0.65,
@@ -362,6 +366,11 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderCardShell(state) {
     const visibleMetrics = this._visibleMetrics();
     const metricHtml = visibleMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
+    const headerHtml = [
+      this.config.show_title !== false ? `<div class="title">${this._escape(this.config.title)}</div>` : "",
+      this._renderHouseSelector(state.activeHouse),
+      this.config.show_time_label !== false ? `<div class="badge">${this._escape(this.config.time_label)}</div>` : "",
+    ].filter(Boolean).join("");
     const gridHtml = [
       ...visibleMetrics,
       TILE_METRICS.find((metric) => metric.key === "pv_total_power"),
@@ -394,7 +403,7 @@ class HaSolarDashboardCard extends HTMLElement {
         @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select{width:100%;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
       </style>
       <ha-card>
-        <div class="header"><div class="title">${this._escape(this.config.title)}</div>${this._renderHouseSelector(state.activeHouse)}<div class="badge">${this._escape(this.config.time_label)}</div></div>
+        ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
         <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(state.variant.label)}" />${metricHtml}</div>
         ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
       </ha-card>
@@ -551,6 +560,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>House Type <select data-path="house">${houseOptions}</select></label>
         <label>Eigenes Bild <input data-path="image" placeholder="/local/solar/haus.png oder https://..." value="${this._escape(this._config.image || "")}" /></label>
         <label>Eigenes Tagbild <input data-path="day_image" placeholder="Optional, wird tagsüber verwendet" value="${this._escape(this._config.day_image || "")}" /></label>
+        <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> Show title</label>
+        <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> Show live label</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> Show house selector</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> Show metric boxes below chart</label>
         <label>HUD box opacity (${this._escape((Number(this._config.hud_box_opacity ?? 0.65)).toFixed(2))})

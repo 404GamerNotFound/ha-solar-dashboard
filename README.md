@@ -2,6 +2,10 @@
 
 A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy overview with an image-based layout.
 
+## Example
+
+![HA Solar Dashboard Card example](images/home.png)
+
 ## Features
 
 - Hero background image (your house/pv design)
@@ -72,6 +76,8 @@ units:
 - `title` (string, default: `Energy Flow`)
 - `time_label` (string, default: `Live`)
 - `house` (string, default: `home`; options: `home`, `doppelhaus`, `mehrfamilienhaus`, `stadtvilla`, `stadtvilla2`)
+- `show_title` (boolean, default: `true`; shows/hides the title)
+- `show_time_label` (boolean, default: `true`; shows/hides the live label)
 - `show_house_selector` (boolean, default: `true`)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
 - `daylight_entity` (string, default: `sun.sun`; uses `_tag` images during the day and standard images before sunrise/after sunset)

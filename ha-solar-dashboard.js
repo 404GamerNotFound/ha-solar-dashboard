@@ -8,6 +8,7 @@ const HOUSE_VARIANTS = {
     label: "Home",
     file: "home_neu.png",
     dayFile: "home_neu_tag.png",
+    fallbackFiles: ["home.png"],
     positions: {
       pv_roof_power: { left: 64, top: 28 },
       pv_shed_power: { left: 14, top: 80 },
@@ -185,15 +186,26 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _variantImage(variant) {
     const file = this._isDaylight() && variant.dayFile ? variant.dayFile : variant.file;
-    const localUrl = this._localImageUrl(file);
-    const remoteUrl = `${REPOSITORY_IMAGE_BASE}/${file}`;
-    const fallbackFile = file === variant.file ? "" : variant.file;
-    const localFallback = fallbackFile ? this._localImageUrl(fallbackFile) : "";
-    const remoteFallback = fallbackFile ? `${REPOSITORY_IMAGE_BASE}/${fallbackFile}` : "";
+    const files = [
+      file,
+      ...(file === variant.file ? [] : [variant.file]),
+      ...(variant.fallbackFiles || []),
+    ];
+    const [primaryFile, ...fallbackFiles] = files.filter(Boolean);
     return {
-      src: localUrl || remoteUrl,
-      fallback: localFallback || (localUrl ? remoteUrl : remoteFallback),
+      src: this._remoteImageUrl(primaryFile),
+      fallbacks: [
+        this._localImageUrl(primaryFile),
+        ...fallbackFiles.flatMap((fallbackFile) => [
+          this._remoteImageUrl(fallbackFile),
+          this._localImageUrl(fallbackFile),
+        ]),
+      ],
     };
+  }
+
+  _remoteImageUrl(file) {
+    return `${REPOSITORY_IMAGE_BASE}/${file}`;
   }
 
   _localImageUrl(file) {
@@ -244,9 +256,9 @@ class HaSolarDashboardCard extends HTMLElement {
     const variant = HOUSE_VARIANTS[activeHouse] || HOUSE_VARIANTS.home;
     const variantImage = this._variantImage(variant);
     const imageSrc = this.config.image || variantImage.src;
-    const imageFallback = this.config.image ? variantImage.src : variantImage.fallback;
+    const imageFallbacks = this.config.image ? [variantImage.src] : variantImage.fallbacks;
 
-    return { activeHouse, variant, imageSrc, imageFallback };
+    return { activeHouse, variant, imageSrc, imageFallbacks };
   }
 
   _escape(value) {
@@ -298,10 +310,11 @@ class HaSolarDashboardCard extends HTMLElement {
     const image = this.shadowRoot.querySelector(".scene-image");
     if (image) {
       image.addEventListener("error", () => {
-        const fallback = image.dataset.fallback;
+        const fallbacks = (image.dataset.fallbacks || "").split("|").filter(Boolean);
+        const fallback = fallbacks.shift();
         if (!fallback || image.src === fallback) return;
         image.src = fallback;
-        image.dataset.fallback = "";
+        image.dataset.fallbacks = fallbacks.join("|");
       });
     }
   }
@@ -338,7 +351,7 @@ class HaSolarDashboardCard extends HTMLElement {
       </style>
       <ha-card>
         <div class="header"><div class="title">${this._escape(this.config.title)}</div>${this._renderHouseSelector(state.activeHouse)}<div class="badge">${this._escape(this.config.time_label)}</div></div>
-        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallback="${this._escape(state.imageFallback || "")}" alt="${this._escape(state.variant.label)}" />${metricHtml}</div>
+        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(state.variant.label)}" />${metricHtml}</div>
         ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
       </ha-card>
     `;

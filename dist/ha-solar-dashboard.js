@@ -224,8 +224,19 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _isDaylight() {
     const entityId = this.config?.daylight_entity || "sun.sun";
-    const state = this._hass?.states?.[entityId]?.state;
-    return state === "above_horizon" || state === "on";
+    const entity = this._hass?.states?.[entityId];
+    const state = String(entity?.state || "").toLowerCase();
+    if (["above_horizon", "above horizon", "on"].includes(state) || state.includes("über dem horizont")) return true;
+    if (["below_horizon", "below horizon", "off"].includes(state) || state.includes("unter dem horizont")) return false;
+
+    const elevation = Number(entity?.attributes?.elevation);
+    if (Number.isFinite(elevation)) return elevation > -0.833;
+
+    const nextRising = Date.parse(entity?.attributes?.next_rising || "");
+    const nextSetting = Date.parse(entity?.attributes?.next_setting || "");
+    if (Number.isFinite(nextRising) && Number.isFinite(nextSetting)) return nextSetting < nextRising;
+
+    return false;
   }
 
   _layoutState() {

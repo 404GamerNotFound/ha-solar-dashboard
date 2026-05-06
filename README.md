@@ -18,6 +18,9 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - Batterie
   - Wechselrichter Leistung
   - Wallbox Leistung
+- Individual boxes can be hidden when a device is not present, for example no Wallbox
+- Custom standard and daylight images
+- Free X/Y positioning for every overlay box
 - Dark glass style matching the provided design
 
 ## Installation (HACS)
@@ -48,6 +51,14 @@ entities:
   battery_level: sensor.batterie_soc
   inverter_power: sensor.wechselrichter_leistung
   wallbox_power: sensor.wallbox_leistung
+visible_boxes:
+  wallbox_power: false
+positions:
+  pv_roof_power:
+    left: 64
+    top: 28
+image: /local/solar/haus_nacht.png
+day_image: /local/solar/haus_tag.png
 units:
   power: W
   battery: "%"
@@ -59,9 +70,13 @@ units:
 - `time_label` (string, default: `Live`)
 - `house` (string, default: `home`; options: `home`, `doppelhaus`, `stadtvilla`, `stadtvilla2`)
 - `show_house_selector` (boolean, default: `true`)
+- `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
 - `daylight_entity` (string, default: `sun.sun`; uses `_tag` images during the day and standard images before sunrise/after sunset)
-- `image` (string, optional custom image override)
-- `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides)
+- `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
+- `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
+- `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one overlay box and its summary tile)
+- `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
+- `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)
 - `entities.battery_level` (entity id)

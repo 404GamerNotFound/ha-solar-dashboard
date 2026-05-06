@@ -79,6 +79,13 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
+      visible_boxes: {
+        pv_roof_power: true,
+        pv_shed_power: true,
+        battery_level: true,
+        inverter_power: true,
+        wallbox_power: true,
+      },
       entities: {
         pv_roof_power: "sensor.pv_roof_power",
         pv_shed_power: "sensor.pv_shed_power",
@@ -106,6 +113,7 @@ class HaSolarDashboardCard extends HTMLElement {
       units: { power: "W", battery: "%" },
       entities: {},
       positions: {},
+      visible_boxes: {},
       ...config,
       house,
       units: {
@@ -118,6 +126,9 @@ class HaSolarDashboardCard extends HTMLElement {
       },
       positions: {
         ...(config.positions || {}),
+      },
+      visible_boxes: {
+        ...(config.visible_boxes || config.boxes || {}),
       },
     };
 
@@ -182,6 +193,10 @@ class HaSolarDashboardCard extends HTMLElement {
     const value = this._formatValue(this._getEntityValue(entityId, "0"));
     if (value === "—") return value;
     return `${value} ${this.config.units[metric.unit]}`;
+  }
+
+  _visibleMetrics() {
+    return METRICS.filter((metric) => this.config.visible_boxes?.[metric.key] !== false);
   }
 
   _variantImage(variant) {
@@ -255,8 +270,9 @@ class HaSolarDashboardCard extends HTMLElement {
     const activeHouse = this._normalizeHouse(this._selectedHouse) || this.config.house;
     const variant = HOUSE_VARIANTS[activeHouse] || HOUSE_VARIANTS.home;
     const variantImage = this._variantImage(variant);
-    const imageSrc = this.config.image || variantImage.src;
-    const imageFallbacks = this.config.image ? [variantImage.src] : variantImage.fallbacks;
+    const customImage = this._isDaylight() && this.config.day_image ? this.config.day_image : this.config.image;
+    const imageSrc = customImage || variantImage.src;
+    const imageFallbacks = customImage ? [variantImage.src, ...(variantImage.fallbacks || [])] : variantImage.fallbacks;
 
     return { activeHouse, variant, imageSrc, imageFallbacks };
   }
@@ -284,6 +300,8 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderMetric(metric, variant) {
+    if (this.config.visible_boxes?.[metric.key] === false) return "";
+
     const position = this._metricPosition(variant, metric.key);
     const left = this._toPercent(position.left, 50);
     const top = this._toPercent(position.top, 50);
@@ -320,8 +338,9 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderCardShell(state) {
-    const metricHtml = METRICS.map((metric) => this._renderMetric(metric, state.variant)).join("");
-    const gridHtml = METRICS.map(
+    const visibleMetrics = this._visibleMetrics();
+    const metricHtml = visibleMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
+    const gridHtml = visibleMetrics.map(
       (metric) => `
         <div class="tile" data-tile="${metric.key}">
           <div class="name">${this._escape(metric.label)}</div>
@@ -376,7 +395,12 @@ class HaSolarDashboardCard extends HTMLElement {
 
 class HaSolarDashboardCardEditor extends HTMLElement {
   setConfig(config) {
-    this._config = { entities: {}, ...config };
+    this._config = {
+      entities: {},
+      positions: {},
+      ...config,
+      visible_boxes: { ...((config || {}).boxes || {}), ...((config || {}).visible_boxes || {}) },
+    };
     this._render();
   }
 
@@ -394,9 +418,14 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const numericFields = new Set(["hud_box_opacity", "hud_box_scale"]);
     const nextValue = numericFields.has(path) ? Number(value) : value;
     if (path.includes(".")) {
-      const [section, key] = path.split(".");
+      const [section, key, prop] = path.split(".");
       next[section] = next[section] || {};
-      next[section][key] = isCheckbox ? Boolean(nextValue) : nextValue;
+      if (prop) {
+        next[section][key] = next[section][key] || {};
+        next[section][key][prop] = Number(value);
+      } else {
+        next[section][key] = isCheckbox ? Boolean(nextValue) : nextValue;
+      }
     } else {
       next[path] = isCheckbox ? Boolean(nextValue) : nextValue;
     }
@@ -443,6 +472,34 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _metricPosition(metric) {
+    const house = this._config.house || "home";
+    const variant = HOUSE_VARIANTS[house] || HOUSE_VARIANTS.home;
+    return {
+      ...(variant.positions[metric.key] || {}),
+      ...(this._config.positions?.[metric.key] || {}),
+    };
+  }
+
+  _renderBoxField(metric) {
+    const position = this._metricPosition(metric);
+    const left = Number.isFinite(Number(position.left)) ? Number(position.left) : 50;
+    const top = Number.isFinite(Number(position.top)) ? Number(position.top) : 50;
+    const visible = this._config.visible_boxes?.[metric.key] !== false;
+
+    return `
+      <div class="box-field">
+        <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(metric.label)} anzeigen</label>
+        <label>X Position (${this._escape(left)})
+          <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.left" value="${this._escape(left)}" />
+        </label>
+        <label>Y Position (${this._escape(top)})
+          <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.top" value="${this._escape(top)}" />
+        </label>
+      </div>
+    `;
+  }
+
   _render() {
     if (!this._config) return;
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
@@ -457,12 +514,18 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         label{display:grid;gap:4px;font-size:13px}
         input,select{padding:8px;border:1px solid #bbb;border-radius:8px}
         .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+        .section-title{font-size:13px;font-weight:700;margin-top:4px}
+        .box-field{display:grid;gap:8px;padding:10px;border:1px solid #ddd;border-radius:8px}
+        .inline{display:flex;align-items:center;gap:8px}
+        .inline input{padding:0}
         @media (max-width:700px){.grid{grid-template-columns:minmax(0,1fr)}}
       </style>
       <div class="editor">
         <label>Title <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
         <label>Time Label <input data-path="time_label" value="${this._escape(this._config.time_label || "")}" /></label>
         <label>House Type <select data-path="house">${houseOptions}</select></label>
+        <label>Eigenes Bild <input data-path="image" placeholder="/local/solar/haus.png oder https://..." value="${this._escape(this._config.image || "")}" /></label>
+        <label>Eigenes Tagbild <input data-path="day_image" placeholder="Optional, wird tagsüber verwendet" value="${this._escape(this._config.day_image || "")}" /></label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> Show house selector</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> Show metric boxes below chart</label>
         <label>HUD box opacity (${this._escape((Number(this._config.hud_box_opacity ?? 0.65)).toFixed(2))})
@@ -471,6 +534,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>HUD box scale (${this._escape((Number(this._config.hud_box_scale ?? 1)).toFixed(2))})
           <input type="range" min="0.6" max="1.8" step="0.05" data-path="hud_box_scale" value="${this._escape(this._config.hud_box_scale ?? 1)}" />
         </label>
+        <div class="section-title">Boxen anzeigen und positionieren</div>
+        <div class="grid">${METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
+        <div class="section-title">Entitäten</div>
         <div class="grid">${METRICS.map((metric) => this._renderEntityField(metric)).join("")}</div>
       </div>
     `;

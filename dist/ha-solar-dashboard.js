@@ -29,6 +29,18 @@ const HOUSE_VARIANTS = {
       wallbox_power: { left: 27, top: 66 },
     },
   },
+  mehrfamilienhaus: {
+    label: "Mehrfamilienhaus",
+    file: "mehrfamilienhaus.png",
+    dayFile: "mehrfamilienhaus_tag.png",
+    positions: {
+      pv_roof_power: { left: 53, top: 17 },
+      pv_shed_power: { left: 16, top: 81 },
+      battery_level: { left: 35, top: 65 },
+      inverter_power: { left: 35, top: 72 },
+      wallbox_power: { left: 21, top: 59 },
+    },
+  },
   stadtvilla: {
     label: "Stadtvilla",
     file: "stadtvilla.png",
@@ -63,6 +75,11 @@ const METRICS = [
   { key: "wallbox_power", label: "Wallbox", unit: "power", color: "blue" },
 ];
 
+const TILE_METRICS = [
+  ...METRICS,
+  { key: "pv_total_power", label: "PV Gesamt", unit: "power", color: "yellow" },
+];
+
 class HaSolarDashboardCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement(CARD_EDITOR_TYPE);
@@ -92,6 +109,7 @@ class HaSolarDashboardCard extends HTMLElement {
         battery_level: "sensor.battery_level",
         inverter_power: "sensor.wechselrichter_power",
         wallbox_power: "sensor.wallbox_power",
+        pv_total_power: "sensor.pv_total_power",
       },
     };
   }
@@ -166,6 +184,10 @@ class HaSolarDashboardCard extends HTMLElement {
       modern: "home",
       einfamilienhaus: "home",
       "doppel-haus": "doppelhaus",
+      mfh: "mehrfamilienhaus",
+      mehrfamilienhaus: "mehrfamilienhaus",
+      "mehr-familienhaus": "mehrfamilienhaus",
+      "mehrfamilien-haus": "mehrfamilienhaus",
       villa: "stadtvilla",
       "stadt-villa": "stadtvilla",
       stadtvilla_2: "stadtvilla2",
@@ -340,7 +362,10 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderCardShell(state) {
     const visibleMetrics = this._visibleMetrics();
     const metricHtml = visibleMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
-    const gridHtml = visibleMetrics.map(
+    const gridHtml = [
+      ...visibleMetrics,
+      TILE_METRICS.find((metric) => metric.key === "pv_total_power"),
+    ].filter(Boolean).map(
       (metric) => `
         <div class="tile" data-tile="${metric.key}">
           <div class="name">${this._escape(metric.label)}</div>
@@ -364,7 +389,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
         .metric .value,.tile .num { font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
         .value.yellow{color:var(--accent-yellow)} .value.blue{color:var(--accent-blue)} .value.green{color:var(--accent-green)}
-        .grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+        .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
         .tile { background:rgba(12,20,38,.72); border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:10px; min-width:0; }
         @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select{width:100%;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
       </style>
@@ -379,7 +404,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _updateReadings() {
-    METRICS.forEach((metric) => {
+    TILE_METRICS.forEach((metric) => {
       const reading = this._formatReading(metric);
       this.shadowRoot.querySelectorAll(`[data-value="${metric.key}"]`).forEach((element) => {
         if (element.textContent !== reading) element.textContent = reading;
@@ -537,7 +562,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <div class="section-title">Boxen anzeigen und positionieren</div>
         <div class="grid">${METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
         <div class="section-title">Entitäten</div>
-        <div class="grid">${METRICS.map((metric) => this._renderEntityField(metric)).join("")}</div>
+        <div class="grid">${TILE_METRICS.map((metric) => this._renderEntityField(metric)).join("")}</div>
       </div>
     `;
 

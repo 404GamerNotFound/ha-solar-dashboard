@@ -10,6 +10,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Selectable house layouts from the `images` folder:
   - `home`
   - `doppelhaus`
+  - `mehrfamilienhaus`
   - `stadtvilla`
   - `stadtvilla2`
 - Configurable entities for:
@@ -18,6 +19,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - Batterie
   - Wechselrichter Leistung
   - Wallbox Leistung
+  - PV Gesamt (summary tile below the image)
 - Individual boxes can be hidden when a device is not present, for example no Wallbox
 - Custom standard and daylight images
 - Free X/Y positioning for every overlay box
@@ -51,6 +53,7 @@ entities:
   battery_level: sensor.batterie_soc
   inverter_power: sensor.wechselrichter_leistung
   wallbox_power: sensor.wallbox_leistung
+  pv_total_power: sensor.pv_gesamt_leistung
 visible_boxes:
   wallbox_power: false
 positions:
@@ -68,7 +71,7 @@ units:
 
 - `title` (string, default: `Energy Flow`)
 - `time_label` (string, default: `Live`)
-- `house` (string, default: `home`; options: `home`, `doppelhaus`, `stadtvilla`, `stadtvilla2`)
+- `house` (string, default: `home`; options: `home`, `doppelhaus`, `mehrfamilienhaus`, `stadtvilla`, `stadtvilla2`)
 - `show_house_selector` (boolean, default: `true`)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
 - `daylight_entity` (string, default: `sun.sun`; uses `_tag` images during the day and standard images before sunrise/after sunset)
@@ -79,6 +82,7 @@ units:
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)
+- `entities.pv_total_power` (entity id; shown as `PV Gesamt` in the summary boxes below the image)
 - `entities.battery_level` (entity id)
 - `entities.inverter_power` (entity id)
 - `entities.wallbox_power` (entity id)

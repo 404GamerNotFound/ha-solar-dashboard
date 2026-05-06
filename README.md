@@ -4,7 +4,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 
 ## Example
 
-![HA Solar Dashboard Card example](images/home.png)
+![HA Solar Dashboard Card example](https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/example.png)
 
 ## Features
 
@@ -104,6 +104,8 @@ npm test
 ```
 
 The CI workflow runs the same checks on pull requests and pushes to `main`. The HACS validation workflow runs `hacs/action` with `category: plugin`, including a daily scheduled run so future HACS validation changes are caught early.
+
+Hassfest is included as a guarded workflow for future integration files, but it only runs when `custom_components/**` exists. Dashboard cards are validated through the HACS plugin action instead.
 
 ## Troubleshooting HACS install
 

@@ -13,6 +13,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Overlay-Widgets auf frei positionierbaren Punkten
 - Wählbare Hauslayouts aus dem `images`-Ordner
 - Konfigurierbare Entitäten für PV, Batterie, Wechselrichter, Wallbox und Gesamtleistung
+- Automatische Leistungsanzeige in `W` bis `999 W` und ab `1000 W` in `kW` mit zwei Nachkommastellen
 - Einzelne Boxen können ausgeblendet werden
 
 ## Installation (HACS)

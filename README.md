@@ -67,10 +67,10 @@ positions:
 image: /local/solar/haus_nacht.png
 day_image: /local/solar/haus_tag.png
 units:
-  power: W
+  power: auto
   battery: "%"
 power_display_mode: auto_kw
-power_decimals: 1
+power_decimals: 2
 ```
 
 ## Card options
@@ -94,10 +94,11 @@ power_decimals: 1
 - `entities.battery_level` (entity id)
 - `entities.inverter_power` (entity id)
 - `entities.wallbox_power` (entity id)
-- `units.power` (string, default: `W`)
+- `units.power` (string, default: `auto`; power values are shown in `W` below `1000 W` and in `kW` with two decimals from `1000 W`)
 - `units.battery` (string, default: `%`)
-- `power_display_mode` (string, default: `raw`; options: `raw`, `auto_kw`)
-- `power_decimals` (number, default: `0`; used in `auto_kw` mode for both W and kW values, range: `0`-`3`)
+- `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`)
+- `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
+- `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)
 
 ## Validation
 

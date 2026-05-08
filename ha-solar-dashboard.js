@@ -132,16 +132,16 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
-      power_display_mode: "raw",
-      power_decimals: 0,
-      units: { power: "W", battery: "%" },
+      power_display_mode: "auto_kw",
+      power_decimals: 2,
+      units: { power: "auto", battery: "%" },
       entities: {},
       positions: {},
       visible_boxes: {},
       ...config,
       house,
       units: {
-        power: "W",
+        power: "auto",
         battery: "%",
         ...(config.units || {}),
       },
@@ -158,7 +158,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     this.config.hud_box_opacity = this._clampNumber(this.config.hud_box_opacity, 0.65, 0, 1);
     this.config.hud_box_scale = this._clampNumber(this.config.hud_box_scale, 1, 0.6, 1.8);
-    this.config.power_decimals = this._clampNumber(this.config.power_decimals, 0, 0, 3);
+    this.config.power_decimals = this._clampNumber(this.config.power_decimals, 2, 0, 3);
 
     this._selectedHouse = house;
 
@@ -217,11 +217,16 @@ class HaSolarDashboardCard extends HTMLElement {
     return value;
   }
 
+  _unitForMetric(metric) {
+    return this.config.units?.[metric.key] ?? this.config.units?.[metric.unit];
+  }
+
   _formatReading(metric) {
     const entityId = this.config.entities[metric.key];
     const value = this._getEntityValue(entityId, "0");
-    if (metric.unit === "power") return this._formatPowerValue(value);
-    return this._formatWithUnit(value, this.config.units[metric.unit]);
+    const unit = this._unitForMetric(metric);
+    if (metric.unit === "power") return this._formatPowerValue(value, unit);
+    return this._formatWithUnit(value, unit);
   }
 
   _formatWithUnit(rawValue, unit) {
@@ -230,18 +235,23 @@ class HaSolarDashboardCard extends HTMLElement {
     return `${value} ${unit}`;
   }
 
-  _formatPowerValue(rawValue) {
-    const numericValue = Number(rawValue);
-    if (!Number.isFinite(numericValue)) return this._formatWithUnit(rawValue, this.config.units.power);
+  _formatPowerValue(rawValue, unit) {
+    const value = this._formatValue(rawValue);
+    if (value === "—") return value;
 
-    const mode = this.config.power_display_mode || "raw";
+    const normalizedUnit = String(unit || "").toLowerCase();
+    if (unit && normalizedUnit !== "auto") return `${value} ${unit}`;
+
+    const numericValue = Number(rawValue);
+    if (!Number.isFinite(numericValue)) return `${value} W`;
+
+    const mode = this.config.power_display_mode || "auto_kw";
     if (mode === "auto_kw" && Math.abs(numericValue) >= 1000) {
       const kwValue = numericValue / 1000;
       return `${kwValue.toFixed(this.config.power_decimals)} kW`;
     }
 
-    if (mode === "auto_kw") return `${numericValue.toFixed(this.config.power_decimals)} W`;
-    return `${numericValue} ${this.config.units.power}`;
+    return `${value} W`;
   }
 
   _visibleMetrics() {
@@ -454,6 +464,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   setConfig(config) {
     this._config = {
       entities: {},
+      units: {},
       positions: {},
       ...config,
       visible_boxes: { ...((config || {}).boxes || {}), ...((config || {}).visible_boxes || {}) },
@@ -472,7 +483,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _onInput(path, value, isCheckbox = false) {
     const next = this._cloneConfig(this._config || {});
-    const numericFields = new Set(["hud_box_opacity", "hud_box_scale"]);
+    const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals"]);
     const nextValue = numericFields.has(path) ? Number(value) : value;
     if (path.includes(".")) {
       const [section, key, prop] = path.split(".");
@@ -515,9 +526,11 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _renderEntityField(metric) {
     const selected = this._config?.entities?.[metric.key] || "";
+    const unit = this._config?.units?.[metric.key] ?? "";
     const options = this._entityOptions()
       .map((entityId) => `<option value="${this._escape(entityId)}"${entityId === selected ? " selected" : ""}>${this._escape(entityId)}</option>`)
       .join("");
+    const unitPlaceholder = metric.unit === "power" ? "auto, W, kW ..." : "%";
     return `
       <label>
         ${this._escape(metric.label)}
@@ -525,6 +538,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
           <option value="">-- select entity --</option>
           ${options}
         </select>
+      </label>
+      <label>
+        ${this._escape(metric.label)} Einheit
+        <input data-path="units.${metric.key}" placeholder="${this._escape(unitPlaceholder)}" value="${this._escape(unit)}" />
       </label>
     `;
   }
@@ -595,12 +612,12 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         </label>
         <label>Power display mode
           <select data-path="power_display_mode">
-            <option value="raw"${(this._config.power_display_mode || "raw") === "raw" ? " selected" : ""}>Raw value + configured unit</option>
-            <option value="auto_kw"${this._config.power_display_mode === "auto_kw" ? " selected" : ""}>Auto W/kW</option>
+            <option value="raw"${this._config.power_display_mode === "raw" ? " selected" : ""}>Raw value + configured unit</option>
+            <option value="auto_kw"${(this._config.power_display_mode || "auto_kw") === "auto_kw" ? " selected" : ""}>Auto W/kW</option>
           </select>
         </label>
-        <label>Power decimals (${this._escape(Number(this._config.power_decimals ?? 0).toFixed(0))})
-          <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 0)}" />
+        <label>Power decimals (${this._escape(Number(this._config.power_decimals ?? 2).toFixed(0))})
+          <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
         <div class="section-title">Boxen anzeigen und positionieren</div>
         <div class="grid">${METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>

@@ -132,6 +132,8 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
+      power_display_mode: "raw",
+      power_decimals: 0,
       units: { power: "W", battery: "%" },
       entities: {},
       positions: {},
@@ -156,6 +158,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     this.config.hud_box_opacity = this._clampNumber(this.config.hud_box_opacity, 0.65, 0, 1);
     this.config.hud_box_scale = this._clampNumber(this.config.hud_box_scale, 1, 0.6, 1.8);
+    this.config.power_decimals = this._clampNumber(this.config.power_decimals, 0, 0, 3);
 
     this._selectedHouse = house;
 
@@ -216,9 +219,29 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _formatReading(metric) {
     const entityId = this.config.entities[metric.key];
-    const value = this._formatValue(this._getEntityValue(entityId, "0"));
+    const value = this._getEntityValue(entityId, "0");
+    if (metric.unit === "power") return this._formatPowerValue(value);
+    return this._formatWithUnit(value, this.config.units[metric.unit]);
+  }
+
+  _formatWithUnit(rawValue, unit) {
+    const value = this._formatValue(rawValue);
     if (value === "—") return value;
-    return `${value} ${this.config.units[metric.unit]}`;
+    return `${value} ${unit}`;
+  }
+
+  _formatPowerValue(rawValue) {
+    const numericValue = Number(rawValue);
+    if (!Number.isFinite(numericValue)) return this._formatWithUnit(rawValue, this.config.units.power);
+
+    const mode = this.config.power_display_mode || "raw";
+    if (mode === "auto_kw" && Math.abs(numericValue) >= 1000) {
+      const kwValue = numericValue / 1000;
+      return `${kwValue.toFixed(this.config.power_decimals)} kW`;
+    }
+
+    if (mode === "auto_kw") return `${numericValue.toFixed(this.config.power_decimals)} W`;
+    return `${numericValue} ${this.config.units.power}`;
   }
 
   _visibleMetrics() {
@@ -569,6 +592,15 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         </label>
         <label>HUD box scale (${this._escape((Number(this._config.hud_box_scale ?? 1)).toFixed(2))})
           <input type="range" min="0.6" max="1.8" step="0.05" data-path="hud_box_scale" value="${this._escape(this._config.hud_box_scale ?? 1)}" />
+        </label>
+        <label>Power display mode
+          <select data-path="power_display_mode">
+            <option value="raw"${(this._config.power_display_mode || "raw") === "raw" ? " selected" : ""}>Raw value + configured unit</option>
+            <option value="auto_kw"${this._config.power_display_mode === "auto_kw" ? " selected" : ""}>Auto W/kW</option>
+          </select>
+        </label>
+        <label>Power decimals (${this._escape(Number(this._config.power_decimals ?? 0).toFixed(0))})
+          <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 0)}" />
         </label>
         <div class="section-title">Boxen anzeigen und positionieren</div>
         <div class="grid">${METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>

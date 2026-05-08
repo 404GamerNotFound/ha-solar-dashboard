@@ -218,7 +218,9 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _unitForMetric(metric) {
-    return this.config.units?.[metric.key] ?? this.config.units?.[metric.unit];
+    const metricUnit = this.config.units?.[metric.key];
+    if (metricUnit !== undefined && String(metricUnit).trim() !== "") return metricUnit;
+    return this.config.units?.[metric.unit];
   }
 
   _formatReading(metric) {
@@ -232,6 +234,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _formatWithUnit(rawValue, unit) {
     const value = this._formatValue(rawValue);
     if (value === "—") return value;
+    if (unit === undefined || unit === null || String(unit).trim() === "") return value;
     return `${value} ${unit}`;
   }
 

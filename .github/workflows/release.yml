@@ -50,11 +50,9 @@ jobs:
         run: |
           mkdir -p release-assets
           cp dist/ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
-          if [ -d dist/images ]; then
-            cp dist/images/*.png release-assets/ 2>/dev/null || true
-          fi
+          cp dist/images/*.png release-assets/
 
-      - name: Publish release asset
+      - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release.outputs.tag }}

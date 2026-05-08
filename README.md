@@ -69,6 +69,8 @@ day_image: /local/solar/haus_tag.png
 units:
   power: W
   battery: "%"
+power_display_mode: auto_kw
+power_decimals: 1
 ```
 
 ## Card options
@@ -94,6 +96,8 @@ units:
 - `entities.wallbox_power` (entity id)
 - `units.power` (string, default: `W`)
 - `units.battery` (string, default: `%`)
+- `power_display_mode` (string, default: `raw`; options: `raw`, `auto_kw`)
+- `power_decimals` (number, default: `0`; used in `auto_kw` mode for both W and kW values, range: `0`-`3`)
 
 ## Validation
 

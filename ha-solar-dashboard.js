@@ -149,6 +149,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_metric_tiles: true,
       show_status_label: true,
+      show_weather_status: false,
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
@@ -186,6 +187,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_metric_tiles: true,
       show_status_label: true,
+      show_weather_status: false,
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
@@ -349,11 +351,36 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _statusLabel() {
     const updatedAt = this._formatRelativeTime(this._latestEntityUpdate());
+    const weather = this.config.show_weather_status ? this._formatWeatherStatus() : "";
     const importExport = this._formatImportExportStatus();
     return [
       updatedAt ? `Zuletzt aktualisiert: ${updatedAt}` : "",
+      weather,
       importExport,
     ].filter(Boolean).join(" / ");
+  }
+
+  _formatWeatherStatus() {
+    const state = this._weatherState();
+    if (!state) return "";
+    const labels = {
+      sunny: "Sonne",
+      clear: "Klar",
+      "clear-night": "Klar",
+      partlycloudy: "Teilweise bewölkt",
+      cloudy: "Bewölkt",
+      fog: "Nebel",
+      rainy: "Regen",
+      pouring: "Starkregen",
+      "lightning-rainy": "Gewitterregen",
+      snowy: "Schnee",
+      "snowy-rainy": "Schneeregen",
+      hail: "Hagel",
+      lightning: "Gewitter",
+      windy: "Windig",
+      "windy-variant": "Windig/bewölkt",
+    };
+    return `Wetter: ${labels[state] || state.replace(/-/g, " ")}`;
   }
 
   _formatWithUnit(rawValue, unit) {
@@ -501,12 +528,12 @@ class HaSolarDashboardCard extends HTMLElement {
     const files = this._weatherImageFiles(variant, this._isDaylight());
     const [primaryFile, ...fallbackFiles] = files.filter(Boolean);
     return {
-      src: this._remoteImageUrl(primaryFile),
+      src: this._localImageUrl(primaryFile),
       fallbacks: [
-        this._localImageUrl(primaryFile),
+        this._remoteImageUrl(primaryFile),
         ...fallbackFiles.flatMap((fallbackFile) => [
-          this._remoteImageUrl(fallbackFile),
           this._localImageUrl(fallbackFile),
+          this._remoteImageUrl(fallbackFile),
         ]),
       ],
     };
@@ -620,14 +647,21 @@ class HaSolarDashboardCard extends HTMLElement {
 
     const image = this.shadowRoot.querySelector(".scene-image");
     if (image) {
-      image.addEventListener("error", () => {
-        const fallbacks = (image.dataset.fallbacks || "").split("|").filter(Boolean);
-        const fallback = fallbacks.shift();
-        if (!fallback || image.src === fallback) return;
-        image.src = fallback;
-        image.dataset.fallbacks = fallbacks.join("|");
-      });
+      image.addEventListener("error", () => this._applyImageFallback(image));
+      if (image.complete && image.naturalWidth === 0) this._applyImageFallback(image);
     }
+  }
+
+  _applyImageFallback(image) {
+    const fallbacks = (image.dataset.fallbacks || "").split("|").filter(Boolean);
+    while (fallbacks.length > 0) {
+      const fallback = fallbacks.shift();
+      if (!fallback || image.src === fallback) continue;
+      image.src = fallback;
+      image.dataset.fallbacks = fallbacks.join("|");
+      return;
+    }
+    image.dataset.fallbacks = "";
   }
 
   _renderCardShell(state) {
@@ -892,6 +926,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> Show house selector</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> Show metric boxes below chart</label>
         <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> Statuslabel im Bild anzeigen</label>
+        <label><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> Aktuelles Wetter im Statuslabel anzeigen</label>
         <label>Import/Export Entität
           <input data-path="entities.import_export_power" list="ha-solar-dashboard-entities" placeholder="sensor.grid_power" value="${this._escape(this._config.entities?.import_export_power || "")}" autocomplete="off" />
         </label>

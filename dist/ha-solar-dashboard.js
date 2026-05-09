@@ -574,19 +574,12 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       .replace(/'/g, "&#039;");
   }
 
-  _renderEntityField(metric) {
+  _renderEntityInput(metric) {
     const selected = this._config?.entities?.[metric.key] || "";
     const label = this._metricLabel(metric);
-    const options = this._entityOptions()
-      .map((entityId) => `<option value="${this._escape(entityId)}"${entityId === selected ? " selected" : ""}>${this._escape(entityId)}</option>`)
-      .join("");
     return `
-      <label>
-        ${this._escape(label)}
-        <select data-path="entities.${metric.key}">
-          <option value="">-- select entity --</option>
-          ${options}
-        </select>
+      <label>Entität
+        <input data-path="entities.${metric.key}" list="ha-solar-dashboard-entities" placeholder="${this._escape(label)} Entity" value="${this._escape(selected)}" autocomplete="off" />
       </label>
     `;
   }
@@ -656,6 +649,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return `
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._metricLabel(metric))} anzeigen</label>
+        ${this._renderEntityInput(metric)}
         ${this._renderUnitSelect(metric)}
         <label>X Position (${this._escape(left)})
           <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.left" value="${this._escape(left)}" />
@@ -673,6 +667,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const house = this._config.house || "home";
     const houseOptions = Object.entries(HOUSE_VARIANTS)
       .map(([key, value]) => `<option value="${this._escape(key)}"${key === house ? " selected" : ""}>${this._escape(value.label)}</option>`)
+      .join("");
+    const entityOptions = this._entityOptions()
+      .map((entityId) => `<option value="${this._escape(entityId)}"></option>`)
       .join("");
 
     this.shadowRoot.innerHTML = `
@@ -712,10 +709,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>Power decimals (${this._escape(Number(this._config.power_decimals ?? 2).toFixed(0))})
           <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
-        <div class="section-title">Boxen anzeigen, Einheit und Position</div>
+        <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
+        <div class="section-title">Boxen anzeigen, Entität, Einheit und Position</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
-        <div class="section-title">Entitäten</div>
-        <div class="grid">${TILE_METRICS.map((metric) => this._renderEntityField(metric)).join("")}</div>
       </div>
     `;
 

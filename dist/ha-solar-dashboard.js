@@ -269,9 +269,15 @@ class HaSolarDashboardCard extends HTMLElement {
     if (value === "—") return value;
 
     const normalizedUnit = String(unit || "").toLowerCase();
+    const numericValue = Number(rawValue);
+
+    if (normalizedUnit === "w") return `${value} W`;
+    if (normalizedUnit === "kw") {
+      if (!Number.isFinite(numericValue)) return `${value} kW`;
+      return `${(numericValue / 1000).toFixed(this.config.power_decimals)} kW`;
+    }
     if (unit && normalizedUnit !== "auto") return `${value} ${unit}`;
 
-    const numericValue = Number(rawValue);
     if (!Number.isFinite(numericValue)) return `${value} W`;
 
     const mode = this.config.power_display_mode || "auto_kw";
@@ -570,12 +576,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _renderEntityField(metric) {
     const selected = this._config?.entities?.[metric.key] || "";
-    const unit = this._config?.units?.[metric.key] ?? "";
     const label = this._metricLabel(metric);
     const options = this._entityOptions()
       .map((entityId) => `<option value="${this._escape(entityId)}"${entityId === selected ? " selected" : ""}>${this._escape(entityId)}</option>`)
       .join("");
-    const unitPlaceholder = metric.unit === "power" ? "auto, W, kW ..." : "%";
     return `
       <label>
         ${this._escape(label)}
@@ -584,9 +588,39 @@ class HaSolarDashboardCardEditor extends HTMLElement {
           ${options}
         </select>
       </label>
-      <label>
-        ${this._escape(label)} Einheit
-        <input data-path="units.${metric.key}" placeholder="${this._escape(unitPlaceholder)}" value="${this._escape(unit)}" />
+    `;
+  }
+
+  _unitValue(metric) {
+    const metricUnit = this._config?.units?.[metric.key];
+    if (metricUnit !== undefined && String(metricUnit).trim() !== "") return String(metricUnit);
+    if (metric.unit === "power") return String(this._config?.units?.power || "auto");
+    return String(this._config?.units?.[metric.unit] || "");
+  }
+
+  _renderUnitSelect(metric) {
+    const selected = this._unitValue(metric);
+    const baseOptions = metric.unit === "power"
+      ? [
+        ["auto", "Auto"],
+        ["W", "W"],
+        ["kW", "kW"],
+      ]
+      : [["%", "%"]];
+    const hasSelected = baseOptions.some(([value]) => value.toLowerCase() === selected.toLowerCase());
+    const options = [
+      ...(hasSelected || !selected ? [] : [[selected, selected]]),
+      ...baseOptions,
+    ].map(([value, label]) => {
+      const isSelected = value.toLowerCase() === selected.toLowerCase();
+      return `<option value="${this._escape(value)}"${isSelected ? " selected" : ""}>${this._escape(label)}</option>`;
+    }).join("");
+
+    return `
+      <label>Einheit
+        <select data-path="units.${metric.key}">
+          ${options}
+        </select>
       </label>
     `;
   }
@@ -622,6 +656,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return `
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._metricLabel(metric))} anzeigen</label>
+        ${this._renderUnitSelect(metric)}
         <label>X Position (${this._escape(left)})
           <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.left" value="${this._escape(left)}" />
         </label>
@@ -677,7 +712,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>Power decimals (${this._escape(Number(this._config.power_decimals ?? 2).toFixed(0))})
           <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
-        <div class="section-title">Boxen anzeigen und positionieren</div>
+        <div class="section-title">Boxen anzeigen, Einheit und Position</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
         <div class="section-title">Entitäten</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderEntityField(metric)).join("")}</div>

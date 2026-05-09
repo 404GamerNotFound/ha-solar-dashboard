@@ -642,14 +642,14 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        .editor{display:grid;gap:12px;font-family:system-ui,sans-serif}
-        label{display:grid;gap:4px;font-size:13px}
-        input,select{padding:8px;border:1px solid #bbb;border-radius:8px}
-        .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+        .editor{display:grid;gap:12px;font-family:system-ui,sans-serif;min-width:0;max-width:100%;overflow:hidden}
+        label{display:grid;gap:4px;font-size:13px;min-width:0;max-width:100%}
+        input,select{box-sizing:border-box;width:100%;min-width:0;max-width:100%;padding:8px;border:1px solid #bbb;border-radius:8px;text-overflow:ellipsis}
+        .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
         .section-title{font-size:13px;font-weight:700;margin-top:4px}
-        .box-field{display:grid;gap:8px;padding:10px;border:1px solid #ddd;border-radius:8px}
+        .box-field{display:grid;gap:8px;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px}
         .inline{display:flex;align-items:center;gap:8px}
-        .inline input{padding:0}
+        .inline input{width:auto;min-width:auto;padding:0}
         @media (max-width:700px){.grid{grid-template-columns:minmax(0,1fr)}}
       </style>
       <div class="editor">

@@ -97,7 +97,7 @@ power_decimals: 2
 - `entities.wallbox_power` (entity id)
 - `units.power` (string, default: `auto`; power values are shown in `W` below `1000 W` and in `kW` with two decimals from `1000 W`)
 - `units.battery` (string, default: `%`)
-- `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`)
+- `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`; `auto` respects Home Assistant units such as `W`, `kW`, and `kWh`)
 - `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)
 

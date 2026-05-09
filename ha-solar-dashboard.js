@@ -238,6 +238,10 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._hass.states[entityId].state;
   }
 
+  _getEntityUnit(entityId) {
+    return this._hass?.states?.[entityId]?.attributes?.unit_of_measurement;
+  }
+
   _formatValue(value) {
     if (value === undefined || value === null || value === "unknown" || value === "unavailable") return "—";
     return value;
@@ -253,7 +257,8 @@ class HaSolarDashboardCard extends HTMLElement {
     const entityId = this.config.entities[metric.key];
     const value = this._getEntityValue(entityId, "0");
     const unit = this._unitForMetric(metric);
-    if (metric.unit === "power") return this._formatPowerValue(value, unit);
+    const entityUnit = this._getEntityUnit(entityId);
+    if (metric.unit === "power") return this._formatPowerValue(value, unit, entityUnit);
     return this._formatWithUnit(value, unit);
   }
 
@@ -264,20 +269,76 @@ class HaSolarDashboardCard extends HTMLElement {
     return `${value} ${unit}`;
   }
 
-  _formatPowerValue(rawValue, unit) {
+  _normalizeUnit(unit) {
+    return String(unit || "").trim().toLowerCase();
+  }
+
+  _isEnergyUnit(unit) {
+    return ["wh", "kwh", "mwh"].includes(this._normalizeUnit(unit));
+  }
+
+  _isPowerUnit(unit) {
+    return ["w", "kw", "mw"].includes(this._normalizeUnit(unit));
+  }
+
+  _valueAsWatts(value, unit) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return undefined;
+    const normalizedUnit = this._normalizeUnit(unit);
+    if (normalizedUnit === "kw") return numericValue * 1000;
+    if (normalizedUnit === "mw") return numericValue * 1000000;
+    return numericValue;
+  }
+
+  _valueAsKwh(value, unit) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return undefined;
+    const normalizedUnit = this._normalizeUnit(unit);
+    if (normalizedUnit === "wh") return numericValue / 1000;
+    if (normalizedUnit === "mwh") return numericValue * 1000;
+    return numericValue;
+  }
+
+  _formatEnergyValue(rawValue, entityUnit, targetUnit = "kWh") {
+    const value = this._formatValue(rawValue);
+    if (value === "—") return value;
+    const normalizedTargetUnit = this._normalizeUnit(targetUnit);
+    if (normalizedTargetUnit === "kwh") {
+      const kwhValue = this._valueAsKwh(rawValue, entityUnit);
+      if (kwhValue !== undefined) return `${kwhValue.toFixed(this.config.power_decimals)} kWh`;
+    }
+    return `${value} ${targetUnit || entityUnit || "kWh"}`;
+  }
+
+  _formatPowerValue(rawValue, unit, entityUnit) {
     const value = this._formatValue(rawValue);
     if (value === "—") return value;
 
-    const normalizedUnit = String(unit || "").toLowerCase();
-    const numericValue = Number(rawValue);
+    const normalizedUnit = this._normalizeUnit(unit);
+    const normalizedEntityUnit = this._normalizeUnit(entityUnit);
 
-    if (normalizedUnit === "w") return `${value} W`;
+    if (this._isEnergyUnit(normalizedEntityUnit)) {
+      if (!unit || normalizedUnit === "auto" || this._isPowerUnit(normalizedUnit)) {
+        return this._formatEnergyValue(rawValue, entityUnit);
+      }
+      if (this._isEnergyUnit(normalizedUnit)) return this._formatEnergyValue(rawValue, entityUnit, unit);
+    }
+
+    if (normalizedUnit === "kwh") return this._formatEnergyValue(rawValue, entityUnit, "kWh");
+    if (normalizedUnit === "w") {
+      const wattValue = this._valueAsWatts(rawValue, entityUnit);
+      return `${wattValue === undefined ? value : wattValue.toFixed(0)} W`;
+    }
     if (normalizedUnit === "kw") {
-      if (!Number.isFinite(numericValue)) return `${value} kW`;
-      return `${(numericValue / 1000).toFixed(this.config.power_decimals)} kW`;
+      const wattValue = this._valueAsWatts(rawValue, entityUnit);
+      if (wattValue === undefined) return `${value} kW`;
+      return `${(wattValue / 1000).toFixed(this.config.power_decimals)} kW`;
     }
     if (unit && normalizedUnit !== "auto") return `${value} ${unit}`;
 
+    const numericValue = this._isPowerUnit(normalizedEntityUnit)
+      ? this._valueAsWatts(rawValue, entityUnit)
+      : Number(rawValue);
     if (!Number.isFinite(numericValue)) return `${value} W`;
 
     const mode = this.config.power_display_mode || "auto_kw";
@@ -598,6 +659,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ["auto", "Auto"],
         ["W", "W"],
         ["kW", "kW"],
+        ["kWh", "kWh"],
       ]
       : [["%", "%"]];
     const hasSelected = baseOptions.some(([value]) => value.toLowerCase() === selected.toLowerCase());

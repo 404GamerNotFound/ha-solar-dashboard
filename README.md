@@ -14,6 +14,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Selectable house layouts from the `images` folder:
   - `home`
   - `doppelhaus`
+  - `reihenmittelhaus`
   - `mehrfamilienhaus`
   - `mehrfamilienhaus_balkonsolar`
   - `stadtvilla`
@@ -79,7 +80,7 @@ power_decimals: 2
 
 - `title` (string, default: `Energy Flow`)
 - `time_label` (string, default: `Live`)
-- `house` (string, default: `home`; options: `home`, `doppelhaus`, `mehrfamilienhaus`, `mehrfamilienhaus_balkonsolar`, `stadtvilla`, `stadtvilla2`)
+- `house` (string, default: `home`; options: `home`, `doppelhaus`, `reihenmittelhaus`, `mehrfamilienhaus`, `mehrfamilienhaus_balkonsolar`, `stadtvilla`, `stadtvilla2`)
 - `show_title` (boolean, default: `true`; shows/hides the title)
 - `show_time_label` (boolean, default: `true`; shows/hides the live label)
 - `show_house_selector` (boolean, default: `true`)

@@ -526,16 +526,14 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _variantImage(variant) {
     const files = this._weatherImageFiles(variant, this._isDaylight());
-    const [primaryFile, ...fallbackFiles] = files.filter(Boolean);
+    const urls = [...new Set(files.flatMap((file) => [
+      this._remoteImageUrl(file),
+      this._localImageUrl(file),
+    ]).filter(Boolean))];
+    const [primaryUrl, ...fallbackUrls] = urls;
     return {
-      src: this._localImageUrl(primaryFile),
-      fallbacks: [
-        this._remoteImageUrl(primaryFile),
-        ...fallbackFiles.flatMap((fallbackFile) => [
-          this._localImageUrl(fallbackFile),
-          this._remoteImageUrl(fallbackFile),
-        ]),
-      ],
+      src: primaryUrl,
+      fallbacks: fallbackUrls,
     };
   }
 
@@ -657,11 +655,14 @@ class HaSolarDashboardCard extends HTMLElement {
     while (fallbacks.length > 0) {
       const fallback = fallbacks.shift();
       if (!fallback || image.src === fallback) continue;
-      image.src = fallback;
       image.dataset.fallbacks = fallbacks.join("|");
+      window.setTimeout(() => {
+        image.src = fallback;
+      }, 0);
       return;
     }
     image.dataset.fallbacks = "";
+    image.style.display = "none";
   }
 
   _renderCardShell(state) {

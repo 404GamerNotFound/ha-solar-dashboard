@@ -3,6 +3,26 @@ const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
 const REPOSITORY_IMAGE_BASE =
   "https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/images";
 
+const WEATHER_IMAGE_SUFFIXES = {
+  sunny: ["sonne"],
+  clear: ["sonne"],
+  "clear-night": ["sonne"],
+  partlycloudy: ["wolke", "woke"],
+  cloudy: ["wolke", "woke"],
+  fog: ["wolke", "woke"],
+  rainy: ["regen"],
+  pouring: ["regen"],
+  "lightning-rainy": ["regen"],
+  snowy: ["schnee"],
+  snowy_rainy: ["schnee", "regen"],
+  "snowy-rainy": ["schnee", "regen"],
+  hail: ["hagel"],
+  lightning: ["gewitter"],
+  windy: ["wind"],
+  windy_variant: ["wind", "wolke", "woke"],
+  "windy-variant": ["wind", "wolke", "woke"],
+};
+
 const HOUSE_VARIANTS = {
   home: {
     label: "Home",
@@ -132,6 +152,7 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
+      weather_entity: "",
       visible_boxes: {
         pv_roof_power: true,
         pv_shed_power: true,
@@ -168,6 +189,7 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
+      weather_entity: "",
       power_display_mode: "auto_kw",
       power_decimals: 2,
       units: { power: "auto", battery: "%" },
@@ -206,10 +228,10 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const wasDaylight = this._isDaylight();
+    const previousImageKey = `${this._isDaylight()}|${this._weatherState()}`;
     this._hass = hass;
-    const isDaylight = this._isDaylight();
-    if (this.shadowRoot && wasDaylight !== isDaylight) {
+    const nextImageKey = `${this._isDaylight()}|${this._weatherState()}`;
+    if (this.shadowRoot && previousImageKey !== nextImageKey) {
       this._renderCardShell(this._layoutState());
       return;
     }
@@ -443,13 +465,40 @@ class HaSolarDashboardCard extends HTMLElement {
     return variant?.labels?.[metric.key] || metric.label;
   }
 
-  _variantImage(variant) {
-    const file = this._isDaylight() && variant.dayFile ? variant.dayFile : variant.file;
-    const files = [
-      file,
-      ...(file === variant.file ? [] : [variant.file]),
+  _weatherState() {
+    const entityId = this.config?.weather_entity;
+    if (!entityId) return "";
+    return String(this._hass?.states?.[entityId]?.state || "").toLowerCase().trim().replace(/\s+/g, "-");
+  }
+
+  _weatherSuffixes() {
+    return WEATHER_IMAGE_SUFFIXES[this._weatherState()] || [];
+  }
+
+  _imageWithSuffix(file, suffix) {
+    if (!file || !suffix) return "";
+    const dotIndex = file.lastIndexOf(".");
+    if (dotIndex < 0) return `${file}_${suffix}`;
+    return `${file.slice(0, dotIndex)}_${suffix}${file.slice(dotIndex)}`;
+  }
+
+  _weatherImageFiles(variant, isDaylight) {
+    const primaryFile = isDaylight && variant.dayFile ? variant.dayFile : variant.file;
+    const fallbackFile = isDaylight ? variant.file : variant.dayFile;
+    const weatherFiles = this._weatherSuffixes().flatMap((suffix) => [
+      this._imageWithSuffix(primaryFile, suffix),
+      this._imageWithSuffix(fallbackFile, suffix),
+    ]);
+    return [
+      ...weatherFiles,
+      primaryFile,
+      ...(fallbackFile && fallbackFile !== primaryFile ? [fallbackFile] : []),
       ...(variant.fallbackFiles || []),
-    ];
+    ].filter(Boolean);
+  }
+
+  _variantImage(variant) {
+    const files = this._weatherImageFiles(variant, this._isDaylight());
     const [primaryFile, ...fallbackFiles] = files.filter(Boolean);
     return {
       src: this._remoteImageUrl(primaryFile),
@@ -835,6 +884,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>House Type <select data-path="house">${houseOptions}</select></label>
         <label>Eigenes Bild <input data-path="image" placeholder="/local/solar/haus.png oder https://..." value="${this._escape(this._config.image || "")}" /></label>
         <label>Eigenes Tagbild <input data-path="day_image" placeholder="Optional, wird tagsüber verwendet" value="${this._escape(this._config.day_image || "")}" /></label>
+        <label>Wetter Entity
+          <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />
+        </label>
         <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> Show title</label>
         <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> Show live label</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> Show house selector</label>

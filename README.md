@@ -67,6 +67,7 @@ positions:
   pv_roof_power:
     left: 64
     top: 28
+weather_entity: weather.home
 image: /local/solar/haus_nacht.png
 day_image: /local/solar/haus_tag.png
 units:
@@ -87,6 +88,7 @@ power_decimals: 2
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `daylight_entity` (string, default: `sun.sun`; uses `_tag` images during the day and standard images before sunrise/after sunset)
+- `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sonne`, `_regen`, `_wolke`/`_woke`, `_schnee`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
 - `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
 - `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `battery_level`, `inverter_power`, and `wallbox_power`)

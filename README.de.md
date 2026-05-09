@@ -18,6 +18,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Einzelne HUD- und Übersichtsboxen können ausgeblendet werden
 - Variante `mehrfamilienhaus_balkonsolar` für Balkonsolar mit PV-Leistung, Batterie und Wechselrichter
 - Dezentes Statuslabel im Bild mit letzter Aktualisierung und optionalem Import-/Exportwert
+- Optionale Wetterbilder per `weather_entity`, zum Beispiel `_sonne`, `_regen`, `_wolke`/`_woke` oder später `_schnee`
 
 ## Installation (HACS)
 

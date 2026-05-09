@@ -116,6 +116,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_time_label: true,
       show_house_selector: true,
       show_metric_tiles: true,
+      show_status_label: true,
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
@@ -133,6 +134,7 @@ class HaSolarDashboardCard extends HTMLElement {
         inverter_power: "sensor.wechselrichter_power",
         wallbox_power: "sensor.wallbox_power",
         pv_total_power: "sensor.pv_total_power",
+        import_export_power: "",
       },
     };
   }
@@ -150,6 +152,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_time_label: true,
       show_house_selector: true,
       show_metric_tiles: true,
+      show_status_label: true,
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
@@ -242,6 +245,10 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._hass?.states?.[entityId]?.attributes?.unit_of_measurement;
   }
 
+  _getEntityLastUpdated(entityId) {
+    return this._hass?.states?.[entityId]?.last_updated || this._hass?.states?.[entityId]?.last_changed;
+  }
+
   _formatValue(value) {
     if (value === undefined || value === null || value === "unknown" || value === "unavailable") return "—";
     return value;
@@ -260,6 +267,54 @@ class HaSolarDashboardCard extends HTMLElement {
     const entityUnit = this._getEntityUnit(entityId);
     if (metric.unit === "power") return this._formatPowerValue(value, unit, entityUnit);
     return this._formatWithUnit(value, unit);
+  }
+
+  _formatRelativeTime(dateString) {
+    const timestamp = Date.parse(dateString || "");
+    if (!Number.isFinite(timestamp)) return "";
+    const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+    if (seconds < 60) return `vor ${seconds} Sekunden`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `vor ${minutes} Minuten`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `vor ${hours} Stunden`;
+    const days = Math.floor(hours / 24);
+    return `vor ${days} Tagen`;
+  }
+
+  _latestEntityUpdate() {
+    const timestamps = Object.values(this.config.entities || {})
+      .map((entityId) => Date.parse(this._getEntityLastUpdated(entityId) || ""))
+      .filter(Number.isFinite);
+    if (timestamps.length === 0) return "";
+    return new Date(Math.max(...timestamps)).toISOString();
+  }
+
+  _formatImportExportStatus() {
+    const entityId = this.config.entities?.import_export_power;
+    if (!entityId) return "";
+    const rawValue = this._getEntityValue(entityId, undefined);
+    const value = this._formatValue(rawValue);
+    if (value === "—") return "";
+
+    const numericValue = Number(rawValue);
+    const direction = Number.isFinite(numericValue) && numericValue < 0 ? "Export" : "Import";
+    const positiveValue = Number.isFinite(numericValue) ? Math.abs(numericValue) : rawValue;
+    const entityUnit = this._getEntityUnit(entityId);
+    const unit = this.config.units?.import_export_power || "auto";
+    const formattedValue = this._isEnergyUnit(entityUnit)
+      ? this._formatEnergyValue(positiveValue, entityUnit, unit === "auto" ? "kWh" : unit)
+      : this._formatPowerValue(positiveValue, unit, entityUnit);
+    return `${direction}: ${formattedValue}`;
+  }
+
+  _statusLabel() {
+    const updatedAt = this._formatRelativeTime(this._latestEntityUpdate());
+    const importExport = this._formatImportExportStatus();
+    return [
+      updatedAt ? `Zuletzt aktualisiert: ${updatedAt}` : "",
+      importExport,
+    ].filter(Boolean).join(" / ");
   }
 
   _formatWithUnit(rawValue, unit) {
@@ -513,6 +568,10 @@ class HaSolarDashboardCard extends HTMLElement {
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
     const visibleTileMetrics = this._visibleMetrics(state.variant);
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
+    const statusLabel = this._statusLabel();
+    const statusHtml = this.config.show_status_label !== false
+      ? `<div class="scene-status" data-status-label>${this._escape(statusLabel)}</div>`
+      : "";
     const headerHtml = [
       this.config.show_title !== false ? `<div class="title">${this._escape(this.config.title)}</div>` : "",
       this._renderHouseSelector(state.activeHouse),
@@ -541,6 +600,8 @@ class HaSolarDashboardCard extends HTMLElement {
         .metric { position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:var(--hud-box-bg); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35); pointer-events:none; box-sizing:border-box; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
         .metric .value,.tile .num { font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
+        .scene-status { position:absolute; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid rgba(255,255,255,.14); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28); pointer-events:none; overflow-wrap:anywhere; }
+        .scene-status:empty { display:none; }
         .value.yellow{color:var(--accent-yellow)} .value.blue{color:var(--accent-blue)} .value.green{color:var(--accent-green)}
         .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
         .tile { background:rgba(12,20,38,.72); border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:10px; min-width:0; }
@@ -548,7 +609,7 @@ class HaSolarDashboardCard extends HTMLElement {
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
-        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(state.variant.label)}" />${metricHtml}</div>
+        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(state.variant.label)}" />${metricHtml}${statusHtml}</div>
         ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
       </ha-card>
     `;
@@ -563,6 +624,11 @@ class HaSolarDashboardCard extends HTMLElement {
         if (element.textContent !== reading) element.textContent = reading;
       });
     });
+    const statusElement = this.shadowRoot.querySelector("[data-status-label]");
+    if (statusElement) {
+      const statusLabel = this._statusLabel();
+      if (statusElement.textContent !== statusLabel) statusElement.textContent = statusLabel;
+    }
   }
 
   renderCard() {
@@ -756,6 +822,11 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> Show live label</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> Show house selector</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> Show metric boxes below chart</label>
+        <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> Statuslabel im Bild anzeigen</label>
+        <label>Import/Export Entität
+          <input data-path="entities.import_export_power" list="ha-solar-dashboard-entities" placeholder="sensor.grid_power" value="${this._escape(this._config.entities?.import_export_power || "")}" autocomplete="off" />
+        </label>
+        ${this._renderUnitSelect({ key: "import_export_power", label: "Import/Export", unit: "power" })}
         <label>HUD box opacity (${this._escape((Number(this._config.hud_box_opacity ?? 0.65)).toFixed(2))})
           <input type="range" min="0" max="1" step="0.05" data-path="hud_box_opacity" value="${this._escape(this._config.hud_box_opacity ?? 0.65)}" />
         </label>

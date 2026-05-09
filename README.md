@@ -59,6 +59,7 @@ entities:
   inverter_power: sensor.wechselrichter_leistung
   wallbox_power: sensor.wallbox_leistung
   pv_total_power: sensor.pv_gesamt_leistung
+  import_export_power: sensor.netzbezug_einspeisung
 visible_boxes:
   wallbox_power: false
 positions:
@@ -83,6 +84,7 @@ power_decimals: 2
 - `show_time_label` (boolean, default: `true`; shows/hides the live label)
 - `show_house_selector` (boolean, default: `true`)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
+- `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `daylight_entity` (string, default: `sun.sun`; uses `_tag` images during the day and standard images before sunrise/after sunset)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
 - `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
@@ -95,6 +97,7 @@ power_decimals: 2
 - `entities.battery_level` (entity id)
 - `entities.inverter_power` (entity id)
 - `entities.wallbox_power` (entity id)
+- `entities.import_export_power` (entity id, optional; positive values are shown as `Import`, negative values as `Export`)
 - `units.power` (string, default: `auto`; power values are shown in `W` below `1000 W` and in `kW` with two decimals from `1000 W`)
 - `units.battery` (string, default: `%`)
 - `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`; `auto` respects Home Assistant units such as `W`, `kW`, and `kWh`)

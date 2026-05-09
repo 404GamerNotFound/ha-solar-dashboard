@@ -16,6 +16,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Automatische Leistungsanzeige in `W` bis `999 W` und ab `1000 W` in `kW` mit zwei Nachkommastellen
 - Einzelne HUD- und Übersichtsboxen können ausgeblendet werden
 - Variante `mehrfamilienhaus_balkonsolar` für Balkonsolar mit PV-Leistung, Batterie und Wechselrichter
+- Dezentes Statuslabel im Bild mit letzter Aktualisierung und optionalem Import-/Exportwert
 
 ## Installation (HACS)
 

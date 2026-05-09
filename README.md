@@ -15,6 +15,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - `home`
   - `doppelhaus`
   - `mehrfamilienhaus`
+  - `mehrfamilienhaus_balkonsolar`
   - `stadtvilla`
   - `stadtvilla2`
 - Configurable entities for:
@@ -24,7 +25,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - Wechselrichter Leistung
   - Wallbox Leistung
   - PV Gesamt (summary tile below the image)
-- Individual boxes can be hidden when a device is not present, for example no Wallbox
+- Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
 - Custom standard and daylight images
 - Free X/Y positioning for every overlay box
 - Dark glass style matching the provided design
@@ -77,7 +78,7 @@ power_decimals: 2
 
 - `title` (string, default: `Energy Flow`)
 - `time_label` (string, default: `Live`)
-- `house` (string, default: `home`; options: `home`, `doppelhaus`, `mehrfamilienhaus`, `stadtvilla`, `stadtvilla2`)
+- `house` (string, default: `home`; options: `home`, `doppelhaus`, `mehrfamilienhaus`, `mehrfamilienhaus_balkonsolar`, `stadtvilla`, `stadtvilla2`)
 - `show_title` (boolean, default: `true`; shows/hides the title)
 - `show_time_label` (boolean, default: `true`; shows/hides the live label)
 - `show_house_selector` (boolean, default: `true`)
@@ -85,7 +86,7 @@ power_decimals: 2
 - `daylight_entity` (string, default: `sun.sun`; uses `_tag` images during the day and standard images before sunrise/after sunset)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
 - `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
-- `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one overlay box and its summary tile)
+- `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `battery_level`, `inverter_power`, and `wallbox_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)

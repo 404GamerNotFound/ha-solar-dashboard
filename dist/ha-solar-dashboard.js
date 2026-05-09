@@ -41,6 +41,27 @@ const HOUSE_VARIANTS = {
       wallbox_power: { left: 21, top: 59 },
     },
   },
+  mehrfamilienhaus_balkonsolar: {
+    label: "Mehrfamilienhaus Balkonsolar",
+    file: "mehrfamilienhaus_balkonsolar.png",
+    dayFile: "mehrfamilienhaus_balkonsolar_tag.png",
+    positions: {
+      battery_level: { left: 42, top: 70 },
+      inverter_power: { left: 52, top: 58 },
+      pv_total_power: { left: 62, top: 58 },
+    },
+    visible_boxes: {
+      pv_roof_power: false,
+      pv_shed_power: false,
+      wallbox_power: false,
+      battery_level: true,
+      inverter_power: true,
+      pv_total_power: true,
+    },
+    labels: {
+      pv_total_power: "PV Leistung",
+    },
+  },
   stadtvilla: {
     label: "Stadtvilla",
     file: "stadtvilla.png",
@@ -77,7 +98,7 @@ const METRICS = [
 
 const TILE_METRICS = [
   ...METRICS,
-  { key: "pv_total_power", label: "PV Gesamt", unit: "power", color: "yellow" },
+  { key: "pv_total_power", label: "PV Gesamt", unit: "power", color: "yellow", hud: false },
 ];
 
 class HaSolarDashboardCard extends HTMLElement {
@@ -195,6 +216,11 @@ class HaSolarDashboardCard extends HTMLElement {
       mehrfamilienhaus: "mehrfamilienhaus",
       "mehr-familienhaus": "mehrfamilienhaus",
       "mehrfamilien-haus": "mehrfamilienhaus",
+      "mehrfamilienhaus-balkonsolar": "mehrfamilienhaus_balkonsolar",
+      "mehr-familienhaus-balkonsolar": "mehrfamilienhaus_balkonsolar",
+      "mehrfamilienhaus-balkon-solar": "mehrfamilienhaus_balkonsolar",
+      "mehr-familienhaus-balkon-solar": "mehrfamilienhaus_balkonsolar",
+      balkonsolar: "mehrfamilienhaus_balkonsolar",
       villa: "stadtvilla",
       "stadt-villa": "stadtvilla",
       stadtvilla_2: "stadtvilla2",
@@ -257,8 +283,25 @@ class HaSolarDashboardCard extends HTMLElement {
     return `${value} W`;
   }
 
-  _visibleMetrics() {
-    return METRICS.filter((metric) => this.config.visible_boxes?.[metric.key] !== false);
+  _metricVisible(metric, variant) {
+    const configured = this.config.visible_boxes?.[metric.key];
+    if (configured !== undefined) return configured !== false;
+    return variant?.visible_boxes?.[metric.key] !== false;
+  }
+
+  _visibleMetrics(variant, metrics = TILE_METRICS) {
+    return metrics.filter((metric) => this._metricVisible(metric, variant));
+  }
+
+  _visibleHudMetrics(variant) {
+    return this._visibleMetrics(variant).filter((metric) => {
+      if (metric.hud !== false) return true;
+      return Boolean(variant?.positions?.[metric.key]) || this.config.visible_boxes?.[metric.key] === true;
+    });
+  }
+
+  _metricLabel(metric, variant) {
+    return variant?.labels?.[metric.key] || metric.label;
   }
 
   _variantImage(variant) {
@@ -362,7 +405,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderMetric(metric, variant) {
-    if (this.config.visible_boxes?.[metric.key] === false) return "";
+    if (!this._metricVisible(metric, variant)) return "";
 
     const position = this._metricPosition(variant, metric.key);
     const left = this._toPercent(position.left, 50);
@@ -370,7 +413,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     return `
       <div class="metric" data-metric="${metric.key}" style="left: ${left}%; top: ${top}%;">
-        <div class="label">${this._escape(metric.label)}</div>
+        <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
         <div class="value ${metric.color}" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
       </div>
     `;
@@ -400,20 +443,18 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderCardShell(state) {
-    const visibleMetrics = this._visibleMetrics();
-    const metricHtml = visibleMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
+    const visibleHudMetrics = this._visibleHudMetrics(state.variant);
+    const visibleTileMetrics = this._visibleMetrics(state.variant);
+    const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const headerHtml = [
       this.config.show_title !== false ? `<div class="title">${this._escape(this.config.title)}</div>` : "",
       this._renderHouseSelector(state.activeHouse),
       this.config.show_time_label !== false ? `<div class="badge">${this._escape(this.config.time_label)}</div>` : "",
     ].filter(Boolean).join("");
-    const gridHtml = [
-      ...visibleMetrics,
-      TILE_METRICS.find((metric) => metric.key === "pv_total_power"),
-    ].filter(Boolean).map(
+    const gridHtml = visibleTileMetrics.map(
       (metric) => `
         <div class="tile" data-tile="${metric.key}">
-          <div class="name">${this._escape(metric.label)}</div>
+          <div class="name">${this._escape(this._metricLabel(metric, state.variant))}</div>
           <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
         </div>
       `,
@@ -530,28 +571,42 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   _renderEntityField(metric) {
     const selected = this._config?.entities?.[metric.key] || "";
     const unit = this._config?.units?.[metric.key] ?? "";
+    const label = this._metricLabel(metric);
     const options = this._entityOptions()
       .map((entityId) => `<option value="${this._escape(entityId)}"${entityId === selected ? " selected" : ""}>${this._escape(entityId)}</option>`)
       .join("");
     const unitPlaceholder = metric.unit === "power" ? "auto, W, kW ..." : "%";
     return `
       <label>
-        ${this._escape(metric.label)}
+        ${this._escape(label)}
         <select data-path="entities.${metric.key}">
           <option value="">-- select entity --</option>
           ${options}
         </select>
       </label>
       <label>
-        ${this._escape(metric.label)} Einheit
+        ${this._escape(label)} Einheit
         <input data-path="units.${metric.key}" placeholder="${this._escape(unitPlaceholder)}" value="${this._escape(unit)}" />
       </label>
     `;
   }
 
+  _houseVariant() {
+    return HOUSE_VARIANTS[this._config.house] || HOUSE_VARIANTS.home;
+  }
+
+  _metricVisible(metric) {
+    const configured = this._config.visible_boxes?.[metric.key];
+    if (configured !== undefined) return configured !== false;
+    return this._houseVariant().visible_boxes?.[metric.key] !== false;
+  }
+
+  _metricLabel(metric) {
+    return this._houseVariant().labels?.[metric.key] || metric.label;
+  }
+
   _metricPosition(metric) {
-    const house = this._config.house || "home";
-    const variant = HOUSE_VARIANTS[house] || HOUSE_VARIANTS.home;
+    const variant = this._houseVariant();
     return {
       ...(variant.positions[metric.key] || {}),
       ...(this._config.positions?.[metric.key] || {}),
@@ -562,11 +617,11 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const position = this._metricPosition(metric);
     const left = Number.isFinite(Number(position.left)) ? Number(position.left) : 50;
     const top = Number.isFinite(Number(position.top)) ? Number(position.top) : 50;
-    const visible = this._config.visible_boxes?.[metric.key] !== false;
+    const visible = this._metricVisible(metric);
 
     return `
       <div class="box-field">
-        <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(metric.label)} anzeigen</label>
+        <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._metricLabel(metric))} anzeigen</label>
         <label>X Position (${this._escape(left)})
           <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.left" value="${this._escape(left)}" />
         </label>
@@ -623,7 +678,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
           <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
         <div class="section-title">Boxen anzeigen und positionieren</div>
-        <div class="grid">${METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
+        <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
         <div class="section-title">Entitäten</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderEntityField(metric)).join("")}</div>
       </div>

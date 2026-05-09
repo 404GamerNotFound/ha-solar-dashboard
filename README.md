@@ -4,7 +4,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 
 ## Example
 
-![HA Solar Dashboard Card example](https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/example.png)
+![HA Solar Dashboard Card example](https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/example2.png)
 
 ## Features
 

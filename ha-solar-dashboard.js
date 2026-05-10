@@ -492,6 +492,52 @@ const TILE_METRICS = [
   { key: "pv_total_power", label: "PV Total", unit: "power", color: "yellow", hud: false },
 ];
 
+function normalizeHouse(value) {
+  if (!value) return undefined;
+  const normalized = String(value).toLowerCase().trim().replace(/[\s_]+/g, "-");
+  const aliases = {
+    home: "single_family_home",
+    modern: "single_family_home",
+    einfamilienhaus: "single_family_home",
+    "single-family-home": "single_family_home",
+    doppelhaus: "duplex_house",
+    "doppel-haus": "duplex_house",
+    duplex: "duplex_house",
+    "duplex-house": "duplex_house",
+    reihenhaus: "terraced_middle_house",
+    "reihen-haus": "terraced_middle_house",
+    reihenmittelhaus: "terraced_middle_house",
+    "reihen-mittelhaus": "terraced_middle_house",
+    "reihen-mittel-haus": "terraced_middle_house",
+    "terraced-house": "terraced_middle_house",
+    "terraced-middle-house": "terraced_middle_house",
+    mfh: "apartment_building",
+    mehrfamilienhaus: "apartment_building",
+    "mehr-familienhaus": "apartment_building",
+    "mehrfamilien-haus": "apartment_building",
+    "apartment-building": "apartment_building",
+    "mehrfamilienhaus-balkonsolar": "apartment_building_balcony_solar",
+    "mehr-familienhaus-balkonsolar": "apartment_building_balcony_solar",
+    "mehrfamilienhaus-balkon-solar": "apartment_building_balcony_solar",
+    "mehr-familienhaus-balkon-solar": "apartment_building_balcony_solar",
+    balkonsolar: "apartment_building_balcony_solar",
+    "balcony-solar": "apartment_building_balcony_solar",
+    "apartment-building-balcony-solar": "apartment_building_balcony_solar",
+    villa: "city_villa",
+    stadtvilla: "city_villa",
+    "stadt-villa": "city_villa",
+    "city-villa": "city_villa",
+    stadtvilla_2: "city_villa_pitched_roof",
+    "stadtvilla-2": "city_villa_pitched_roof",
+    "stadtvilla-ohne-flachdach": "city_villa_pitched_roof",
+    stadtvilla_dach: "city_villa_pitched_roof",
+    "stadtvilla-dach": "city_villa_pitched_roof",
+    "city-villa-pitched-roof": "city_villa_pitched_roof",
+  };
+  const key = aliases[normalized] || normalized;
+  return HOUSE_VARIANTS[key] ? key : undefined;
+}
+
 class HaSolarDashboardCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement(CARD_EDITOR_TYPE);
@@ -628,49 +674,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _normalizeHouse(value) {
-    if (!value) return undefined;
-    const normalized = String(value).toLowerCase().trim().replace(/[\s_]+/g, "-");
-    const aliases = {
-      home: "single_family_home",
-      modern: "single_family_home",
-      einfamilienhaus: "single_family_home",
-      "single-family-home": "single_family_home",
-      doppelhaus: "duplex_house",
-      "doppel-haus": "duplex_house",
-      duplex: "duplex_house",
-      "duplex-house": "duplex_house",
-      reihenhaus: "terraced_middle_house",
-      "reihen-haus": "terraced_middle_house",
-      reihenmittelhaus: "terraced_middle_house",
-      "reihen-mittelhaus": "terraced_middle_house",
-      "reihen-mittel-haus": "terraced_middle_house",
-      "terraced-house": "terraced_middle_house",
-      "terraced-middle-house": "terraced_middle_house",
-      mfh: "apartment_building",
-      mehrfamilienhaus: "apartment_building",
-      "mehr-familienhaus": "apartment_building",
-      "mehrfamilien-haus": "apartment_building",
-      "apartment-building": "apartment_building",
-      "mehrfamilienhaus-balkonsolar": "apartment_building_balcony_solar",
-      "mehr-familienhaus-balkonsolar": "apartment_building_balcony_solar",
-      "mehrfamilienhaus-balkon-solar": "apartment_building_balcony_solar",
-      "mehr-familienhaus-balkon-solar": "apartment_building_balcony_solar",
-      balkonsolar: "apartment_building_balcony_solar",
-      "balcony-solar": "apartment_building_balcony_solar",
-      "apartment-building-balcony-solar": "apartment_building_balcony_solar",
-      villa: "city_villa",
-      stadtvilla: "city_villa",
-      "stadt-villa": "city_villa",
-      "city-villa": "city_villa",
-      stadtvilla_2: "city_villa_pitched_roof",
-      "stadtvilla-2": "city_villa_pitched_roof",
-      "stadtvilla-ohne-flachdach": "city_villa_pitched_roof",
-      stadtvilla_dach: "city_villa_pitched_roof",
-      "stadtvilla-dach": "city_villa_pitched_roof",
-      "city-villa-pitched-roof": "city_villa_pitched_roof",
-    };
-    const key = aliases[normalized] || normalized;
-    return HOUSE_VARIANTS[key] ? key : undefined;
+    return normalizeHouse(value);
   }
 
   _getEntityValue(entityId, fallback = "0") {
@@ -1164,6 +1168,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return this._t(`house.${key}`, {}, variant?.label || key);
   }
 
+  _normalizeHouse(value) {
+    return normalizeHouse(value);
+  }
+
   _onInput(path, value, isCheckbox = false) {
     const next = this._cloneConfig(this._config || {});
     const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals"]);
@@ -1253,7 +1261,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   }
 
   _houseVariant() {
-    return HOUSE_VARIANTS[this._config.house] || HOUSE_VARIANTS.single_family_home;
+    const house = this._normalizeHouse(this._config.house) || "single_family_home";
+    return HOUSE_VARIANTS[house] || HOUSE_VARIANTS.single_family_home;
   }
 
   _metricVisible(metric) {

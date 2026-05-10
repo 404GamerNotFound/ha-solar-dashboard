@@ -17,6 +17,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - `terraced_middle_house`
   - `apartment_building`
   - `apartment_building_balcony_solar`
+  - `bungalow`
   - `city_villa`
   - `city_villa_pitched_roof`
 - Configurable entities for:
@@ -82,7 +83,7 @@ power_decimals: 2
 
 - `title` (string, default: `Energy Flow`)
 - `time_label` (string, default: `Live`)
-- `house` (string, default: `single_family_home`; options: `single_family_home`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `city_villa`, `city_villa_pitched_roof`; legacy German values are still accepted as aliases)
+- `house` (string, default: `single_family_home`; options: `single_family_home`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, `city_villa_pitched_roof`; legacy German values are still accepted as aliases)
 - `show_title` (boolean, default: `true`; shows/hides the title)
 - `show_time_label` (boolean, default: `true`; shows/hides the live label)
 - `show_house_selector` (boolean, default: `true`)
@@ -261,10 +262,10 @@ The previews below are intentionally small so the README stays lightweight while
     <td>-</td>
   </tr>
   <tr>
-    <td><code>bungalow</code> image assets</td>
+    <td><code>bungalow</code></td>
     <td><img src="images/bungalow.png" width="86" alt="bungalow"><br><code>bungalow.png</code></td>
     <td><img src="images/bungalow_day.png" width="86" alt="bungalow_day"><br><code>bungalow_day.png</code></td>
-    <td>Shipped as image assets for custom image use.</td>
+    <td>-</td>
   </tr>
 </table>
 

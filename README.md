@@ -108,6 +108,33 @@ power_decimals: 2
 - `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)
 
+## Image naming scheme
+
+Built-in images use English file names so the card stays easy to maintain for an open-source audience.
+
+- Standard/night image: `<house>.png`, for example `single_family_home.png`
+- Day image: `<house>_day.png`, for example `single_family_home_day.png`
+- Weather image: `<base>_<weather_suffix>.png`, for example `single_family_home_day_sunny.png`
+
+When `weather_entity` is configured, the card tries weather-specific files first and falls back automatically when a file does not exist. During daylight it tries `<house>_day_<weather_suffix>.png`, then `<house>_<weather_suffix>.png`, then the normal day and standard images. At night the same logic starts with `<house>_<weather_suffix>.png` and then falls back to the day weather image.
+
+Current weather suffixes:
+
+| Home Assistant weather state | Tried suffixes |
+| --- | --- |
+| `sunny`, `clear` | `sunny` |
+| `clear-night` | `clear` |
+| `partlycloudy`, `cloudy` | `cloudy` |
+| `fog` | `cloudy`, `fog` |
+| `rainy`, `pouring` | `rainy` |
+| `lightning-rainy` | `rainy`, `thunderstorm` |
+| `snowy` | `snowy`, `winter` |
+| `snowy-rainy`, `snowy_rainy` | `snowy`, `rainy` |
+| `hail` | `hail` |
+| `lightning` | `thunderstorm` |
+| `windy` | `wind` |
+| `windy-variant`, `windy_variant` | `wind`, `cloudy` |
+
 ## Validation
 
 Run the local package checks before pushing or releasing:

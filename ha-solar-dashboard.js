@@ -23,6 +23,362 @@ const WEATHER_IMAGE_SUFFIXES = {
   "windy-variant": ["wind", "cloudy"],
 };
 
+const I18N = {
+  en: {
+    "aria.houseSelector": "Select house",
+    "card.defaultTitle": "Energy Flow",
+    "card.defaultTimeLabel": "Live",
+    "editor.customDayImage": "Custom Day Image",
+    "editor.customImage": "Custom Image",
+    "editor.entity": "Entity",
+    "editor.entityPlaceholder": "{label} entity",
+    "editor.houseType": "House Type",
+    "editor.hudBoxOpacity": "HUD box opacity",
+    "editor.hudBoxScale": "HUD box scale",
+    "editor.importExportEntity": "Import/Export Entity",
+    "editor.optionalDayImage": "Optional daylight image",
+    "editor.powerDecimals": "Power decimals",
+    "editor.powerDisplayMode": "Power display mode",
+    "editor.rawMode": "Raw value + configured unit",
+    "editor.auto": "Auto",
+    "editor.autoWKw": "Auto W/kW",
+    "editor.sectionBoxes": "Boxes, Entity, Unit, and Position",
+    "editor.showBox": "Show {label}",
+    "editor.showHouseSelector": "Show house selector",
+    "editor.showLiveLabel": "Show live label",
+    "editor.showMetricTiles": "Show metric boxes below image",
+    "editor.showStatusLabel": "Show image status label",
+    "editor.showTitle": "Show title",
+    "editor.showWeatherStatus": "Show current weather in status label",
+    "editor.timeLabel": "Time Label",
+    "editor.title": "Title",
+    "editor.unit": "Unit",
+    "editor.weatherEntity": "Weather Entity",
+    "editor.xPosition": "X Position",
+    "editor.yPosition": "Y Position",
+    "house.apartment_building": "Apartment Building",
+    "house.apartment_building_balcony_solar": "Apartment Building Balcony Solar",
+    "house.city_villa": "City Villa",
+    "house.city_villa_pitched_roof": "City Villa with Pitched Roof",
+    "house.duplex_house": "Duplex House",
+    "house.single_family_home": "Single Family Home",
+    "house.terraced_middle_house": "Terraced Middle House",
+    "metrics.battery_level": "Battery",
+    "metrics.import_export_power": "Import/Export",
+    "metrics.inverter_power": "Inverter",
+    "metrics.pv_power": "PV Power",
+    "metrics.pv_roof_power": "Roof PV",
+    "metrics.pv_shed_power": "Shed PV",
+    "metrics.pv_total_power": "PV Total",
+    "metrics.wallbox_power": "EV Charger",
+    "status.export": "Export",
+    "status.import": "Import",
+    "status.lastUpdated": "Last updated: {time}",
+    "status.weather": "Weather: {weather}",
+    "weather.clear": "Clear",
+    "weather.clear-night": "Clear",
+    "weather.cloudy": "Cloudy",
+    "weather.fog": "Fog",
+    "weather.hail": "Hail",
+    "weather.lightning": "Thunderstorm",
+    "weather.lightning-rainy": "Thunderstorm rain",
+    "weather.partlycloudy": "Partly cloudy",
+    "weather.pouring": "Pouring",
+    "weather.rainy": "Rainy",
+    "weather.snowy": "Snowy",
+    "weather.snowy-rainy": "Sleet",
+    "weather.sunny": "Sunny",
+    "weather.windy": "Windy",
+    "weather.windy-variant": "Windy/cloudy",
+  },
+  de: {
+    "aria.houseSelector": "Haus auswählen",
+    "card.defaultTitle": "Energiefluss",
+    "card.defaultTimeLabel": "Live",
+    "editor.customDayImage": "Eigenes Tagbild",
+    "editor.customImage": "Eigenes Bild",
+    "editor.entity": "Entität",
+    "editor.entityPlaceholder": "{label} Entität",
+    "editor.houseType": "Haustyp",
+    "editor.hudBoxOpacity": "HUD-Box-Deckkraft",
+    "editor.hudBoxScale": "HUD-Box-Skalierung",
+    "editor.importExportEntity": "Import-/Export-Entität",
+    "editor.optionalDayImage": "Optionales Tagesbild",
+    "editor.powerDecimals": "Leistungs-Nachkommastellen",
+    "editor.powerDisplayMode": "Leistungsanzeige",
+    "editor.rawMode": "Rohwert + konfigurierte Einheit",
+    "editor.auto": "Auto",
+    "editor.autoWKw": "Automatisch W/kW",
+    "editor.sectionBoxes": "Boxen, Entität, Einheit und Position",
+    "editor.showBox": "{label} anzeigen",
+    "editor.showHouseSelector": "Hausauswahl anzeigen",
+    "editor.showLiveLabel": "Live-Label anzeigen",
+    "editor.showMetricTiles": "Messwertboxen unter dem Bild anzeigen",
+    "editor.showStatusLabel": "Statuslabel im Bild anzeigen",
+    "editor.showTitle": "Titel anzeigen",
+    "editor.showWeatherStatus": "Aktuelles Wetter im Statuslabel anzeigen",
+    "editor.timeLabel": "Zeitlabel",
+    "editor.title": "Titel",
+    "editor.unit": "Einheit",
+    "editor.weatherEntity": "Wetter-Entität",
+    "editor.xPosition": "X-Position",
+    "editor.yPosition": "Y-Position",
+    "house.apartment_building": "Mehrfamilienhaus",
+    "house.apartment_building_balcony_solar": "Mehrfamilienhaus Balkonsolar",
+    "house.city_villa": "Stadtvilla",
+    "house.city_villa_pitched_roof": "Stadtvilla mit Satteldach",
+    "house.duplex_house": "Doppelhaus",
+    "house.single_family_home": "Einfamilienhaus",
+    "house.terraced_middle_house": "Reihenmittelhaus",
+    "metrics.battery_level": "Batterie",
+    "metrics.import_export_power": "Import/Export",
+    "metrics.inverter_power": "Wechselrichter",
+    "metrics.pv_power": "PV-Leistung",
+    "metrics.pv_roof_power": "PV Dach",
+    "metrics.pv_shed_power": "PV Schuppen",
+    "metrics.pv_total_power": "PV Gesamt",
+    "metrics.wallbox_power": "Wallbox",
+    "status.export": "Export",
+    "status.import": "Import",
+    "status.lastUpdated": "Zuletzt aktualisiert: {time}",
+    "status.weather": "Wetter: {weather}",
+    "weather.clear": "Klar",
+    "weather.clear-night": "Klar",
+    "weather.cloudy": "Bewölkt",
+    "weather.fog": "Nebel",
+    "weather.hail": "Hagel",
+    "weather.lightning": "Gewitter",
+    "weather.lightning-rainy": "Gewitterregen",
+    "weather.partlycloudy": "Teilweise bewölkt",
+    "weather.pouring": "Starkregen",
+    "weather.rainy": "Regnerisch",
+    "weather.snowy": "Schnee",
+    "weather.snowy-rainy": "Schneeregen",
+    "weather.sunny": "Sonnig",
+    "weather.windy": "Windig",
+    "weather.windy-variant": "Windig/bewölkt",
+  },
+  es: {
+    "aria.houseSelector": "Seleccionar casa",
+    "card.defaultTitle": "Flujo de energía",
+    "card.defaultTimeLabel": "En vivo",
+    "editor.customDayImage": "Imagen diurna personalizada",
+    "editor.customImage": "Imagen personalizada",
+    "editor.entity": "Entidad",
+    "editor.entityPlaceholder": "Entidad de {label}",
+    "editor.houseType": "Tipo de casa",
+    "editor.hudBoxOpacity": "Opacidad de cajas HUD",
+    "editor.hudBoxScale": "Escala de cajas HUD",
+    "editor.importExportEntity": "Entidad de importación/exportación",
+    "editor.optionalDayImage": "Imagen diurna opcional",
+    "editor.powerDecimals": "Decimales de potencia",
+    "editor.powerDisplayMode": "Modo de potencia",
+    "editor.rawMode": "Valor bruto + unidad configurada",
+    "editor.auto": "Auto",
+    "editor.autoWKw": "Auto W/kW",
+    "editor.sectionBoxes": "Cajas, entidad, unidad y posición",
+    "editor.showBox": "Mostrar {label}",
+    "editor.showHouseSelector": "Mostrar selector de casa",
+    "editor.showLiveLabel": "Mostrar etiqueta en vivo",
+    "editor.showMetricTiles": "Mostrar cajas de métricas bajo la imagen",
+    "editor.showStatusLabel": "Mostrar etiqueta de estado en la imagen",
+    "editor.showTitle": "Mostrar título",
+    "editor.showWeatherStatus": "Mostrar clima actual en la etiqueta de estado",
+    "editor.timeLabel": "Etiqueta de tiempo",
+    "editor.title": "Título",
+    "editor.unit": "Unidad",
+    "editor.weatherEntity": "Entidad meteorológica",
+    "editor.xPosition": "Posición X",
+    "editor.yPosition": "Posición Y",
+    "house.apartment_building": "Edificio de apartamentos",
+    "house.apartment_building_balcony_solar": "Edificio de apartamentos con solar de balcón",
+    "house.city_villa": "Villa urbana",
+    "house.city_villa_pitched_roof": "Villa urbana con tejado inclinado",
+    "house.duplex_house": "Casa dúplex",
+    "house.single_family_home": "Casa unifamiliar",
+    "house.terraced_middle_house": "Casa adosada central",
+    "metrics.battery_level": "Batería",
+    "metrics.import_export_power": "Importación/exportación",
+    "metrics.inverter_power": "Inversor",
+    "metrics.pv_power": "Potencia FV",
+    "metrics.pv_roof_power": "FV tejado",
+    "metrics.pv_shed_power": "FV cobertizo",
+    "metrics.pv_total_power": "FV total",
+    "metrics.wallbox_power": "Cargador VE",
+    "status.export": "Exportación",
+    "status.import": "Importación",
+    "status.lastUpdated": "Última actualización: {time}",
+    "status.weather": "Clima: {weather}",
+    "weather.clear": "Despejado",
+    "weather.clear-night": "Despejado",
+    "weather.cloudy": "Nublado",
+    "weather.fog": "Niebla",
+    "weather.hail": "Granizo",
+    "weather.lightning": "Tormenta",
+    "weather.lightning-rainy": "Tormenta con lluvia",
+    "weather.partlycloudy": "Parcialmente nublado",
+    "weather.pouring": "Lluvia intensa",
+    "weather.rainy": "Lluvia",
+    "weather.snowy": "Nieve",
+    "weather.snowy-rainy": "Aguanieve",
+    "weather.sunny": "Soleado",
+    "weather.windy": "Ventoso",
+    "weather.windy-variant": "Ventoso/nublado",
+  },
+  fr: {
+    "aria.houseSelector": "Sélectionner une maison",
+    "card.defaultTitle": "Flux d'énergie",
+    "card.defaultTimeLabel": "En direct",
+    "editor.customDayImage": "Image de jour personnalisée",
+    "editor.customImage": "Image personnalisée",
+    "editor.entity": "Entité",
+    "editor.entityPlaceholder": "Entité {label}",
+    "editor.houseType": "Type de maison",
+    "editor.hudBoxOpacity": "Opacité des boîtes HUD",
+    "editor.hudBoxScale": "Échelle des boîtes HUD",
+    "editor.importExportEntity": "Entité import/export",
+    "editor.optionalDayImage": "Image de jour optionnelle",
+    "editor.powerDecimals": "Décimales de puissance",
+    "editor.powerDisplayMode": "Mode d'affichage de la puissance",
+    "editor.rawMode": "Valeur brute + unité configurée",
+    "editor.auto": "Auto",
+    "editor.autoWKw": "Auto W/kW",
+    "editor.sectionBoxes": "Boîtes, entité, unité et position",
+    "editor.showBox": "Afficher {label}",
+    "editor.showHouseSelector": "Afficher le sélecteur de maison",
+    "editor.showLiveLabel": "Afficher le libellé en direct",
+    "editor.showMetricTiles": "Afficher les boîtes de mesure sous l'image",
+    "editor.showStatusLabel": "Afficher le libellé d'état dans l'image",
+    "editor.showTitle": "Afficher le titre",
+    "editor.showWeatherStatus": "Afficher la météo actuelle dans le libellé d'état",
+    "editor.timeLabel": "Libellé de temps",
+    "editor.title": "Titre",
+    "editor.unit": "Unité",
+    "editor.weatherEntity": "Entité météo",
+    "editor.xPosition": "Position X",
+    "editor.yPosition": "Position Y",
+    "house.apartment_building": "Immeuble d'appartements",
+    "house.apartment_building_balcony_solar": "Immeuble avec solaire de balcon",
+    "house.city_villa": "Villa urbaine",
+    "house.city_villa_pitched_roof": "Villa urbaine avec toit incliné",
+    "house.duplex_house": "Maison duplex",
+    "house.single_family_home": "Maison individuelle",
+    "house.terraced_middle_house": "Maison mitoyenne centrale",
+    "metrics.battery_level": "Batterie",
+    "metrics.import_export_power": "Import/export",
+    "metrics.inverter_power": "Onduleur",
+    "metrics.pv_power": "Puissance PV",
+    "metrics.pv_roof_power": "PV toiture",
+    "metrics.pv_shed_power": "PV abri",
+    "metrics.pv_total_power": "PV total",
+    "metrics.wallbox_power": "Chargeur VE",
+    "status.export": "Export",
+    "status.import": "Import",
+    "status.lastUpdated": "Dernière mise à jour : {time}",
+    "status.weather": "Météo : {weather}",
+    "weather.clear": "Dégagé",
+    "weather.clear-night": "Dégagé",
+    "weather.cloudy": "Nuageux",
+    "weather.fog": "Brouillard",
+    "weather.hail": "Grêle",
+    "weather.lightning": "Orage",
+    "weather.lightning-rainy": "Orage avec pluie",
+    "weather.partlycloudy": "Partiellement nuageux",
+    "weather.pouring": "Forte pluie",
+    "weather.rainy": "Pluvieux",
+    "weather.snowy": "Neige",
+    "weather.snowy-rainy": "Neige fondue",
+    "weather.sunny": "Ensoleillé",
+    "weather.windy": "Venteux",
+    "weather.windy-variant": "Venteux/nuageux",
+  },
+  pl: {
+    "aria.houseSelector": "Wybierz dom",
+    "card.defaultTitle": "Przepływ energii",
+    "card.defaultTimeLabel": "Na żywo",
+    "editor.customDayImage": "Własny obraz dzienny",
+    "editor.customImage": "Własny obraz",
+    "editor.entity": "Encja",
+    "editor.entityPlaceholder": "Encja {label}",
+    "editor.houseType": "Typ domu",
+    "editor.hudBoxOpacity": "Przezroczystość pól HUD",
+    "editor.hudBoxScale": "Skala pól HUD",
+    "editor.importExportEntity": "Encja importu/eksportu",
+    "editor.optionalDayImage": "Opcjonalny obraz dzienny",
+    "editor.powerDecimals": "Miejsca dziesiętne mocy",
+    "editor.powerDisplayMode": "Tryb wyświetlania mocy",
+    "editor.rawMode": "Wartość surowa + skonfigurowana jednostka",
+    "editor.auto": "Auto",
+    "editor.autoWKw": "Auto W/kW",
+    "editor.sectionBoxes": "Pola, encja, jednostka i pozycja",
+    "editor.showBox": "Pokaż {label}",
+    "editor.showHouseSelector": "Pokaż wybór domu",
+    "editor.showLiveLabel": "Pokaż etykietę na żywo",
+    "editor.showMetricTiles": "Pokaż pola metryk pod obrazem",
+    "editor.showStatusLabel": "Pokaż etykietę statusu na obrazie",
+    "editor.showTitle": "Pokaż tytuł",
+    "editor.showWeatherStatus": "Pokaż aktualną pogodę w etykiecie statusu",
+    "editor.timeLabel": "Etykieta czasu",
+    "editor.title": "Tytuł",
+    "editor.unit": "Jednostka",
+    "editor.weatherEntity": "Encja pogody",
+    "editor.xPosition": "Pozycja X",
+    "editor.yPosition": "Pozycja Y",
+    "house.apartment_building": "Budynek wielorodzinny",
+    "house.apartment_building_balcony_solar": "Budynek wielorodzinny z fotowoltaiką balkonową",
+    "house.city_villa": "Willa miejska",
+    "house.city_villa_pitched_roof": "Willa miejska z dachem spadzistym",
+    "house.duplex_house": "Dom bliźniaczy",
+    "house.single_family_home": "Dom jednorodzinny",
+    "house.terraced_middle_house": "Środkowy dom szeregowy",
+    "metrics.battery_level": "Bateria",
+    "metrics.import_export_power": "Import/eksport",
+    "metrics.inverter_power": "Falownik",
+    "metrics.pv_power": "Moc PV",
+    "metrics.pv_roof_power": "PV dach",
+    "metrics.pv_shed_power": "PV szopa",
+    "metrics.pv_total_power": "PV łącznie",
+    "metrics.wallbox_power": "Ładowarka EV",
+    "status.export": "Eksport",
+    "status.import": "Import",
+    "status.lastUpdated": "Ostatnia aktualizacja: {time}",
+    "status.weather": "Pogoda: {weather}",
+    "weather.clear": "Bezchmurnie",
+    "weather.clear-night": "Bezchmurnie",
+    "weather.cloudy": "Pochmurno",
+    "weather.fog": "Mgła",
+    "weather.hail": "Grad",
+    "weather.lightning": "Burza",
+    "weather.lightning-rainy": "Burza z deszczem",
+    "weather.partlycloudy": "Częściowe zachmurzenie",
+    "weather.pouring": "Ulewa",
+    "weather.rainy": "Deszczowo",
+    "weather.snowy": "Śnieg",
+    "weather.snowy-rainy": "Deszcz ze śniegiem",
+    "weather.sunny": "Słonecznie",
+    "weather.windy": "Wietrznie",
+    "weather.windy-variant": "Wietrznie/pochmurno",
+  },
+};
+
+const SUPPORTED_LANGUAGES = Object.keys(I18N);
+
+function languageFromHass(hass) {
+  const rawLanguage = hass?.locale?.language
+    || hass?.language
+    || hass?.selectedLanguage
+    || globalThis.navigator?.language
+    || "en";
+  const language = String(rawLanguage).toLowerCase().split(/[-_]/)[0];
+  return SUPPORTED_LANGUAGES.includes(language) ? language : "en";
+}
+
+function translate(language, key, replacements = {}, fallback = "") {
+  const dictionary = I18N[language] || I18N.en;
+  const template = dictionary[key] ?? I18N.en[key] ?? fallback ?? key;
+  return String(template).replace(/\{(\w+)\}/g, (_match, name) => replacements[name] ?? "");
+}
+
 const HOUSE_VARIANTS = {
   single_family_home: {
     label: "Single Family Home",
@@ -92,6 +448,9 @@ const HOUSE_VARIANTS = {
     },
     labels: {
       pv_total_power: "PV Power",
+    },
+    labelKeys: {
+      pv_total_power: "metrics.pv_power",
     },
   },
   city_villa: {
@@ -177,6 +536,8 @@ class HaSolarDashboardCard extends HTMLElement {
     if (!config) throw new Error("Invalid configuration");
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
+    this._hasCustomTitle = Object.prototype.hasOwnProperty.call(config, "title");
+    this._hasCustomTimeLabel = Object.prototype.hasOwnProperty.call(config, "time_label");
 
     this.config = {
       title: "Energy Flow",
@@ -230,10 +591,12 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const previousLanguage = this._language();
     const previousImageKey = `${this._isDaylight()}|${this._weatherState()}`;
     this._hass = hass;
+    const nextLanguage = this._language();
     const nextImageKey = `${this._isDaylight()}|${this._weatherState()}`;
-    if (this.shadowRoot && previousImageKey !== nextImageKey) {
+    if (this.shadowRoot && (previousImageKey !== nextImageKey || previousLanguage !== nextLanguage)) {
       this._renderCardShell(this._layoutState());
       return;
     }
@@ -242,6 +605,26 @@ class HaSolarDashboardCard extends HTMLElement {
 
   getCardSize() {
     return 6;
+  }
+
+  _language() {
+    return languageFromHass(this._hass);
+  }
+
+  _t(key, replacements = {}, fallback = "") {
+    return translate(this._language(), key, replacements, fallback);
+  }
+
+  _displayTitle() {
+    return this._hasCustomTitle ? this.config.title : this._t("card.defaultTitle", {}, this.config.title);
+  }
+
+  _displayTimeLabel() {
+    return this._hasCustomTimeLabel ? this.config.time_label : this._t("card.defaultTimeLabel", {}, this.config.time_label);
+  }
+
+  _houseLabel(key, variant = HOUSE_VARIANTS[key]) {
+    return this._t(`house.${key}`, {}, variant?.label || key);
   }
 
   _normalizeHouse(value) {
@@ -327,13 +710,20 @@ class HaSolarDashboardCard extends HTMLElement {
     const timestamp = Date.parse(dateString || "");
     if (!Number.isFinite(timestamp)) return "";
     const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
-    if (seconds < 60) return `${seconds} seconds ago`;
+    const format = (value, unit) => {
+      try {
+        return new Intl.RelativeTimeFormat(this._language(), { numeric: "always" }).format(-value, unit);
+      } catch (_err) {
+        return new Intl.RelativeTimeFormat("en", { numeric: "always" }).format(-value, unit);
+      }
+    };
+    if (seconds < 60) return format(seconds, "second");
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} minutes ago`;
+    if (minutes < 60) return format(minutes, "minute");
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hours ago`;
+    if (hours < 24) return format(hours, "hour");
     const days = Math.floor(hours / 24);
-    return `${days} days ago`;
+    return format(days, "day");
   }
 
   _latestEntityUpdate() {
@@ -352,7 +742,9 @@ class HaSolarDashboardCard extends HTMLElement {
     if (value === "—") return "";
 
     const numericValue = Number(rawValue);
-    const direction = Number.isFinite(numericValue) && numericValue < 0 ? "Export" : "Import";
+    const direction = Number.isFinite(numericValue) && numericValue < 0
+      ? this._t("status.export")
+      : this._t("status.import");
     const positiveValue = Number.isFinite(numericValue) ? Math.abs(numericValue) : rawValue;
     const entityUnit = this._getEntityUnit(entityId);
     const unit = this.config.units?.import_export_power || "auto";
@@ -367,7 +759,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const weather = this.config.show_weather_status ? this._formatWeatherStatus() : "";
     const importExport = this._formatImportExportStatus();
     return [
-      updatedAt ? `Last updated: ${updatedAt}` : "",
+      updatedAt ? this._t("status.lastUpdated", { time: updatedAt }) : "",
       weather,
       importExport,
     ].filter(Boolean).join(" / ");
@@ -376,24 +768,8 @@ class HaSolarDashboardCard extends HTMLElement {
   _formatWeatherStatus() {
     const state = this._weatherState();
     if (!state) return "";
-    const labels = {
-      sunny: "Sunny",
-      clear: "Clear",
-      "clear-night": "Clear",
-      partlycloudy: "Partly cloudy",
-      cloudy: "Cloudy",
-      fog: "Fog",
-      rainy: "Rainy",
-      pouring: "Pouring",
-      "lightning-rainy": "Thunderstorm rain",
-      snowy: "Snowy",
-      "snowy-rainy": "Sleet",
-      hail: "Hail",
-      lightning: "Thunderstorm",
-      windy: "Windy",
-      "windy-variant": "Windy/cloudy",
-    };
-    return `Weather: ${labels[state] || state.replace(/-/g, " ")}`;
+    const weather = this._t(`weather.${state}`, {}, state.replace(/-/g, " "));
+    return this._t("status.weather", { weather });
   }
 
   _formatWithUnit(rawValue, unit) {
@@ -502,7 +878,9 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricLabel(metric, variant) {
-    return variant?.labels?.[metric.key] || metric.label;
+    if (variant?.labelKeys?.[metric.key]) return this._t(variant.labelKeys[metric.key], {}, variant?.labels?.[metric.key] || metric.label);
+    if (variant?.labels?.[metric.key]) return this._t(`metrics.${metric.key}`, {}, variant.labels[metric.key]);
+    return this._t(`metrics.${metric.key}`, {}, metric.label);
   }
 
   _weatherState() {
@@ -623,11 +1001,11 @@ class HaSolarDashboardCard extends HTMLElement {
     const options = Object.entries(HOUSE_VARIANTS)
       .map(([key, variant]) => {
         const selected = key === activeHouse ? " selected" : "";
-        return `<option value="${key}"${selected}>${this._escape(variant.label)}</option>`;
+        return `<option value="${key}"${selected}>${this._escape(this._houseLabel(key, variant))}</option>`;
       })
       .join("");
 
-    return `<select class="house-select" aria-label="Haus auswählen">${options}</select>`;
+    return `<select class="house-select" aria-label="${this._escape(this._t("aria.houseSelector"))}">${options}</select>`;
   }
 
   _renderMetric(metric, variant) {
@@ -687,9 +1065,9 @@ class HaSolarDashboardCard extends HTMLElement {
       ? `<div class="scene-status" data-status-label>${this._escape(statusLabel)}</div>`
       : "";
     const headerHtml = [
-      this.config.show_title !== false ? `<div class="title">${this._escape(this.config.title)}</div>` : "",
+      this.config.show_title !== false ? `<div class="title">${this._escape(this._displayTitle())}</div>` : "",
       this._renderHouseSelector(state.activeHouse),
-      this.config.show_time_label !== false ? `<div class="badge">${this._escape(this.config.time_label)}</div>` : "",
+      this.config.show_time_label !== false ? `<div class="badge">${this._escape(this._displayTimeLabel())}</div>` : "",
     ].filter(Boolean).join("");
     const gridHtml = visibleTileMetrics.map(
       (metric) => `
@@ -723,7 +1101,7 @@ class HaSolarDashboardCard extends HTMLElement {
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
-        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(state.variant.label)}" />${metricHtml}${statusHtml}</div>
+        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${metricHtml}${statusHtml}</div>
         ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
       </ha-card>
     `;
@@ -764,12 +1142,26 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   }
 
   set hass(hass) {
+    const previousLanguage = this._language();
     const hadEntityOptions = this._entityOptions().length > 0;
     this._hass = hass;
+    const nextLanguage = this._language();
     const hasEntityOptions = this._entityOptions().length > 0;
-    if (!this._rendered || (!hadEntityOptions && hasEntityOptions)) {
+    if (!this._rendered || (!hadEntityOptions && hasEntityOptions) || previousLanguage !== nextLanguage) {
       this._render();
     }
+  }
+
+  _language() {
+    return languageFromHass(this._hass);
+  }
+
+  _t(key, replacements = {}, fallback = "") {
+    return translate(this._language(), key, replacements, fallback);
+  }
+
+  _houseLabel(key, variant = HOUSE_VARIANTS[key]) {
+    return this._t(`house.${key}`, {}, variant?.label || key);
   }
 
   _onInput(path, value, isCheckbox = false) {
@@ -819,8 +1211,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const selected = this._config?.entities?.[metric.key] || "";
     const label = this._metricLabel(metric);
     return `
-      <label>Entity
-        <input data-path="entities.${metric.key}" list="ha-solar-dashboard-entities" placeholder="${this._escape(label)} Entity" value="${this._escape(selected)}" autocomplete="off" />
+      <label>${this._escape(this._t("editor.entity"))}
+        <input data-path="entities.${metric.key}" list="ha-solar-dashboard-entities" placeholder="${this._escape(this._t("editor.entityPlaceholder", { label }))}" value="${this._escape(selected)}" autocomplete="off" />
       </label>
     `;
   }
@@ -836,7 +1228,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const selected = this._unitValue(metric);
     const baseOptions = metric.unit === "power"
       ? [
-        ["auto", "Auto"],
+        ["auto", this._t("editor.auto")],
         ["W", "W"],
         ["kW", "kW"],
         ["kWh", "kWh"],
@@ -852,7 +1244,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     }).join("");
 
     return `
-      <label>Unit
+      <label>${this._escape(this._t("editor.unit"))}
         <select data-path="units.${metric.key}">
           ${options}
         </select>
@@ -871,7 +1263,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   }
 
   _metricLabel(metric) {
-    return this._houseVariant().labels?.[metric.key] || metric.label;
+    const variant = this._houseVariant();
+    if (variant.labelKeys?.[metric.key]) return this._t(variant.labelKeys[metric.key], {}, variant.labels?.[metric.key] || metric.label);
+    if (variant.labels?.[metric.key]) return this._t(`metrics.${metric.key}`, {}, variant.labels[metric.key]);
+    return this._t(`metrics.${metric.key}`, {}, metric.label);
   }
 
   _metricPosition(metric) {
@@ -890,13 +1285,13 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
     return `
       <div class="box-field">
-        <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> Show ${this._escape(this._metricLabel(metric))}</label>
+        <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
         ${this._renderEntityInput(metric)}
         ${this._renderUnitSelect(metric)}
-        <label>X Position (${this._escape(left)})
+        <label>${this._escape(this._t("editor.xPosition"))} (${this._escape(left)})
           <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.left" value="${this._escape(left)}" />
         </label>
-        <label>Y Position (${this._escape(top)})
+        <label>${this._escape(this._t("editor.yPosition"))} (${this._escape(top)})
           <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.top" value="${this._escape(top)}" />
         </label>
       </div>
@@ -908,7 +1303,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     const house = this._normalizeHouse(this._config.house) || "single_family_home";
     const houseOptions = Object.entries(HOUSE_VARIANTS)
-      .map(([key, value]) => `<option value="${this._escape(key)}"${key === house ? " selected" : ""}>${this._escape(value.label)}</option>`)
+      .map(([key, value]) => `<option value="${this._escape(key)}"${key === house ? " selected" : ""}>${this._escape(this._houseLabel(key, value))}</option>`)
       .join("");
     const entityOptions = this._entityOptions()
       .map((entityId) => `<option value="${this._escape(entityId)}"></option>`)
@@ -927,41 +1322,41 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         @media (max-width:700px){.grid{grid-template-columns:minmax(0,1fr)}}
       </style>
       <div class="editor">
-        <label>Title <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
-        <label>Time Label <input data-path="time_label" value="${this._escape(this._config.time_label || "")}" /></label>
-        <label>House Type <select data-path="house">${houseOptions}</select></label>
-        <label>Custom Image <input data-path="image" placeholder="/local/solar/home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
-        <label>Custom Day Image <input data-path="day_image" placeholder="Optional daylight image" value="${this._escape(this._config.day_image || "")}" /></label>
-        <label>Weather Entity
+        <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
+        <label>${this._escape(this._t("editor.timeLabel"))} <input data-path="time_label" value="${this._escape(this._config.time_label || "")}" /></label>
+        <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
+        <label>${this._escape(this._t("editor.customImage"))} <input data-path="image" placeholder="/local/solar/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
+        <label>${this._escape(this._t("editor.customDayImage"))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
+        <label>${this._escape(this._t("editor.weatherEntity"))}
           <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />
         </label>
-        <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> Show title</label>
-        <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> Show live label</label>
-        <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> Show house selector</label>
-        <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> Show metric boxes below chart</label>
-        <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> Show image status label</label>
-        <label><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> Show current weather in status label</label>
-        <label>Import/Export Entity
+        <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
+        <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLiveLabel"))}</label>
+        <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
+        <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+        <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
+        <label><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> ${this._escape(this._t("editor.showWeatherStatus"))}</label>
+        <label>${this._escape(this._t("editor.importExportEntity"))}
           <input data-path="entities.import_export_power" list="ha-solar-dashboard-entities" placeholder="sensor.grid_power" value="${this._escape(this._config.entities?.import_export_power || "")}" autocomplete="off" />
         </label>
         ${this._renderUnitSelect({ key: "import_export_power", label: "Import/Export", unit: "power" })}
-        <label>HUD box opacity (${this._escape((Number(this._config.hud_box_opacity ?? 0.65)).toFixed(2))})
+        <label>${this._escape(this._t("editor.hudBoxOpacity"))} (${this._escape((Number(this._config.hud_box_opacity ?? 0.65)).toFixed(2))})
           <input type="range" min="0" max="1" step="0.05" data-path="hud_box_opacity" value="${this._escape(this._config.hud_box_opacity ?? 0.65)}" />
         </label>
-        <label>HUD box scale (${this._escape((Number(this._config.hud_box_scale ?? 1)).toFixed(2))})
+        <label>${this._escape(this._t("editor.hudBoxScale"))} (${this._escape((Number(this._config.hud_box_scale ?? 1)).toFixed(2))})
           <input type="range" min="0.6" max="1.8" step="0.05" data-path="hud_box_scale" value="${this._escape(this._config.hud_box_scale ?? 1)}" />
         </label>
-        <label>Power display mode
+        <label>${this._escape(this._t("editor.powerDisplayMode"))}
           <select data-path="power_display_mode">
-            <option value="raw"${this._config.power_display_mode === "raw" ? " selected" : ""}>Raw value + configured unit</option>
-            <option value="auto_kw"${(this._config.power_display_mode || "auto_kw") === "auto_kw" ? " selected" : ""}>Auto W/kW</option>
+            <option value="raw"${this._config.power_display_mode === "raw" ? " selected" : ""}>${this._escape(this._t("editor.rawMode"))}</option>
+            <option value="auto_kw"${(this._config.power_display_mode || "auto_kw") === "auto_kw" ? " selected" : ""}>${this._escape(this._t("editor.autoWKw"))}</option>
           </select>
         </label>
-        <label>Power decimals (${this._escape(Number(this._config.power_decimals ?? 2).toFixed(0))})
+        <label>${this._escape(this._t("editor.powerDecimals"))} (${this._escape(Number(this._config.power_decimals ?? 2).toFixed(0))})
           <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
         <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
-        <div class="section-title">Boxes, Entity, Unit, and Position</div>
+        <div class="section-title">${this._escape(this._t("editor.sectionBoxes"))}</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
       </div>
     `;

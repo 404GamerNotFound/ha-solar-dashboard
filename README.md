@@ -29,6 +29,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
 - Custom standard and daylight images
 - Free X/Y positioning for every overlay box
+- Localized card and editor labels based on the Home Assistant language (`en`, `de`, `es`, `fr`, `pl`)
 - Dark glass style matching the provided design
 
 ## Installation (HACS)
@@ -107,6 +108,8 @@ power_decimals: 2
 - `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`; `auto` respects Home Assistant units such as `W`, `kW`, and `kWh`)
 - `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)
+
+The card automatically follows the active Home Assistant language for built-in UI labels, status text, weather labels, and editor labels. Supported languages are English, German, Spanish, French, and Polish. Configuration keys, entity keys, and image file names remain English for compatibility and maintainability.
 
 ## Image naming scheme
 

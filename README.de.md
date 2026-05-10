@@ -19,6 +19,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Variante `apartment_building_balcony_solar` für Balkonsolar mit PV-Leistung, Batterie und Wechselrichter
 - Dezentes Statuslabel im Bild mit letzter Aktualisierung und optionalem Import-/Exportwert
 - Optionale Wetterbilder per `weather_entity`, zum Beispiel `_sunny`, `_rainy`, `_cloudy`, `_snowy` oder `_thunderstorm`
+- UI- und Editor-Labels folgen automatisch der Home-Assistant-Sprache (`en`, `de`, `es`, `fr`, `pl`)
 
 ## Installation (HACS)
 

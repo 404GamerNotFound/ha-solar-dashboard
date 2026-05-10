@@ -4,12 +4,12 @@ Niestandardowa karta Lovelace dla Home Assistant w HACS, pokazująca nowoczesny 
 
 ## Przykład
 
-![HA Solar Dashboard Card example](images/home.png)
+![HA Solar Dashboard Card example](images/single_family_home.png)
 
 ## Funkcje
 
 - Tło graficzne (dom/projekt PV)
-- Automatyczne przełączanie dzień/noc przez `sun.sun` (`*_tag.png` w dzień)
+- Automatyczne przełączanie dzień/noc przez `sun.sun` (`*_day.png` w dzień)
 - Nakładki z dowolnym pozycjonowaniem X/Y
 - Wybieralne układy domów z folderu `images`
 - Konfigurowalne encje (PV, bateria, falownik, wallbox, moc całkowita)

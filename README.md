@@ -9,23 +9,23 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 ## Features
 
 - Hero background image (your house/pv design)
-- Automatic day image variants via `sun.sun`: day uses `*_tag.png`, night uses the standard image
+- Automatic day image variants via `sun.sun`: day uses `*_day.png`, night uses the standard image
 - Overlay widgets placed on matching points in the image
 - Selectable house layouts from the `images` folder:
-  - `home`
-  - `doppelhaus`
-  - `reihenmittelhaus`
-  - `mehrfamilienhaus`
-  - `mehrfamilienhaus_balkonsolar`
-  - `stadtvilla`
-  - `stadtvilla2`
+  - `single_family_home`
+  - `duplex_house`
+  - `terraced_middle_house`
+  - `apartment_building`
+  - `apartment_building_balcony_solar`
+  - `city_villa`
+  - `city_villa_pitched_roof`
 - Configurable entities for:
-  - PV Dach (roof PV)
-  - PV Schuppen (shed PV)
-  - Batterie
-  - Wechselrichter Leistung
-  - Wallbox Leistung
-  - PV Gesamt (summary tile below the image)
+  - Roof PV
+  - Shed PV
+  - Battery
+  - Inverter power
+  - EV charger power
+  - PV Total (summary tile below the image)
 - Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
 - Custom standard and daylight images
 - Free X/Y positioning for every overlay box
@@ -51,7 +51,7 @@ type: module
 type: custom:ha-solar-dashboard-card
 title: Solar Dashboard
 time_label: Live
-house: home
+house: single_family_home
 show_house_selector: true
 entities:
   pv_roof_power: sensor.pv_dach_leistung
@@ -68,8 +68,8 @@ positions:
     left: 64
     top: 28
 weather_entity: weather.home
-image: /local/solar/haus_nacht.png
-day_image: /local/solar/haus_tag.png
+image: /local/solar/house_night.png
+day_image: /local/solar/house_day.png
 units:
   power: auto
   battery: "%"
@@ -81,15 +81,15 @@ power_decimals: 2
 
 - `title` (string, default: `Energy Flow`)
 - `time_label` (string, default: `Live`)
-- `house` (string, default: `home`; options: `home`, `doppelhaus`, `reihenmittelhaus`, `mehrfamilienhaus`, `mehrfamilienhaus_balkonsolar`, `stadtvilla`, `stadtvilla2`)
+- `house` (string, default: `single_family_home`; options: `single_family_home`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `city_villa`, `city_villa_pitched_roof`; legacy German values are still accepted as aliases)
 - `show_title` (boolean, default: `true`; shows/hides the title)
 - `show_time_label` (boolean, default: `true`; shows/hides the live label)
 - `show_house_selector` (boolean, default: `true`)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
-- `daylight_entity` (string, default: `sun.sun`; uses `_tag` images during the day and standard images before sunrise/after sunset)
-- `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sonne`, `_regen`, `_wolke`/`_woke`, `_schnee`)
+- `daylight_entity` (string, default: `sun.sun`; uses `_day` images during the day and standard images before sunrise/after sunset)
+- `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
 - `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
 - `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `battery_level`, `inverter_power`, and `wallbox_power`)
@@ -97,7 +97,7 @@ power_decimals: 2
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)
-- `entities.pv_total_power` (entity id; shown as `PV Gesamt` in the summary boxes below the image)
+- `entities.pv_total_power` (entity id; shown as `PV Total` in the summary boxes below the image)
 - `entities.battery_level` (entity id)
 - `entities.inverter_power` (entity id)
 - `entities.wallbox_power` (entity id)

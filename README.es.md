@@ -4,12 +4,12 @@ Una tarjeta Lovelace personalizada para Home Assistant en HACS con una vista mod
 
 ## Ejemplo
 
-![HA Solar Dashboard Card example](images/home.png)
+![HA Solar Dashboard Card example](images/single_family_home.png)
 
 ## Características
 
 - Imagen de fondo (casa/diseño PV)
-- Cambio automático día/noche mediante `sun.sun` (`*_tag.png` durante el día)
+- Cambio automático día/noche mediante `sun.sun` (`*_day.png` durante el día)
 - Widgets superpuestos con posicionamiento libre X/Y
 - Diseños de casa seleccionables desde la carpeta `images`
 - Entidades configurables (PV, batería, inversor, wallbox, potencia total)

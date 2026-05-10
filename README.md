@@ -114,13 +114,13 @@ The card automatically follows the active Home Assistant language for built-in U
 
 ## Image naming scheme
 
-Built-in images use English file names so the card stays easy to maintain for an open-source audience.
+Built-in images are grouped by house key and use English file names so the card stays easy to maintain for an open-source audience.
 
-- Standard/night image: `<house>.png`, for example `single_family_home.png`
-- Day image: `<house>_day.png`, for example `single_family_home_day.png`
-- Weather image: `<base>_<weather_suffix>.png`, for example `single_family_home_day_sunny.png`
+- Standard/night image: `<house>/<house>.png`, for example `single_family_home/single_family_home.png`
+- Day image: `<house>/<house>_day.png`, for example `single_family_home/single_family_home_day.png`
+- Weather image: `<house>/<base>_<weather_suffix>.png`, for example `single_family_home/single_family_home_day_sunny.png`
 
-When `weather_entity` is configured, the card tries weather-specific files first and falls back automatically when a file does not exist. During daylight it tries `<house>_day_<weather_suffix>.png`, then `<house>_<weather_suffix>.png`, then the normal day and standard images. At night the same logic starts with `<house>_<weather_suffix>.png` and then falls back to the day weather image.
+When `weather_entity` is configured, the card tries weather-specific files first and falls back automatically when a file does not exist. During daylight it tries `<house>/<house>_day_<weather_suffix>.png`, then `<house>/<house>_<weather_suffix>.png`, then the normal day and standard images. At night the same logic starts with `<house>/<house>_<weather_suffix>.png` and then falls back to the day weather image.
 
 ## Built-in image overview
 
@@ -137,82 +137,82 @@ The previews below are intentionally small so the README stays lightweight while
   <tr>
     <td>Standard/night</td>
     <td><code>single_family_home.png</code></td>
-    <td><img src="images/single_family_home.png" width="96" alt="single_family_home"></td>
+    <td><img src="images/single_family_home/single_family_home.png" width="96" alt="single_family_home"></td>
   </tr>
   <tr>
     <td>Day</td>
     <td><code>single_family_home_day.png</code></td>
-    <td><img src="images/single_family_home_day.png" width="96" alt="single_family_home_day"></td>
+    <td><img src="images/single_family_home/single_family_home_day.png" width="96" alt="single_family_home_day"></td>
   </tr>
   <tr>
     <td>Sunny day</td>
     <td><code>single_family_home_day_sunny.png</code></td>
-    <td><img src="images/single_family_home_day_sunny.png" width="96" alt="single_family_home_day_sunny"></td>
+    <td><img src="images/single_family_home/single_family_home_day_sunny.png" width="96" alt="single_family_home_day_sunny"></td>
   </tr>
   <tr>
     <td>Cloudy day</td>
     <td><code>single_family_home_day_cloudy.png</code></td>
-    <td><img src="images/single_family_home_day_cloudy.png" width="96" alt="single_family_home_day_cloudy"></td>
+    <td><img src="images/single_family_home/single_family_home_day_cloudy.png" width="96" alt="single_family_home_day_cloudy"></td>
   </tr>
   <tr>
     <td>Cloudy standard/night</td>
     <td><code>single_family_home_cloudy.png</code></td>
-    <td><img src="images/single_family_home_cloudy.png" width="96" alt="single_family_home_cloudy"></td>
+    <td><img src="images/single_family_home/single_family_home_cloudy.png" width="96" alt="single_family_home_cloudy"></td>
   </tr>
   <tr>
     <td>Rainy day</td>
     <td><code>single_family_home_day_rainy.png</code></td>
-    <td><img src="images/single_family_home_day_rainy.png" width="96" alt="single_family_home_day_rainy"></td>
+    <td><img src="images/single_family_home/single_family_home_day_rainy.png" width="96" alt="single_family_home_day_rainy"></td>
   </tr>
   <tr>
     <td>Rainy standard/night</td>
     <td><code>single_family_home_rainy.png</code></td>
-    <td><img src="images/single_family_home_rainy.png" width="96" alt="single_family_home_rainy"></td>
+    <td><img src="images/single_family_home/single_family_home_rainy.png" width="96" alt="single_family_home_rainy"></td>
   </tr>
   <tr>
     <td>Thunderstorm day</td>
     <td><code>single_family_home_day_thunderstorm.png</code></td>
-    <td><img src="images/single_family_home_day_thunderstorm.png" width="96" alt="single_family_home_day_thunderstorm"></td>
+    <td><img src="images/single_family_home/single_family_home_day_thunderstorm.png" width="96" alt="single_family_home_day_thunderstorm"></td>
   </tr>
   <tr>
     <td>Thunderstorm standard/night</td>
     <td><code>single_family_home_thunderstorm.png</code></td>
-    <td><img src="images/single_family_home_thunderstorm.png" width="96" alt="single_family_home_thunderstorm"></td>
+    <td><img src="images/single_family_home/single_family_home_thunderstorm.png" width="96" alt="single_family_home_thunderstorm"></td>
   </tr>
   <tr>
     <td>Snowy day</td>
     <td><code>single_family_home_day_snowy.png</code></td>
-    <td><img src="images/single_family_home_day_snowy.png" width="96" alt="single_family_home_day_snowy"></td>
+    <td><img src="images/single_family_home/single_family_home_day_snowy.png" width="96" alt="single_family_home_day_snowy"></td>
   </tr>
   <tr>
     <td>Snowy standard/night</td>
     <td><code>single_family_home_snowy.png</code></td>
-    <td><img src="images/single_family_home_snowy.png" width="96" alt="single_family_home_snowy"></td>
+    <td><img src="images/single_family_home/single_family_home_snowy.png" width="96" alt="single_family_home_snowy"></td>
   </tr>
   <tr>
     <td>Snow standard/night</td>
     <td><code>single_family_home_snow.png</code></td>
-    <td><img src="images/single_family_home_snow.png" width="96" alt="single_family_home_snow"></td>
+    <td><img src="images/single_family_home/single_family_home_snow.png" width="96" alt="single_family_home_snow"></td>
   </tr>
   <tr>
     <td>Winter day</td>
     <td><code>single_family_home_day_winter.png</code></td>
-    <td><img src="images/single_family_home_day_winter.png" width="96" alt="single_family_home_day_winter"></td>
+    <td><img src="images/single_family_home/single_family_home_day_winter.png" width="96" alt="single_family_home_day_winter"></td>
   </tr>
   <tr>
     <td>Hail day</td>
     <td><code>single_family_home_day_hail.png</code></td>
-    <td><img src="images/single_family_home_day_hail.png" width="96" alt="single_family_home_day_hail"></td>
+    <td><img src="images/single_family_home/single_family_home_day_hail.png" width="96" alt="single_family_home_day_hail"></td>
   </tr>
   <tr>
     <td>Legacy standard/night</td>
     <td><code>single_family_home_legacy.png</code></td>
-    <td><img src="images/single_family_home_legacy.png" width="96" alt="single_family_home_legacy"></td>
+    <td><img src="images/single_family_home/single_family_home_legacy.png" width="96" alt="single_family_home_legacy"></td>
   </tr>
   <tr>
     <td>Legacy day</td>
     <td><code>single_family_home_legacy_day.png</code></td>
-    <td><img src="images/single_family_home_legacy_day.png" width="96" alt="single_family_home_legacy_day"></td>
+    <td><img src="images/single_family_home/single_family_home_legacy_day.png" width="96" alt="single_family_home_legacy_day"></td>
   </tr>
 </table>
 
@@ -227,44 +227,44 @@ The previews below are intentionally small so the README stays lightweight while
   </tr>
   <tr>
     <td><code>duplex_house</code></td>
-    <td><img src="images/duplex_house.png" width="86" alt="duplex_house"><br><code>duplex_house.png</code></td>
-    <td><img src="images/duplex_house_day.png" width="86" alt="duplex_house_day"><br><code>duplex_house_day.png</code></td>
-    <td><img src="images/duplex_house_day_cloudy.png" width="86" alt="duplex_house_day_cloudy"><br><code>duplex_house_day_cloudy.png</code></td>
+    <td><img src="images/duplex_house/duplex_house.png" width="86" alt="duplex_house"><br><code>duplex_house.png</code></td>
+    <td><img src="images/duplex_house/duplex_house_day.png" width="86" alt="duplex_house_day"><br><code>duplex_house_day.png</code></td>
+    <td><img src="images/duplex_house/duplex_house_day_cloudy.png" width="86" alt="duplex_house_day_cloudy"><br><code>duplex_house_day_cloudy.png</code></td>
   </tr>
   <tr>
     <td><code>terraced_middle_house</code></td>
-    <td><img src="images/terraced_middle_house.png" width="86" alt="terraced_middle_house"><br><code>terraced_middle_house.png</code></td>
-    <td><img src="images/terraced_middle_house_day.png" width="86" alt="terraced_middle_house_day"><br><code>terraced_middle_house_day.png</code></td>
+    <td><img src="images/terraced_middle_house/terraced_middle_house.png" width="86" alt="terraced_middle_house"><br><code>terraced_middle_house.png</code></td>
+    <td><img src="images/terraced_middle_house/terraced_middle_house_day.png" width="86" alt="terraced_middle_house_day"><br><code>terraced_middle_house_day.png</code></td>
     <td>-</td>
   </tr>
   <tr>
     <td><code>apartment_building</code></td>
-    <td><img src="images/apartment_building.png" width="86" alt="apartment_building"><br><code>apartment_building.png</code></td>
-    <td><img src="images/apartment_building_day.png" width="86" alt="apartment_building_day"><br><code>apartment_building_day.png</code></td>
+    <td><img src="images/apartment_building/apartment_building.png" width="86" alt="apartment_building"><br><code>apartment_building.png</code></td>
+    <td><img src="images/apartment_building/apartment_building_day.png" width="86" alt="apartment_building_day"><br><code>apartment_building_day.png</code></td>
     <td>-</td>
   </tr>
   <tr>
     <td><code>apartment_building_balcony_solar</code></td>
-    <td><img src="images/apartment_building_balcony_solar.png" width="86" alt="apartment_building_balcony_solar"><br><code>apartment_building_balcony_solar.png</code></td>
-    <td><img src="images/apartment_building_balcony_solar_day.png" width="86" alt="apartment_building_balcony_solar_day"><br><code>apartment_building_balcony_solar_day.png</code></td>
+    <td><img src="images/apartment_building_balcony_solar/apartment_building_balcony_solar.png" width="86" alt="apartment_building_balcony_solar"><br><code>apartment_building_balcony_solar.png</code></td>
+    <td><img src="images/apartment_building_balcony_solar/apartment_building_balcony_solar_day.png" width="86" alt="apartment_building_balcony_solar_day"><br><code>apartment_building_balcony_solar_day.png</code></td>
     <td>-</td>
   </tr>
   <tr>
     <td><code>city_villa</code></td>
-    <td><img src="images/city_villa.png" width="86" alt="city_villa"><br><code>city_villa.png</code></td>
-    <td><img src="images/city_villa_day.png" width="86" alt="city_villa_day"><br><code>city_villa_day.png</code></td>
+    <td><img src="images/city_villa/city_villa.png" width="86" alt="city_villa"><br><code>city_villa.png</code></td>
+    <td><img src="images/city_villa/city_villa_day.png" width="86" alt="city_villa_day"><br><code>city_villa_day.png</code></td>
     <td>-</td>
   </tr>
   <tr>
     <td><code>city_villa_pitched_roof</code></td>
-    <td><img src="images/city_villa_pitched_roof.png" width="86" alt="city_villa_pitched_roof"><br><code>city_villa_pitched_roof.png</code></td>
-    <td><img src="images/city_villa_pitched_roof_day.png" width="86" alt="city_villa_pitched_roof_day"><br><code>city_villa_pitched_roof_day.png</code></td>
+    <td><img src="images/city_villa_pitched_roof/city_villa_pitched_roof.png" width="86" alt="city_villa_pitched_roof"><br><code>city_villa_pitched_roof.png</code></td>
+    <td><img src="images/city_villa_pitched_roof/city_villa_pitched_roof_day.png" width="86" alt="city_villa_pitched_roof_day"><br><code>city_villa_pitched_roof_day.png</code></td>
     <td>-</td>
   </tr>
   <tr>
     <td><code>bungalow</code></td>
-    <td><img src="images/bungalow.png" width="86" alt="bungalow"><br><code>bungalow.png</code></td>
-    <td><img src="images/bungalow_day.png" width="86" alt="bungalow_day"><br><code>bungalow_day.png</code></td>
+    <td><img src="images/bungalow/bungalow.png" width="86" alt="bungalow"><br><code>bungalow.png</code></td>
+    <td><img src="images/bungalow/bungalow_day.png" width="86" alt="bungalow_day"><br><code>bungalow_day.png</code></td>
     <td>-</td>
   </tr>
 </table>
@@ -304,6 +304,6 @@ If HACS shows an "Unknown error" while downloading, make sure you selected repos
 
 This repository ships the HACS entry file in `dist/ha-solar-dashboard.js` and declares `ha-solar-dashboard.js` in `hacs.json`. The filename must match the repository name (`ha-solar-dashboard`) so HACS can identify it as a valid Dashboard plugin. Do not enable `zip_release` for this repository: HACS only supports that mode for integrations, not Dashboard plugins. For Dashboard plugins, HACS scans `dist/` first, then the latest release, then the repository root, and downloads the matching JavaScript file.
 
-When publishing a GitHub release, attach `ha-solar-dashboard.js` and every `dist/images/*.png` file as release assets. The included Release workflow does this automatically for tag pushes and published releases. If a release already exists without the image assets, run the `HACS Release Asset Repair` workflow with that tag, for example `v1.0.8`.
+When publishing a GitHub release, attach `ha-solar-dashboard.js` and every `dist/images/**/*.png` file as release assets. The included Release workflow does this automatically for tag pushes and published releases by flattening the uniquely named image files into release assets. If a release already exists without the image assets, run the `HACS Release Asset Repair` workflow with that tag, for example `v1.0.8`.
 
 The `homeassistant` value in `hacs.json` must be a plain minimum version such as `2023.8.0`, not a comparator expression like `>=2023.8.0`.

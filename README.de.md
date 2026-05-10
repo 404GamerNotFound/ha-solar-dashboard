@@ -4,7 +4,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 
 ## Beispiel
 
-![HA Solar Dashboard Card example](images/single_family_home.png)
+![HA Solar Dashboard Card example](images/single_family_home/single_family_home.png)
 
 ## Funktionen
 

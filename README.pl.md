@@ -4,7 +4,7 @@ Niestandardowa karta Lovelace dla Home Assistant w HACS, pokazująca nowoczesny 
 
 ## Przykład
 
-![HA Solar Dashboard Card example](images/single_family_home.png)
+![HA Solar Dashboard Card example](images/single_family_home/single_family_home.png)
 
 ## Funkcje
 

@@ -50,7 +50,7 @@ jobs:
         run: |
           mkdir -p release-assets
           cp dist/ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
-          cp dist/images/*.png release-assets/
+          find dist/images -type f -name "*.png" -exec cp {} release-assets/ \;
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2

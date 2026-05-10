@@ -30,6 +30,27 @@ function listFiles(path) {
   return readdirSync(base).filter((entry) => statSync(join(base, entry)).isFile());
 }
 
+function listFilesRecursive(path) {
+  const base = join(root, path);
+  if (!existsSync(base)) return [];
+  const files = [];
+  for (const entry of readdirSync(base)) {
+    const fullPath = join(base, entry);
+    const relativePath = join(path, entry);
+    if (statSync(fullPath).isDirectory()) {
+      files.push(...listFilesRecursive(relativePath));
+    } else {
+      files.push(relativePath);
+    }
+  }
+  return files;
+}
+
+function hasImageFile(basePath, imageFile) {
+  if (existsSync(join(root, basePath, imageFile))) return true;
+  return listFilesRecursive(basePath).some((file) => basename(file) === imageFile);
+}
+
 function validateJson() {
   let hacs;
   try {
@@ -49,7 +70,10 @@ function validateJson() {
 
 function validateReadme() {
   const readme = readText("README.md");
-  const imageMatches = [...readme.matchAll(/!\[[^\]]*]\(([^)]+)\)/g)].map((match) => match[1]);
+  const imageMatches = [
+    ...[...readme.matchAll(/!\[[^\]]*]\(([^)]+)\)/g)].map((match) => match[1]),
+    ...[...readme.matchAll(/<img\s+[^>]*src="([^"]+)"/g)].map((match) => match[1]),
+  ];
   if (imageMatches.length === 0) fail("README.md must include at least one image for HACS to render");
 
   for (const imagePath of imageMatches) {
@@ -79,10 +103,29 @@ function validateDistPackage() {
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");
 
-  const imageFiles = [...source.matchAll(/\b(?:file|dayFile):\s*"([^"]+)"/g)].map((match) => match[1]);
+  const configuredImages = [...source.matchAll(/\b(?:file|dayFile):\s*"([^"]+)"/g)].map((match) => match[1]);
+  const fallbackImages = [...source.matchAll(/fallbackFiles:\s*\[([^\]]*)\]/g)]
+    .flatMap((match) => [...match[1].matchAll(/"([^"]+)"/g)].map((fileMatch) => fileMatch[1]));
+  const imageFiles = [...new Set([...configuredImages, ...fallbackImages])];
   for (const imageFile of imageFiles) {
-    if (!existsSync(join(root, "images", imageFile))) fail(`source image is missing: images/${imageFile}`);
-    if (!existsSync(join(root, "dist", "images", imageFile))) fail(`HACS dist image is missing: dist/images/${imageFile}`);
+    if (!hasImageFile("images", imageFile)) fail(`source image is missing: images/**/${imageFile}`);
+    if (!hasImageFile("dist/images", imageFile)) fail(`HACS dist image is missing: dist/images/**/${imageFile}`);
+  }
+
+  const sourceImageBasenames = listFilesRecursive("images")
+    .filter((file) => file.endsWith(".png"))
+    .map((file) => basename(file));
+  const duplicateSourceNames = sourceImageBasenames.filter((file, index) => sourceImageBasenames.indexOf(file) !== index);
+  if (duplicateSourceNames.length > 0) {
+    fail(`source image filenames must be unique for release asset compatibility: ${[...new Set(duplicateSourceNames)].join(", ")}`);
+  }
+
+  const distImageBasenames = listFilesRecursive("dist/images")
+    .filter((file) => file.endsWith(".png"))
+    .map((file) => basename(file));
+  const duplicateReleaseNames = distImageBasenames.filter((file, index) => distImageBasenames.indexOf(file) !== index);
+  if (duplicateReleaseNames.length > 0) {
+    fail(`dist image filenames must be unique for flattened release assets: ${[...new Set(duplicateReleaseNames)].join(", ")}`);
   }
 }
 

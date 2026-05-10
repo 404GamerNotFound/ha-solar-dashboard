@@ -387,6 +387,7 @@ function translate(language, key, replacements = {}, fallback = "") {
 const HOUSE_VARIANTS = {
   single_family_home: {
     label: "Single Family Home",
+    folder: "single_family_home",
     file: "single_family_home.png",
     dayFile: "single_family_home_day.png",
     fallbackFiles: ["single_family_home_legacy.png"],
@@ -400,6 +401,7 @@ const HOUSE_VARIANTS = {
   },
   duplex_house: {
     label: "Duplex House",
+    folder: "duplex_house",
     file: "duplex_house.png",
     dayFile: "duplex_house_day.png",
     positions: {
@@ -412,6 +414,7 @@ const HOUSE_VARIANTS = {
   },
   terraced_middle_house: {
     label: "Terraced Middle House",
+    folder: "terraced_middle_house",
     file: "terraced_middle_house.png",
     dayFile: "terraced_middle_house_day.png",
     positions: {
@@ -424,6 +427,7 @@ const HOUSE_VARIANTS = {
   },
   apartment_building: {
     label: "Apartment Building",
+    folder: "apartment_building",
     file: "apartment_building.png",
     dayFile: "apartment_building_day.png",
     positions: {
@@ -436,6 +440,7 @@ const HOUSE_VARIANTS = {
   },
   apartment_building_balcony_solar: {
     label: "Apartment Building Balcony Solar",
+    folder: "apartment_building_balcony_solar",
     file: "apartment_building_balcony_solar.png",
     dayFile: "apartment_building_balcony_solar_day.png",
     positions: {
@@ -460,6 +465,7 @@ const HOUSE_VARIANTS = {
   },
   bungalow: {
     label: "Bungalow",
+    folder: "bungalow",
     file: "bungalow.png",
     dayFile: "bungalow_day.png",
     positions: {
@@ -472,6 +478,7 @@ const HOUSE_VARIANTS = {
   },
   city_villa: {
     label: "City Villa",
+    folder: "city_villa",
     file: "city_villa.png",
     dayFile: "city_villa_day.png",
     positions: {
@@ -484,6 +491,7 @@ const HOUSE_VARIANTS = {
   },
   city_villa_pitched_roof: {
     label: "City Villa with Pitched Roof",
+    folder: "city_villa_pitched_roof",
     file: "city_villa_pitched_roof.png",
     dayFile: "city_villa_pitched_roof_day.png",
     positions: {
@@ -938,8 +946,14 @@ class HaSolarDashboardCard extends HTMLElement {
     ].filter(Boolean);
   }
 
+  _imagePath(variant, file) {
+    if (!file || file.includes("/")) return file;
+    return variant?.folder ? `${variant.folder}/${file}` : file;
+  }
+
   _variantImage(variant) {
-    const files = this._weatherImageFiles(variant, this._isDaylight());
+    const files = this._weatherImageFiles(variant, this._isDaylight())
+      .map((file) => this._imagePath(variant, file));
     const urls = [...new Set(files.flatMap((file) => [
       this._remoteImageUrl(file),
       this._localImageUrl(file),
@@ -1353,7 +1367,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
         <label>${this._escape(this._t("editor.timeLabel"))} <input data-path="time_label" value="${this._escape(this._config.time_label || "")}" /></label>
         <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
-        <label>${this._escape(this._t("editor.customImage"))} <input data-path="image" placeholder="/local/solar/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
+        <label>${this._escape(this._t("editor.customImage"))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
         <label>${this._escape(this._t("editor.customDayImage"))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
         <label>${this._escape(this._t("editor.weatherEntity"))}
           <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />

@@ -259,7 +259,7 @@ The previews below are intentionally small so the README stays lightweight while
     <td><code>city_villa_pitched_roof</code></td>
     <td><img src="images/city_villa_pitched_roof/city_villa_pitched_roof.png" width="86" alt="city_villa_pitched_roof"><br><code>city_villa_pitched_roof.png</code></td>
     <td><img src="images/city_villa_pitched_roof/city_villa_pitched_roof_day.png" width="86" alt="city_villa_pitched_roof_day"><br><code>city_villa_pitched_roof_day.png</code></td>
-    <td>-</td>
+    <td><code>clear</code>, <code>cloudy</code>, <code>fog</code>, <code>rainy</code>, <code>thunderstorm</code>, <code>snow</code>, <code>snowy</code>, <code>winter</code>, <code>hail</code>, <code>wind</code>, plus day variants for <code>cloudy</code>, <code>fog</code>, <code>rainy</code>, <code>thunderstorm</code>, <code>snowy</code>, <code>hail</code>, <code>sunny</code></td>
   </tr>
   <tr>
     <td><code>bungalow</code></td>

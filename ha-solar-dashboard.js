@@ -36,6 +36,14 @@ const I18N = {
     "editor.hudBoxOpacity": "HUD box opacity",
     "editor.hudBoxScale": "HUD box scale",
     "editor.importExportEntity": "Import/Export Entity",
+    "editor.kpiAdd": "Add tile",
+    "editor.kpiColor": "Color",
+    "editor.kpiColumns": "Tile width",
+    "editor.kpiEntity": "KPI entity",
+    "editor.kpiLabel": "KPI label",
+    "editor.kpiPosition": "Tile position",
+    "editor.kpiRemove": "Remove",
+    "editor.kpiStaticValue": "Static value",
     "editor.optionalDayImage": "Optional daylight image",
     "editor.powerDecimals": "Power decimals",
     "editor.powerDisplayMode": "Power display mode",
@@ -43,6 +51,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
     "editor.sectionBoxes": "Boxes, Entity, Unit, and Position",
+    "editor.sectionKpis": "Custom KPI tiles",
     "editor.showBox": "Show {label}",
     "editor.showHouseSelector": "Show house selector",
     "editor.showLiveLabel": "Show live label",
@@ -104,6 +113,14 @@ const I18N = {
     "editor.hudBoxOpacity": "HUD-Box-Deckkraft",
     "editor.hudBoxScale": "HUD-Box-Skalierung",
     "editor.importExportEntity": "Import-/Export-Entität",
+    "editor.kpiAdd": "Kachel hinzufügen",
+    "editor.kpiColor": "Farbe",
+    "editor.kpiColumns": "Kachelbreite",
+    "editor.kpiEntity": "KPI-Entität",
+    "editor.kpiLabel": "KPI-Label",
+    "editor.kpiPosition": "Kachelposition",
+    "editor.kpiRemove": "Entfernen",
+    "editor.kpiStaticValue": "Fester Wert",
     "editor.optionalDayImage": "Optionales Tagesbild",
     "editor.powerDecimals": "Leistungs-Nachkommastellen",
     "editor.powerDisplayMode": "Leistungsanzeige",
@@ -111,6 +128,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Automatisch W/kW",
     "editor.sectionBoxes": "Boxen, Entität, Einheit und Position",
+    "editor.sectionKpis": "Eigene KPI-Kacheln",
     "editor.showBox": "{label} anzeigen",
     "editor.showHouseSelector": "Hausauswahl anzeigen",
     "editor.showLiveLabel": "Live-Label anzeigen",
@@ -172,6 +190,14 @@ const I18N = {
     "editor.hudBoxOpacity": "Opacidad de cajas HUD",
     "editor.hudBoxScale": "Escala de cajas HUD",
     "editor.importExportEntity": "Entidad de importación/exportación",
+    "editor.kpiAdd": "Añadir mosaico",
+    "editor.kpiColor": "Color",
+    "editor.kpiColumns": "Ancho del mosaico",
+    "editor.kpiEntity": "Entidad KPI",
+    "editor.kpiLabel": "Etiqueta KPI",
+    "editor.kpiPosition": "Posición del mosaico",
+    "editor.kpiRemove": "Eliminar",
+    "editor.kpiStaticValue": "Valor fijo",
     "editor.optionalDayImage": "Imagen diurna opcional",
     "editor.powerDecimals": "Decimales de potencia",
     "editor.powerDisplayMode": "Modo de potencia",
@@ -179,6 +205,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
     "editor.sectionBoxes": "Cajas, entidad, unidad y posición",
+    "editor.sectionKpis": "Mosaicos KPI personalizados",
     "editor.showBox": "Mostrar {label}",
     "editor.showHouseSelector": "Mostrar selector de casa",
     "editor.showLiveLabel": "Mostrar etiqueta en vivo",
@@ -240,6 +267,14 @@ const I18N = {
     "editor.hudBoxOpacity": "Opacité des boîtes HUD",
     "editor.hudBoxScale": "Échelle des boîtes HUD",
     "editor.importExportEntity": "Entité import/export",
+    "editor.kpiAdd": "Ajouter une tuile",
+    "editor.kpiColor": "Couleur",
+    "editor.kpiColumns": "Largeur de tuile",
+    "editor.kpiEntity": "Entité KPI",
+    "editor.kpiLabel": "Libellé KPI",
+    "editor.kpiPosition": "Position de tuile",
+    "editor.kpiRemove": "Supprimer",
+    "editor.kpiStaticValue": "Valeur fixe",
     "editor.optionalDayImage": "Image de jour optionnelle",
     "editor.powerDecimals": "Décimales de puissance",
     "editor.powerDisplayMode": "Mode d'affichage de la puissance",
@@ -247,6 +282,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
     "editor.sectionBoxes": "Boîtes, entité, unité et position",
+    "editor.sectionKpis": "Tuiles KPI personnalisées",
     "editor.showBox": "Afficher {label}",
     "editor.showHouseSelector": "Afficher le sélecteur de maison",
     "editor.showLiveLabel": "Afficher le libellé en direct",
@@ -308,6 +344,14 @@ const I18N = {
     "editor.hudBoxOpacity": "Przezroczystość pól HUD",
     "editor.hudBoxScale": "Skala pól HUD",
     "editor.importExportEntity": "Encja importu/eksportu",
+    "editor.kpiAdd": "Dodaj kafelek",
+    "editor.kpiColor": "Kolor",
+    "editor.kpiColumns": "Szerokość kafelka",
+    "editor.kpiEntity": "Encja KPI",
+    "editor.kpiLabel": "Etykieta KPI",
+    "editor.kpiPosition": "Pozycja kafelka",
+    "editor.kpiRemove": "Usuń",
+    "editor.kpiStaticValue": "Stała wartość",
     "editor.optionalDayImage": "Opcjonalny obraz dzienny",
     "editor.powerDecimals": "Miejsca dziesiętne mocy",
     "editor.powerDisplayMode": "Tryb wyświetlania mocy",
@@ -315,6 +359,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
     "editor.sectionBoxes": "Pola, encja, jednostka i pozycja",
+    "editor.sectionKpis": "Własne kafelki KPI",
     "editor.showBox": "Pokaż {label}",
     "editor.showHouseSelector": "Pokaż wybór domu",
     "editor.showLiveLabel": "Pokaż etykietę na żywo",
@@ -517,6 +562,41 @@ const TILE_METRICS = [
   { key: "pv_total_power", label: "PV Total", unit: "power", color: "yellow", hud: false },
 ];
 
+const STATUS_METRIC = { key: "import_export_power", label: "Import/Export", unit: "power", color: "blue" };
+
+const DEFAULT_TILE_COLOR_RULES = {
+  pv_roof_power: [
+    { above: 3000, color: "#34d399", glow: true },
+    { above: 1000, color: "#ffc233" },
+    { below: 100, color: "#9ba3b8" },
+  ],
+  pv_shed_power: [
+    { above: 3000, color: "#34d399", glow: true },
+    { above: 1000, color: "#ffc233" },
+    { below: 100, color: "#9ba3b8" },
+  ],
+  pv_total_power: [
+    { above: 3000, color: "#34d399", glow: true },
+    { above: 1000, color: "#ffc233" },
+    { below: 100, color: "#9ba3b8" },
+  ],
+  battery_level: [
+    { below: 20, color: "#f87171", glow: true },
+    { below: 50, color: "#fb923c" },
+    { above: 80, color: "#34d399" },
+  ],
+  import_export_power: [
+    { above: 0, color: "#fb923c", glow: true },
+    { below: 0, color: "#34d399", glow: true },
+  ],
+};
+
+const STATIC_METRIC_COLORS = {
+  yellow: "#ffc233",
+  blue: "#1f8fff",
+  green: "#34d399",
+};
+
 function normalizeHouse(value) {
   if (!value) return undefined;
   const normalized = String(value).toLowerCase().trim().replace(/[\s_]+/g, "-");
@@ -584,8 +664,11 @@ class HaSolarDashboardCard extends HTMLElement {
       show_weather_status: false,
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
+      dynamic_tile_colors: true,
       daylight_entity: "sun.sun",
       weather_entity: "",
+      tile_color_rules: DEFAULT_TILE_COLOR_RULES,
+      custom_kpis: [],
       visible_boxes: {
         pv_roof_power: true,
         pv_shed_power: true,
@@ -626,12 +709,15 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_scale: 1,
       daylight_entity: "sun.sun",
       weather_entity: "",
+      dynamic_tile_colors: true,
       power_display_mode: "auto_kw",
       power_decimals: 2,
       units: { power: "auto", battery: "%" },
       entities: {},
       positions: {},
       visible_boxes: {},
+      tile_color_rules: {},
+      custom_kpis: [],
       ...config,
       house,
       units: {
@@ -648,6 +734,11 @@ class HaSolarDashboardCard extends HTMLElement {
       visible_boxes: {
         ...(config.visible_boxes || config.boxes || {}),
       },
+      tile_color_rules: {
+        ...DEFAULT_TILE_COLOR_RULES,
+        ...(config.tile_color_rules || config.color_rules || {}),
+      },
+      custom_kpis: this._normalizeCustomKpis(config.custom_kpis || config.kpis || []),
     };
 
     this.config.hud_box_opacity = this._clampNumber(this.config.hud_box_opacity, 0.65, 0, 1);
@@ -664,11 +755,11 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const previousLanguage = this._language();
-    const previousImageKey = `${this._isDaylight()}|${this._weatherState()}`;
+    const previousLanguage = this._lastLanguage || this._language();
+    const previousImageKey = this._lastImageKey || this._imageStateKey();
     this._hass = hass;
     const nextLanguage = this._language();
-    const nextImageKey = `${this._isDaylight()}|${this._weatherState()}`;
+    const nextImageKey = this._imageStateKey();
     if (this.shadowRoot && (previousImageKey !== nextImageKey || previousLanguage !== nextLanguage)) {
       this._renderCardShell(this._layoutState());
       return;
@@ -723,18 +814,73 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _unitForMetric(metric) {
+    if (metric.customKpi) return metric.customKpi.unit;
     const metricUnit = this.config.units?.[metric.key];
     if (metricUnit !== undefined && String(metricUnit).trim() !== "") return metricUnit;
     return this.config.units?.[metric.unit];
   }
 
   _formatReading(metric) {
+    if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
     const entityId = this.config.entities[metric.key];
     const value = this._getEntityValue(entityId, "0");
     const unit = this._unitForMetric(metric);
     const entityUnit = this._getEntityUnit(entityId);
     if (metric.unit === "power") return this._formatPowerValue(value, unit, entityUnit);
     return this._formatWithUnit(value, unit);
+  }
+
+  _normalizeCustomKpis(kpis) {
+    if (!Array.isArray(kpis)) return [];
+    return kpis
+      .map((kpi, index) => {
+        if (!kpi || typeof kpi !== "object") return undefined;
+        const id = String(kpi.id || kpi.key || `kpi_${index + 1}`).trim().replace(/[^\w-]/g, "_");
+        const label = String(kpi.label || kpi.name || `KPI ${index + 1}`).trim();
+        const position = this._clampNumber(kpi.position ?? kpi.order ?? 100 + index, 100 + index, 0, 999);
+        const columns = Math.round(this._clampNumber(kpi.columns ?? kpi.span ?? 1, 1, 1, 6));
+        return {
+          id,
+          label,
+          entity: String(kpi.entity || kpi.entity_id || "").trim(),
+          value: kpi.value ?? "",
+          unit: kpi.unit ?? "auto",
+          position,
+          columns,
+          color: this._safeCssColor(kpi.color, "#1f8fff"),
+          glow: kpi.glow,
+          visible: kpi.visible !== false,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  _customKpiMetrics() {
+    return (this.config.custom_kpis || [])
+      .filter((kpi) => kpi.visible !== false)
+      .map((kpi, index) => ({
+        key: `custom_kpis.${kpi.id || index}`,
+        label: kpi.label,
+        unit: "custom",
+        color: "blue",
+        accentColor: kpi.color,
+        customKpi: kpi,
+        tileOrder: kpi.position ?? 100 + index,
+        tileColumns: kpi.columns ?? 1,
+      }));
+  }
+
+  _formatCustomKpiValue(kpi) {
+    const hasEntity = Boolean(kpi.entity);
+    const rawValue = hasEntity ? this._getEntityValue(kpi.entity, undefined) : kpi.value;
+    const value = this._formatValue(rawValue);
+    if (value === "—") return value;
+
+    const entityUnit = hasEntity ? this._getEntityUnit(kpi.entity) : "";
+    const configuredUnit = String(kpi.unit ?? "auto").trim();
+    if (!configuredUnit || configuredUnit.toLowerCase() === "none") return String(value);
+    if (configuredUnit.toLowerCase() === "auto") return entityUnit ? `${value} ${entityUnit}` : String(value);
+    return `${value} ${configuredUnit}`;
   }
 
   _formatRelativeTime(dateString) {
@@ -891,7 +1037,102 @@ class HaSolarDashboardCard extends HTMLElement {
     return `${value} W`;
   }
 
+  _metricNumericValue(metric) {
+    if (metric.customKpi) {
+      const kpi = metric.customKpi;
+      const rawValue = kpi.entity ? this._getEntityValue(kpi.entity, undefined) : kpi.value;
+      const number = Number(rawValue);
+      return Number.isFinite(number) ? number : undefined;
+    }
+    const entityId = this.config.entities?.[metric.key];
+    const value = this._getEntityValue(entityId, undefined);
+    if (value === undefined || value === null || value === "unknown" || value === "unavailable") return undefined;
+    const entityUnit = this._getEntityUnit(entityId);
+    if (metric.unit === "power") return this._valueAsWatts(value, entityUnit);
+    const number = Number(value);
+    return Number.isFinite(number) ? number : undefined;
+  }
+
+  _ruleMatches(rule, value) {
+    if (!rule || value === undefined) return false;
+    const checks = [
+      ["above", (actual, threshold) => actual >= threshold],
+      ["min", (actual, threshold) => actual >= threshold],
+      ["gte", (actual, threshold) => actual >= threshold],
+      ["below", (actual, threshold) => actual <= threshold],
+      ["max", (actual, threshold) => actual <= threshold],
+      ["lte", (actual, threshold) => actual <= threshold],
+      ["gt", (actual, threshold) => actual > threshold],
+      ["lt", (actual, threshold) => actual < threshold],
+      ["equals", (actual, threshold) => actual === threshold],
+    ];
+    const explicitChecks = checks.filter(([key]) => rule[key] !== undefined);
+    if (explicitChecks.length > 0) {
+      return explicitChecks.every(([key, compare]) => {
+        const threshold = Number(rule[key]);
+        return Number.isFinite(threshold) && compare(value, threshold);
+      });
+    }
+    if (rule.threshold === undefined) return false;
+    const threshold = Number(rule.threshold);
+    if (!Number.isFinite(threshold)) return false;
+    const operator = String(rule.operator || ">=").trim();
+    if (operator === ">" || operator === "above") return value > threshold;
+    if (operator === "<" || operator === "below") return value < threshold;
+    if (operator === "<=" || operator === "lte" || operator === "max") return value <= threshold;
+    if (operator === "=" || operator === "==" || operator === "===" || operator === "equals") return value === threshold;
+    return value >= threshold;
+  }
+
+  _safeCssColor(color, fallback = "") {
+    const value = String(color || "").trim();
+    if (!value) return fallback;
+    if (/^#[0-9a-f]{3,8}$/i.test(value)) return value;
+    if (/^(rgb|rgba|hsl|hsla)\([\d\s.,%/-]+\)$/i.test(value)) return value;
+    if (/^var\(--[\w-]+\)$/i.test(value)) return value;
+    if (/^[a-z]+$/i.test(value)) return value;
+    return fallback;
+  }
+
+  _hexToRgba(color, alpha = 0.36) {
+    const hex = String(color || "").trim();
+    const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex);
+    if (!match) return color || "transparent";
+    const raw = match[1].length === 3
+      ? match[1].split("").map((char) => char + char).join("")
+      : match[1];
+    const red = parseInt(raw.slice(0, 2), 16);
+    const green = parseInt(raw.slice(2, 4), 16);
+    const blue = parseInt(raw.slice(4, 6), 16);
+    return `rgba(${red},${green},${blue},${alpha})`;
+  }
+
+  _metricAccent(metric) {
+    const fallbackColor = metric.accentColor || STATIC_METRIC_COLORS[metric.color] || "var(--text-main)";
+    if (this.config.dynamic_tile_colors === false) {
+      return { color: fallbackColor, glow: "transparent" };
+    }
+
+    const rules = this.config.tile_color_rules?.[metric.key];
+    const normalizedRules = Array.isArray(rules) ? rules : [];
+    const value = this._metricNumericValue(metric);
+    const matchedRule = normalizedRules.find((rule) => this._ruleMatches(rule, value));
+    const color = this._safeCssColor(matchedRule?.color, fallbackColor);
+    const glowValue = matchedRule?.glow ?? metric.customKpi?.glow;
+    const glow = glowValue === true
+      ? this._hexToRgba(color, 0.34)
+      : this._safeCssColor(glowValue, "transparent");
+
+    return { color, glow };
+  }
+
+  _accentStyle(metric) {
+    const accent = this._metricAccent(metric);
+    return `--tile-accent:${accent.color};--tile-glow:${accent.glow};`;
+  }
+
   _metricVisible(metric, variant) {
+    if (metric.customKpi) return metric.customKpi.visible !== false;
     const configured = this.config.visible_boxes?.[metric.key];
     if (configured !== undefined) return configured !== false;
     return variant?.visible_boxes?.[metric.key] !== false;
@@ -899,6 +1140,17 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _visibleMetrics(variant, metrics = TILE_METRICS) {
     return metrics.filter((metric) => this._metricVisible(metric, variant));
+  }
+
+  _visibleTileMetrics(variant) {
+    return [
+      ...this._visibleMetrics(variant).map((metric, index) => ({
+        ...metric,
+        tileOrder: metric.tileOrder ?? index,
+        tileColumns: metric.tileColumns ?? 1,
+      })),
+      ...this._customKpiMetrics(),
+    ].sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
   }
 
   _visibleHudMetrics(variant) {
@@ -909,6 +1161,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricLabel(metric, variant) {
+    if (metric.customKpi) return metric.customKpi.label || metric.label;
     if (variant?.labelKeys?.[metric.key]) return this._t(variant.labelKeys[metric.key], {}, variant?.labels?.[metric.key] || metric.label);
     if (variant?.labels?.[metric.key]) return this._t(`metrics.${metric.key}`, {}, variant.labels[metric.key]);
     return this._t(`metrics.${metric.key}`, {}, metric.label);
@@ -922,6 +1175,10 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _weatherSuffixes() {
     return WEATHER_IMAGE_SUFFIXES[this._weatherState()] || [];
+  }
+
+  _imageStateKey() {
+    return `${this._isDaylight()}|${this._weatherState()}|${this.config?.image || ""}|${this.config?.day_image || ""}`;
   }
 
   _imageWithSuffix(file, suffix) {
@@ -1053,11 +1310,17 @@ class HaSolarDashboardCard extends HTMLElement {
     const top = this._toPercent(position.top, 50);
 
     return `
-      <div class="metric" data-metric="${metric.key}" style="left: ${left}%; top: ${top}%;">
+      <div class="metric" data-accent-key="${metric.key}" data-metric="${metric.key}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
         <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
-        <div class="value ${metric.color}" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+        <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
       </div>
     `;
+  }
+
+  _tileStyle(metric) {
+    const columns = Math.round(this._clampNumber(metric.tileColumns ?? 1, 1, 1, 6));
+    const mobileColumns = Math.min(columns, 2);
+    return `${this._accentStyle(metric)} order:${Number(metric.tileOrder ?? 0)}; --tile-columns:${columns}; --tile-mobile-columns:${mobileColumns};`;
   }
 
   _attachControls() {
@@ -1094,12 +1357,14 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderCardShell(state) {
+    this._lastImageKey = this._imageStateKey();
+    this._lastLanguage = this._language();
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
-    const visibleTileMetrics = this._visibleMetrics(state.variant);
+    const visibleTileMetrics = this._visibleTileMetrics(state.variant);
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
-      ? `<div class="scene-status" data-status-label>${this._escape(statusLabel)}</div>`
+      ? `<div class="scene-status" data-accent-key="${STATUS_METRIC.key}" data-status-label style="${this._escape(this._accentStyle(STATUS_METRIC))}">${this._escape(statusLabel)}</div>`
       : "";
     const headerHtml = [
       this.config.show_title !== false ? `<div class="title">${this._escape(this._displayTitle())}</div>` : "",
@@ -1108,7 +1373,7 @@ class HaSolarDashboardCard extends HTMLElement {
     ].filter(Boolean).join("");
     const gridHtml = visibleTileMetrics.map(
       (metric) => `
-        <div class="tile" data-tile="${metric.key}">
+        <div class="tile" data-accent-key="${metric.key}" data-tile="${metric.key}" style="${this._escape(this._tileStyle(metric))}">
           <div class="name">${this._escape(this._metricLabel(metric, state.variant))}</div>
           <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
         </div>
@@ -1126,15 +1391,14 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select { max-width:140px; padding:0 30px 0 10px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
-        .metric { position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:var(--hud-box-bg); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35); pointer-events:none; box-sizing:border-box; }
+        .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:none; box-sizing:border-box; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
-        .metric .value,.tile .num { font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
-        .scene-status { position:absolute; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid rgba(255,255,255,.14); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28); pointer-events:none; overflow-wrap:anywhere; }
+        .metric .value,.tile .num { color:var(--tile-accent); font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
+        .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
         .scene-status:empty { display:none; }
-        .value.yellow{color:var(--accent-yellow)} .value.blue{color:var(--accent-blue)} .value.green{color:var(--accent-green)}
         .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
-        .tile { background:rgba(12,20,38,.72); border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:10px; min-width:0; }
-        @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select{width:100%;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+        .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
+        @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select{width:100%;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} }
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
@@ -1147,11 +1411,21 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _updateReadings() {
-    TILE_METRICS.forEach((metric) => {
+    [...TILE_METRICS, ...this._customKpiMetrics()].forEach((metric) => {
       const reading = this._formatReading(metric);
       this.shadowRoot.querySelectorAll(`[data-value="${metric.key}"]`).forEach((element) => {
         if (element.textContent !== reading) element.textContent = reading;
       });
+      const accent = this._metricAccent(metric);
+      this.shadowRoot.querySelectorAll(`[data-accent-key="${metric.key}"]`).forEach((element) => {
+        element.style.setProperty("--tile-accent", accent.color);
+        element.style.setProperty("--tile-glow", accent.glow);
+      });
+    });
+    const statusAccent = this._metricAccent(STATUS_METRIC);
+    this.shadowRoot.querySelectorAll(`[data-accent-key="${STATUS_METRIC.key}"]`).forEach((element) => {
+      element.style.setProperty("--tile-accent", statusAccent.color);
+      element.style.setProperty("--tile-glow", statusAccent.glow);
     });
     const statusElement = this.shadowRoot.querySelector("[data-status-label]");
     if (statusElement) {
@@ -1172,8 +1446,12 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       entities: {},
       units: {},
       positions: {},
+      custom_kpis: [],
       ...config,
       visible_boxes: { ...((config || {}).boxes || {}), ...((config || {}).visible_boxes || {}) },
+      custom_kpis: Array.isArray((config || {}).custom_kpis || (config || {}).kpis)
+        ? [...(((config || {}).custom_kpis || (config || {}).kpis))]
+        : [],
     };
     this._render();
   }
@@ -1207,28 +1485,69 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _onInput(path, value, isCheckbox = false) {
     const next = this._cloneConfig(this._config || {});
+    const parts = path.split(".");
+    const lastPart = parts[parts.length - 1];
     const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals"]);
-    const nextValue = numericFields.has(path) ? Number(value) : value;
-    if (path.includes(".")) {
-      const [section, key, prop] = path.split(".");
-      next[section] = next[section] || {};
-      if (prop) {
-        next[section][key] = next[section][key] || {};
-        next[section][key][prop] = Number(value);
-      } else {
-        next[section][key] = isCheckbox ? Boolean(nextValue) : nextValue;
-      }
-    } else {
-      next[path] = isCheckbox ? Boolean(nextValue) : nextValue;
-    }
+    const numericProps = new Set(["left", "top", "position", "columns"]);
+    const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart);
+    const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
+    this._setPath(next, parts, nextValue);
     this._config = next;
+    this._dispatchConfig(next);
+  }
+
+  _setPath(target, parts, value) {
+    let cursor = target;
+    parts.forEach((part, index) => {
+      const isLast = index === parts.length - 1;
+      const nextPart = parts[index + 1];
+      const key = Array.isArray(cursor) ? Number(part) : part;
+      if (isLast) {
+        cursor[key] = value;
+        return;
+      }
+      if (cursor[key] === undefined || cursor[key] === null) {
+        cursor[key] = Number.isInteger(Number(nextPart)) ? [] : {};
+      }
+      cursor = cursor[key];
+    });
+  }
+
+  _dispatchConfig(config = this._config) {
     this.dispatchEvent(
       new CustomEvent("config-changed", {
         bubbles: true,
         composed: true,
-        detail: { config: next },
+        detail: { config },
       }),
     );
+  }
+
+  _addCustomKpi() {
+    const next = this._cloneConfig(this._config || {});
+    next.custom_kpis = Array.isArray(next.custom_kpis) ? next.custom_kpis : [];
+    next.custom_kpis.push({
+      id: `kpi_${Date.now()}`,
+      label: "New KPI",
+      entity: "",
+      value: "",
+      unit: "auto",
+      position: 100 + next.custom_kpis.length,
+      columns: 1,
+      color: "#1f8fff",
+    });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeCustomKpi(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.custom_kpis = Array.isArray(next.custom_kpis) ? next.custom_kpis : [];
+    next.custom_kpis.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
   }
 
   _cloneConfig(config) {
@@ -1340,6 +1659,46 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _renderCustomKpiField(kpi, index) {
+    const label = kpi?.label || "";
+    const entity = kpi?.entity || kpi?.entity_id || "";
+    const value = kpi?.value ?? "";
+    const unit = kpi?.unit ?? "auto";
+    const position = Number.isFinite(Number(kpi?.position ?? kpi?.order)) ? Number(kpi.position ?? kpi.order) : 100 + index;
+    const columns = Number.isFinite(Number(kpi?.columns ?? kpi?.span)) ? Number(kpi.columns ?? kpi.span) : 1;
+    const color = kpi?.color || "#1f8fff";
+
+    return `
+      <div class="box-field kpi-field">
+        <div class="kpi-head">
+          <strong>${this._escape(label || `KPI ${index + 1}`)}</strong>
+          <button type="button" data-action="remove-kpi" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
+        </div>
+        <label>${this._escape(this._t("editor.kpiLabel"))}
+          <input data-path="custom_kpis.${index}.label" value="${this._escape(label)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiEntity"))}
+          <input data-path="custom_kpis.${index}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.autarky" value="${this._escape(entity)}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiStaticValue"))}
+          <input data-path="custom_kpis.${index}.value" placeholder="42" value="${this._escape(value)}" />
+        </label>
+        <label>${this._escape(this._t("editor.unit"))}
+          <input data-path="custom_kpis.${index}.unit" placeholder="auto, %, kg, kWh/kWp" value="${this._escape(unit)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiPosition"))} (${this._escape(position)})
+          <input type="number" min="0" max="999" step="1" data-path="custom_kpis.${index}.position" value="${this._escape(position)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiColumns"))} (${this._escape(columns)})
+          <input type="range" min="1" max="6" step="1" data-path="custom_kpis.${index}.columns" value="${this._escape(columns)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiColor"))}
+          <input data-path="custom_kpis.${index}.color" placeholder="#1f8fff" value="${this._escape(color)}" />
+        </label>
+      </div>
+    `;
+  }
+
   _render() {
     if (!this._config) return;
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
@@ -1350,15 +1709,21 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const entityOptions = this._entityOptions()
       .map((entityId) => `<option value="${this._escape(entityId)}"></option>`)
       .join("");
+    const customKpis = Array.isArray(this._config.custom_kpis) ? this._config.custom_kpis : [];
+    const customKpiFields = customKpis.map((kpi, index) => this._renderCustomKpiField(kpi, index)).join("");
 
     this.shadowRoot.innerHTML = `
       <style>
         .editor{display:grid;gap:12px;font-family:system-ui,sans-serif;min-width:0;max-width:100%;overflow:hidden}
         label{display:grid;gap:4px;font-size:13px;min-width:0;max-width:100%}
-        input,select{box-sizing:border-box;width:100%;min-width:0;max-width:100%;padding:8px;border:1px solid #bbb;border-radius:8px;text-overflow:ellipsis}
+        input,select,button{box-sizing:border-box;min-width:0;max-width:100%;padding:8px;border:1px solid #bbb;border-radius:8px;text-overflow:ellipsis}
+        input,select{width:100%}
+        button{width:auto;background:#f7f7f7;cursor:pointer}
         .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
         .section-title{font-size:13px;font-weight:700;margin-top:4px}
         .box-field{display:grid;gap:8px;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px}
+        .kpi-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;min-width:0}
+        .kpi-head strong{min-width:0;overflow-wrap:anywhere}
         .inline{display:flex;align-items:center;gap:8px}
         .inline input{width:auto;min-width:auto;padding:0}
         @media (max-width:700px){.grid{grid-template-columns:minmax(0,1fr)}}
@@ -1400,6 +1765,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
         <div class="section-title">${this._escape(this._t("editor.sectionBoxes"))}</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
+        <div class="section-title">${this._escape(this._t("editor.sectionKpis"))}</div>
+        <div class="grid">${customKpiFields}</div>
+        <button type="button" data-action="add-kpi">${this._escape(this._t("editor.kpiAdd"))}</button>
       </div>
     `;
 
@@ -1411,6 +1779,13 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         const isCheckbox = target.type === "checkbox";
         const value = isCheckbox ? target.checked : target.value;
         this._onInput(path, value, isCheckbox);
+      });
+    });
+    this.shadowRoot.querySelectorAll("button[data-action]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        const target = event.currentTarget;
+        if (target.dataset.action === "add-kpi") this._addCustomKpi();
+        if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
       });
     });
 

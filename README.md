@@ -28,6 +28,8 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - EV charger power
   - PV Total (summary tile below the image)
 - Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
+- Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
+- Configurable KPI tiles below the image, including custom labels, entities or static values, units, color, sort position, and tile width
 - Custom standard and daylight images
 - Free X/Y positioning for every overlay box
 - Localized card and editor labels based on the Home Assistant language (`en`, `de`, `es`, `fr`, `pl`)
@@ -77,6 +79,42 @@ units:
   battery: "%"
 power_display_mode: auto_kw
 power_decimals: 2
+dynamic_tile_colors: true
+tile_color_rules:
+  pv_total_power:
+    - above: 3000
+      color: "#34d399"
+      glow: true
+    - above: 1000
+      color: "#ffc233"
+    - below: 100
+      color: "#9ba3b8"
+  import_export_power:
+    - above: 0
+      color: "#fb923c"
+      glow: true
+    - below: 0
+      color: "#34d399"
+      glow: true
+custom_kpis:
+  - label: CO2 saved today
+    entity: sensor.co2_saved_today
+    unit: kg
+    position: 100
+    columns: 2
+    color: "#34d399"
+  - label: Autarky
+    entity: sensor.autarky_degree
+    unit: "%"
+    position: 101
+    columns: 1
+    color: "#ffc233"
+  - label: Specific yield
+    entity: sensor.specific_yield
+    unit: kWh/kWp
+    position: 102
+    columns: 2
+    color: "#1f8fff"
 ```
 
 ## Card options
@@ -109,6 +147,20 @@ power_decimals: 2
 - `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`; `auto` respects Home Assistant units such as `W`, `kW`, and `kWh`)
 - `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)
+- `dynamic_tile_colors` (boolean, default: `true`; enables threshold-based accent colors and glow states for HUD boxes, summary tiles, and the import/export status label)
+- `tile_color_rules.<entity_key>[]` (array, optional; first matching rule wins; supported keys include the visible box keys plus `import_export_power`)
+- `tile_color_rules.<entity_key>[].color` (CSS color, for example `#34d399`, `orange`, `rgb(251,146,60)`, or `var(--my-color)`)
+- `tile_color_rules.<entity_key>[].glow` (boolean or CSS color, optional; `true` derives a soft glow from `color`)
+- Rule thresholds can use `above`, `below`, `min`, `max`, `gte`, `lte`, `gt`, `lt`, `equals`, or `threshold` with `operator`. Power values are evaluated in watts, even when the entity reports `kW`.
+- `custom_kpis[]` (array, optional; adds free KPI tiles below the image alongside the built-in summary tiles)
+- `custom_kpis[].label` (string; tile title)
+- `custom_kpis[].entity` (entity id, optional; used as the tile value when set)
+- `custom_kpis[].value` (string/number, optional; static fallback value when no entity is set)
+- `custom_kpis[].unit` (string, default: `auto`; `auto` uses the entity unit, `none` hides the unit)
+- `custom_kpis[].position` (number, default: after built-in tiles; controls tile order in the bottom grid)
+- `custom_kpis[].columns` (number, default: `1`, range: `1`-`6`; controls tile width on desktop, capped to `2` on mobile)
+- `custom_kpis[].color` (CSS color, default: `#1f8fff`)
+- `kpis[]` (legacy-friendly alias for `custom_kpis[]`)
 
 The card automatically follows the active Home Assistant language for built-in UI labels, status text, weather labels, and editor labels. Supported languages are English, German, Spanish, French, and Polish. Configuration keys, entity keys, and image file names remain English for compatibility and maintainability.
 

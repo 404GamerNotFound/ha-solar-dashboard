@@ -52,9 +52,17 @@ jobs:
           cp dist/ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
           find dist/images -type f -name "*.png" -exec cp {} release-assets/ \;
 
+      - name: Ensure release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${{ steps.release.outputs.tag }}" >/dev/null 2>&1 || \
+            gh release create "${{ steps.release.outputs.tag }}" \
+              --title "${{ steps.release.outputs.tag }}" \
+              --notes "Automated release for ${{ steps.release.outputs.tag }}"
+
       - name: Publish release assets
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.release.outputs.tag }}
-          files: release-assets/*
-          overwrite_files: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.release.outputs.tag }}" release-assets/* --clobber

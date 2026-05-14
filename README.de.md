@@ -22,6 +22,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Dynamische Farben und Glow-Zustände je Tile über konfigurierbare Grenzwerte, z. B. grün bei hoher PV-Leistung oder orange bei Netzbezug
 - Batterie-Ladezustand als kompakter Balken in Batterie-HUD und Batterie-Kachel
 - Dezente Batteriefluss-Anzeige im Bild und in der Batterie-Kachel mit grünem Pfeil nach unten beim Laden/Eingang und rotem Pfeil nach oben beim Entladen/Ausgang; die Anzeige folgt der Entitätseinheit, also `W`/`kW` bei Leistungssensoren und `kWh` bei Energiesensoren
+- Animierte Stromfluss-Linien zwischen den vorhandenen Bildelementen, basierend auf den konfigurierten HUD-Positionen ohne Anpassung der Bilddateien
 - PV, Wechselrichter und Wallbox können Auslastungsbalken anhand konfigurierbarer kW/kWp-Maximalwerte anzeigen
 - Optionale Netzstatus-Kachel mit Bezug, Einspeisung oder Autarkie aus der Import-/Export-Entität
 - Tooltips pro Wert mit Entität, Rohwert, formatiertem Wert und Aktualisierungszeit

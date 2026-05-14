@@ -68,6 +68,7 @@ const I18N = {
     "editor.showGridStatusTile": "Show grid status tile",
     "editor.showLiveLabel": "Show live label",
     "editor.showMetricTiles": "Show metric boxes below image",
+    "editor.showPowerFlows": "Show animated power flows",
     "editor.showStatusLabel": "Show image status label",
     "editor.showTitle": "Show title",
     "editor.showWeatherStatus": "Show current weather in status label",
@@ -175,6 +176,7 @@ const I18N = {
     "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
     "editor.showLiveLabel": "Live-Label anzeigen",
     "editor.showMetricTiles": "Messwertboxen unter dem Bild anzeigen",
+    "editor.showPowerFlows": "Animierte Stromflüsse anzeigen",
     "editor.showStatusLabel": "Statuslabel im Bild anzeigen",
     "editor.showTitle": "Titel anzeigen",
     "editor.showWeatherStatus": "Aktuelles Wetter im Statuslabel anzeigen",
@@ -282,6 +284,7 @@ const I18N = {
     "editor.showGridStatusTile": "Mostrar mosaico de red",
     "editor.showLiveLabel": "Mostrar etiqueta en vivo",
     "editor.showMetricTiles": "Mostrar cajas de métricas bajo la imagen",
+    "editor.showPowerFlows": "Mostrar flujos de energía animados",
     "editor.showStatusLabel": "Mostrar etiqueta de estado en la imagen",
     "editor.showTitle": "Mostrar título",
     "editor.showWeatherStatus": "Mostrar clima actual en la etiqueta de estado",
@@ -389,6 +392,7 @@ const I18N = {
     "editor.showGridStatusTile": "Afficher la tuile réseau",
     "editor.showLiveLabel": "Afficher le libellé en direct",
     "editor.showMetricTiles": "Afficher les boîtes de mesure sous l'image",
+    "editor.showPowerFlows": "Afficher les flux d'énergie animés",
     "editor.showStatusLabel": "Afficher le libellé d'état dans l'image",
     "editor.showTitle": "Afficher le titre",
     "editor.showWeatherStatus": "Afficher la météo actuelle dans le libellé d'état",
@@ -496,6 +500,7 @@ const I18N = {
     "editor.showGridStatusTile": "Pokaż kafelek sieci",
     "editor.showLiveLabel": "Pokaż etykietę na żywo",
     "editor.showMetricTiles": "Pokaż pola metryk pod obrazem",
+    "editor.showPowerFlows": "Pokaż animowane przepływy energii",
     "editor.showStatusLabel": "Pokaż etykietę statusu na obrazie",
     "editor.showTitle": "Pokaż tytuł",
     "editor.showWeatherStatus": "Pokaż aktualną pogodę w etykiecie statusu",
@@ -833,6 +838,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_time_label: true,
       show_house_selector: true,
       show_metric_tiles: true,
+      show_power_flows: true,
       show_status_label: true,
       show_weather_status: false,
       show_grid_status_tile: true,
@@ -893,6 +899,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_time_label: true,
       show_house_selector: true,
       show_metric_tiles: true,
+      show_power_flows: true,
       show_status_label: true,
       show_weather_status: false,
       show_grid_status_tile: true,
@@ -2010,6 +2017,156 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
   }
 
+  _flowMetric(key) {
+    return TILE_METRICS.find((metric) => metric.key === key)
+      || METRICS.find((metric) => metric.key === key)
+      || (key === STATUS_METRIC.key ? STATUS_METRIC : undefined);
+  }
+
+  _hasFlowPosition(variant, key) {
+    if (key === "wallbox2_power") {
+      return Boolean(
+        variant?.positions?.wallbox2_power
+        || this.config.positions?.wallbox2_power
+        || variant?.positions?.wallbox_power
+        || this.config.positions?.wallbox_power
+      );
+    }
+    return Boolean(variant?.positions?.[key] || this.config.positions?.[key]);
+  }
+
+  _flowAnchor(variant, key, { allowHidden = false } = {}) {
+    if (key === "grid") {
+      const inverterAnchor = this._flowAnchor(variant, "inverter_power", { allowHidden: true });
+      if (!inverterAnchor) return undefined;
+      return {
+        left: inverterAnchor.left < 50 ? 4 : 96,
+        top: this._toPercent(inverterAnchor.top, 50),
+      };
+    }
+
+    const metric = this._flowMetric(key);
+    if (metric && !allowHidden && !this._metricVisible(metric, variant)) return undefined;
+    if (!this._hasFlowPosition(variant, key)) return undefined;
+
+    const position = this._metricPosition(variant, key);
+    return {
+      left: this._toPercent(position.left, 50),
+      top: this._toPercent(position.top, 50),
+    };
+  }
+
+  _flowWattsForKey(key) {
+    const entityId = this.config.entities?.[key];
+    if (!entityId) return undefined;
+    const value = this._getEntityValue(entityId, undefined);
+    if (value === undefined || value === null || value === "unknown" || value === "unavailable") return undefined;
+    const watts = this._valueAsWatts(value, this._getEntityUnit(entityId));
+    return Number.isFinite(watts) ? watts : undefined;
+  }
+
+  _flowVisual(magnitude) {
+    const strength = Math.min(1, Math.max(0.3, Math.log10(Math.abs(magnitude) + 10) / 4));
+    const opacity = 0.28 + strength * 0.52;
+    const width = 0.24 + strength * 0.5;
+    return {
+      baseWidth: `${(width * 2).toFixed(2)}px`,
+      pulseWidth: `${(width * 3).toFixed(2)}px`,
+      opacity: opacity.toFixed(2),
+      baseOpacity: (opacity * 0.34).toFixed(2),
+      reducedOpacity: (opacity * 0.5).toFixed(2),
+      speed: (1.85 - strength * 0.55).toFixed(2),
+    };
+  }
+
+  _flowPath(from, to, index) {
+    const dx = to.left - from.left;
+    const dy = to.top - from.top;
+    const distance = Math.hypot(dx, dy) || 1;
+    const bendIndex = (index % 5) - 2;
+    const bend = Math.min(8, Math.max(2.5, distance * 0.12)) * bendIndex * 0.36;
+    const middleX = (from.left + to.left) / 2 + (-dy / distance) * bend;
+    const middleY = (from.top + to.top) / 2 + (dx / distance) * bend;
+    return `M ${from.left.toFixed(2)} ${from.top.toFixed(2)} Q ${middleX.toFixed(2)} ${middleY.toFixed(2)} ${to.left.toFixed(2)} ${to.top.toFixed(2)}`;
+  }
+
+  _renderEnergyFlows(variant) {
+    if (this.config.show_power_flows === false) return "";
+    const threshold = this._gridNeutralThreshold();
+    const flows = [];
+    const addFlow = (fromKey, toKey, magnitude, color) => {
+      const value = Math.abs(Number(magnitude));
+      if (!Number.isFinite(value) || value <= threshold) return;
+      const from = this._flowAnchor(variant, fromKey, { allowHidden: fromKey === "inverter_power" });
+      const to = this._flowAnchor(variant, toKey, { allowHidden: toKey === "inverter_power" });
+      if (!from || !to) return;
+      if (Math.abs(from.left - to.left) < 0.5 && Math.abs(from.top - to.top) < 0.5) return;
+      flows.push({ from, to, magnitude: value, color });
+    };
+
+    let pvFlows = 0;
+    ["pv_roof_power", "pv_shed_power"].forEach((key) => {
+      const before = flows.length;
+      addFlow(key, "inverter_power", this._flowWattsForKey(key), "#ffc233");
+      if (flows.length > before) pvFlows += 1;
+    });
+    if (pvFlows === 0) addFlow("pv_total_power", "inverter_power", this._flowWattsForKey("pv_total_power"), "#ffc233");
+
+    const batteryFlow = this._batteryFlowInfo();
+    if (batteryFlow?.direction === "charge") {
+      addFlow("inverter_power", "battery_level", batteryFlow.kind === "energy" ? batteryFlow.amount * 1000 : batteryFlow.amount, "#34d399");
+    } else if (batteryFlow?.direction === "discharge") {
+      addFlow("battery_level", "inverter_power", batteryFlow.kind === "energy" ? batteryFlow.amount * 1000 : batteryFlow.amount, "#f87171");
+    }
+
+    addFlow("inverter_power", "wallbox_power", this._flowWattsForKey("wallbox_power"), "#1f8fff");
+    addFlow("inverter_power", "wallbox2_power", this._flowWattsForKey("wallbox2_power"), "#60a5fa");
+    addFlow("inverter_power", "house_consumption_power", this._flowWattsForKey("house_consumption_power"), "#93c5fd");
+
+    const gridWatts = this._flowWattsForKey("import_export_power");
+    if (Number.isFinite(gridWatts) && Math.abs(gridWatts) > threshold) {
+      if (gridWatts > 0) addFlow("grid", "inverter_power", gridWatts, "#fb923c");
+      else addFlow("inverter_power", "grid", gridWatts, "#34d399");
+    }
+
+    if (flows.length === 0) return "";
+    const paths = flows.map((flow, index) => {
+      const visual = this._flowVisual(flow.magnitude);
+      const style = [
+        `--flow-color:${flow.color}`,
+        `--flow-base-width:${visual.baseWidth}`,
+        `--flow-pulse-width:${visual.pulseWidth}`,
+        `--flow-opacity:${visual.opacity}`,
+        `--flow-base-opacity:${visual.baseOpacity}`,
+        `--flow-reduced-opacity:${visual.reducedOpacity}`,
+        `--flow-speed:${visual.speed}s`,
+        `--flow-delay:${(-index * 0.22).toFixed(2)}s`,
+      ].join(";");
+      const path = this._flowPath(flow.from, flow.to, index);
+      return `
+        <g class="flow-group" style="${this._escape(style)}">
+          <path class="flow-line-base" pathLength="100" d="${this._escape(path)}"></path>
+          <path class="flow-line-pulse" pathLength="100" d="${this._escape(path)}"></path>
+        </g>
+      `;
+    }).join("");
+
+    return `
+      <svg class="flow-overlay" data-flow-overlay viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <filter id="ha-solar-flow-glow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="1.15" result="blur"></feGaussianBlur>
+            <feMerge>
+              <feMergeNode in="blur"></feMergeNode>
+              <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+          </filter>
+        </defs>
+        ${paths}
+      </svg>
+    `;
+  }
+
   _tileStyle(metric) {
     const columns = Math.round(this._clampNumber(metric.tileColumns ?? 1, 1, 1, 6));
     const mobileColumns = Math.min(columns, 2);
@@ -2084,6 +2241,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
     const visibleTileMetrics = this._visibleTileMetrics(state.variant);
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
+    const flowHtml = this._renderEnergyFlows(state.variant);
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
       ? `<div class="scene-status" data-accent-key="${STATUS_METRIC.key}" data-status-label style="${this._escape(this._accentStyle(STATUS_METRIC))}">${this._escape(statusLabel)}</div>`
@@ -2124,7 +2282,13 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select { max-width:140px; padding:0 30px 0 10px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
-        .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:pointer; box-sizing:border-box; }
+        .flow-overlay { position:absolute; inset:0; z-index:1; width:100%; height:100%; pointer-events:none; overflow:visible; mix-blend-mode:screen; }
+        .flow-line-base,.flow-line-pulse { fill:none; stroke:var(--flow-color); vector-effect:non-scaling-stroke; }
+        .flow-line-base { stroke-width:var(--flow-base-width); opacity:var(--flow-base-opacity); stroke-linecap:round; }
+        .flow-line-pulse { stroke-width:var(--flow-pulse-width); opacity:var(--flow-opacity); stroke-linecap:round; stroke-dasharray:1 8; stroke-dashoffset:0; filter:url(#ha-solar-flow-glow); animation:flow-move var(--flow-speed) linear infinite; animation-delay:var(--flow-delay); }
+        @keyframes flow-move { from { stroke-dashoffset:0; } to { stroke-dashoffset:-100; } }
+        @media (prefers-reduced-motion:reduce){ .flow-line-pulse{animation:none;stroke-dashoffset:0;opacity:var(--flow-reduced-opacity);} }
+        .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; z-index:2; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:pointer; box-sizing:border-box; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
         .metric .value-row { display:flex; align-items:center; gap:5px; min-width:0; max-width:100%; }
         .tile .tile-value-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; max-width:100%; margin-top:2px; }
@@ -2140,7 +2304,7 @@ class HaSolarDashboardCard extends HTMLElement {
         [data-battery-flow-value] { min-width:0; overflow:hidden; text-overflow:ellipsis; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
-        .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
+        .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; z-index:2; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
         .scene-status:empty { display:none; }
         .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
         .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; position:relative; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; cursor:pointer; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
@@ -2170,7 +2334,7 @@ class HaSolarDashboardCard extends HTMLElement {
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
-        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${metricHtml}${statusHtml}</div>
+        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${flowHtml}${metricHtml}${statusHtml}</div>
         ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
       </ha-card>
       ${this._renderChartOverlay()}
@@ -2234,6 +2398,15 @@ class HaSolarDashboardCard extends HTMLElement {
         });
       }
     });
+    const nextFlowHtml = this._renderEnergyFlows(variant);
+    const flowOverlay = this.shadowRoot.querySelector("[data-flow-overlay]");
+    if (flowOverlay && nextFlowHtml && flowOverlay.outerHTML !== nextFlowHtml.trim()) {
+      flowOverlay.outerHTML = nextFlowHtml;
+    } else if (flowOverlay && !nextFlowHtml) {
+      flowOverlay.remove();
+    } else if (!flowOverlay && nextFlowHtml) {
+      this.shadowRoot.querySelector(".scene-image")?.insertAdjacentHTML("afterend", nextFlowHtml);
+    }
     const statusAccent = this._metricAccent(STATUS_METRIC);
     this.shadowRoot.querySelectorAll(`[data-accent-key="${STATUS_METRIC.key}"]`).forEach((element) => {
       element.style.setProperty("--tile-accent", statusAccent.color);
@@ -2598,6 +2771,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLiveLabel"))}</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+        <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
         <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
         <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
         <label><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> ${this._escape(this._t("editor.showWeatherStatus"))}</label>

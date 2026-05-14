@@ -34,6 +34,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
 - Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
 - Optional battery flow badge on the image and battery summary tile: green down arrow for charging/incoming, red up arrow for discharging/outgoing; the badge follows the entity unit, so power sensors show `W`/`kW` and energy sensors show `kWh`
+- Animated power flow overlay between the existing image elements, using the configured HUD positions without changing the image files
 - PV, inverter, and EV charger values can show utilization bars based on configurable kW/kWp maxima
 - Optional second EV charger entity, disabled by default and positioned automatically next to the first EV charger
 - Optional grid status tile showing import, export, or self-sufficient operation from the import/export entity
@@ -88,6 +89,7 @@ visible_boxes:
   wallbox_power: false
   wallbox2_power: false
 show_grid_status_tile: true
+show_power_flows: true
 positions:
   pv_roof_power:
     left: 64
@@ -160,6 +162,7 @@ custom_kpis:
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
 - `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` is configured)
+- `show_power_flows` (boolean, default: `true`; shows animated SVG power flow lines between configured image/HUD positions)
 - `daylight_entity` (string, default: `sun.sun`; uses `_day` images during the day and standard images before sunrise/after sunset)
 - `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)

@@ -31,6 +31,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
 - Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
+- PV, inverter, and EV charger values can show utilization bars based on configurable kW/kWp maxima
 - Optional grid status tile showing import, export, or self-sufficient operation from the import/export entity
 - Hover tooltips on values show the linked entity, raw state, formatted value, and update time
 - Clickable entity boxes and tiles open a 24/48 hour history chart using Home Assistant history data
@@ -91,6 +92,12 @@ power_decimals: 2
 grid_neutral_threshold: 25
 battery_low_threshold: 20
 chart_hours: 24
+max_power_kw:
+  pv_roof_power: 10
+  pv_shed_power: 3
+  pv_total_power: 13
+  inverter_power: 10
+  wallbox_power: 11
 dynamic_tile_colors: true
 tile_color_rules:
   pv_total_power:
@@ -164,6 +171,7 @@ custom_kpis:
 - `grid_neutral_threshold` (number, default: `25`; watt threshold below which the grid tile shows self-sufficient/autark operation)
 - `battery_low_threshold` (number, default: `20`; battery percentage at or below which the battery tile is highlighted as a warning)
 - `chart_hours` (number, default: `24`; initial range for the click-to-open history chart, supported values: `24` or `48`)
+- `max_power_kw.<entity_key>` (number/string, optional; enables a utilization bar for power metrics based on max kW/kWp, for example `max_power_kw.wallbox_power: 11`)
 - `dynamic_tile_colors` (boolean, default: `true`; enables threshold-based accent colors and glow states for HUD boxes, summary tiles, and the import/export status label)
 - `tile_color_rules.<entity_key>[]` (array, optional; first matching rule wins; supported keys include the visible box keys plus `import_export_power`)
 - `tile_color_rules.<entity_key>[].color` (CSS color, for example `#34d399`, `orange`, `rgb(251,146,60)`, or `var(--my-color)`)

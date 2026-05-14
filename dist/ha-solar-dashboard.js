@@ -51,6 +51,7 @@ const I18N = {
     "editor.kpiPosition": "Tile position",
     "editor.kpiRemove": "Remove",
     "editor.kpiStaticValue": "Static value",
+    "editor.maxPowerKw": "Max power (kW/kWp)",
     "editor.optionalDayImage": "Optional daylight image",
     "editor.powerDecimals": "Power decimals",
     "editor.powerDisplayMode": "Power display mode",
@@ -97,6 +98,8 @@ const I18N = {
     "status.selfSufficient": "Self-sufficient",
     "status.weather": "Weather: {weather}",
     "tooltip.entity": "Entity",
+    "tooltip.load": "Utilization",
+    "tooltip.max": "Maximum",
     "tooltip.raw": "Raw value",
     "tooltip.status": "Status",
     "tooltip.updated": "Updated",
@@ -148,6 +151,7 @@ const I18N = {
     "editor.kpiPosition": "Kachelposition",
     "editor.kpiRemove": "Entfernen",
     "editor.kpiStaticValue": "Fester Wert",
+    "editor.maxPowerKw": "Maximalleistung (kW/kWp)",
     "editor.optionalDayImage": "Optionales Tagesbild",
     "editor.powerDecimals": "Leistungs-Nachkommastellen",
     "editor.powerDisplayMode": "Leistungsanzeige",
@@ -194,6 +198,8 @@ const I18N = {
     "status.selfSufficient": "Autark",
     "status.weather": "Wetter: {weather}",
     "tooltip.entity": "Entität",
+    "tooltip.load": "Auslastung",
+    "tooltip.max": "Maximum",
     "tooltip.raw": "Rohwert",
     "tooltip.status": "Status",
     "tooltip.updated": "Aktualisiert",
@@ -245,6 +251,7 @@ const I18N = {
     "editor.kpiPosition": "Posición del mosaico",
     "editor.kpiRemove": "Eliminar",
     "editor.kpiStaticValue": "Valor fijo",
+    "editor.maxPowerKw": "Potencia máxima (kW/kWp)",
     "editor.optionalDayImage": "Imagen diurna opcional",
     "editor.powerDecimals": "Decimales de potencia",
     "editor.powerDisplayMode": "Modo de potencia",
@@ -291,6 +298,8 @@ const I18N = {
     "status.selfSufficient": "Autosuficiente",
     "status.weather": "Clima: {weather}",
     "tooltip.entity": "Entidad",
+    "tooltip.load": "Utilización",
+    "tooltip.max": "Máximo",
     "tooltip.raw": "Valor bruto",
     "tooltip.status": "Estado",
     "tooltip.updated": "Actualizado",
@@ -342,6 +351,7 @@ const I18N = {
     "editor.kpiPosition": "Position de tuile",
     "editor.kpiRemove": "Supprimer",
     "editor.kpiStaticValue": "Valeur fixe",
+    "editor.maxPowerKw": "Puissance max. (kW/kWp)",
     "editor.optionalDayImage": "Image de jour optionnelle",
     "editor.powerDecimals": "Décimales de puissance",
     "editor.powerDisplayMode": "Mode d'affichage de la puissance",
@@ -388,6 +398,8 @@ const I18N = {
     "status.selfSufficient": "Autonome",
     "status.weather": "Météo : {weather}",
     "tooltip.entity": "Entité",
+    "tooltip.load": "Utilisation",
+    "tooltip.max": "Maximum",
     "tooltip.raw": "Valeur brute",
     "tooltip.status": "État",
     "tooltip.updated": "Mis à jour",
@@ -439,6 +451,7 @@ const I18N = {
     "editor.kpiPosition": "Pozycja kafelka",
     "editor.kpiRemove": "Usuń",
     "editor.kpiStaticValue": "Stała wartość",
+    "editor.maxPowerKw": "Maks. moc (kW/kWp)",
     "editor.optionalDayImage": "Opcjonalny obraz dzienny",
     "editor.powerDecimals": "Miejsca dziesiętne mocy",
     "editor.powerDisplayMode": "Tryb wyświetlania mocy",
@@ -485,6 +498,8 @@ const I18N = {
     "status.selfSufficient": "Samowystarczalny",
     "status.weather": "Pogoda: {weather}",
     "tooltip.entity": "Encja",
+    "tooltip.load": "Wykorzystanie",
+    "tooltip.max": "Maksimum",
     "tooltip.raw": "Wartość surowa",
     "tooltip.status": "Status",
     "tooltip.updated": "Zaktualizowano",
@@ -777,6 +792,13 @@ class HaSolarDashboardCard extends HTMLElement {
       battery_low_threshold: 20,
       grid_neutral_threshold: 25,
       chart_hours: 24,
+      max_power_kw: {
+        pv_roof_power: 10,
+        pv_shed_power: 3,
+        pv_total_power: 13,
+        inverter_power: 10,
+        wallbox_power: 11,
+      },
       dynamic_tile_colors: true,
       daylight_entity: "sun.sun",
       weather_entity: "",
@@ -833,6 +855,7 @@ class HaSolarDashboardCard extends HTMLElement {
       entities: {},
       positions: {},
       visible_boxes: {},
+      max_power_kw: {},
       tile_color_rules: {},
       custom_kpis: [],
       ...config,
@@ -850,6 +873,9 @@ class HaSolarDashboardCard extends HTMLElement {
       },
       visible_boxes: {
         ...(config.visible_boxes || config.boxes || {}),
+      },
+      max_power_kw: {
+        ...(config.max_power_kw || {}),
       },
       tile_color_rules: {
         ...DEFAULT_TILE_COLOR_RULES,
@@ -1233,10 +1259,57 @@ class HaSolarDashboardCard extends HTMLElement {
     return Math.min(100, Math.max(0, value));
   }
 
-  _renderBatteryIndicator(metric) {
-    if (metric.key !== "battery_level") return "";
-    const percent = this._batteryPercent(metric) ?? 0;
-    return `<div class="battery-meter" data-battery-meter="${this._escape(metric.key)}" aria-hidden="true"><span style="width:${percent.toFixed(0)}%"></span></div>`;
+  _parsePowerLimitWatts(rawValue, defaultUnit = "kw") {
+    if (rawValue === undefined || rawValue === null || rawValue === "") return undefined;
+    if (typeof rawValue === "number") {
+      if (!Number.isFinite(rawValue) || rawValue <= 0) return undefined;
+      return defaultUnit === "w" ? rawValue : rawValue * 1000;
+    }
+
+    const normalized = String(rawValue).trim().toLowerCase().replace(",", ".");
+    const match = normalized.match(/^(-?\d+(?:\.\d+)?)\s*(kwp|kw|w)?$/);
+    if (!match) return undefined;
+    const number = Number(match[1]);
+    if (!Number.isFinite(number) || number <= 0) return undefined;
+    const unit = match[2] || defaultUnit;
+    return unit === "w" ? number : number * 1000;
+  }
+
+  _maxPowerWatts(metric) {
+    if (!metric || metric.unit !== "power") return undefined;
+    const key = metric.key;
+    const fromKw = this.config.max_power_kw?.[key];
+    if (fromKw !== undefined && fromKw !== "") return this._parsePowerLimitWatts(fromKw, "kw");
+    const fromW = this.config.max_power_w?.[key];
+    if (fromW !== undefined && fromW !== "") return this._parsePowerLimitWatts(fromW, "w");
+    const legacy = this.config.max_power?.[key];
+    return this._parsePowerLimitWatts(legacy, "kw");
+  }
+
+  _meterPercent(metric) {
+    const batteryPercent = this._batteryPercent(metric);
+    if (batteryPercent !== undefined) return batteryPercent;
+
+    const maxPowerWatts = this._maxPowerWatts(metric);
+    if (!Number.isFinite(maxPowerWatts) || maxPowerWatts <= 0) return undefined;
+    const value = Math.abs(this._metricNumericValue(metric) ?? 0);
+    return Math.min(100, Math.max(0, (value / maxPowerWatts) * 100));
+  }
+
+  _meterTooltip(metric) {
+    const percent = this._meterPercent(metric);
+    if (percent === undefined) return "";
+    const maxPowerWatts = this._maxPowerWatts(metric);
+    if (Number.isFinite(maxPowerWatts)) {
+      return `${this._t("tooltip.load")}: ${percent.toFixed(0)}%\n${this._t("tooltip.max")}: ${this._formatPowerValue(maxPowerWatts, "kW", "W")}`;
+    }
+    return `${this._t("tooltip.load")}: ${percent.toFixed(0)}%`;
+  }
+
+  _renderMetricMeter(metric) {
+    const percent = this._meterPercent(metric);
+    if (percent === undefined) return "";
+    return `<div class="metric-meter" data-meter="${this._escape(metric.key)}" title="${this._escape(this._meterTooltip(metric))}" aria-hidden="true"><span style="width:${percent.toFixed(0)}%"></span></div>`;
   }
 
   _formatLocalDateTime(dateString) {
@@ -1301,6 +1374,7 @@ class HaSolarDashboardCard extends HTMLElement {
       entityId ? `${this._t("tooltip.entity")}: ${entityId}` : "",
       `${this._t("tooltip.value")}: ${this._formatReading(metric)}`,
       rawLabel,
+      this._meterTooltip(metric),
       updatedAt ? `${this._t("tooltip.updated")}: ${updatedAt}` : "",
       warning ? `${this._t("tooltip.status")}: ${warning.label}` : "",
     ].filter(Boolean).join("\n");
@@ -1777,7 +1851,7 @@ class HaSolarDashboardCard extends HTMLElement {
       <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
         <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
         <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
-        ${this._renderBatteryIndicator(metric)}
+        ${this._renderMetricMeter(metric)}
       </div>
     `;
   }
@@ -1872,7 +1946,7 @@ class HaSolarDashboardCard extends HTMLElement {
         <div class="tile${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
           <div class="name">${this._escape(this._metricLabel(metric, state.variant))}</div>
           <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
-          ${this._renderBatteryIndicator(metric)}
+          ${this._renderMetricMeter(metric)}
         </div>
       `;
     }).join("");
@@ -1891,8 +1965,8 @@ class HaSolarDashboardCard extends HTMLElement {
         .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:pointer; box-sizing:border-box; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
         .metric .value,.tile .num { color:var(--tile-accent); font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
-        .battery-meter { width:100%; height:5px; margin-top:6px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
-        .battery-meter span { display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,color-mix(in srgb,var(--tile-accent) 64%,#fff),var(--tile-accent)); box-shadow:0 0 10px color-mix(in srgb,var(--tile-accent) 62%,transparent); transition:width .28s ease; }
+        .metric-meter { width:100%; height:5px; margin-top:6px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
+        .metric-meter span { display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,color-mix(in srgb,var(--tile-accent) 64%,#fff),var(--tile-accent)); box-shadow:0 0 10px color-mix(in srgb,var(--tile-accent) 62%,transparent); transition:width .28s ease; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
@@ -1960,9 +2034,12 @@ class HaSolarDashboardCard extends HTMLElement {
         element.setAttribute("title", tooltip);
         element.setAttribute("aria-label", tooltip);
       });
-      const batteryPercent = this._batteryPercent(metric);
-      this.shadowRoot.querySelectorAll(`[data-battery-meter="${metric.key}"] span`).forEach((element) => {
-        element.style.width = `${(batteryPercent ?? 0).toFixed(0)}%`;
+      const meterPercent = this._meterPercent(metric);
+      this.shadowRoot.querySelectorAll(`[data-meter="${metric.key}"]`).forEach((element) => {
+        element.setAttribute("title", this._meterTooltip(metric));
+      });
+      this.shadowRoot.querySelectorAll(`[data-meter="${metric.key}"] span`).forEach((element) => {
+        element.style.width = `${(meterPercent ?? 0).toFixed(0)}%`;
       });
     });
     const statusAccent = this._metricAccent(STATUS_METRIC);
@@ -1989,6 +2066,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       entities: {},
       units: {},
       positions: {},
+      max_power_kw: {},
       custom_kpis: [],
       ...config,
       visible_boxes: { ...((config || {}).boxes || {}), ...((config || {}).visible_boxes || {}) },
@@ -2032,7 +2110,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const lastPart = parts[parts.length - 1];
     const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals"]);
     const numericProps = new Set(["left", "top", "position", "columns"]);
-    const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart);
+    const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
     this._setPath(next, parts, nextValue);
     this._config = next;
@@ -2155,6 +2233,22 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _maxPowerKwValue(metric) {
+    const value = this._config?.max_power_kw?.[metric.key];
+    if (value !== undefined && value !== null && value !== "") return value;
+    return "";
+  }
+
+  _renderMaxPowerInput(metric) {
+    if (metric.unit !== "power") return "";
+    const value = this._maxPowerKwValue(metric);
+    return `
+      <label>${this._escape(this._t("editor.maxPowerKw"))}
+        <input type="number" min="0" step="0.1" data-path="max_power_kw.${metric.key}" placeholder="11" value="${this._escape(value)}" />
+      </label>
+    `;
+  }
+
   _houseVariant() {
     const house = this._normalizeHouse(this._config.house) || "single_family_home";
     return HOUSE_VARIANTS[house] || HOUSE_VARIANTS.single_family_home;
@@ -2193,6 +2287,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
         ${this._renderEntityInput(metric)}
         ${this._renderUnitSelect(metric)}
+        ${this._renderMaxPowerInput(metric)}
         <label>${this._escape(this._t("editor.xPosition"))} (${this._escape(left)})
           <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.left" value="${this._escape(left)}" />
         </label>

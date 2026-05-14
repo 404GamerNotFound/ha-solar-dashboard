@@ -77,6 +77,8 @@ const I18N = {
     "editor.weatherEntity": "Weather Entity",
     "editor.xPosition": "X Position",
     "editor.yPosition": "Y Position",
+    "flow.charge": "Incoming",
+    "flow.discharge": "Outgoing",
     "house.apartment_building": "Apartment Building",
     "house.apartment_building_balcony_solar": "Apartment Building Balcony Solar",
     "house.bungalow": "Bungalow",
@@ -182,6 +184,8 @@ const I18N = {
     "editor.weatherEntity": "Wetter-Entität",
     "editor.xPosition": "X-Position",
     "editor.yPosition": "Y-Position",
+    "flow.charge": "Eingehend",
+    "flow.discharge": "Ausgehend",
     "house.apartment_building": "Mehrfamilienhaus",
     "house.apartment_building_balcony_solar": "Mehrfamilienhaus Balkonsolar",
     "house.bungalow": "Bungalow",
@@ -287,6 +291,8 @@ const I18N = {
     "editor.weatherEntity": "Entidad meteorológica",
     "editor.xPosition": "Posición X",
     "editor.yPosition": "Posición Y",
+    "flow.charge": "Entrante",
+    "flow.discharge": "Saliente",
     "house.apartment_building": "Edificio de apartamentos",
     "house.apartment_building_balcony_solar": "Edificio de apartamentos con solar de balcón",
     "house.bungalow": "Bungaló",
@@ -392,6 +398,8 @@ const I18N = {
     "editor.weatherEntity": "Entité météo",
     "editor.xPosition": "Position X",
     "editor.yPosition": "Position Y",
+    "flow.charge": "Entrant",
+    "flow.discharge": "Sortant",
     "house.apartment_building": "Immeuble d'appartements",
     "house.apartment_building_balcony_solar": "Immeuble avec solaire de balcon",
     "house.bungalow": "Bungalow",
@@ -497,6 +505,8 @@ const I18N = {
     "editor.weatherEntity": "Encja pogody",
     "editor.xPosition": "Pozycja X",
     "editor.yPosition": "Pozycja Y",
+    "flow.charge": "Przychodzące",
+    "flow.discharge": "Wychodzące",
     "house.apartment_building": "Budynek wielorodzinny",
     "house.apartment_building_balcony_solar": "Budynek wielorodzinny z fotowoltaiką balkonową",
     "house.bungalow": "Bungalow",
@@ -1357,49 +1367,76 @@ class HaSolarDashboardCard extends HTMLElement {
     return `<div class="metric-meter" data-meter="${this._escape(metric.key)}" title="${this._escape(this._meterTooltip(metric))}" aria-hidden="true"><span style="width:${percent.toFixed(0)}%"></span></div>`;
   }
 
-  _entityPowerWatts(entityId) {
+  _entityFlowValue(entityId) {
     const value = this._getEntityValue(entityId, undefined);
     if (value === undefined || value === null || value === "unknown" || value === "unavailable") return undefined;
-    return this._valueAsWatts(value, this._getEntityUnit(entityId));
+    const entityUnit = this._getEntityUnit(entityId);
+    if (this._isEnergyUnit(entityUnit)) {
+      const kwhValue = this._valueAsKwh(value, entityUnit);
+      return Number.isFinite(kwhValue)
+        ? { amount: kwhValue, kind: "energy", unit: "kWh" }
+        : undefined;
+    }
+    const wattValue = this._valueAsWatts(value, entityUnit);
+    return Number.isFinite(wattValue)
+      ? { amount: wattValue, kind: "power", unit: "W" }
+      : undefined;
   }
 
   _batteryFlowInfo() {
     const signedEntityId = this.config.entities?.battery_flow_power;
-    const signedValue = this._entityPowerWatts(signedEntityId);
-    if (Number.isFinite(signedValue) && signedValue !== 0) {
+    const signedValue = this._entityFlowValue(signedEntityId);
+    if (signedValue && signedValue.amount !== 0) {
       return {
-        direction: signedValue > 0 ? "charge" : "discharge",
+        direction: signedValue.amount > 0 ? "charge" : "discharge",
         entityId: signedEntityId,
-        watts: Math.abs(signedValue),
+        amount: Math.abs(signedValue.amount),
+        kind: signedValue.kind,
+        unit: signedValue.unit,
       };
     }
 
     const chargeEntityId = this.config.entities?.battery_charge_power;
     const dischargeEntityId = this.config.entities?.battery_discharge_power;
-    const chargeWatts = Math.max(0, this._entityPowerWatts(chargeEntityId) || 0);
-    const dischargeWatts = Math.max(0, this._entityPowerWatts(dischargeEntityId) || 0);
-    if (chargeWatts <= 0 && dischargeWatts <= 0) return undefined;
+    const chargeValue = this._entityFlowValue(chargeEntityId);
+    const dischargeValue = this._entityFlowValue(dischargeEntityId);
+    const chargeAmount = Math.max(0, chargeValue?.amount || 0);
+    const dischargeAmount = Math.max(0, dischargeValue?.amount || 0);
+    if (chargeAmount <= 0 && dischargeAmount <= 0) return undefined;
 
-    return chargeWatts >= dischargeWatts
-      ? { direction: "charge", entityId: chargeEntityId, watts: chargeWatts }
-      : { direction: "discharge", entityId: dischargeEntityId, watts: dischargeWatts };
+    return chargeAmount >= dischargeAmount
+      ? { direction: "charge", entityId: chargeEntityId, amount: chargeAmount, kind: chargeValue?.kind || "power", unit: chargeValue?.unit || "W" }
+      : { direction: "discharge", entityId: dischargeEntityId, amount: dischargeAmount, kind: dischargeValue?.kind || "power", unit: dischargeValue?.unit || "W" };
   }
 
   _formatBatteryFlowValue(info = this._batteryFlowInfo()) {
-    if (!info || !Number.isFinite(info.watts) || info.watts <= 0) return "";
+    if (!info || !Number.isFinite(info.amount) || info.amount <= 0) return "";
+    if (info.kind === "energy") {
+      const unit = this.config.units?.battery_flow_power;
+      const targetUnit = unit && this._isEnergyUnit(unit) ? unit : "kWh";
+      return this._formatEnergyValue(info.amount, "kWh", targetUnit);
+    }
     const unit = this.config.units?.battery_flow_power || this.config.units?.power || "auto";
-    return this._formatPowerValue(info.watts, unit, "W");
+    return this._formatPowerValue(info.amount, unit, "W");
   }
 
-  _renderBatteryFlow(metric) {
+  _batteryFlowDirectionLabel(direction) {
+    return direction === "charge"
+      ? this._t("flow.charge", {}, "Incoming")
+      : this._t("flow.discharge", {}, "Outgoing");
+  }
+
+  _renderBatteryFlow(metric, { showLabel = false } = {}) {
     if (metric.key !== "battery_level") return "";
     const info = this._batteryFlowInfo();
     const value = this._formatBatteryFlowValue(info);
     if (!info || !value) return "";
     const arrow = info.direction === "charge" ? "↓" : "↑";
-    const label = `${this._t("tooltip.flow")}: ${value}`;
+    const directionLabel = this._batteryFlowDirectionLabel(info.direction);
+    const label = `${directionLabel}: ${value}`;
     return `
-      <div class="battery-flow ${info.direction}" data-battery-flow title="${this._escape(label)}" aria-label="${this._escape(label)}">
+      <div class="battery-flow ${info.direction}${showLabel ? " with-label" : ""}" data-battery-flow title="${this._escape(label)}" aria-label="${this._escape(label)}">
+        ${showLabel ? `<span class="battery-flow-label" data-battery-flow-label>${this._escape(directionLabel)}</span>` : ""}
         <span class="battery-flow-arrow">${this._escape(arrow)}</span>
         <span data-battery-flow-value>${this._escape(value)}</span>
       </div>
@@ -1964,9 +2001,11 @@ class HaSolarDashboardCard extends HTMLElement {
     return `
       <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
         <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
-        <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+        <div class="value-row">
+          <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          ${this._renderBatteryFlow(metric)}
+        </div>
         ${this._renderMetricMeter(metric)}
-        ${this._renderBatteryFlow(metric)}
       </div>
     `;
   }
@@ -2057,10 +2096,18 @@ class HaSolarDashboardCard extends HTMLElement {
     const gridHtml = visibleTileMetrics.map((metric) => {
       const tooltip = this._metricTooltip(metric, state.variant);
       const warning = this._metricWarning(metric);
+      const valueHtml = metric.key === "battery_level"
+        ? `
+          <div class="tile-value-row">
+            <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+            ${this._renderBatteryFlow(metric, { showLabel: true })}
+          </div>
+        `
+        : `<div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>`;
       return `
         <div class="tile${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
           <div class="name">${this._escape(this._metricLabel(metric, state.variant))}</div>
-          <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          ${valueHtml}
           ${this._renderMetricMeter(metric)}
         </div>
       `;
@@ -2079,13 +2126,18 @@ class HaSolarDashboardCard extends HTMLElement {
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
         .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:pointer; box-sizing:border-box; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
+        .metric .value-row { display:flex; align-items:center; gap:5px; min-width:0; max-width:100%; }
+        .tile .tile-value-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; max-width:100%; margin-top:2px; }
         .metric .value,.tile .num { color:var(--tile-accent); font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
         .metric-meter { width:100%; height:5px; margin-top:6px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
         .metric-meter span { display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,color-mix(in srgb,var(--tile-accent) 64%,#fff),var(--tile-accent)); box-shadow:0 0 10px color-mix(in srgb,var(--tile-accent) 62%,transparent); transition:width .28s ease; }
-        .battery-flow { display:inline-flex; align-items:center; gap:4px; margin-top:5px; max-width:100%; border-radius:999px; padding:2px 6px; background:rgba(255,255,255,.1); font-size:.68rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
+        .battery-flow { display:inline-flex; align-items:center; gap:3px; flex:0 1 auto; min-width:0; max-width:62px; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); overflow:hidden; white-space:nowrap; }
         .battery-flow.charge { color:#34d399; }
         .battery-flow.discharge { color:#f87171; }
-        .battery-flow-arrow { font-size:.82rem; line-height:1; }
+        .battery-flow.with-label { max-width:100%; flex-wrap:wrap; white-space:normal; padding:3px 6px; font-size:.64rem; }
+        .battery-flow-arrow { flex:0 0 auto; font-size:.78rem; line-height:1; }
+        .battery-flow-label { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+        [data-battery-flow-value] { min-width:0; overflow:hidden; text-overflow:ellipsis; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
@@ -2167,7 +2219,12 @@ class HaSolarDashboardCard extends HTMLElement {
           element.classList.toggle("charge", flowInfo?.direction === "charge");
           element.classList.toggle("discharge", flowInfo?.direction === "discharge");
           element.style.display = flowValue ? "inline-flex" : "none";
-          element.setAttribute("title", flowValue ? `${this._t("tooltip.flow")}: ${flowValue}` : "");
+          const directionLabel = flowInfo ? this._batteryFlowDirectionLabel(flowInfo.direction) : "";
+          element.setAttribute("title", flowValue ? `${directionLabel}: ${flowValue}` : "");
+          element.setAttribute("aria-label", flowValue ? `${directionLabel}: ${flowValue}` : "");
+        });
+        this.shadowRoot.querySelectorAll("[data-battery-flow-label]").forEach((element) => {
+          element.textContent = flowInfo ? this._batteryFlowDirectionLabel(flowInfo.direction) : "";
         });
         this.shadowRoot.querySelectorAll(".battery-flow-arrow").forEach((element) => {
           element.textContent = flowInfo?.direction === "charge" ? "↓" : "↑";

@@ -33,7 +33,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
 - Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
-- Optional battery flow badge on the image: green down arrow for charging, red up arrow for discharging
+- Optional battery flow badge on the image and battery summary tile: green down arrow for charging/incoming, red up arrow for discharging/outgoing; the badge follows the entity unit, so power sensors show `W`/`kW` and energy sensors show `kWh`
 - PV, inverter, and EV charger values can show utilization bars based on configurable kW/kWp maxima
 - Optional second EV charger entity, disabled by default and positioned automatically next to the first EV charger
 - Optional grid status tile showing import, export, or self-sufficient operation from the import/export entity
@@ -172,8 +172,8 @@ custom_kpis:
 - `entities.pv_total_power` (entity id; shown as `PV Total` in the summary boxes below the image)
 - `entities.house_consumption_power` (entity id, optional; shown as `Consumption` in the summary boxes below the image)
 - `entities.battery_level` (entity id)
-- `entities.battery_flow_power` (entity id, optional; signed battery power shown on the battery HUD, positive values mean charging/incoming and negative values mean discharging/outgoing)
-- `entities.battery_charge_power` / `entities.battery_discharge_power` (entity ids, optional; separate incoming/outgoing battery power values, used when `battery_flow_power` is not configured)
+- `entities.battery_flow_power` (entity id, optional; signed battery power or energy shown on the battery HUD, positive values mean charging/incoming and negative values mean discharging/outgoing; the badge follows the entity unit)
+- `entities.battery_charge_power` / `entities.battery_discharge_power` (entity ids, optional; separate incoming/outgoing battery power or energy values, used when `battery_flow_power` is not configured; the badge follows the entity unit)
 - `entities.inverter_power` (entity id)
 - `entities.wallbox_power` (entity id)
 - `entities.wallbox2_power` (entity id, optional; second EV charger, hidden by default and auto-positioned next to `wallbox_power` unless `positions.wallbox2_power` is set)

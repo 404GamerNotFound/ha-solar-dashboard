@@ -89,6 +89,7 @@ const I18N = {
     "editor.period1h": "1 hour",
     "editor.period24h": "24 hours",
     "editor.period30m": "30 minutes",
+    "editor.phaseEntity": "Phase entity",
     "editor.sectionBoxes": "Boxes, live/kWh entities, unit, and position",
     "editor.sectionKpis": "Custom KPI tiles",
     "editor.sectionOverlays": "Image overlays",
@@ -131,6 +132,9 @@ const I18N = {
     "metrics.wallbox2_power": "EV Charger 2",
     "overlay.heatpump": "Heat pump",
     "overlay.smoke": "Gas",
+    "phase.auto": "Auto",
+    "phase.many": "{count} phases",
+    "phase.one": "1 phase",
     "range.1h": "1h",
     "range.24h": "24h",
     "range.live": "Live",
@@ -146,6 +150,7 @@ const I18N = {
     "tooltip.flow": "Flow",
     "tooltip.load": "Utilization",
     "tooltip.max": "Maximum",
+    "tooltip.phases": "Phases",
     "tooltip.raw": "Raw value",
     "tooltip.status": "Status",
     "tooltip.updated": "Updated",
@@ -226,6 +231,7 @@ const I18N = {
     "editor.period1h": "1 Stunde",
     "editor.period24h": "24 Stunden",
     "editor.period30m": "30 Minuten",
+    "editor.phaseEntity": "Phasen-Entität",
     "editor.sectionBoxes": "Boxen, Live-/kWh-Entitäten, Einheit und Position",
     "editor.sectionKpis": "Eigene KPI-Kacheln",
     "editor.sectionOverlays": "Bild-Overlays",
@@ -268,6 +274,9 @@ const I18N = {
     "metrics.wallbox2_power": "Wallbox 2",
     "overlay.heatpump": "Wärmepumpe",
     "overlay.smoke": "Gas",
+    "phase.auto": "Auto",
+    "phase.many": "{count} Phasen",
+    "phase.one": "1 Phase",
     "range.1h": "1h",
     "range.24h": "24h",
     "range.live": "Live",
@@ -283,6 +292,7 @@ const I18N = {
     "tooltip.flow": "Fluss",
     "tooltip.load": "Auslastung",
     "tooltip.max": "Maximum",
+    "tooltip.phases": "Phasen",
     "tooltip.raw": "Rohwert",
     "tooltip.status": "Status",
     "tooltip.updated": "Aktualisiert",
@@ -363,6 +373,7 @@ const I18N = {
     "editor.period1h": "1 hora",
     "editor.period24h": "24 horas",
     "editor.period30m": "30 minutos",
+    "editor.phaseEntity": "Entidad de fases",
     "editor.sectionBoxes": "Cajas, entidades en vivo/kWh, unidad y posición",
     "editor.sectionKpis": "Mosaicos KPI personalizados",
     "editor.sectionOverlays": "Superposiciones de imagen",
@@ -405,6 +416,9 @@ const I18N = {
     "metrics.wallbox2_power": "Cargador VE 2",
     "overlay.heatpump": "Bomba de calor",
     "overlay.smoke": "Gas",
+    "phase.auto": "Auto",
+    "phase.many": "{count} fases",
+    "phase.one": "1 fase",
     "range.1h": "1h",
     "range.24h": "24h",
     "range.live": "En vivo",
@@ -420,6 +434,7 @@ const I18N = {
     "tooltip.flow": "Flujo",
     "tooltip.load": "Utilización",
     "tooltip.max": "Máximo",
+    "tooltip.phases": "Fases",
     "tooltip.raw": "Valor bruto",
     "tooltip.status": "Estado",
     "tooltip.updated": "Actualizado",
@@ -500,6 +515,7 @@ const I18N = {
     "editor.period1h": "1 heure",
     "editor.period24h": "24 heures",
     "editor.period30m": "30 minutes",
+    "editor.phaseEntity": "Entité phases",
     "editor.sectionBoxes": "Boîtes, entités directes/kWh, unité et position",
     "editor.sectionKpis": "Tuiles KPI personnalisées",
     "editor.sectionOverlays": "Superpositions d'image",
@@ -542,6 +558,9 @@ const I18N = {
     "metrics.wallbox2_power": "Chargeur VE 2",
     "overlay.heatpump": "Pompe à chaleur",
     "overlay.smoke": "Gaz",
+    "phase.auto": "Auto",
+    "phase.many": "{count} phases",
+    "phase.one": "1 phase",
     "range.1h": "1h",
     "range.24h": "24h",
     "range.live": "Direct",
@@ -557,6 +576,7 @@ const I18N = {
     "tooltip.flow": "Flux",
     "tooltip.load": "Utilisation",
     "tooltip.max": "Maximum",
+    "tooltip.phases": "Phases",
     "tooltip.raw": "Valeur brute",
     "tooltip.status": "État",
     "tooltip.updated": "Mis à jour",
@@ -637,6 +657,7 @@ const I18N = {
     "editor.period1h": "1 godzina",
     "editor.period24h": "24 godziny",
     "editor.period30m": "30 minut",
+    "editor.phaseEntity": "Encja faz",
     "editor.sectionBoxes": "Pola, encje na żywo/kWh, jednostka i pozycja",
     "editor.sectionKpis": "Własne kafelki KPI",
     "editor.sectionOverlays": "Nakładki obrazu",
@@ -679,6 +700,9 @@ const I18N = {
     "metrics.wallbox2_power": "Ładowarka EV 2",
     "overlay.heatpump": "Pompa ciepła",
     "overlay.smoke": "Gaz",
+    "phase.auto": "Auto",
+    "phase.many": "{count} fazy",
+    "phase.one": "1 faza",
     "range.1h": "1h",
     "range.24h": "24h",
     "range.live": "Na żywo",
@@ -694,6 +718,7 @@ const I18N = {
     "tooltip.flow": "Przepływ",
     "tooltip.load": "Wykorzystanie",
     "tooltip.max": "Maksimum",
+    "tooltip.phases": "Fazy",
     "tooltip.raw": "Wartość surowa",
     "tooltip.status": "Status",
     "tooltip.updated": "Zaktualizowano",
@@ -1080,7 +1105,9 @@ class HaSolarDashboardCard extends HTMLElement {
         battery_discharge_power: "",
         inverter_power: "sensor.wechselrichter_power",
         wallbox_power: "sensor.wallbox_power",
+        wallbox_phase: "",
         wallbox2_power: "",
+        wallbox2_phase: "",
         pv_total_power: "sensor.pv_total_power",
         import_export_power: "sensor.grid_power",
       },
@@ -1937,6 +1964,44 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
   }
 
+  _wallboxPhaseEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_phase";
+    if (metric?.key === "wallbox2_power") return "wallbox2_phase";
+    return "";
+  }
+
+  _wallboxPhaseEntityId(metric) {
+    const entityKey = this._wallboxPhaseEntityKey(metric);
+    if (!entityKey) return "";
+    const aliases = entityKey === "wallbox2_phase"
+      ? ["wallbox2_phase", "wallbox2_phases", "wallbox2_power_phase"]
+      : ["wallbox_phase", "wallbox_phases", "wallbox_power_phase"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _wallboxPhaseLabel(metric) {
+    const entityId = this._wallboxPhaseEntityId(metric);
+    if (!entityId) return "";
+    const rawValue = this._getEntityValue(entityId, undefined);
+    const normalized = String(rawValue ?? "").trim().toLowerCase();
+    if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return "";
+    if (["auto", "automatic", "automatisch"].includes(normalized)) return this._t("phase.auto", {}, "Auto");
+    const numberMatch = normalized.match(/\b([123])\b/) || normalized.match(/^([123])\s*(?:p|phase|phasen|fazy|fases)?$/);
+    const phaseCount = numberMatch ? Number(numberMatch[1]) : Number(normalized);
+    if (phaseCount === 1) return this._t("phase.one", {}, "1 phase");
+    if (phaseCount === 2 || phaseCount === 3) return this._t("phase.many", { count: phaseCount }, `${phaseCount} phases`);
+    return String(rawValue).trim();
+  }
+
+  _renderWallboxPhase(metric) {
+    if (!this._wallboxPhaseEntityId(metric)) return "";
+    const label = this._wallboxPhaseLabel(metric);
+    const tooltip = `${this._t("tooltip.phases", {}, "Phases")}: ${label}`;
+    return `
+      <span class="phase-badge" data-phase="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+    `;
+  }
+
   _formatLocalDateTime(dateString) {
     const timestamp = Date.parse(dateString || "");
     if (!Number.isFinite(timestamp)) return "";
@@ -2003,6 +2068,7 @@ class HaSolarDashboardCard extends HTMLElement {
       metric.key === "battery_level" && this._formatBatteryFlowValue()
         ? `${this._t("tooltip.flow")}: ${this._formatBatteryFlowValue()}`
         : "",
+      this._wallboxPhaseLabel(metric) ? `${this._t("tooltip.phases", {}, "Phases")}: ${this._wallboxPhaseLabel(metric)}` : "",
       updatedAt ? `${this._t("tooltip.updated")}: ${updatedAt}` : "",
       warning ? `${this._t("tooltip.status")}: ${warning.label}` : "",
     ].filter(Boolean).join("\n");
@@ -2602,6 +2668,7 @@ class HaSolarDashboardCard extends HTMLElement {
         <div class="value-row">
           <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
           ${this._renderBatteryFlow(metric)}
+          ${this._renderWallboxPhase(metric)}
         </div>
         ${this._renderMetricMeter(metric)}
       </div>
@@ -2869,6 +2936,13 @@ class HaSolarDashboardCard extends HTMLElement {
             ${this._renderBatteryFlow(metric, { showLabel: true })}
           </div>
         `
+        : this._wallboxPhaseEntityKey(metric)
+        ? `
+          <div class="tile-value-row">
+            <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+            ${this._renderWallboxPhase(metric)}
+          </div>
+        `
         : `<div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>`;
       return `
         <div class="tile${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
@@ -2919,6 +2993,8 @@ class HaSolarDashboardCard extends HTMLElement {
         .battery-flow-arrow { flex:0 0 auto; font-size:.78rem; line-height:1; }
         .battery-flow-label { min-width:0; overflow:hidden; text-overflow:ellipsis; }
         [data-battery-flow-value] { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+        .phase-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:72px; border-radius:999px; padding:2px 5px; background:rgba(31,143,255,.14); color:#93c5fd; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(147,197,253,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .phase-badge:empty { display:none; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; z-index:3; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
@@ -2993,6 +3069,14 @@ class HaSolarDashboardCard extends HTMLElement {
       });
       this.shadowRoot.querySelectorAll(`[data-meter="${metric.key}"] span`).forEach((element) => {
         element.style.width = `${(meterPercent ?? 0).toFixed(0)}%`;
+      });
+      const phaseLabel = this._wallboxPhaseLabel(metric);
+      const phaseTitle = phaseLabel ? `${this._t("tooltip.phases", {}, "Phases")}: ${phaseLabel}` : "";
+      this.shadowRoot.querySelectorAll(`[data-phase="${metric.key}"]`).forEach((element) => {
+        if (element.textContent !== phaseLabel) element.textContent = phaseLabel;
+        element.style.display = phaseLabel ? "inline-flex" : "none";
+        element.setAttribute("title", phaseTitle);
+        element.setAttribute("aria-label", phaseTitle);
       });
       if (metric.key === "battery_level") {
         const flowInfo = this._batteryFlowInfo();
@@ -3262,6 +3346,26 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _wallboxPhaseEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_phase";
+    if (metric?.key === "wallbox2_power") return "wallbox2_phase";
+    return "";
+  }
+
+  _renderWallboxPhaseInput(metric) {
+    const entityKey = this._wallboxPhaseEntityKey(metric);
+    if (!entityKey) return "";
+    const value = this._config.entities?.[entityKey] || "";
+    const placeholder = metric.key === "wallbox2_power"
+      ? "sensor.wallbox_2_phases"
+      : "sensor.wallbox_phases";
+    return `
+      <label>${this._escape(this._t("editor.phaseEntity"))}
+        <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
+      </label>
+    `;
+  }
+
   _unitValue(metric) {
     const metricUnit = this._config?.units?.[metric.key];
     if (metricUnit !== undefined && String(metricUnit).trim() !== "") return String(metricUnit);
@@ -3377,6 +3481,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ${this._renderLabelInput(metric)}
         ${this._renderEntityInput(metric)}
         ${this._renderEnergyEntityInputs(metric)}
+        ${this._renderWallboxPhaseInput(metric)}
         ${this._renderUnitSelect(metric)}
         ${this._renderBatteryFlowInputs(metric)}
         ${this._renderMaxPowerInput(metric)}

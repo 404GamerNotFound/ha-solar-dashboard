@@ -38,6 +38,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Optional smoke and heat pump image overlays with per-element enable, position, size, and heat pump orientation controls
 - PV, inverter, and EV charger values can show utilization bars based on configurable kW/kWp maxima
 - Optional second EV charger entity, disabled by default and positioned automatically next to the first EV charger
+- Optional EV charger phase badges from separate phase entities (`Auto`, `1`, `2`, or `3`)
 - Optional grid status tile showing import, export, or self-sufficient operation from the import/export entity
 - Hover tooltips on values show the linked entity, raw state, formatted value, and update time
 - Clickable entity boxes and tiles open a 24/48 hour history chart using Home Assistant history data
@@ -82,7 +83,9 @@ entities:
   battery_discharge_power: sensor.batterie_entladeleistung
   inverter_power: sensor.wechselrichter_leistung
   wallbox_power: sensor.wallbox_leistung
+  wallbox_phase: sensor.wallbox_phasen
   wallbox2_power: sensor.wallbox_2_leistung
+  wallbox2_phase: sensor.wallbox_2_phasen
   pv_total_power: sensor.pv_gesamt_leistung
   house_consumption_power: sensor.hausverbrauch_leistung
   import_export_power: sensor.netzbezug_einspeisung
@@ -223,7 +226,9 @@ custom_kpis:
 - `entities.battery_charge_power` / `entities.battery_discharge_power` (entity ids, optional; separate incoming/outgoing battery power or energy values, used when `battery_flow_power` is not configured; the badge follows the entity unit)
 - `entities.inverter_power` (entity id)
 - `entities.wallbox_power` (entity id)
+- `entities.wallbox_phase` (entity id, optional; state can be `Auto`, `1`, `2`, or `3` and is shown as a compact phase badge on the Wallbox HUD and tile)
 - `entities.wallbox2_power` (entity id, optional; second EV charger, hidden by default and auto-positioned next to `wallbox_power` unless `positions.wallbox2_power` is set)
+- `entities.wallbox2_phase` (entity id, optional; phase badge for the second EV charger)
 - `entities.import_export_power` (entity id, optional; positive values are shown as `Import`, negative values as `Export`)
 - `units.power` (string, default: `auto`; power values are shown in `W` below `1000 W` and in `kW` with two decimals from `1000 W`)
 - `units.battery` (string, default: `%`)

@@ -2105,12 +2105,20 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._clampNumber(value, fallback, min, max);
   }
 
-  _overlayAssetPath(key) {
+  _overlayAssetUrls(key) {
+    const file = `${key}.png`;
+    const urls = [this._remoteImageUrl(file)];
     try {
-      return new URL(`images/${key}.png`, import.meta.url).href;
+      urls.push(new URL(file, import.meta.url).href);
     } catch (_err) {
-      return `${REPOSITORY_IMAGE_BASE}/${key}.png`;
+      // no local root fallback
     }
+    try {
+      urls.push(new URL(`images/${file}`, import.meta.url).href);
+    } catch (_err) {
+      // no local images fallback
+    }
+    return [...new Set(urls.filter(Boolean))];
   }
 
   _renderImageOverlays(activeHouse) {
@@ -2131,7 +2139,8 @@ class HaSolarDashboardCard extends HTMLElement {
         `--overlay-scale-x:${scaleX}`,
         `--overlay-translate-y:${translateY}`,
       ].join(";");
-      return `<img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(this._overlayAssetPath(key))}" alt="${this._escape(label)}" style="${this._escape(style)}" loading="lazy" />`;
+      const [src, ...fallbacks] = this._overlayAssetUrls(key);
+      return `<img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(src)}" data-fallbacks="${this._escape(fallbacks.join("|"))}" alt="${this._escape(label)}" style="${this._escape(style)}" loading="lazy" />`;
     }).join("");
   }
 
@@ -2328,6 +2337,11 @@ class HaSolarDashboardCard extends HTMLElement {
       image.addEventListener("error", () => this._applyImageFallback(image));
       if (image.complete && image.naturalWidth === 0) this._applyImageFallback(image);
     }
+
+    this.shadowRoot.querySelectorAll(".image-overlay").forEach((overlay) => {
+      overlay.addEventListener("error", () => this._applyImageFallback(overlay));
+      if (overlay.complete && overlay.naturalWidth === 0) this._applyImageFallback(overlay);
+    });
 
     this.shadowRoot.querySelectorAll("[data-chart-key]").forEach((element) => {
       const metricKey = element.dataset.chartKey;

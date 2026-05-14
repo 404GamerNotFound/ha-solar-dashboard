@@ -61,8 +61,14 @@ const I18N = {
     "editor.rawMode": "Raw value + configured unit",
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
+    "editor.overlayEnable": "Show {label}",
+    "editor.overlayOrientation": "Orientation",
+    "editor.overlayOrientationLeft": "Left side",
+    "editor.overlayOrientationRight": "Right side",
+    "editor.overlaySize": "Size",
     "editor.sectionBoxes": "Boxes, Entity, Unit, and Position",
     "editor.sectionKpis": "Custom KPI tiles",
+    "editor.sectionOverlays": "Image overlays",
     "editor.showBox": "Show {label}",
     "editor.showHouseSelector": "Show house selector",
     "editor.showGridStatusTile": "Show grid status tile",
@@ -99,6 +105,8 @@ const I18N = {
     "metrics.pv_total_power": "PV Total",
     "metrics.wallbox_power": "EV Charger",
     "metrics.wallbox2_power": "EV Charger 2",
+    "overlay.heatpump": "Heat pump",
+    "overlay.smoke": "Smoke",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Last updated: {time}",
@@ -169,8 +177,14 @@ const I18N = {
     "editor.rawMode": "Rohwert + konfigurierte Einheit",
     "editor.auto": "Auto",
     "editor.autoWKw": "Automatisch W/kW",
+    "editor.overlayEnable": "{label} anzeigen",
+    "editor.overlayOrientation": "Ausrichtung",
+    "editor.overlayOrientationLeft": "Links am Haus",
+    "editor.overlayOrientationRight": "Rechts am Haus",
+    "editor.overlaySize": "Größe",
     "editor.sectionBoxes": "Boxen, Entität, Einheit und Position",
     "editor.sectionKpis": "Eigene KPI-Kacheln",
+    "editor.sectionOverlays": "Bild-Overlays",
     "editor.showBox": "{label} anzeigen",
     "editor.showHouseSelector": "Hausauswahl anzeigen",
     "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
@@ -207,6 +221,8 @@ const I18N = {
     "metrics.pv_total_power": "PV Gesamt",
     "metrics.wallbox_power": "Wallbox",
     "metrics.wallbox2_power": "Wallbox 2",
+    "overlay.heatpump": "Wärmepumpe",
+    "overlay.smoke": "Rauch",
     "status.export": "Einspeisung",
     "status.import": "Bezug",
     "status.lastUpdated": "Zuletzt aktualisiert: {time}",
@@ -277,8 +293,14 @@ const I18N = {
     "editor.rawMode": "Valor bruto + unidad configurada",
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
+    "editor.overlayEnable": "Mostrar {label}",
+    "editor.overlayOrientation": "Orientación",
+    "editor.overlayOrientationLeft": "Lado izquierdo",
+    "editor.overlayOrientationRight": "Lado derecho",
+    "editor.overlaySize": "Tamaño",
     "editor.sectionBoxes": "Cajas, entidad, unidad y posición",
     "editor.sectionKpis": "Mosaicos KPI personalizados",
+    "editor.sectionOverlays": "Superposiciones de imagen",
     "editor.showBox": "Mostrar {label}",
     "editor.showHouseSelector": "Mostrar selector de casa",
     "editor.showGridStatusTile": "Mostrar mosaico de red",
@@ -315,6 +337,8 @@ const I18N = {
     "metrics.pv_total_power": "FV total",
     "metrics.wallbox_power": "Cargador VE",
     "metrics.wallbox2_power": "Cargador VE 2",
+    "overlay.heatpump": "Bomba de calor",
+    "overlay.smoke": "Humo",
     "status.export": "Exportación",
     "status.import": "Importación",
     "status.lastUpdated": "Última actualización: {time}",
@@ -385,8 +409,14 @@ const I18N = {
     "editor.rawMode": "Valeur brute + unité configurée",
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
+    "editor.overlayEnable": "Afficher {label}",
+    "editor.overlayOrientation": "Orientation",
+    "editor.overlayOrientationLeft": "Côté gauche",
+    "editor.overlayOrientationRight": "Côté droit",
+    "editor.overlaySize": "Taille",
     "editor.sectionBoxes": "Boîtes, entité, unité et position",
     "editor.sectionKpis": "Tuiles KPI personnalisées",
+    "editor.sectionOverlays": "Superpositions d'image",
     "editor.showBox": "Afficher {label}",
     "editor.showHouseSelector": "Afficher le sélecteur de maison",
     "editor.showGridStatusTile": "Afficher la tuile réseau",
@@ -423,6 +453,8 @@ const I18N = {
     "metrics.pv_total_power": "PV total",
     "metrics.wallbox_power": "Chargeur VE",
     "metrics.wallbox2_power": "Chargeur VE 2",
+    "overlay.heatpump": "Pompe à chaleur",
+    "overlay.smoke": "Fumée",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Dernière mise à jour : {time}",
@@ -493,8 +525,14 @@ const I18N = {
     "editor.rawMode": "Wartość surowa + skonfigurowana jednostka",
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
+    "editor.overlayEnable": "Pokaż {label}",
+    "editor.overlayOrientation": "Orientacja",
+    "editor.overlayOrientationLeft": "Lewa strona",
+    "editor.overlayOrientationRight": "Prawa strona",
+    "editor.overlaySize": "Rozmiar",
     "editor.sectionBoxes": "Pola, encja, jednostka i pozycja",
     "editor.sectionKpis": "Własne kafelki KPI",
+    "editor.sectionOverlays": "Nakładki obrazu",
     "editor.showBox": "Pokaż {label}",
     "editor.showHouseSelector": "Pokaż wybór domu",
     "editor.showGridStatusTile": "Pokaż kafelek sieci",
@@ -531,6 +569,8 @@ const I18N = {
     "metrics.pv_total_power": "PV łącznie",
     "metrics.wallbox_power": "Ładowarka EV",
     "metrics.wallbox2_power": "Ładowarka EV 2",
+    "overlay.heatpump": "Pompa ciepła",
+    "overlay.smoke": "Dym",
     "status.export": "Eksport",
     "status.import": "Import",
     "status.lastUpdated": "Ostatnia aktualizacja: {time}",
@@ -705,6 +745,43 @@ const HOUSE_VARIANTS = {
   },
 };
 
+const DEFAULT_IMAGE_OVERLAYS = {
+  single_family_home: {
+    smoke: { left: 50, top: 28, width: 10 },
+    heatpump: { left: 82, top: 72, width: 15, orientation: "right" },
+  },
+  duplex_house: {
+    smoke: { left: 49, top: 28, width: 10 },
+    heatpump: { left: 78, top: 74, width: 14, orientation: "right" },
+  },
+  terraced_middle_house: {
+    smoke: { left: 49, top: 24, width: 9 },
+    heatpump: { left: 66, top: 73, width: 13, orientation: "left" },
+  },
+  apartment_building: {
+    smoke: { left: 51, top: 18, width: 9 },
+    heatpump: { left: 79, top: 75, width: 13, orientation: "right" },
+  },
+  apartment_building_balcony_solar: {
+    smoke: { left: 50, top: 18, width: 9 },
+    heatpump: { left: 77, top: 76, width: 13, orientation: "right" },
+  },
+  bungalow: {
+    smoke: { left: 48, top: 33, width: 9 },
+    heatpump: { left: 78, top: 73, width: 15, orientation: "right" },
+  },
+  city_villa: {
+    smoke: { left: 49, top: 20, width: 9 },
+    heatpump: { left: 79, top: 72, width: 14, orientation: "right" },
+  },
+  city_villa_pitched_roof: {
+    smoke: { left: 50, top: 22, width: 9 },
+    heatpump: { left: 78, top: 72, width: 14, orientation: "right" },
+  },
+};
+
+const IMAGE_OVERLAY_KEYS = ["smoke", "heatpump"];
+
 const METRICS = [
   { key: "pv_roof_power", label: "Roof PV", unit: "power", color: "yellow" },
   { key: "pv_shed_power", label: "Shed PV", unit: "power", color: "yellow" },
@@ -860,6 +937,10 @@ class HaSolarDashboardCard extends HTMLElement {
       weather_entity: "",
       tile_color_rules: DEFAULT_TILE_COLOR_RULES,
       custom_kpis: [],
+      image_overlays: {
+        smoke: { enabled: false },
+        heatpump: { enabled: false },
+      },
       visible_boxes: {
         pv_roof_power: true,
         pv_shed_power: true,
@@ -918,6 +999,7 @@ class HaSolarDashboardCard extends HTMLElement {
       positions: {},
       visible_boxes: {},
       max_power_kw: {},
+      image_overlays: {},
       tile_color_rules: {},
       custom_kpis: [],
       ...config,
@@ -938,6 +1020,16 @@ class HaSolarDashboardCard extends HTMLElement {
       },
       max_power_kw: {
         ...(config.max_power_kw || {}),
+      },
+      image_overlays: {
+        smoke: {
+          ...((config.overlays || {}).smoke || {}),
+          ...((config.image_overlays || {}).smoke || {}),
+        },
+        heatpump: {
+          ...((config.overlays || {}).heatpump || {}),
+          ...((config.image_overlays || {}).heatpump || {}),
+        },
       },
       tile_color_rules: {
         ...DEFAULT_TILE_COLOR_RULES,
@@ -1996,6 +2088,53 @@ class HaSolarDashboardCard extends HTMLElement {
     return `<select class="house-select" aria-label="${this._escape(this._t("aria.houseSelector"))}">${options}</select>`;
   }
 
+  _overlayDefault(activeHouse, key) {
+    return DEFAULT_IMAGE_OVERLAYS[activeHouse]?.[key]
+      || DEFAULT_IMAGE_OVERLAYS.single_family_home[key]
+      || {};
+  }
+
+  _overlayConfig(activeHouse, key) {
+    return {
+      ...this._overlayDefault(activeHouse, key),
+      ...(this.config.image_overlays?.[key] || {}),
+    };
+  }
+
+  _overlayNumber(value, fallback, min, max) {
+    return this._clampNumber(value, fallback, min, max);
+  }
+
+  _overlayAssetPath(key) {
+    try {
+      return new URL(`images/${key}.png`, import.meta.url).href;
+    } catch (_err) {
+      return `${REPOSITORY_IMAGE_BASE}/${key}.png`;
+    }
+  }
+
+  _renderImageOverlays(activeHouse) {
+    return IMAGE_OVERLAY_KEYS.map((key) => {
+      const config = this._overlayConfig(activeHouse, key);
+      if (config.enabled !== true) return "";
+      const left = this._overlayNumber(config.left, this._overlayDefault(activeHouse, key).left ?? 50, 0, 100);
+      const top = this._overlayNumber(config.top, this._overlayDefault(activeHouse, key).top ?? 50, 0, 100);
+      const width = this._overlayNumber(config.width ?? config.size, this._overlayDefault(activeHouse, key).width ?? 12, 2, 60);
+      const orientation = String(config.orientation || "right").toLowerCase() === "left" ? "left" : "right";
+      const label = this._t(`overlay.${key}`, {}, key);
+      const scaleX = key === "heatpump" && orientation === "left" ? -1 : 1;
+      const translateY = key === "smoke" ? "-88%" : "-50%";
+      const style = [
+        `left:${left}%`,
+        `top:${top}%`,
+        `width:${width}%`,
+        `--overlay-scale-x:${scaleX}`,
+        `--overlay-translate-y:${translateY}`,
+      ].join(";");
+      return `<img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(this._overlayAssetPath(key))}" alt="${this._escape(label)}" style="${this._escape(style)}" loading="lazy" />`;
+    }).join("");
+  }
+
   _renderMetric(metric, variant) {
     if (!this._metricVisible(metric, variant)) return "";
 
@@ -2241,6 +2380,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
     const visibleTileMetrics = this._visibleTileMetrics(state.variant);
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
+    const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
@@ -2282,13 +2422,15 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select { max-width:140px; padding:0 30px 0 10px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
-        .flow-overlay { position:absolute; inset:0; z-index:1; width:100%; height:100%; pointer-events:none; overflow:visible; mix-blend-mode:screen; }
+        .image-overlay { position:absolute; z-index:1; height:auto; transform:translate(-50%,var(--overlay-translate-y,-50%)) scaleX(var(--overlay-scale-x,1)); transform-origin:center bottom; pointer-events:none; user-select:none; filter:drop-shadow(0 8px 12px rgba(0,0,0,.24)); }
+        .image-overlay-smoke { opacity:.78; filter:blur(.15px); mix-blend-mode:screen; }
+        .flow-overlay { position:absolute; inset:0; z-index:2; width:100%; height:100%; pointer-events:none; overflow:visible; mix-blend-mode:screen; }
         .flow-line-base,.flow-line-pulse { fill:none; stroke:var(--flow-color); vector-effect:non-scaling-stroke; }
         .flow-line-base { stroke-width:var(--flow-base-width); opacity:var(--flow-base-opacity); stroke-linecap:round; }
         .flow-line-pulse { stroke-width:var(--flow-pulse-width); opacity:var(--flow-opacity); stroke-linecap:round; stroke-dasharray:1 8; stroke-dashoffset:0; filter:url(#ha-solar-flow-glow); animation:flow-move var(--flow-speed) linear infinite; animation-delay:var(--flow-delay); }
         @keyframes flow-move { from { stroke-dashoffset:0; } to { stroke-dashoffset:-100; } }
         @media (prefers-reduced-motion:reduce){ .flow-line-pulse{animation:none;stroke-dashoffset:0;opacity:var(--flow-reduced-opacity);} }
-        .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; z-index:2; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:pointer; box-sizing:border-box; }
+        .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; z-index:3; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:pointer; box-sizing:border-box; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
         .metric .value-row { display:flex; align-items:center; gap:5px; min-width:0; max-width:100%; }
         .tile .tile-value-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; max-width:100%; margin-top:2px; }
@@ -2304,7 +2446,7 @@ class HaSolarDashboardCard extends HTMLElement {
         [data-battery-flow-value] { min-width:0; overflow:hidden; text-overflow:ellipsis; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
-        .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; z-index:2; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
+        .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; z-index:3; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
         .scene-status:empty { display:none; }
         .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
         .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; position:relative; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; cursor:pointer; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
@@ -2334,7 +2476,7 @@ class HaSolarDashboardCard extends HTMLElement {
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
-        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${flowHtml}${metricHtml}${statusHtml}</div>
+        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
         ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
       </ha-card>
       ${this._renderChartOverlay()}
@@ -2432,8 +2574,19 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       units: {},
       positions: {},
       max_power_kw: {},
+      image_overlays: {},
       custom_kpis: [],
       ...config,
+      image_overlays: {
+        smoke: {
+          ...(((config || {}).overlays || {}).smoke || {}),
+          ...(((config || {}).image_overlays || {}).smoke || {}),
+        },
+        heatpump: {
+          ...(((config || {}).overlays || {}).heatpump || {}),
+          ...(((config || {}).image_overlays || {}).heatpump || {}),
+        },
+      },
       visible_boxes: { ...((config || {}).boxes || {}), ...((config || {}).visible_boxes || {}) },
       custom_kpis: Array.isArray((config || {}).custom_kpis || (config || {}).kpis)
         ? [...(((config || {}).custom_kpis || (config || {}).kpis))]
@@ -2474,12 +2627,13 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const parts = path.split(".");
     const lastPart = parts[parts.length - 1];
     const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals"]);
-    const numericProps = new Set(["left", "top", "position", "columns"]);
+    const numericProps = new Set(["left", "top", "width", "position", "columns"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
     this._setPath(next, parts, nextValue);
     this._config = next;
     this._dispatchConfig(next);
+    if (path === "house") this._render();
   }
 
   _setPath(target, parts, value) {
@@ -2689,6 +2843,56 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _overlayDefault(key) {
+    const house = this._normalizeHouse(this._config.house) || "single_family_home";
+    return DEFAULT_IMAGE_OVERLAYS[house]?.[key]
+      || DEFAULT_IMAGE_OVERLAYS.single_family_home[key]
+      || {};
+  }
+
+  _overlayConfig(key) {
+    return {
+      ...this._overlayDefault(key),
+      ...(this._config.image_overlays?.[key] || {}),
+    };
+  }
+
+  _renderOverlayField(key) {
+    const config = this._overlayConfig(key);
+    const label = this._t(`overlay.${key}`, {}, key);
+    const enabled = config.enabled === true;
+    const left = Number.isFinite(Number(config.left)) ? Number(config.left) : 50;
+    const top = Number.isFinite(Number(config.top)) ? Number(config.top) : 50;
+    const width = Number.isFinite(Number(config.width ?? config.size)) ? Number(config.width ?? config.size) : 12;
+    const orientation = String(config.orientation || "right").toLowerCase() === "left" ? "left" : "right";
+    const orientationHtml = key === "heatpump"
+      ? `
+        <label>${this._escape(this._t("editor.overlayOrientation"))}
+          <select data-path="image_overlays.${key}.orientation">
+            <option value="right"${orientation === "right" ? " selected" : ""}>${this._escape(this._t("editor.overlayOrientationRight"))}</option>
+            <option value="left"${orientation === "left" ? " selected" : ""}>${this._escape(this._t("editor.overlayOrientationLeft"))}</option>
+          </select>
+        </label>
+      `
+      : "";
+
+    return `
+      <div class="box-field">
+        <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.enabled" ${enabled ? "checked" : ""}/> ${this._escape(this._t("editor.overlayEnable", { label }))}</label>
+        <label>${this._escape(this._t("editor.xPosition"))} (${this._escape(left)})
+          <input type="range" min="0" max="100" step="1" data-path="image_overlays.${key}.left" value="${this._escape(left)}" />
+        </label>
+        <label>${this._escape(this._t("editor.yPosition"))} (${this._escape(top)})
+          <input type="range" min="0" max="100" step="1" data-path="image_overlays.${key}.top" value="${this._escape(top)}" />
+        </label>
+        <label>${this._escape(this._t("editor.overlaySize"))} (${this._escape(width)})
+          <input type="range" min="2" max="60" step="1" data-path="image_overlays.${key}.width" value="${this._escape(width)}" />
+        </label>
+        ${orientationHtml}
+      </div>
+    `;
+  }
+
   _renderCustomKpiField(kpi, index) {
     const label = kpi?.label || "";
     const entity = kpi?.entity || kpi?.entity_id || "";
@@ -2741,6 +2945,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       .join("");
     const customKpis = Array.isArray(this._config.custom_kpis) ? this._config.custom_kpis : [];
     const customKpiFields = customKpis.map((kpi, index) => this._renderCustomKpiField(kpi, index)).join("");
+    const overlayFields = IMAGE_OVERLAY_KEYS.map((key) => this._renderOverlayField(key)).join("");
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -2795,6 +3000,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
           <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
         <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
+        <div class="section-title">${this._escape(this._t("editor.sectionOverlays"))}</div>
+        <div class="grid">${overlayFields}</div>
         <div class="section-title">${this._escape(this._t("editor.sectionBoxes"))}</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
         <div class="section-title">${this._escape(this._t("editor.sectionKpis"))}</div>

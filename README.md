@@ -35,6 +35,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
 - Optional battery flow badge on the image and battery summary tile: green down arrow for charging/incoming, red up arrow for discharging/outgoing; the badge follows the entity unit, so power sensors show `W`/`kW` and energy sensors show `kWh`
 - Animated power flow overlay between the existing image elements, using the configured HUD positions without changing the image files
+- Optional smoke and heat pump image overlays with per-element enable, position, size, and heat pump orientation controls
 - PV, inverter, and EV charger values can show utilization bars based on configurable kW/kWp maxima
 - Optional second EV charger entity, disabled by default and positioned automatically next to the first EV charger
 - Optional grid status tile showing import, export, or self-sufficient operation from the import/export entity
@@ -90,6 +91,18 @@ visible_boxes:
   wallbox2_power: false
 show_grid_status_tile: true
 show_power_flows: false
+image_overlays:
+  smoke:
+    enabled: false
+    left: 50
+    top: 28
+    width: 10
+  heatpump:
+    enabled: false
+    left: 82
+    top: 72
+    width: 15
+    orientation: right
 positions:
   pv_roof_power:
     left: 64
@@ -163,6 +176,10 @@ custom_kpis:
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
 - `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` is configured)
 - `show_power_flows` (boolean, default: `false`; shows animated SVG power flow lines between configured image/HUD positions when enabled)
+- `image_overlays.smoke.enabled` / `image_overlays.heatpump.enabled` (boolean, default: `false`; shows the smoke or heat pump overlay on the house image)
+- `image_overlays.<overlay>.left` / `image_overlays.<overlay>.top` (number, optional percentage position for `smoke` or `heatpump`)
+- `image_overlays.<overlay>.width` (number, optional percentage width for `smoke` or `heatpump`)
+- `image_overlays.heatpump.orientation` (string, default: `right`; use `left` or `right` to mirror the heat pump toward the matching side of the house)
 - `daylight_entity` (string, default: `sun.sun`; uses `_day` images during the day and standard images before sunrise/after sunset)
 - `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)

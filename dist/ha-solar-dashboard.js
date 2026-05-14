@@ -1058,7 +1058,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_title: true,
       show_time_label: true,
       show_house_selector: true,
-      show_energy_range_selector: true,
+      show_energy_range_selector: false,
       show_metric_tiles: true,
       show_power_flows: false,
       show_status_label: true,
@@ -1129,7 +1129,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_title: true,
       show_time_label: true,
       show_house_selector: true,
-      show_energy_range_selector: true,
+      show_energy_range_selector: false,
       show_metric_tiles: true,
       show_power_flows: false,
       show_status_label: true,
@@ -2576,7 +2576,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderEnergyRangeSelector() {
-    if (this.config.show_energy_range_selector === false) return "";
+    if (this.config.show_energy_range_selector !== true) return "";
     const activeRange = this._currentEnergyRange();
     const options = ENERGY_RANGE_OPTIONS
       .map((option) => {
@@ -3669,7 +3669,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
         <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLiveLabel"))}</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
-        <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
+        <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
         <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
         <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>

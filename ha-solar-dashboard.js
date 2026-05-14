@@ -90,6 +90,7 @@ const I18N = {
     "editor.period24h": "24 hours",
     "editor.period30m": "30 minutes",
     "editor.phaseEntity": "Phase entity",
+    "editor.vehicleSocEntity": "Vehicle SoC entity",
     "editor.sectionBoxes": "Boxes, live/kWh entities, unit, and position",
     "editor.sectionKpis": "Custom KPI tiles",
     "editor.sectionOverlays": "Image overlays",
@@ -155,6 +156,7 @@ const I18N = {
     "tooltip.status": "Status",
     "tooltip.updated": "Updated",
     "tooltip.value": "Value",
+    "tooltip.vehicleSoc": "Vehicle SoC",
     "weather.clear": "Clear",
     "weather.clear-night": "Clear",
     "weather.cloudy": "Cloudy",
@@ -232,6 +234,7 @@ const I18N = {
     "editor.period24h": "24 Stunden",
     "editor.period30m": "30 Minuten",
     "editor.phaseEntity": "Phasen-Entität",
+    "editor.vehicleSocEntity": "Auto-SoC-Entität",
     "editor.sectionBoxes": "Boxen, Live-/kWh-Entitäten, Einheit und Position",
     "editor.sectionKpis": "Eigene KPI-Kacheln",
     "editor.sectionOverlays": "Bild-Overlays",
@@ -297,6 +300,7 @@ const I18N = {
     "tooltip.status": "Status",
     "tooltip.updated": "Aktualisiert",
     "tooltip.value": "Wert",
+    "tooltip.vehicleSoc": "Auto SoC",
     "weather.clear": "Klar",
     "weather.clear-night": "Klar",
     "weather.cloudy": "Bewölkt",
@@ -374,6 +378,7 @@ const I18N = {
     "editor.period24h": "24 horas",
     "editor.period30m": "30 minutos",
     "editor.phaseEntity": "Entidad de fases",
+    "editor.vehicleSocEntity": "Entidad SoC del vehículo",
     "editor.sectionBoxes": "Cajas, entidades en vivo/kWh, unidad y posición",
     "editor.sectionKpis": "Mosaicos KPI personalizados",
     "editor.sectionOverlays": "Superposiciones de imagen",
@@ -439,6 +444,7 @@ const I18N = {
     "tooltip.status": "Estado",
     "tooltip.updated": "Actualizado",
     "tooltip.value": "Valor",
+    "tooltip.vehicleSoc": "SoC del vehículo",
     "weather.clear": "Despejado",
     "weather.clear-night": "Despejado",
     "weather.cloudy": "Nublado",
@@ -516,6 +522,7 @@ const I18N = {
     "editor.period24h": "24 heures",
     "editor.period30m": "30 minutes",
     "editor.phaseEntity": "Entité phases",
+    "editor.vehicleSocEntity": "Entité SoC véhicule",
     "editor.sectionBoxes": "Boîtes, entités directes/kWh, unité et position",
     "editor.sectionKpis": "Tuiles KPI personnalisées",
     "editor.sectionOverlays": "Superpositions d'image",
@@ -581,6 +588,7 @@ const I18N = {
     "tooltip.status": "État",
     "tooltip.updated": "Mis à jour",
     "tooltip.value": "Valeur",
+    "tooltip.vehicleSoc": "SoC véhicule",
     "weather.clear": "Dégagé",
     "weather.clear-night": "Dégagé",
     "weather.cloudy": "Nuageux",
@@ -658,6 +666,7 @@ const I18N = {
     "editor.period24h": "24 godziny",
     "editor.period30m": "30 minut",
     "editor.phaseEntity": "Encja faz",
+    "editor.vehicleSocEntity": "Encja SoC pojazdu",
     "editor.sectionBoxes": "Pola, encje na żywo/kWh, jednostka i pozycja",
     "editor.sectionKpis": "Własne kafelki KPI",
     "editor.sectionOverlays": "Nakładki obrazu",
@@ -723,6 +732,7 @@ const I18N = {
     "tooltip.status": "Status",
     "tooltip.updated": "Zaktualizowano",
     "tooltip.value": "Wartość",
+    "tooltip.vehicleSoc": "SoC pojazdu",
     "weather.clear": "Bezchmurnie",
     "weather.clear-night": "Bezchmurnie",
     "weather.cloudy": "Pochmurno",
@@ -1106,8 +1116,10 @@ class HaSolarDashboardCard extends HTMLElement {
         inverter_power: "sensor.wechselrichter_power",
         wallbox_power: "sensor.wallbox_power",
         wallbox_phase: "",
+        wallbox_soc: "",
         wallbox2_power: "",
         wallbox2_phase: "",
+        wallbox2_soc: "",
         pv_total_power: "sensor.pv_total_power",
         import_export_power: "sensor.grid_power",
       },
@@ -1990,9 +2002,50 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
   }
 
+  _wallboxSocEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_soc";
+    if (metric?.key === "wallbox2_power") return "wallbox2_soc";
+    return "";
+  }
+
+  _wallboxSocEntityId(metric) {
+    const entityKey = this._wallboxSocEntityKey(metric);
+    if (!entityKey) return "";
+    const aliases = entityKey === "wallbox2_soc"
+      ? ["wallbox2_soc", "wallbox2_vehicle_soc", "wallbox2_car_soc", "wallbox2_power_soc"]
+      : ["wallbox_soc", "wallbox_vehicle_soc", "wallbox_car_soc", "wallbox_power_soc"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _wallboxSocLabel(metric) {
+    const entityId = this._wallboxSocEntityId(metric);
+    if (!entityId) return "";
+    const rawValue = this._getEntityValue(entityId, undefined);
+    const normalized = String(rawValue ?? "").trim().toLowerCase();
+    if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return "";
+    const numericValue = Number(String(rawValue).replace(",", "."));
+    const entityUnit = this._getEntityUnit(entityId);
+    const value = Number.isFinite(numericValue)
+      ? `${Math.round(Math.max(0, Math.min(100, numericValue)))}%`
+      : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+    return `Auto ${value}`;
+  }
+
+  _renderWallboxSoc(metric) {
+    if (!this._wallboxSocEntityId(metric)) return "";
+    const label = this._wallboxSocLabel(metric);
+    const tooltip = `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${label}`;
+    return `
+      <span class="soc-badge" data-vehicle-soc="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+    `;
+  }
+
   _renderWallboxPhaseRow(metric) {
-    const phaseHtml = this._renderWallboxPhase(metric);
-    return phaseHtml ? `<div class="phase-row">${phaseHtml}</div>` : "";
+    const metaHtml = [
+      this._renderWallboxPhase(metric),
+      this._renderWallboxSoc(metric),
+    ].filter(Boolean).join("");
+    return metaHtml ? `<div class="phase-row">${metaHtml}</div>` : "";
   }
 
   _formatLocalDateTime(dateString) {
@@ -2062,6 +2115,7 @@ class HaSolarDashboardCard extends HTMLElement {
         ? `${this._t("tooltip.flow")}: ${this._formatBatteryFlowValue()}`
         : "",
       this._wallboxPhaseLabel(metric) ? `${this._t("tooltip.phases", {}, "Phases")}: ${this._wallboxPhaseLabel(metric)}` : "",
+      this._wallboxSocLabel(metric) ? `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${this._wallboxSocLabel(metric)}` : "",
       updatedAt ? `${this._t("tooltip.updated")}: ${updatedAt}` : "",
       warning ? `${this._t("tooltip.status")}: ${warning.label}` : "",
     ].filter(Boolean).join("\n");
@@ -2984,9 +3038,11 @@ class HaSolarDashboardCard extends HTMLElement {
         .battery-flow-arrow { flex:0 0 auto; font-size:.78rem; line-height:1; }
         .battery-flow-label { min-width:0; overflow:hidden; text-overflow:ellipsis; }
         [data-battery-flow-value] { min-width:0; overflow:hidden; text-overflow:ellipsis; }
-        .phase-row { display:flex; align-items:center; min-width:0; max-width:100%; margin-top:3px; }
+        .phase-row { display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-width:0; max-width:100%; margin-top:3px; }
         .phase-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:72px; border-radius:999px; padding:2px 5px; background:rgba(31,143,255,.14); color:#93c5fd; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(147,197,253,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .phase-badge:empty { display:none; }
+        .soc-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:82px; border-radius:999px; padding:2px 5px; background:rgba(52,211,153,.14); color:#86efac; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(134,239,172,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .soc-badge:empty { display:none; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; z-index:3; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
@@ -3069,6 +3125,14 @@ class HaSolarDashboardCard extends HTMLElement {
         element.style.display = phaseLabel ? "inline-flex" : "none";
         element.setAttribute("title", phaseTitle);
         element.setAttribute("aria-label", phaseTitle);
+      });
+      const socLabel = this._wallboxSocLabel(metric);
+      const socTitle = socLabel ? `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${socLabel}` : "";
+      this.shadowRoot.querySelectorAll(`[data-vehicle-soc="${metric.key}"]`).forEach((element) => {
+        if (element.textContent !== socLabel) element.textContent = socLabel;
+        element.style.display = socLabel ? "inline-flex" : "none";
+        element.setAttribute("title", socTitle);
+        element.setAttribute("aria-label", socTitle);
       });
       if (metric.key === "battery_level") {
         const flowInfo = this._batteryFlowInfo();
@@ -3339,6 +3403,26 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _wallboxSocEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_soc";
+    if (metric?.key === "wallbox2_power") return "wallbox2_soc";
+    return "";
+  }
+
+  _renderWallboxSocInput(metric) {
+    const entityKey = this._wallboxSocEntityKey(metric);
+    if (!entityKey) return "";
+    const value = this._config.entities?.[entityKey] || "";
+    const placeholder = metric.key === "wallbox2_power"
+      ? "sensor.wallbox_2_vehicle_soc"
+      : "sensor.wallbox_vehicle_soc";
+    return `
+      <label>${this._escape(this._t("editor.vehicleSocEntity"))}
+        <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
+      </label>
+    `;
+  }
+
   _unitValue(metric) {
     const metricUnit = this._config?.units?.[metric.key];
     if (metricUnit !== undefined && String(metricUnit).trim() !== "") return String(metricUnit);
@@ -3455,6 +3539,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ${this._renderEntityInput(metric)}
         ${this._renderEnergyEntityInputs(metric)}
         ${this._renderWallboxPhaseInput(metric)}
+        ${this._renderWallboxSocInput(metric)}
         ${this._renderUnitSelect(metric)}
         ${this._renderBatteryFlowInputs(metric)}
         ${this._renderMaxPowerInput(metric)}

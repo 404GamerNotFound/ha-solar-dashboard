@@ -62,6 +62,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
     "editor.overlayEnable": "Show {label}",
+    "editor.overlayLabel": "Label",
     "editor.overlayOrientation": "Orientation",
     "editor.overlayOrientationLeft": "Left side",
     "editor.overlayOrientationRight": "Right side",
@@ -110,7 +111,7 @@ const I18N = {
     "metrics.wallbox_power": "EV Charger",
     "metrics.wallbox2_power": "EV Charger 2",
     "overlay.heatpump": "Heat pump",
-    "overlay.smoke": "Smoke",
+    "overlay.smoke": "Gas",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Last updated: {time}",
@@ -182,6 +183,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Automatisch W/kW",
     "editor.overlayEnable": "{label} anzeigen",
+    "editor.overlayLabel": "Label",
     "editor.overlayOrientation": "Ausrichtung",
     "editor.overlayOrientationLeft": "Links am Haus",
     "editor.overlayOrientationRight": "Rechts am Haus",
@@ -230,7 +232,7 @@ const I18N = {
     "metrics.wallbox_power": "Wallbox",
     "metrics.wallbox2_power": "Wallbox 2",
     "overlay.heatpump": "Wärmepumpe",
-    "overlay.smoke": "Rauch",
+    "overlay.smoke": "Gas",
     "status.export": "Einspeisung",
     "status.import": "Bezug",
     "status.lastUpdated": "Zuletzt aktualisiert: {time}",
@@ -302,6 +304,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
     "editor.overlayEnable": "Mostrar {label}",
+    "editor.overlayLabel": "Etiqueta",
     "editor.overlayOrientation": "Orientación",
     "editor.overlayOrientationLeft": "Lado izquierdo",
     "editor.overlayOrientationRight": "Lado derecho",
@@ -350,7 +353,7 @@ const I18N = {
     "metrics.wallbox_power": "Cargador VE",
     "metrics.wallbox2_power": "Cargador VE 2",
     "overlay.heatpump": "Bomba de calor",
-    "overlay.smoke": "Humo",
+    "overlay.smoke": "Gas",
     "status.export": "Exportación",
     "status.import": "Importación",
     "status.lastUpdated": "Última actualización: {time}",
@@ -422,6 +425,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
     "editor.overlayEnable": "Afficher {label}",
+    "editor.overlayLabel": "Libellé",
     "editor.overlayOrientation": "Orientation",
     "editor.overlayOrientationLeft": "Côté gauche",
     "editor.overlayOrientationRight": "Côté droit",
@@ -470,7 +474,7 @@ const I18N = {
     "metrics.wallbox_power": "Chargeur VE",
     "metrics.wallbox2_power": "Chargeur VE 2",
     "overlay.heatpump": "Pompe à chaleur",
-    "overlay.smoke": "Fumée",
+    "overlay.smoke": "Gaz",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Dernière mise à jour : {time}",
@@ -542,6 +546,7 @@ const I18N = {
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
     "editor.overlayEnable": "Pokaż {label}",
+    "editor.overlayLabel": "Etykieta",
     "editor.overlayOrientation": "Orientacja",
     "editor.overlayOrientationLeft": "Lewa strona",
     "editor.overlayOrientationRight": "Prawa strona",
@@ -590,7 +595,7 @@ const I18N = {
     "metrics.wallbox_power": "Ładowarka EV",
     "metrics.wallbox2_power": "Ładowarka EV 2",
     "overlay.heatpump": "Pompa ciepła",
-    "overlay.smoke": "Dym",
+    "overlay.smoke": "Gaz",
     "status.export": "Eksport",
     "status.import": "Import",
     "status.lastUpdated": "Ostatnia aktualizacja: {time}",
@@ -1664,6 +1669,12 @@ class HaSolarDashboardCard extends HTMLElement {
     return "—";
   }
 
+  _overlayLabel(key) {
+    const customLabel = this.config.image_overlays?.[key]?.label;
+    if (customLabel !== undefined && String(customLabel).trim() !== "") return String(customLabel).trim();
+    return this._t(`overlay.${key}`, {}, key);
+  }
+
   _batteryFlowDirectionLabel(direction) {
     return direction === "charge"
       ? this._t("flow.charge", {}, "Incoming")
@@ -2091,6 +2102,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricLabel(metric, variant) {
+    if (metric.overlay) return this._overlayLabel(metric.overlay);
     if (metric.customKpi) return metric.customKpi.label || metric.label;
     if (metric.labelKey) return this._t(metric.labelKey, {}, metric.label);
     if (variant?.labelKeys?.[metric.key]) return this._t(variant.labelKeys[metric.key], {}, variant?.labels?.[metric.key] || metric.label);
@@ -2291,7 +2303,7 @@ class HaSolarDashboardCard extends HTMLElement {
       const top = this._overlayNumber(config.top, this._overlayDefault(activeHouse, key).top ?? 50, 0, 100);
       const width = this._overlayNumber(config.width ?? config.size, this._overlayDefault(activeHouse, key).width ?? 12, 2, 60);
       const orientation = String(config.orientation || "right").toLowerCase() === "left" ? "left" : "right";
-      const label = this._t(`overlay.${key}`, {}, key);
+      const label = this._overlayLabel(key);
       const scaleX = key === "heatpump" && orientation === "left" ? -1 : 1;
       const translateY = key === "smoke" ? "-100%" : "-50%";
       const style = [
@@ -2304,7 +2316,7 @@ class HaSolarDashboardCard extends HTMLElement {
       const [src, ...fallbacks] = this._overlayAssetUrls(key);
       const reading = this._formatOverlayReading(key);
       const readingHtml = this.config.image_overlays?.[key]?.entity
-        ? `<div class="overlay-reading" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</div>`
+        ? `<div class="overlay-reading"><span class="overlay-reading-label" data-overlay-label="${this._escape(key)}">${this._escape(label)}</span><span class="overlay-reading-value" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</span></div>`
         : "";
       return `
         <div class="image-overlay-wrap image-overlay-wrap-${this._escape(key)}" style="${this._escape(style)}">
@@ -2610,8 +2622,10 @@ class HaSolarDashboardCard extends HTMLElement {
         .image-overlay-wrap { position:absolute; z-index:1; width:10%; transform:translate(-50%,var(--overlay-translate-y,-50%)); transform-origin:center bottom; pointer-events:none; user-select:none; }
         .image-overlay { display:block; width:100%; height:auto; transform:scaleX(var(--overlay-scale-x,1)); transform-origin:center bottom; filter:drop-shadow(0 8px 12px rgba(0,0,0,.24)); }
         .image-overlay-smoke { opacity:.78; filter:blur(.15px); mix-blend-mode:screen; }
-        .overlay-reading { position:absolute; left:calc(100% + 7px); top:50%; transform:translateY(-50%); min-width:64px; max-width:118px; border-radius:9px; border:1px solid color-mix(in srgb,var(--tile-accent,#f3f6ff) 42%,rgba(255,255,255,.2)); background:rgba(8,16,38,.72); color:var(--tile-accent,#f3f6ff); font-size:.76rem; line-height:1.15; font-weight:800; padding:5px 7px; box-shadow:0 8px 20px rgba(0,0,0,.28); backdrop-filter:blur(4px); overflow-wrap:anywhere; }
-        .image-overlay-wrap-smoke .overlay-reading { --tile-accent:#ffc233; top:72%; }
+        .overlay-reading { position:absolute; left:calc(100% + 7px); top:50%; transform:translateY(-50%); display:grid; gap:1px; min-width:64px; max-width:118px; border-radius:9px; border:1px solid color-mix(in srgb,var(--tile-accent,#f3f6ff) 42%,rgba(255,255,255,.2)); background:rgba(8,16,38,.72); color:var(--tile-accent,#f3f6ff); font-size:.76rem; line-height:1.15; font-weight:800; padding:5px 7px; box-shadow:0 8px 20px rgba(0,0,0,.28); backdrop-filter:blur(4px); overflow-wrap:anywhere; }
+        .overlay-reading-label { color:var(--text-muted); font-size:.64rem; font-weight:700; }
+        .overlay-reading-value { color:var(--tile-accent,#f3f6ff); }
+        .image-overlay-wrap-smoke .overlay-reading { --tile-accent:#ffc233; left:68%; top:88%; }
         .image-overlay-wrap-heatpump .overlay-reading { --tile-accent:#1f8fff; }
         .flow-overlay { position:absolute; inset:0; z-index:2; width:100%; height:100%; pointer-events:none; overflow:visible; mix-blend-mode:screen; }
         .flow-line-base,.flow-line-pulse { fill:none; stroke:var(--flow-color); vector-effect:non-scaling-stroke; }
@@ -2732,6 +2746,10 @@ class HaSolarDashboardCard extends HTMLElement {
     });
     IMAGE_OVERLAY_KEYS.forEach((key) => {
       const reading = this._formatOverlayReading(key);
+      const label = this._overlayLabel(key);
+      this.shadowRoot.querySelectorAll(`[data-overlay-label="${key}"]`).forEach((element) => {
+        if (element.textContent !== label) element.textContent = label;
+      });
       this.shadowRoot.querySelectorAll(`[data-overlay-value="${key}"]`).forEach((element) => {
         if (element.textContent !== reading) element.textContent = reading;
       });
@@ -2992,6 +3010,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   }
 
   _metricLabel(metric) {
+    if (metric.overlay) return this._overlayLabel(metric.overlay);
     const variant = this._houseVariant();
     if (variant.labelKeys?.[metric.key]) return this._t(variant.labelKeys[metric.key], {}, variant.labels?.[metric.key] || metric.label);
     if (variant.labels?.[metric.key]) return this._t(`metrics.${metric.key}`, {}, variant.labels[metric.key]);
@@ -3053,6 +3072,12 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     };
   }
 
+  _overlayLabel(key) {
+    const customLabel = this._config.image_overlays?.[key]?.label;
+    if (customLabel !== undefined && String(customLabel).trim() !== "") return String(customLabel).trim();
+    return this._t(`overlay.${key}`, {}, key);
+  }
+
   _overlayPeriodValue(key = "smoke") {
     const config = this._overlayConfig(key);
     const raw = config.period_minutes ?? config.minutes ?? config.period ?? "1h";
@@ -3064,7 +3089,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _renderOverlayField(key) {
     const config = this._overlayConfig(key);
-    const label = this._t(`overlay.${key}`, {}, key);
+    const label = this._overlayLabel(key);
+    const defaultLabel = this._t(`overlay.${key}`, {}, key);
     const enabled = config.enabled === true;
     const left = Number.isFinite(Number(config.left)) ? Number(config.left) : 50;
     const top = Number.isFinite(Number(config.top)) ? Number(config.top) : 50;
@@ -3102,6 +3128,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return `
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.enabled" ${enabled ? "checked" : ""}/> ${this._escape(this._t("editor.overlayEnable", { label }))}</label>
+        <label>${this._escape(this._t("editor.overlayLabel"))}
+          <input data-path="image_overlays.${key}.label" placeholder="${this._escape(defaultLabel)}" value="${this._escape(this._config.image_overlays?.[key]?.label || "")}" />
+        </label>
         ${entityHtml}
         ${periodHtml}
         <label>${this._escape(this._t("editor.xPosition"))} (${this._escape(left)})

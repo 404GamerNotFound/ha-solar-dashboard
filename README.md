@@ -89,7 +89,7 @@ visible_boxes:
   wallbox_power: false
   wallbox2_power: false
 show_grid_status_tile: true
-show_power_flows: true
+show_power_flows: false
 positions:
   pv_roof_power:
     left: 64
@@ -162,7 +162,7 @@ custom_kpis:
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
 - `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` is configured)
-- `show_power_flows` (boolean, default: `true`; shows animated SVG power flow lines between configured image/HUD positions)
+- `show_power_flows` (boolean, default: `false`; shows animated SVG power flow lines between configured image/HUD positions when enabled)
 - `daylight_entity` (string, default: `sun.sun`; uses `_day` images during the day and standard images before sunrise/after sunset)
 - `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)

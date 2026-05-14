@@ -838,7 +838,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_time_label: true,
       show_house_selector: true,
       show_metric_tiles: true,
-      show_power_flows: true,
+      show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
       show_grid_status_tile: true,
@@ -899,7 +899,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_time_label: true,
       show_house_selector: true,
       show_metric_tiles: true,
-      show_power_flows: true,
+      show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
       show_grid_status_tile: true,
@@ -2091,7 +2091,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderEnergyFlows(variant) {
-    if (this.config.show_power_flows === false) return "";
+    if (this.config.show_power_flows !== true) return "";
     const threshold = this._gridNeutralThreshold();
     const flows = [];
     const addFlow = (fromKey, toKey, magnitude, color) => {
@@ -2771,7 +2771,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLiveLabel"))}</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
-        <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
+        <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
         <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
         <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
         <label><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> ${this._escape(this._t("editor.showWeatherStatus"))}</label>

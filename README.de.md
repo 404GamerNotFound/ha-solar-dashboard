@@ -15,6 +15,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Variante `terraced_middle_house` mit Tag-/Nachtbild
 - Variante `bungalow` mit Tag-/Nachtbild
 - Konfigurierbare Entitäten für PV, Batterie, Wechselrichter, Wallbox und Gesamtleistung
+- Optionale zweite Wallbox-Entität, standardmäßig deaktiviert und automatisch neben der ersten Wallbox positioniert
 - Optionale Verbrauchs-Kachel für den Hausverbrauch
 - Automatische Leistungsanzeige in `W` bis `999 W` und ab `1000 W` in `kW` mit zwei Nachkommastellen
 - Einzelne HUD- und Übersichtsboxen können ausgeblendet werden

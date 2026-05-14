@@ -92,6 +92,7 @@ const I18N = {
     "metrics.pv_shed_power": "Shed PV",
     "metrics.pv_total_power": "PV Total",
     "metrics.wallbox_power": "EV Charger",
+    "metrics.wallbox2_power": "EV Charger 2",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Last updated: {time}",
@@ -192,6 +193,7 @@ const I18N = {
     "metrics.pv_shed_power": "PV Schuppen",
     "metrics.pv_total_power": "PV Gesamt",
     "metrics.wallbox_power": "Wallbox",
+    "metrics.wallbox2_power": "Wallbox 2",
     "status.export": "Einspeisung",
     "status.import": "Bezug",
     "status.lastUpdated": "Zuletzt aktualisiert: {time}",
@@ -292,6 +294,7 @@ const I18N = {
     "metrics.pv_shed_power": "FV cobertizo",
     "metrics.pv_total_power": "FV total",
     "metrics.wallbox_power": "Cargador VE",
+    "metrics.wallbox2_power": "Cargador VE 2",
     "status.export": "Exportación",
     "status.import": "Importación",
     "status.lastUpdated": "Última actualización: {time}",
@@ -392,6 +395,7 @@ const I18N = {
     "metrics.pv_shed_power": "PV abri",
     "metrics.pv_total_power": "PV total",
     "metrics.wallbox_power": "Chargeur VE",
+    "metrics.wallbox2_power": "Chargeur VE 2",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Dernière mise à jour : {time}",
@@ -492,6 +496,7 @@ const I18N = {
     "metrics.pv_shed_power": "PV szopa",
     "metrics.pv_total_power": "PV łącznie",
     "metrics.wallbox_power": "Ładowarka EV",
+    "metrics.wallbox2_power": "Ładowarka EV 2",
     "status.export": "Eksport",
     "status.import": "Import",
     "status.lastUpdated": "Ostatnia aktualizacja: {time}",
@@ -608,13 +613,14 @@ const HOUSE_VARIANTS = {
       inverter_power: { left: 52, top: 58 },
       pv_total_power: { left: 62, top: 58 },
     },
-    visible_boxes: {
-      pv_roof_power: false,
-      pv_shed_power: false,
-      wallbox_power: false,
-      battery_level: true,
-      inverter_power: true,
-      pv_total_power: true,
+      visible_boxes: {
+        pv_roof_power: false,
+        pv_shed_power: false,
+        wallbox_power: false,
+        wallbox2_power: false,
+        battery_level: true,
+        inverter_power: true,
+        pv_total_power: true,
     },
     labels: {
       pv_total_power: "PV Power",
@@ -670,6 +676,7 @@ const METRICS = [
   { key: "battery_level", label: "Battery", unit: "battery", color: "green" },
   { key: "inverter_power", label: "Inverter", unit: "power", color: "blue" },
   { key: "wallbox_power", label: "EV Charger", unit: "power", color: "blue" },
+  { key: "wallbox2_power", label: "EV Charger 2", unit: "power", color: "blue", optional: true },
 ];
 
 const TILE_METRICS = [
@@ -720,6 +727,18 @@ const STATIC_METRIC_COLORS = {
   blue: "#1f8fff",
   green: "#34d399",
 };
+
+function adjacentWallboxPosition(basePosition = {}) {
+  const baseLeft = Number(basePosition.left);
+  const baseTop = Number(basePosition.top);
+  const left = Number.isFinite(baseLeft) ? baseLeft : 50;
+  const top = Number.isFinite(baseTop) ? baseTop : 50;
+  const direction = left > 84 ? -1 : 1;
+  return {
+    left: Math.min(96, Math.max(4, left + direction * 9)),
+    top: Math.min(96, Math.max(4, top)),
+  };
+}
 
 function normalizeHouse(value) {
   if (!value) return undefined;
@@ -798,6 +817,7 @@ class HaSolarDashboardCard extends HTMLElement {
         pv_total_power: 13,
         inverter_power: 10,
         wallbox_power: 11,
+        wallbox2_power: 11,
       },
       dynamic_tile_colors: true,
       daylight_entity: "sun.sun",
@@ -810,6 +830,7 @@ class HaSolarDashboardCard extends HTMLElement {
         battery_level: true,
         inverter_power: true,
         wallbox_power: true,
+        wallbox2_power: false,
       },
       entities: {
         pv_roof_power: "sensor.pv_roof_power",
@@ -817,6 +838,7 @@ class HaSolarDashboardCard extends HTMLElement {
         battery_level: "sensor.battery_level",
         inverter_power: "sensor.wechselrichter_power",
         wallbox_power: "sensor.wallbox_power",
+        wallbox2_power: "",
         pv_total_power: "sensor.pv_total_power",
         import_export_power: "sensor.grid_power",
       },
@@ -1771,6 +1793,23 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricPosition(variant, key) {
+    if (key === "wallbox2_power") {
+      const configured = this.config.positions[key];
+      if (configured?.left !== undefined || configured?.top !== undefined) {
+        return {
+          ...adjacentWallboxPosition({
+            ...(variant.positions.wallbox_power || {}),
+            ...(this.config.positions.wallbox_power || {}),
+          }),
+          ...configured,
+        };
+      }
+      return adjacentWallboxPosition({
+        ...(variant.positions.wallbox_power || {}),
+        ...(this.config.positions.wallbox_power || {}),
+      });
+    }
+
     return {
       ...(variant.positions[key] || {}),
       ...(this.config.positions[key] || {}),
@@ -2270,6 +2309,16 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _metricPosition(metric) {
     const variant = this._houseVariant();
+    if (metric.key === "wallbox2_power") {
+      const configured = this._config.positions?.wallbox2_power || {};
+      const base = {
+        ...(variant.positions.wallbox_power || {}),
+        ...(this._config.positions?.wallbox_power || {}),
+      };
+      return configured.left !== undefined || configured.top !== undefined
+        ? { ...adjacentWallboxPosition(base), ...configured }
+        : adjacentWallboxPosition(base);
+    }
     return {
       ...(variant.positions[metric.key] || {}),
       ...(this._config.positions?.[metric.key] || {}),

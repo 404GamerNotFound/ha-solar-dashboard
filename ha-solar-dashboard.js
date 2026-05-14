@@ -2028,9 +2028,9 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
   }
 
-  _renderBatteryMetaRow(metric) {
+  _renderBatteryMetaRow(metric, { showFlowLabel = true } = {}) {
     const metaHtml = [
-      this._renderBatteryFlow(metric, { showLabel: true }),
+      this._renderBatteryFlow(metric, { showLabel: showFlowLabel }),
       this._renderBatteryTemperature(metric),
     ].filter(Boolean).join("");
     return metaHtml ? `<div class="meta-row">${metaHtml}</div>` : "";
@@ -2875,7 +2875,7 @@ class HaSolarDashboardCard extends HTMLElement {
         <div class="value-row">
           <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
         </div>
-        ${this._renderBatteryMetaRow(metric)}
+        ${this._renderBatteryMetaRow(metric, { showFlowLabel: false })}
         ${this._renderWallboxPhaseRow(metric)}
         ${this._renderMetricMeter(metric)}
       </div>

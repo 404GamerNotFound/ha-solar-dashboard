@@ -94,14 +94,17 @@ show_power_flows: false
 image_overlays:
   smoke:
     enabled: false
-    left: 50
-    top: 28
-    width: 10
+    entity: sensor.zaehlerstand_2
+    period: 1h
+    left: 58
+    top: 18
+    width: 9
   heatpump:
     enabled: false
+    entity: sensor.heatpump_power
     left: 82
-    top: 72
-    width: 15
+    top: 63
+    width: 11
     orientation: right
 positions:
   pv_roof_power:
@@ -177,6 +180,9 @@ custom_kpis:
 - `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` is configured)
 - `show_power_flows` (boolean, default: `false`; shows animated SVG power flow lines between configured image/HUD positions when enabled)
 - `image_overlays.smoke.enabled` / `image_overlays.heatpump.enabled` (boolean, default: `false`; shows the smoke or heat pump overlay on the house image)
+- `image_overlays.smoke.entity` (entity id, optional; cumulative gas meter used to show consumption for the selected period)
+- `image_overlays.smoke.period` (string, default: `1h`; supported values: `30m`, `1h`, `24h`)
+- `image_overlays.heatpump.entity` (entity id, optional; power or energy sensor shown next to the heat pump and in the bottom tile)
 - `image_overlays.<overlay>.left` / `image_overlays.<overlay>.top` (number, optional percentage position for `smoke` or `heatpump`)
 - `image_overlays.<overlay>.width` (number, optional percentage width for `smoke` or `heatpump`)
 - `image_overlays.heatpump.orientation` (string, default: `right`; use `left` or `right` to mirror the heat pump toward the matching side of the house)

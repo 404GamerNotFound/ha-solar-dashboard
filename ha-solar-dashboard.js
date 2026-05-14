@@ -65,7 +65,11 @@ const I18N = {
     "editor.overlayOrientation": "Orientation",
     "editor.overlayOrientationLeft": "Left side",
     "editor.overlayOrientationRight": "Right side",
+    "editor.overlayPeriod": "Period",
     "editor.overlaySize": "Size",
+    "editor.period1h": "1 hour",
+    "editor.period24h": "24 hours",
+    "editor.period30m": "30 minutes",
     "editor.sectionBoxes": "Boxes, Entity, Unit, and Position",
     "editor.sectionKpis": "Custom KPI tiles",
     "editor.sectionOverlays": "Image overlays",
@@ -181,7 +185,11 @@ const I18N = {
     "editor.overlayOrientation": "Ausrichtung",
     "editor.overlayOrientationLeft": "Links am Haus",
     "editor.overlayOrientationRight": "Rechts am Haus",
+    "editor.overlayPeriod": "Zeitraum",
     "editor.overlaySize": "Größe",
+    "editor.period1h": "1 Stunde",
+    "editor.period24h": "24 Stunden",
+    "editor.period30m": "30 Minuten",
     "editor.sectionBoxes": "Boxen, Entität, Einheit und Position",
     "editor.sectionKpis": "Eigene KPI-Kacheln",
     "editor.sectionOverlays": "Bild-Overlays",
@@ -297,7 +305,11 @@ const I18N = {
     "editor.overlayOrientation": "Orientación",
     "editor.overlayOrientationLeft": "Lado izquierdo",
     "editor.overlayOrientationRight": "Lado derecho",
+    "editor.overlayPeriod": "Periodo",
     "editor.overlaySize": "Tamaño",
+    "editor.period1h": "1 hora",
+    "editor.period24h": "24 horas",
+    "editor.period30m": "30 minutos",
     "editor.sectionBoxes": "Cajas, entidad, unidad y posición",
     "editor.sectionKpis": "Mosaicos KPI personalizados",
     "editor.sectionOverlays": "Superposiciones de imagen",
@@ -413,7 +425,11 @@ const I18N = {
     "editor.overlayOrientation": "Orientation",
     "editor.overlayOrientationLeft": "Côté gauche",
     "editor.overlayOrientationRight": "Côté droit",
+    "editor.overlayPeriod": "Période",
     "editor.overlaySize": "Taille",
+    "editor.period1h": "1 heure",
+    "editor.period24h": "24 heures",
+    "editor.period30m": "30 minutes",
     "editor.sectionBoxes": "Boîtes, entité, unité et position",
     "editor.sectionKpis": "Tuiles KPI personnalisées",
     "editor.sectionOverlays": "Superpositions d'image",
@@ -529,7 +545,11 @@ const I18N = {
     "editor.overlayOrientation": "Orientacja",
     "editor.overlayOrientationLeft": "Lewa strona",
     "editor.overlayOrientationRight": "Prawa strona",
+    "editor.overlayPeriod": "Okres",
     "editor.overlaySize": "Rozmiar",
+    "editor.period1h": "1 godzina",
+    "editor.period24h": "24 godziny",
+    "editor.period30m": "30 minut",
     "editor.sectionBoxes": "Pola, encja, jednostka i pozycja",
     "editor.sectionKpis": "Własne kafelki KPI",
     "editor.sectionOverlays": "Nakładki obrazu",
@@ -747,40 +767,45 @@ const HOUSE_VARIANTS = {
 
 const DEFAULT_IMAGE_OVERLAYS = {
   single_family_home: {
-    smoke: { left: 50, top: 28, width: 10 },
-    heatpump: { left: 82, top: 72, width: 15, orientation: "right" },
+    smoke: { left: 58, top: 18, width: 9 },
+    heatpump: { left: 82, top: 63, width: 11, orientation: "right" },
   },
   duplex_house: {
-    smoke: { left: 49, top: 28, width: 10 },
-    heatpump: { left: 78, top: 74, width: 14, orientation: "right" },
+    smoke: { left: 52, top: 18, width: 9 },
+    heatpump: { left: 78, top: 66, width: 11, orientation: "right" },
   },
   terraced_middle_house: {
-    smoke: { left: 49, top: 24, width: 9 },
-    heatpump: { left: 66, top: 73, width: 13, orientation: "left" },
+    smoke: { left: 51, top: 16, width: 8 },
+    heatpump: { left: 66, top: 68, width: 10, orientation: "left" },
   },
   apartment_building: {
-    smoke: { left: 51, top: 18, width: 9 },
-    heatpump: { left: 79, top: 75, width: 13, orientation: "right" },
+    smoke: { left: 52, top: 13, width: 8 },
+    heatpump: { left: 79, top: 68, width: 10, orientation: "right" },
   },
   apartment_building_balcony_solar: {
-    smoke: { left: 50, top: 18, width: 9 },
-    heatpump: { left: 77, top: 76, width: 13, orientation: "right" },
+    smoke: { left: 50, top: 13, width: 8 },
+    heatpump: { left: 76, top: 70, width: 10, orientation: "right" },
   },
   bungalow: {
-    smoke: { left: 48, top: 33, width: 9 },
-    heatpump: { left: 78, top: 73, width: 15, orientation: "right" },
+    smoke: { left: 50, top: 25, width: 8 },
+    heatpump: { left: 79, top: 66, width: 11, orientation: "right" },
   },
   city_villa: {
-    smoke: { left: 49, top: 20, width: 9 },
-    heatpump: { left: 79, top: 72, width: 14, orientation: "right" },
+    smoke: { left: 55, top: 15, width: 8 },
+    heatpump: { left: 79, top: 65, width: 10, orientation: "right" },
   },
   city_villa_pitched_roof: {
-    smoke: { left: 50, top: 22, width: 9 },
-    heatpump: { left: 78, top: 72, width: 14, orientation: "right" },
+    smoke: { left: 56, top: 18, width: 8 },
+    heatpump: { left: 78, top: 65, width: 10, orientation: "right" },
   },
 };
 
 const IMAGE_OVERLAY_KEYS = ["smoke", "heatpump"];
+
+const OVERLAY_TILE_METRICS = [
+  { key: "overlay_smoke", label: "Gas", labelKey: "overlay.smoke", color: "yellow", unit: "overlay", overlay: "smoke", tileOrder: 7 },
+  { key: "overlay_heatpump", label: "Heat pump", labelKey: "overlay.heatpump", color: "blue", unit: "overlay", overlay: "heatpump", tileOrder: 8 },
+];
 
 const METRICS = [
   { key: "pv_roof_power", label: "Roof PV", unit: "power", color: "yellow" },
@@ -938,8 +963,8 @@ class HaSolarDashboardCard extends HTMLElement {
       tile_color_rules: DEFAULT_TILE_COLOR_RULES,
       custom_kpis: [],
       image_overlays: {
-        smoke: { enabled: false },
-        heatpump: { enabled: false },
+        smoke: { enabled: false, entity: "", period: "1h" },
+        heatpump: { enabled: false, entity: "" },
       },
       visible_boxes: {
         pv_roof_power: true,
@@ -1046,6 +1071,8 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
     this._chartHours = this._chartHours || this.config.chart_hours;
     this._historyCache = this._historyCache || new Map();
+    this._overlayConsumptionCache = this._overlayConsumptionCache || new Map();
+    this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();
 
     this._selectedHouse = house;
 
@@ -1118,6 +1145,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricEntityId(metric) {
+    if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric.customKpi) return metric.customKpi.entity || "";
     return this.config.entities?.[metric.key] || "";
   }
@@ -1135,6 +1163,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _unitForMetric(metric) {
+    if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.unit || "auto";
     if (metric.customKpi) return metric.customKpi.unit;
     const metricUnit = this.config.units?.[metric.key];
     if (metricUnit !== undefined && String(metricUnit).trim() !== "") return metricUnit;
@@ -1143,6 +1172,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _formatReading(metric) {
     if (metric.gridStatus) return this._formatGridStatusReading();
+    if (metric.overlay) return this._formatOverlayReading(metric.overlay);
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
     const entityId = this.config.entities[metric.key];
     const value = this._getEntityValue(entityId, entityId ? undefined : "0");
@@ -1391,6 +1421,13 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricNumericValue(metric) {
+    if (metric.overlay) {
+      if (metric.overlay === "smoke") return this._overlayGasConsumptionInfo()?.amount;
+      const entityId = this.config.image_overlays?.heatpump?.entity;
+      const value = this._getEntityValue(entityId, undefined);
+      const number = Number(value);
+      return Number.isFinite(number) ? number : undefined;
+    }
     if (metric.customKpi) {
       const kpi = metric.customKpi;
       const rawValue = kpi.entity ? this._getEntityValue(kpi.entity, undefined) : kpi.value;
@@ -1517,6 +1554,114 @@ class HaSolarDashboardCard extends HTMLElement {
     }
     const unit = this.config.units?.battery_flow_power || this.config.units?.power || "auto";
     return this._formatPowerValue(info.amount, unit, "W");
+  }
+
+  _overlayPeriodMinutes(key = "smoke") {
+    const config = this.config.image_overlays?.[key] || {};
+    const raw = config.period_minutes ?? config.minutes ?? config.period ?? "1h";
+    if (typeof raw === "number" && Number.isFinite(raw)) return Math.max(1, raw);
+    const normalized = String(raw).trim().toLowerCase();
+    if (normalized === "30m" || normalized === "30min" || normalized === "30") return 30;
+    if (normalized === "24h" || normalized === "24") return 1440;
+    return 60;
+  }
+
+  _overlayPeriodValue(key = "smoke") {
+    const minutes = this._overlayPeriodMinutes(key);
+    if (minutes <= 30) return "30m";
+    if (minutes >= 1440) return "24h";
+    return "1h";
+  }
+
+  _overlayConsumptionCacheKey(entityId, minutes) {
+    const bucket = Math.floor(Date.now() / 60000);
+    return `${entityId}|${minutes}|${bucket}`;
+  }
+
+  _overlayGasConsumptionInfo() {
+    const config = this.config.image_overlays?.smoke || {};
+    const entityId = config.entity;
+    if (!entityId) return undefined;
+    const minutes = this._overlayPeriodMinutes("smoke");
+    const key = this._overlayConsumptionCacheKey(entityId, minutes);
+    const cached = this._overlayConsumptionCache?.get(key);
+    if (cached) return cached;
+    this._requestOverlayGasConsumption(entityId, minutes, key);
+    return { loading: true, amount: undefined, unit: this._getEntityUnit(entityId) || "m³" };
+  }
+
+  _requestOverlayGasConsumption(entityId, minutes, key) {
+    if (!this._hass?.callApi || this._overlayConsumptionLoading?.has(key)) return;
+    this._overlayConsumptionLoading.add(key);
+    this._loadCounterConsumption(entityId, minutes)
+      .then((info) => {
+        this._overlayConsumptionCache.set(key, info);
+        this._overlayConsumptionLoading.delete(key);
+        this._updateReadings();
+      })
+      .catch(() => {
+        this._overlayConsumptionCache.set(key, { error: true, amount: undefined, unit: this._getEntityUnit(entityId) || "m³" });
+        this._overlayConsumptionLoading.delete(key);
+        this._updateReadings();
+      });
+  }
+
+  async _loadCounterConsumption(entityId, minutes) {
+    const end = new Date();
+    const start = new Date(end.getTime() - minutes * 60 * 1000);
+    const query = [
+      `filter_entity_id=${encodeURIComponent(entityId)}`,
+      `end_time=${encodeURIComponent(end.toISOString())}`,
+      "significant_changes_only=0",
+    ].join("&");
+    const history = await this._hass.callApi("GET", `history/period/${start.toISOString()}?${query}`);
+    const states = (Array.isArray(history?.[0]) ? history[0] : [])
+      .map((entry) => ({
+        value: Number(entry?.state ?? entry?.s),
+        unit: entry?.attributes?.unit_of_measurement || this._getEntityUnit(entityId) || "m³",
+        time: Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || ""),
+      }))
+      .filter((entry) => Number.isFinite(entry.value) && Number.isFinite(entry.time))
+      .sort((a, b) => a.time - b.time);
+    const currentValue = Number(this._getEntityValue(entityId, undefined));
+    const latestState = states.length > 0 ? states[states.length - 1] : undefined;
+    const endValue = Number.isFinite(currentValue) ? currentValue : latestState?.value;
+    const startValue = states[0]?.value;
+    const amount = Number.isFinite(endValue) && Number.isFinite(startValue)
+      ? Math.max(0, endValue - startValue)
+      : undefined;
+    return { amount, unit: latestState?.unit || this._getEntityUnit(entityId) || "m³" };
+  }
+
+  _formatGasConsumptionValue() {
+    const info = this._overlayGasConsumptionInfo();
+    if (!info) return "";
+    if (info.loading) return "…";
+    if (!Number.isFinite(info.amount)) return "—";
+    const value = info.amount >= 10 ? info.amount.toFixed(1) : info.amount.toFixed(2);
+    return `${value} ${info.unit || "m³"}`;
+  }
+
+  _formatOverlayHeatpumpValue() {
+    const entityId = this.config.image_overlays?.heatpump?.entity;
+    if (!entityId) return "";
+    const value = this._getEntityValue(entityId, undefined);
+    const formatted = this._formatValue(value);
+    if (formatted === "—") return formatted;
+    const entityUnit = this._getEntityUnit(entityId);
+    const unit = this.config.image_overlays?.heatpump?.unit || "auto";
+    if (this._isEnergyUnit(entityUnit)) {
+      const targetUnit = unit && this._isEnergyUnit(unit) ? unit : "kWh";
+      return this._formatEnergyValue(value, entityUnit, targetUnit);
+    }
+    if (this._isPowerUnit(entityUnit)) return this._formatPowerValue(value, unit, entityUnit);
+    return entityUnit ? `${formatted} ${entityUnit}` : String(formatted);
+  }
+
+  _formatOverlayReading(key) {
+    if (key === "smoke") return this._formatGasConsumptionValue() || "—";
+    if (key === "heatpump") return this._formatOverlayHeatpumpValue() || "—";
+    return "—";
   }
 
   _batteryFlowDirectionLabel(direction) {
@@ -1706,7 +1851,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const value = this._formatValue(rawValue);
     if (value === "—") return undefined;
     const entityUnit = entry.attributes?.unit_of_measurement || this._getEntityUnit(this._metricEntityId(metric));
-    const numericValue = metric.unit === "power"
+    const numericValue = metric.unit === "power" || (metric.overlay === "heatpump" && this._isPowerUnit(entityUnit))
       ? this._valueAsWatts(rawValue, entityUnit)
       : Number(rawValue);
     if (!Number.isFinite(numericValue)) return undefined;
@@ -1717,6 +1862,15 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _formatChartValue(value, metric) {
+    if (metric.overlay === "heatpump") {
+      const entityUnit = this._getEntityUnit(this._metricEntityId(metric));
+      if (this._isPowerUnit(entityUnit)) return this._formatPowerValue(value, "auto", "W");
+      if (this._isEnergyUnit(entityUnit)) return this._formatEnergyValue(value, entityUnit, "kWh");
+    }
+    if (metric.overlay === "smoke") {
+      const unit = this._getEntityUnit(this._metricEntityId(metric)) || "m³";
+      return `${Number(value).toFixed(2)} ${unit}`;
+    }
     if (metric.unit === "power") return this._formatPowerValue(value, this._unitForMetric(metric), "W");
     if (metric.key === "battery_level") return this._formatWithUnit(Math.round(value), this._unitForMetric(metric));
     const unit = this._unitForMetric(metric);
@@ -1890,6 +2044,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricVisible(metric, variant) {
+    if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.enabled === true;
     if (metric.customKpi) return metric.customKpi.visible !== false;
     const configured = this.config.visible_boxes?.[metric.key];
     if (configured !== undefined) return configured !== false;
@@ -1916,9 +2071,16 @@ class HaSolarDashboardCard extends HTMLElement {
         tileOrder: metric.tileOrder ?? index,
         tileColumns: metric.tileColumns ?? 1,
       })),
+      ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
     ].sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
+  }
+
+  _visibleOverlayMetrics() {
+    return OVERLAY_TILE_METRICS
+      .filter((metric) => this.config.image_overlays?.[metric.overlay]?.enabled === true)
+      .map((metric) => ({ ...metric, tileColumns: 1 }));
   }
 
   _visibleHudMetrics(variant) {
@@ -2131,7 +2293,7 @@ class HaSolarDashboardCard extends HTMLElement {
       const orientation = String(config.orientation || "right").toLowerCase() === "left" ? "left" : "right";
       const label = this._t(`overlay.${key}`, {}, key);
       const scaleX = key === "heatpump" && orientation === "left" ? -1 : 1;
-      const translateY = key === "smoke" ? "-88%" : "-50%";
+      const translateY = key === "smoke" ? "-100%" : "-50%";
       const style = [
         `left:${left}%`,
         `top:${top}%`,
@@ -2140,7 +2302,16 @@ class HaSolarDashboardCard extends HTMLElement {
         `--overlay-translate-y:${translateY}`,
       ].join(";");
       const [src, ...fallbacks] = this._overlayAssetUrls(key);
-      return `<img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(src)}" data-fallbacks="${this._escape(fallbacks.join("|"))}" alt="${this._escape(label)}" style="${this._escape(style)}" loading="lazy" />`;
+      const reading = this._formatOverlayReading(key);
+      const readingHtml = this.config.image_overlays?.[key]?.entity
+        ? `<div class="overlay-reading" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</div>`
+        : "";
+      return `
+        <div class="image-overlay-wrap image-overlay-wrap-${this._escape(key)}" style="${this._escape(style)}">
+          <img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(src)}" data-fallbacks="${this._escape(fallbacks.join("|"))}" alt="${this._escape(label)}" loading="lazy" />
+          ${readingHtml}
+        </div>
+      `;
     }).join("");
   }
 
@@ -2436,8 +2607,12 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select { max-width:140px; padding:0 30px 0 10px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
-        .image-overlay { position:absolute; z-index:1; height:auto; transform:translate(-50%,var(--overlay-translate-y,-50%)) scaleX(var(--overlay-scale-x,1)); transform-origin:center bottom; pointer-events:none; user-select:none; filter:drop-shadow(0 8px 12px rgba(0,0,0,.24)); }
+        .image-overlay-wrap { position:absolute; z-index:1; width:10%; transform:translate(-50%,var(--overlay-translate-y,-50%)); transform-origin:center bottom; pointer-events:none; user-select:none; }
+        .image-overlay { display:block; width:100%; height:auto; transform:scaleX(var(--overlay-scale-x,1)); transform-origin:center bottom; filter:drop-shadow(0 8px 12px rgba(0,0,0,.24)); }
         .image-overlay-smoke { opacity:.78; filter:blur(.15px); mix-blend-mode:screen; }
+        .overlay-reading { position:absolute; left:calc(100% + 7px); top:50%; transform:translateY(-50%); min-width:64px; max-width:118px; border-radius:9px; border:1px solid color-mix(in srgb,var(--tile-accent,#f3f6ff) 42%,rgba(255,255,255,.2)); background:rgba(8,16,38,.72); color:var(--tile-accent,#f3f6ff); font-size:.76rem; line-height:1.15; font-weight:800; padding:5px 7px; box-shadow:0 8px 20px rgba(0,0,0,.28); backdrop-filter:blur(4px); overflow-wrap:anywhere; }
+        .image-overlay-wrap-smoke .overlay-reading { --tile-accent:#ffc233; top:72%; }
+        .image-overlay-wrap-heatpump .overlay-reading { --tile-accent:#1f8fff; }
         .flow-overlay { position:absolute; inset:0; z-index:2; width:100%; height:100%; pointer-events:none; overflow:visible; mix-blend-mode:screen; }
         .flow-line-base,.flow-line-pulse { fill:none; stroke:var(--flow-color); vector-effect:non-scaling-stroke; }
         .flow-line-base { stroke-width:var(--flow-base-width); opacity:var(--flow-base-opacity); stroke-linecap:round; }
@@ -2503,6 +2678,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const variant = this._currentVariant || this._layoutState().variant;
     const liveMetrics = [
       ...TILE_METRICS,
+      ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
     ];
@@ -2553,6 +2729,12 @@ class HaSolarDashboardCard extends HTMLElement {
           element.textContent = flowValue;
         });
       }
+    });
+    IMAGE_OVERLAY_KEYS.forEach((key) => {
+      const reading = this._formatOverlayReading(key);
+      this.shadowRoot.querySelectorAll(`[data-overlay-value="${key}"]`).forEach((element) => {
+        if (element.textContent !== reading) element.textContent = reading;
+      });
     });
     const nextFlowHtml = this._renderEnergyFlows(variant);
     const flowOverlay = this.shadowRoot.querySelector("[data-flow-overlay]");
@@ -2871,6 +3053,15 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     };
   }
 
+  _overlayPeriodValue(key = "smoke") {
+    const config = this._overlayConfig(key);
+    const raw = config.period_minutes ?? config.minutes ?? config.period ?? "1h";
+    const normalized = String(raw).trim().toLowerCase();
+    if (normalized === "30m" || normalized === "30min" || normalized === "30") return "30m";
+    if (normalized === "24h" || normalized === "24") return "24h";
+    return "1h";
+  }
+
   _renderOverlayField(key) {
     const config = this._overlayConfig(key);
     const label = this._t(`overlay.${key}`, {}, key);
@@ -2889,10 +3080,30 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         </label>
       `
       : "";
+    const entity = this._config.image_overlays?.[key]?.entity || "";
+    const entityHtml = `
+      <label>${this._escape(this._t("editor.entity"))}
+        <input data-path="image_overlays.${key}.entity" list="ha-solar-dashboard-entities" placeholder="${key === "smoke" ? "sensor.zaehlerstand_2" : "sensor.heatpump_power"}" value="${this._escape(entity)}" autocomplete="off" />
+      </label>
+    `;
+    const period = this._overlayPeriodValue(key);
+    const periodHtml = key === "smoke"
+      ? `
+        <label>${this._escape(this._t("editor.overlayPeriod"))}
+          <select data-path="image_overlays.${key}.period">
+            <option value="30m"${period === "30m" ? " selected" : ""}>${this._escape(this._t("editor.period30m"))}</option>
+            <option value="1h"${period === "1h" ? " selected" : ""}>${this._escape(this._t("editor.period1h"))}</option>
+            <option value="24h"${period === "24h" ? " selected" : ""}>${this._escape(this._t("editor.period24h"))}</option>
+          </select>
+        </label>
+      `
+      : "";
 
     return `
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.enabled" ${enabled ? "checked" : ""}/> ${this._escape(this._t("editor.overlayEnable", { label }))}</label>
+        ${entityHtml}
+        ${periodHtml}
         <label>${this._escape(this._t("editor.xPosition"))} (${this._escape(left)})
           <input type="range" min="0" max="100" step="1" data-path="image_overlays.${key}.left" value="${this._escape(left)}" />
         </label>

@@ -2002,6 +2002,11 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
   }
 
+  _renderWallboxPhaseRow(metric) {
+    const phaseHtml = this._renderWallboxPhase(metric);
+    return phaseHtml ? `<div class="phase-row">${phaseHtml}</div>` : "";
+  }
+
   _formatLocalDateTime(dateString) {
     const timestamp = Date.parse(dateString || "");
     if (!Number.isFinite(timestamp)) return "";
@@ -2668,8 +2673,8 @@ class HaSolarDashboardCard extends HTMLElement {
         <div class="value-row">
           <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
           ${this._renderBatteryFlow(metric)}
-          ${this._renderWallboxPhase(metric)}
         </div>
+        ${this._renderWallboxPhaseRow(metric)}
         ${this._renderMetricMeter(metric)}
       </div>
     `;
@@ -2938,10 +2943,8 @@ class HaSolarDashboardCard extends HTMLElement {
         `
         : this._wallboxPhaseEntityKey(metric)
         ? `
-          <div class="tile-value-row">
-            <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
-            ${this._renderWallboxPhase(metric)}
-          </div>
+          <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          ${this._renderWallboxPhaseRow(metric)}
         `
         : `<div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>`;
       return `
@@ -2993,6 +2996,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .battery-flow-arrow { flex:0 0 auto; font-size:.78rem; line-height:1; }
         .battery-flow-label { min-width:0; overflow:hidden; text-overflow:ellipsis; }
         [data-battery-flow-value] { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+        .phase-row { display:flex; align-items:center; min-width:0; max-width:100%; margin-top:3px; }
         .phase-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:72px; border-radius:999px; padding:2px 5px; background:rgba(31,143,255,.14); color:#93c5fd; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(147,197,253,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .phase-badge:empty { display:none; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }

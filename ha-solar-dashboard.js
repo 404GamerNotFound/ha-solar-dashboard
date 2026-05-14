@@ -3000,10 +3000,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
           <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
         <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
-        <div class="section-title">${this._escape(this._t("editor.sectionOverlays"))}</div>
-        <div class="grid">${overlayFields}</div>
         <div class="section-title">${this._escape(this._t("editor.sectionBoxes"))}</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
+        <div class="section-title">${this._escape(this._t("editor.sectionOverlays"))}</div>
+        <div class="grid">${overlayFields}</div>
         <div class="section-title">${this._escape(this._t("editor.sectionKpis"))}</div>
         <div class="grid">${customKpiFields}</div>
         <button type="button" data-action="add-kpi">${this._escape(this._t("editor.kpiAdd"))}</button>

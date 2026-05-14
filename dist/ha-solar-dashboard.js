@@ -37,6 +37,9 @@ const I18N = {
     "chart.subtitle": "Last {hours} hours",
     "editor.customDayImage": "Custom Day Image",
     "editor.customImage": "Custom Image",
+    "editor.batteryChargeEntity": "Battery charge entity",
+    "editor.batteryDischargeEntity": "Battery discharge entity",
+    "editor.batteryFlowEntity": "Battery flow entity (+/-)",
     "editor.entity": "Entity",
     "editor.entityPlaceholder": "{label} entity",
     "editor.houseType": "House Type",
@@ -99,6 +102,7 @@ const I18N = {
     "status.selfSufficient": "Self-sufficient",
     "status.weather": "Weather: {weather}",
     "tooltip.entity": "Entity",
+    "tooltip.flow": "Flow",
     "tooltip.load": "Utilization",
     "tooltip.max": "Maximum",
     "tooltip.raw": "Raw value",
@@ -138,6 +142,9 @@ const I18N = {
     "chart.subtitle": "Letzte {hours} Stunden",
     "editor.customDayImage": "Eigenes Tagbild",
     "editor.customImage": "Eigenes Bild",
+    "editor.batteryChargeEntity": "Batterie-Lade-Entität",
+    "editor.batteryDischargeEntity": "Batterie-Entlade-Entität",
+    "editor.batteryFlowEntity": "Batteriefluss-Entität (+/-)",
     "editor.entity": "Entität",
     "editor.entityPlaceholder": "{label} Entität",
     "editor.houseType": "Haustyp",
@@ -200,6 +207,7 @@ const I18N = {
     "status.selfSufficient": "Autark",
     "status.weather": "Wetter: {weather}",
     "tooltip.entity": "Entität",
+    "tooltip.flow": "Fluss",
     "tooltip.load": "Auslastung",
     "tooltip.max": "Maximum",
     "tooltip.raw": "Rohwert",
@@ -239,6 +247,9 @@ const I18N = {
     "chart.subtitle": "Últimas {hours} horas",
     "editor.customDayImage": "Imagen diurna personalizada",
     "editor.customImage": "Imagen personalizada",
+    "editor.batteryChargeEntity": "Entidad de carga de batería",
+    "editor.batteryDischargeEntity": "Entidad de descarga de batería",
+    "editor.batteryFlowEntity": "Entidad de flujo de batería (+/-)",
     "editor.entity": "Entidad",
     "editor.entityPlaceholder": "Entidad de {label}",
     "editor.houseType": "Tipo de casa",
@@ -301,6 +312,7 @@ const I18N = {
     "status.selfSufficient": "Autosuficiente",
     "status.weather": "Clima: {weather}",
     "tooltip.entity": "Entidad",
+    "tooltip.flow": "Flujo",
     "tooltip.load": "Utilización",
     "tooltip.max": "Máximo",
     "tooltip.raw": "Valor bruto",
@@ -340,6 +352,9 @@ const I18N = {
     "chart.subtitle": "Dernières {hours} heures",
     "editor.customDayImage": "Image de jour personnalisée",
     "editor.customImage": "Image personnalisée",
+    "editor.batteryChargeEntity": "Entité de charge batterie",
+    "editor.batteryDischargeEntity": "Entité de décharge batterie",
+    "editor.batteryFlowEntity": "Entité de flux batterie (+/-)",
     "editor.entity": "Entité",
     "editor.entityPlaceholder": "Entité {label}",
     "editor.houseType": "Type de maison",
@@ -402,6 +417,7 @@ const I18N = {
     "status.selfSufficient": "Autonome",
     "status.weather": "Météo : {weather}",
     "tooltip.entity": "Entité",
+    "tooltip.flow": "Flux",
     "tooltip.load": "Utilisation",
     "tooltip.max": "Maximum",
     "tooltip.raw": "Valeur brute",
@@ -441,6 +457,9 @@ const I18N = {
     "chart.subtitle": "Ostatnie {hours} godzin",
     "editor.customDayImage": "Własny obraz dzienny",
     "editor.customImage": "Własny obraz",
+    "editor.batteryChargeEntity": "Encja ładowania baterii",
+    "editor.batteryDischargeEntity": "Encja rozładowania baterii",
+    "editor.batteryFlowEntity": "Encja przepływu baterii (+/-)",
     "editor.entity": "Encja",
     "editor.entityPlaceholder": "Encja {label}",
     "editor.houseType": "Typ domu",
@@ -503,6 +522,7 @@ const I18N = {
     "status.selfSufficient": "Samowystarczalny",
     "status.weather": "Pogoda: {weather}",
     "tooltip.entity": "Encja",
+    "tooltip.flow": "Przepływ",
     "tooltip.load": "Wykorzystanie",
     "tooltip.max": "Maksimum",
     "tooltip.raw": "Wartość surowa",
@@ -836,6 +856,9 @@ class HaSolarDashboardCard extends HTMLElement {
         pv_roof_power: "sensor.pv_roof_power",
         pv_shed_power: "sensor.pv_shed_power",
         battery_level: "sensor.battery_level",
+        battery_flow_power: "",
+        battery_charge_power: "",
+        battery_discharge_power: "",
         inverter_power: "sensor.wechselrichter_power",
         wallbox_power: "sensor.wallbox_power",
         wallbox2_power: "",
@@ -1334,6 +1357,55 @@ class HaSolarDashboardCard extends HTMLElement {
     return `<div class="metric-meter" data-meter="${this._escape(metric.key)}" title="${this._escape(this._meterTooltip(metric))}" aria-hidden="true"><span style="width:${percent.toFixed(0)}%"></span></div>`;
   }
 
+  _entityPowerWatts(entityId) {
+    const value = this._getEntityValue(entityId, undefined);
+    if (value === undefined || value === null || value === "unknown" || value === "unavailable") return undefined;
+    return this._valueAsWatts(value, this._getEntityUnit(entityId));
+  }
+
+  _batteryFlowInfo() {
+    const signedEntityId = this.config.entities?.battery_flow_power;
+    const signedValue = this._entityPowerWatts(signedEntityId);
+    if (Number.isFinite(signedValue) && signedValue !== 0) {
+      return {
+        direction: signedValue > 0 ? "charge" : "discharge",
+        entityId: signedEntityId,
+        watts: Math.abs(signedValue),
+      };
+    }
+
+    const chargeEntityId = this.config.entities?.battery_charge_power;
+    const dischargeEntityId = this.config.entities?.battery_discharge_power;
+    const chargeWatts = Math.max(0, this._entityPowerWatts(chargeEntityId) || 0);
+    const dischargeWatts = Math.max(0, this._entityPowerWatts(dischargeEntityId) || 0);
+    if (chargeWatts <= 0 && dischargeWatts <= 0) return undefined;
+
+    return chargeWatts >= dischargeWatts
+      ? { direction: "charge", entityId: chargeEntityId, watts: chargeWatts }
+      : { direction: "discharge", entityId: dischargeEntityId, watts: dischargeWatts };
+  }
+
+  _formatBatteryFlowValue(info = this._batteryFlowInfo()) {
+    if (!info || !Number.isFinite(info.watts) || info.watts <= 0) return "";
+    const unit = this.config.units?.battery_flow_power || this.config.units?.power || "auto";
+    return this._formatPowerValue(info.watts, unit, "W");
+  }
+
+  _renderBatteryFlow(metric) {
+    if (metric.key !== "battery_level") return "";
+    const info = this._batteryFlowInfo();
+    const value = this._formatBatteryFlowValue(info);
+    if (!info || !value) return "";
+    const arrow = info.direction === "charge" ? "↓" : "↑";
+    const label = `${this._t("tooltip.flow")}: ${value}`;
+    return `
+      <div class="battery-flow ${info.direction}" data-battery-flow title="${this._escape(label)}" aria-label="${this._escape(label)}">
+        <span class="battery-flow-arrow">${this._escape(arrow)}</span>
+        <span data-battery-flow-value>${this._escape(value)}</span>
+      </div>
+    `;
+  }
+
   _formatLocalDateTime(dateString) {
     const timestamp = Date.parse(dateString || "");
     if (!Number.isFinite(timestamp)) return "";
@@ -1397,6 +1469,9 @@ class HaSolarDashboardCard extends HTMLElement {
       `${this._t("tooltip.value")}: ${this._formatReading(metric)}`,
       rawLabel,
       this._meterTooltip(metric),
+      metric.key === "battery_level" && this._formatBatteryFlowValue()
+        ? `${this._t("tooltip.flow")}: ${this._formatBatteryFlowValue()}`
+        : "",
       updatedAt ? `${this._t("tooltip.updated")}: ${updatedAt}` : "",
       warning ? `${this._t("tooltip.status")}: ${warning.label}` : "",
     ].filter(Boolean).join("\n");
@@ -1891,6 +1966,7 @@ class HaSolarDashboardCard extends HTMLElement {
         <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
         <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
         ${this._renderMetricMeter(metric)}
+        ${this._renderBatteryFlow(metric)}
       </div>
     `;
   }
@@ -2006,6 +2082,10 @@ class HaSolarDashboardCard extends HTMLElement {
         .metric .value,.tile .num { color:var(--tile-accent); font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
         .metric-meter { width:100%; height:5px; margin-top:6px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
         .metric-meter span { display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,color-mix(in srgb,var(--tile-accent) 64%,#fff),var(--tile-accent)); box-shadow:0 0 10px color-mix(in srgb,var(--tile-accent) 62%,transparent); transition:width .28s ease; }
+        .battery-flow { display:inline-flex; align-items:center; gap:4px; margin-top:5px; max-width:100%; border-radius:999px; padding:2px 6px; background:rgba(255,255,255,.1); font-size:.68rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
+        .battery-flow.charge { color:#34d399; }
+        .battery-flow.discharge { color:#f87171; }
+        .battery-flow-arrow { font-size:.82rem; line-height:1; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
@@ -2080,6 +2160,22 @@ class HaSolarDashboardCard extends HTMLElement {
       this.shadowRoot.querySelectorAll(`[data-meter="${metric.key}"] span`).forEach((element) => {
         element.style.width = `${(meterPercent ?? 0).toFixed(0)}%`;
       });
+      if (metric.key === "battery_level") {
+        const flowInfo = this._batteryFlowInfo();
+        const flowValue = this._formatBatteryFlowValue(flowInfo);
+        this.shadowRoot.querySelectorAll("[data-battery-flow]").forEach((element) => {
+          element.classList.toggle("charge", flowInfo?.direction === "charge");
+          element.classList.toggle("discharge", flowInfo?.direction === "discharge");
+          element.style.display = flowValue ? "inline-flex" : "none";
+          element.setAttribute("title", flowValue ? `${this._t("tooltip.flow")}: ${flowValue}` : "");
+        });
+        this.shadowRoot.querySelectorAll(".battery-flow-arrow").forEach((element) => {
+          element.textContent = flowInfo?.direction === "charge" ? "↓" : "↑";
+        });
+        this.shadowRoot.querySelectorAll("[data-battery-flow-value]").forEach((element) => {
+          element.textContent = flowValue;
+        });
+      }
     });
     const statusAccent = this._metricAccent(STATUS_METRIC);
     this.shadowRoot.querySelectorAll(`[data-accent-key="${STATUS_METRIC.key}"]`).forEach((element) => {
@@ -2288,6 +2384,21 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _renderBatteryFlowInputs(metric) {
+    if (metric.key !== "battery_level") return "";
+    return `
+      <label>${this._escape(this._t("editor.batteryFlowEntity"))}
+        <input data-path="entities.battery_flow_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_power" value="${this._escape(this._config.entities?.battery_flow_power || "")}" autocomplete="off" />
+      </label>
+      <label>${this._escape(this._t("editor.batteryChargeEntity"))}
+        <input data-path="entities.battery_charge_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_charge_power" value="${this._escape(this._config.entities?.battery_charge_power || "")}" autocomplete="off" />
+      </label>
+      <label>${this._escape(this._t("editor.batteryDischargeEntity"))}
+        <input data-path="entities.battery_discharge_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_discharge_power" value="${this._escape(this._config.entities?.battery_discharge_power || "")}" autocomplete="off" />
+      </label>
+    `;
+  }
+
   _houseVariant() {
     const house = this._normalizeHouse(this._config.house) || "single_family_home";
     return HOUSE_VARIANTS[house] || HOUSE_VARIANTS.single_family_home;
@@ -2336,6 +2447,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
         ${this._renderEntityInput(metric)}
         ${this._renderUnitSelect(metric)}
+        ${this._renderBatteryFlowInputs(metric)}
         ${this._renderMaxPowerInput(metric)}
         <label>${this._escape(this._t("editor.xPosition"))} (${this._escape(left)})
           <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.left" value="${this._escape(left)}" />

@@ -3622,8 +3622,26 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   }
 }
 
-if (!customElements.get(CARD_TYPE)) customElements.define(CARD_TYPE, HaSolarDashboardCard);
-if (!customElements.get(CARD_EDITOR_TYPE)) customElements.define(CARD_EDITOR_TYPE, HaSolarDashboardCardEditor);
+function upgradeCustomElement(type, elementClass) {
+  const existingClass = customElements.get(type);
+  if (!existingClass) {
+    customElements.define(type, elementClass);
+    return;
+  }
+
+  Object.getOwnPropertyNames(elementClass.prototype).forEach((name) => {
+    if (name === "constructor") return;
+    Object.defineProperty(existingClass.prototype, name, Object.getOwnPropertyDescriptor(elementClass.prototype, name));
+  });
+
+  Object.getOwnPropertyNames(elementClass).forEach((name) => {
+    if (["length", "name", "prototype"].includes(name)) return;
+    Object.defineProperty(existingClass, name, Object.getOwnPropertyDescriptor(elementClass, name));
+  });
+}
+
+upgradeCustomElement(CARD_TYPE, HaSolarDashboardCard);
+upgradeCustomElement(CARD_EDITOR_TYPE, HaSolarDashboardCardEditor);
 
 window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === CARD_TYPE)) {

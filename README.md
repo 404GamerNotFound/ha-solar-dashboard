@@ -99,11 +99,6 @@ labels:
 energy_entities:
   pv_roof_power:
     entity: sensor.pv_dach_energy_total
-    # Optional direct helper sensors can override calculated ranges:
-    # 1h: sensor.pv_dach_energy_1h
-    # 24h: sensor.pv_dach_energy_24h
-    # month: sensor.pv_dach_energy_monthly
-    # year: sensor.pv_dach_energy_yearly
   house_consumption_power:
     entity: sensor.house_consumption_total
 show_grid_status_tile: true
@@ -214,8 +209,7 @@ custom_kpis:
 - `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, and `wallbox2_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
 - `labels.<entity_key>` (string, optional; custom label for HUD boxes and summary tiles, for example `PV Dach`, `Speicher` or `Wallbox Garage`)
-- `energy_entities.<entity_key>.entity` (entity id, optional; cumulative kWh counter used for `1h`, `24h`, `1 month`, `1 year`, and `Total` values)
-- `energy_entities.<entity_key>.1h` / `.24h` / `.month` / `.year` / `.total` (entity ids, optional; direct kWh helper sensors that override calculated ranges; legacy aliases like `.day`, `.daily`, `.hourly`, `.yearly`, and `.lifetime` are still accepted)
+- `energy_entities.<entity_key>.entity` (entity id, optional; cumulative kWh counter used like the gas meter: `1h`, `24h`, `1 month`, and `1 year` are calculated from Home Assistant history, while `Total` shows the current counter value)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)

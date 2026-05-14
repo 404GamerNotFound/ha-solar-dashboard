@@ -1286,24 +1286,12 @@ class HaSolarDashboardCard extends HTMLElement {
     return typeof config === "object" ? config : {};
   }
 
-  _energyRangeAliases(range) {
-    return {
-      "1h": ["1h", "hour", "hourly", "last_hour", "hour_energy", "hourly_energy"],
-      "24h": ["24h", "day", "daily", "today", "last_24h", "day_energy", "daily_energy"],
-      month: ["month", "monthly", "month_energy", "monthly_energy"],
-      year: ["year", "yearly", "year_energy", "yearly_energy"],
-      total: ["total", "overall", "all", "lifetime", "total_energy"],
-    }[range] || [range];
-  }
-
   _metricEnergySource(metric, range = this._currentEnergyRange()) {
     if (!metric || metric.overlay || metric.customKpi || metric.gridStatus || metric.unit !== "power") return "";
     const normalizedRange = this._normalizeEnergyRange(range);
     if (!normalizedRange || normalizedRange === "live") return "";
     const config = this._energyEntityConfig(metric.key);
-    const rangeEntityId = this._energyRangeAliases(normalizedRange).map((alias) => config[alias]).find(Boolean);
     const counterEntityId = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
-    if (rangeEntityId) return { entityId: rangeEntityId, mode: "direct", range: normalizedRange };
     if (counterEntityId) return { entityId: counterEntityId, mode: normalizedRange === "total" ? "direct" : "counter", range: normalizedRange };
     return "";
   }
@@ -3224,7 +3212,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         cursor[key] = value;
         return;
       }
-      if (cursor[key] === undefined || cursor[key] === null) {
+      if (cursor[key] === undefined || cursor[key] === null || typeof cursor[key] !== "object") {
         cursor[key] = Number.isInteger(Number(nextPart)) ? [] : {};
       }
       cursor = cursor[key];
@@ -3323,30 +3311,11 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     if (metric.unit !== "power") return "";
     const config = this._energyEntityConfig(metric);
     const counterValue = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
-    const fields = [
-      { key: "1h", labelKey: "editor.energy1hEntity", aliases: ["1h", "hour", "hourly", "last_hour"] },
-      { key: "24h", labelKey: "editor.energy24hEntity", aliases: ["24h", "day", "daily", "today", "last_24h"] },
-      { key: "month", labelKey: "editor.energyMonthEntity", aliases: ["month", "monthly"] },
-      { key: "year", labelKey: "editor.energyYearEntity", aliases: ["year", "yearly"] },
-      { key: "total", labelKey: "editor.energyTotalEntity", aliases: ["total", "overall", "all", "lifetime"] },
-    ];
-    const overrideFields = fields.map((field) => {
-      const value = field.aliases.map((alias) => config[alias]).find(Boolean) || "";
-      return `
-        <label>${this._escape(this._t(field.labelKey))}
-          <input data-path="energy_entities.${metric.key}.${field.key}" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_${this._escape(field.key)}_energy" value="${this._escape(value)}" autocomplete="off" />
-        </label>
-      `;
-    }).join("");
 
     return `
       <label>${this._escape(this._t("editor.energyCounterEntity"))}
         <input data-path="energy_entities.${metric.key}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_energy_total" value="${this._escape(counterValue)}" autocomplete="off" />
       </label>
-      <details>
-        <summary>${this._escape(this._t("editor.energyRangeOverride"))}</summary>
-        <div class="details-grid">${overrideFields}</div>
-      </details>
     `;
   }
 

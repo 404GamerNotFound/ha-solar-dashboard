@@ -95,13 +95,14 @@ labels:
   wallbox_power: Wallbox Garage
 energy_entities:
   pv_roof_power:
-    day: sensor.pv_dach_energy_daily
-    month: sensor.pv_dach_energy_monthly
-    year: sensor.pv_dach_energy_yearly
+    entity: sensor.pv_dach_energy_total
+    # Optional direct helper sensors can override calculated ranges:
+    # 1h: sensor.pv_dach_energy_1h
+    # 24h: sensor.pv_dach_energy_24h
+    # month: sensor.pv_dach_energy_monthly
+    # year: sensor.pv_dach_energy_yearly
   house_consumption_power:
-    day: sensor.house_consumption_daily
-    month: sensor.house_consumption_monthly
-    year: sensor.house_consumption_yearly
+    entity: sensor.house_consumption_total
 show_grid_status_tile: true
 show_power_flows: false
 image_overlays:
@@ -189,7 +190,7 @@ custom_kpis:
 - `show_title` (boolean, default: `true`; shows/hides the title)
 - `show_time_label` (boolean, default: `true`; shows/hides the live label)
 - `show_house_selector` (boolean, default: `true`)
-- `show_energy_range_selector` (boolean, default: `true`; shows the `Live` / `Day` / `Month` / `Year` selector in the header)
+- `show_energy_range_selector` (boolean, default: `true`; shows the `Live` / `1h` / `24h` / `1 month` / `1 year` / `Total` selector in the header)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
@@ -210,7 +211,8 @@ custom_kpis:
 - `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, and `wallbox2_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
 - `labels.<entity_key>` (string, optional; custom label for HUD boxes and summary tiles, for example `PV Dach`, `Speicher` or `Wallbox Garage`)
-- `energy_entities.<entity_key>.day` / `.month` / `.year` (entity ids, optional; kWh sensors shown when the header selector is switched away from `Live`)
+- `energy_entities.<entity_key>.entity` (entity id, optional; cumulative kWh counter used for `1h`, `24h`, `1 month`, `1 year`, and `Total` values)
+- `energy_entities.<entity_key>.1h` / `.24h` / `.month` / `.year` / `.total` (entity ids, optional; direct kWh helper sensors that override calculated ranges; legacy aliases like `.day`, `.daily`, `.hourly`, `.yearly`, and `.lifetime` are still accepted)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)

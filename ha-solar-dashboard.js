@@ -25,9 +25,11 @@ const WEATHER_IMAGE_SUFFIXES = {
 
 const ENERGY_RANGE_OPTIONS = [
   { key: "live", labelKey: "range.live", label: "Live" },
-  { key: "day", labelKey: "range.day", label: "Day" },
-  { key: "month", labelKey: "range.month", label: "Month" },
-  { key: "year", labelKey: "range.year", label: "Year" },
+  { key: "1h", labelKey: "range.1h", label: "1h" },
+  { key: "24h", labelKey: "range.24h", label: "24h" },
+  { key: "month", labelKey: "range.month", label: "1 month" },
+  { key: "year", labelKey: "range.year", label: "1 year" },
+  { key: "total", labelKey: "range.total", label: "Total" },
 ];
 
 const I18N = {
@@ -50,9 +52,14 @@ const I18N = {
     "editor.batteryFlowEntity": "Battery flow entity (+/-)",
     "editor.entity": "Entity",
     "editor.entityPlaceholder": "{label} entity",
-    "editor.energyDayEntity": "Daily kWh entity",
-    "editor.energyMonthEntity": "Monthly kWh entity",
-    "editor.energyYearEntity": "Yearly kWh entity",
+    "editor.energy1hEntity": "1h kWh entity",
+    "editor.energy24hEntity": "24h kWh entity",
+    "editor.energyCounterEntity": "kWh counter entity",
+    "editor.energyMonthEntity": "1 month kWh entity",
+    "editor.energyRangeOverride": "Optional direct period sensors",
+    "editor.energyYearEntity": "1 year kWh entity",
+    "editor.energyTotalEntity": "Total kWh entity",
+    "editor.liveEntity": "Live entity",
     "editor.houseType": "House Type",
     "editor.hudBoxOpacity": "HUD box opacity",
     "editor.hudBoxScale": "HUD box scale",
@@ -82,11 +89,11 @@ const I18N = {
     "editor.period1h": "1 hour",
     "editor.period24h": "24 hours",
     "editor.period30m": "30 minutes",
-    "editor.sectionBoxes": "Boxes, Entity, Unit, and Position",
+    "editor.sectionBoxes": "Boxes, live/kWh entities, unit, and position",
     "editor.sectionKpis": "Custom KPI tiles",
     "editor.sectionOverlays": "Image overlays",
     "editor.showBox": "Show {label}",
-    "editor.showEnergyRangeSelector": "Show Live/Day/Month/Year selector",
+    "editor.showEnergyRangeSelector": "Show Live/1h/24h/month/year/total selector",
     "editor.showHouseSelector": "Show house selector",
     "editor.showGridStatusTile": "Show grid status tile",
     "editor.showLiveLabel": "Show live label",
@@ -124,10 +131,12 @@ const I18N = {
     "metrics.wallbox2_power": "EV Charger 2",
     "overlay.heatpump": "Heat pump",
     "overlay.smoke": "Gas",
-    "range.day": "Day",
+    "range.1h": "1h",
+    "range.24h": "24h",
     "range.live": "Live",
-    "range.month": "Month",
-    "range.year": "Year",
+    "range.month": "1 month",
+    "range.total": "Total",
+    "range.year": "1 year",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Last updated: {time}",
@@ -180,9 +189,14 @@ const I18N = {
     "editor.batteryFlowEntity": "Batteriefluss-Entität (+/-)",
     "editor.entity": "Entität",
     "editor.entityPlaceholder": "{label} Entität",
-    "editor.energyDayEntity": "Tages-kWh-Entität",
-    "editor.energyMonthEntity": "Monats-kWh-Entität",
-    "editor.energyYearEntity": "Jahres-kWh-Entität",
+    "editor.energy1hEntity": "1h-kWh-Entität",
+    "editor.energy24hEntity": "24h-kWh-Entität",
+    "editor.energyCounterEntity": "kWh-Zähler-Entität",
+    "editor.energyMonthEntity": "1 Monat-kWh-Entität",
+    "editor.energyRangeOverride": "Optionale direkte Zeitraum-Sensoren",
+    "editor.energyYearEntity": "1 Jahr-kWh-Entität",
+    "editor.energyTotalEntity": "Gesamt-kWh-Entität",
+    "editor.liveEntity": "Live-Entität",
     "editor.houseType": "Haustyp",
     "editor.hudBoxOpacity": "HUD-Box-Deckkraft",
     "editor.hudBoxScale": "HUD-Box-Skalierung",
@@ -212,11 +226,11 @@ const I18N = {
     "editor.period1h": "1 Stunde",
     "editor.period24h": "24 Stunden",
     "editor.period30m": "30 Minuten",
-    "editor.sectionBoxes": "Boxen, Entität, Einheit und Position",
+    "editor.sectionBoxes": "Boxen, Live-/kWh-Entitäten, Einheit und Position",
     "editor.sectionKpis": "Eigene KPI-Kacheln",
     "editor.sectionOverlays": "Bild-Overlays",
     "editor.showBox": "{label} anzeigen",
-    "editor.showEnergyRangeSelector": "Live-/Tag-/Monat-/Jahr-Auswahl anzeigen",
+    "editor.showEnergyRangeSelector": "Live-/1h-/24h-/Monat-/Jahr-/Gesamt-Auswahl anzeigen",
     "editor.showHouseSelector": "Hausauswahl anzeigen",
     "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
     "editor.showLiveLabel": "Live-Label anzeigen",
@@ -254,10 +268,12 @@ const I18N = {
     "metrics.wallbox2_power": "Wallbox 2",
     "overlay.heatpump": "Wärmepumpe",
     "overlay.smoke": "Gas",
-    "range.day": "Tag",
+    "range.1h": "1h",
+    "range.24h": "24h",
     "range.live": "Live",
-    "range.month": "Monat",
-    "range.year": "Jahr",
+    "range.month": "1 Monat",
+    "range.total": "Gesamt",
+    "range.year": "1 Jahr",
     "status.export": "Einspeisung",
     "status.import": "Bezug",
     "status.lastUpdated": "Zuletzt aktualisiert: {time}",
@@ -310,9 +326,14 @@ const I18N = {
     "editor.batteryFlowEntity": "Entidad de flujo de batería (+/-)",
     "editor.entity": "Entidad",
     "editor.entityPlaceholder": "Entidad de {label}",
-    "editor.energyDayEntity": "Entidad kWh diaria",
-    "editor.energyMonthEntity": "Entidad kWh mensual",
-    "editor.energyYearEntity": "Entidad kWh anual",
+    "editor.energy1hEntity": "Entidad kWh 1h",
+    "editor.energy24hEntity": "Entidad kWh 24h",
+    "editor.energyCounterEntity": "Entidad contador kWh",
+    "editor.energyMonthEntity": "Entidad kWh 1 mes",
+    "editor.energyRangeOverride": "Sensores directos de periodo opcionales",
+    "editor.energyYearEntity": "Entidad kWh 1 año",
+    "editor.energyTotalEntity": "Entidad kWh total",
+    "editor.liveEntity": "Entidad en vivo",
     "editor.houseType": "Tipo de casa",
     "editor.hudBoxOpacity": "Opacidad de cajas HUD",
     "editor.hudBoxScale": "Escala de cajas HUD",
@@ -342,11 +363,11 @@ const I18N = {
     "editor.period1h": "1 hora",
     "editor.period24h": "24 horas",
     "editor.period30m": "30 minutos",
-    "editor.sectionBoxes": "Cajas, entidad, unidad y posición",
+    "editor.sectionBoxes": "Cajas, entidades en vivo/kWh, unidad y posición",
     "editor.sectionKpis": "Mosaicos KPI personalizados",
     "editor.sectionOverlays": "Superposiciones de imagen",
     "editor.showBox": "Mostrar {label}",
-    "editor.showEnergyRangeSelector": "Mostrar selector en vivo/día/mes/año",
+    "editor.showEnergyRangeSelector": "Mostrar selector en vivo/1h/24h/mes/año/total",
     "editor.showHouseSelector": "Mostrar selector de casa",
     "editor.showGridStatusTile": "Mostrar mosaico de red",
     "editor.showLiveLabel": "Mostrar etiqueta en vivo",
@@ -384,10 +405,12 @@ const I18N = {
     "metrics.wallbox2_power": "Cargador VE 2",
     "overlay.heatpump": "Bomba de calor",
     "overlay.smoke": "Gas",
-    "range.day": "Día",
+    "range.1h": "1h",
+    "range.24h": "24h",
     "range.live": "En vivo",
-    "range.month": "Mes",
-    "range.year": "Año",
+    "range.month": "1 mes",
+    "range.total": "Total",
+    "range.year": "1 año",
     "status.export": "Exportación",
     "status.import": "Importación",
     "status.lastUpdated": "Última actualización: {time}",
@@ -440,9 +463,14 @@ const I18N = {
     "editor.batteryFlowEntity": "Entité de flux batterie (+/-)",
     "editor.entity": "Entité",
     "editor.entityPlaceholder": "Entité {label}",
-    "editor.energyDayEntity": "Entité kWh jour",
-    "editor.energyMonthEntity": "Entité kWh mois",
-    "editor.energyYearEntity": "Entité kWh année",
+    "editor.energy1hEntity": "Entité kWh 1h",
+    "editor.energy24hEntity": "Entité kWh 24h",
+    "editor.energyCounterEntity": "Entité compteur kWh",
+    "editor.energyMonthEntity": "Entité kWh 1 mois",
+    "editor.energyRangeOverride": "Capteurs de période directs optionnels",
+    "editor.energyYearEntity": "Entité kWh 1 an",
+    "editor.energyTotalEntity": "Entité kWh total",
+    "editor.liveEntity": "Entité directe",
     "editor.houseType": "Type de maison",
     "editor.hudBoxOpacity": "Opacité des boîtes HUD",
     "editor.hudBoxScale": "Échelle des boîtes HUD",
@@ -472,11 +500,11 @@ const I18N = {
     "editor.period1h": "1 heure",
     "editor.period24h": "24 heures",
     "editor.period30m": "30 minutes",
-    "editor.sectionBoxes": "Boîtes, entité, unité et position",
+    "editor.sectionBoxes": "Boîtes, entités directes/kWh, unité et position",
     "editor.sectionKpis": "Tuiles KPI personnalisées",
     "editor.sectionOverlays": "Superpositions d'image",
     "editor.showBox": "Afficher {label}",
-    "editor.showEnergyRangeSelector": "Afficher le sélecteur direct/jour/mois/année",
+    "editor.showEnergyRangeSelector": "Afficher le sélecteur direct/1h/24h/mois/an/total",
     "editor.showHouseSelector": "Afficher le sélecteur de maison",
     "editor.showGridStatusTile": "Afficher la tuile réseau",
     "editor.showLiveLabel": "Afficher le libellé en direct",
@@ -514,10 +542,12 @@ const I18N = {
     "metrics.wallbox2_power": "Chargeur VE 2",
     "overlay.heatpump": "Pompe à chaleur",
     "overlay.smoke": "Gaz",
-    "range.day": "Jour",
+    "range.1h": "1h",
+    "range.24h": "24h",
     "range.live": "Direct",
-    "range.month": "Mois",
-    "range.year": "Année",
+    "range.month": "1 mois",
+    "range.total": "Total",
+    "range.year": "1 an",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Dernière mise à jour : {time}",
@@ -570,9 +600,14 @@ const I18N = {
     "editor.batteryFlowEntity": "Encja przepływu baterii (+/-)",
     "editor.entity": "Encja",
     "editor.entityPlaceholder": "Encja {label}",
-    "editor.energyDayEntity": "Dzienna encja kWh",
-    "editor.energyMonthEntity": "Miesięczna encja kWh",
-    "editor.energyYearEntity": "Roczna encja kWh",
+    "editor.energy1hEntity": "Encja kWh 1h",
+    "editor.energy24hEntity": "Encja kWh 24h",
+    "editor.energyCounterEntity": "Encja licznika kWh",
+    "editor.energyMonthEntity": "Encja kWh 1 miesiąc",
+    "editor.energyRangeOverride": "Opcjonalne bezpośrednie sensory okresów",
+    "editor.energyYearEntity": "Encja kWh 1 rok",
+    "editor.energyTotalEntity": "Łączna encja kWh",
+    "editor.liveEntity": "Encja na żywo",
     "editor.houseType": "Typ domu",
     "editor.hudBoxOpacity": "Przezroczystość pól HUD",
     "editor.hudBoxScale": "Skala pól HUD",
@@ -602,11 +637,11 @@ const I18N = {
     "editor.period1h": "1 godzina",
     "editor.period24h": "24 godziny",
     "editor.period30m": "30 minut",
-    "editor.sectionBoxes": "Pola, encja, jednostka i pozycja",
+    "editor.sectionBoxes": "Pola, encje na żywo/kWh, jednostka i pozycja",
     "editor.sectionKpis": "Własne kafelki KPI",
     "editor.sectionOverlays": "Nakładki obrazu",
     "editor.showBox": "Pokaż {label}",
-    "editor.showEnergyRangeSelector": "Pokaż wybór na żywo/dzień/miesiąc/rok",
+    "editor.showEnergyRangeSelector": "Pokaż wybór na żywo/1h/24h/miesiąc/rok/łącznie",
     "editor.showHouseSelector": "Pokaż wybór domu",
     "editor.showGridStatusTile": "Pokaż kafelek sieci",
     "editor.showLiveLabel": "Pokaż etykietę na żywo",
@@ -644,10 +679,12 @@ const I18N = {
     "metrics.wallbox2_power": "Ładowarka EV 2",
     "overlay.heatpump": "Pompa ciepła",
     "overlay.smoke": "Gaz",
-    "range.day": "Dzień",
+    "range.1h": "1h",
+    "range.24h": "24h",
     "range.live": "Na żywo",
-    "range.month": "Miesiąc",
-    "range.year": "Rok",
+    "range.month": "1 miesiąc",
+    "range.total": "Łącznie",
+    "range.year": "1 rok",
     "status.export": "Eksport",
     "status.import": "Import",
     "status.lastUpdated": "Ostatnia aktualizacja: {time}",
@@ -1147,6 +1184,8 @@ class HaSolarDashboardCard extends HTMLElement {
     this._historyCache = this._historyCache || new Map();
     this._overlayConsumptionCache = this._overlayConsumptionCache || new Map();
     this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();
+    this._energyRangeCache = this._energyRangeCache || new Map();
+    this._energyRangeLoading = this._energyRangeLoading || new Set();
 
     this._selectedHouse = house;
     this._selectedEnergyRange = this._normalizeEnergyRange(this._selectedEnergyRange || this.config.energy_range) || "live";
@@ -1201,9 +1240,11 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _normalizeEnergyRange(value) {
     const normalized = String(value || "").trim().toLowerCase();
-    if (normalized === "today" || normalized === "daily") return "day";
+    if (normalized === "hour" || normalized === "hourly" || normalized === "1hr" || normalized === "60m") return "1h";
+    if (normalized === "day" || normalized === "today" || normalized === "daily" || normalized === "24hr") return "24h";
     if (normalized === "monthly") return "month";
     if (normalized === "yearly") return "year";
+    if (normalized === "all" || normalized === "overall" || normalized === "lifetime") return "total";
     return ENERGY_RANGE_OPTIONS.some((option) => option.key === normalized) ? normalized : undefined;
   }
 
@@ -1214,21 +1255,34 @@ class HaSolarDashboardCard extends HTMLElement {
   _energyEntityConfig(key) {
     const config = this.config.energy_entities?.[key];
     if (!config) return {};
-    if (typeof config === "string") return { day: config };
+    if (typeof config === "string") return { entity: config };
     return typeof config === "object" ? config : {};
   }
 
-  _metricEnergyEntityId(metric, range = this._currentEnergyRange()) {
+  _energyRangeAliases(range) {
+    return {
+      "1h": ["1h", "hour", "hourly", "last_hour", "hour_energy", "hourly_energy"],
+      "24h": ["24h", "day", "daily", "today", "last_24h", "day_energy", "daily_energy"],
+      month: ["month", "monthly", "month_energy", "monthly_energy"],
+      year: ["year", "yearly", "year_energy", "yearly_energy"],
+      total: ["total", "overall", "all", "lifetime", "total_energy"],
+    }[range] || [range];
+  }
+
+  _metricEnergySource(metric, range = this._currentEnergyRange()) {
     if (!metric || metric.overlay || metric.customKpi || metric.gridStatus || metric.unit !== "power") return "";
     const normalizedRange = this._normalizeEnergyRange(range);
     if (!normalizedRange || normalizedRange === "live") return "";
     const config = this._energyEntityConfig(metric.key);
-    const aliases = {
-      day: ["day", "daily", "today", "day_energy", "daily_energy"],
-      month: ["month", "monthly", "month_energy", "monthly_energy"],
-      year: ["year", "yearly", "year_energy", "yearly_energy"],
-    }[normalizedRange] || [normalizedRange];
-    return aliases.map((alias) => config[alias]).find(Boolean) || "";
+    const rangeEntityId = this._energyRangeAliases(normalizedRange).map((alias) => config[alias]).find(Boolean);
+    const counterEntityId = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
+    if (rangeEntityId) return { entityId: rangeEntityId, mode: "direct", range: normalizedRange };
+    if (counterEntityId) return { entityId: counterEntityId, mode: normalizedRange === "total" ? "direct" : "counter", range: normalizedRange };
+    return "";
+  }
+
+  _metricEnergyEntityId(metric, range = this._currentEnergyRange()) {
+    return this._metricEnergySource(metric, range)?.entityId || "";
   }
 
   _isMetricEnergyMode(metric) {
@@ -1287,10 +1341,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.overlay) return this._formatOverlayReading(metric.overlay);
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
-      const energyEntityId = this._metricEnergyEntityId(metric);
-      if (!energyEntityId) return "—";
-      const value = this._getEntityValue(energyEntityId, undefined);
-      return this._formatEnergyValue(value, this._getEntityUnit(energyEntityId), "kWh");
+      return this._formatEnergyRangeReading(metric);
     }
     const entityId = this.config.entities[metric.key];
     const value = this._getEntityValue(entityId, entityId ? undefined : "0");
@@ -1498,6 +1549,68 @@ class HaSolarDashboardCard extends HTMLElement {
     return `${value} ${targetUnit || entityUnit || "kWh"}`;
   }
 
+  _energyRangeMinutes(range) {
+    const normalizedRange = this._normalizeEnergyRange(range);
+    if (normalizedRange === "1h") return 60;
+    if (normalizedRange === "24h") return 1440;
+    if (normalizedRange === "month") return 30 * 24 * 60;
+    if (normalizedRange === "year") return 365 * 24 * 60;
+    return undefined;
+  }
+
+  _energyRangeCacheKey(entityId, range) {
+    const bucket = Math.floor(Date.now() / 60000);
+    return `${entityId}|${range}|${bucket}`;
+  }
+
+  _energyRangeConsumptionInfo(metric) {
+    const range = this._currentEnergyRange();
+    const source = this._metricEnergySource(metric, range);
+    if (!source?.entityId) return undefined;
+    if (source.mode === "direct" || range === "total") {
+      const value = this._getEntityValue(source.entityId, undefined);
+      const amount = this._valueAsKwh(value, this._getEntityUnit(source.entityId));
+      return {
+        amount,
+        unit: this._getEntityUnit(source.entityId) || "kWh",
+        entityId: source.entityId,
+        mode: "direct",
+      };
+    }
+
+    const minutes = this._energyRangeMinutes(range);
+    if (!Number.isFinite(minutes)) return undefined;
+    const key = this._energyRangeCacheKey(source.entityId, range);
+    const cached = this._energyRangeCache?.get(key);
+    if (cached) return cached;
+    this._requestEnergyRangeConsumption(source.entityId, minutes, key);
+    return { loading: true, amount: undefined, unit: this._getEntityUnit(source.entityId) || "kWh", entityId: source.entityId, mode: "counter" };
+  }
+
+  _requestEnergyRangeConsumption(entityId, minutes, key) {
+    if (!this._hass?.callApi || this._energyRangeLoading?.has(key)) return;
+    this._energyRangeLoading.add(key);
+    this._loadCounterConsumption(entityId, minutes, "kWh")
+      .then((info) => {
+        this._energyRangeCache.set(key, { ...info, entityId, mode: "counter" });
+        this._energyRangeLoading.delete(key);
+        this._updateReadings();
+      })
+      .catch(() => {
+        this._energyRangeCache.set(key, { error: true, amount: undefined, unit: this._getEntityUnit(entityId) || "kWh", entityId, mode: "counter" });
+        this._energyRangeLoading.delete(key);
+        this._updateReadings();
+      });
+  }
+
+  _formatEnergyRangeReading(metric) {
+    const info = this._energyRangeConsumptionInfo(metric);
+    if (!info) return "—";
+    if (info.loading) return "…";
+    if (info.error || !Number.isFinite(info.amount)) return "—";
+    return this._formatEnergyValue(info.amount, "kWh", "kWh");
+  }
+
   _formatPowerValue(rawValue, unit, entityUnit) {
     const value = this._formatValue(rawValue);
     if (value === "—") return value;
@@ -1551,6 +1664,10 @@ class HaSolarDashboardCard extends HTMLElement {
       const rawValue = kpi.entity ? this._getEntityValue(kpi.entity, undefined) : kpi.value;
       const number = Number(rawValue);
       return Number.isFinite(number) ? number : undefined;
+    }
+    if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
+      const info = this._energyRangeConsumptionInfo(metric);
+      return Number.isFinite(info?.amount) ? info.amount : undefined;
     }
     const entityId = this._metricEntityId(metric);
     const value = this._getEntityValue(entityId, undefined);
@@ -1726,7 +1843,7 @@ class HaSolarDashboardCard extends HTMLElement {
       });
   }
 
-  async _loadCounterConsumption(entityId, minutes) {
+  async _loadCounterConsumption(entityId, minutes, defaultUnit = "m³") {
     const end = new Date();
     const start = new Date(end.getTime() - minutes * 60 * 1000);
     const query = [
@@ -1738,7 +1855,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const states = (Array.isArray(history?.[0]) ? history[0] : [])
       .map((entry) => ({
         value: Number(entry?.state ?? entry?.s),
-        unit: entry?.attributes?.unit_of_measurement || this._getEntityUnit(entityId) || "m³",
+        unit: entry?.attributes?.unit_of_measurement || this._getEntityUnit(entityId) || defaultUnit,
         time: Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || ""),
       }))
       .filter((entry) => Number.isFinite(entry.value) && Number.isFinite(entry.time))
@@ -1750,7 +1867,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const amount = Number.isFinite(endValue) && Number.isFinite(startValue)
       ? Math.max(0, endValue - startValue)
       : undefined;
-    return { amount, unit: latestState?.unit || this._getEntityUnit(entityId) || "m³" };
+    return { amount, unit: latestState?.unit || this._getEntityUnit(entityId) || defaultUnit };
   }
 
   _formatGasConsumptionValue() {
@@ -3083,8 +3200,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   _renderEntityInput(metric) {
     const selected = this._config?.entities?.[metric.key] || "";
     const label = this._metricLabel(metric);
+    const fieldLabel = metric.unit === "power" ? this._t("editor.liveEntity") : this._t("editor.entity");
     return `
-      <label>${this._escape(this._t("editor.entity"))}
+      <label>${this._escape(fieldLabel)}
         <input data-path="entities.${metric.key}" list="ha-solar-dashboard-entities" placeholder="${this._escape(this._t("editor.entityPlaceholder", { label }))}" value="${this._escape(selected)}" autocomplete="off" />
       </label>
     `;
@@ -3109,23 +3227,38 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   _energyEntityConfig(metric) {
     const config = this._config.energy_entities?.[metric.key];
     if (!config) return {};
-    if (typeof config === "string") return { day: config };
+    if (typeof config === "string") return { entity: config };
     return typeof config === "object" ? config : {};
   }
 
   _renderEnergyEntityInputs(metric) {
     if (metric.unit !== "power") return "";
     const config = this._energyEntityConfig(metric);
+    const counterValue = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
+    const fields = [
+      { key: "1h", labelKey: "editor.energy1hEntity", aliases: ["1h", "hour", "hourly", "last_hour"] },
+      { key: "24h", labelKey: "editor.energy24hEntity", aliases: ["24h", "day", "daily", "today", "last_24h"] },
+      { key: "month", labelKey: "editor.energyMonthEntity", aliases: ["month", "monthly"] },
+      { key: "year", labelKey: "editor.energyYearEntity", aliases: ["year", "yearly"] },
+      { key: "total", labelKey: "editor.energyTotalEntity", aliases: ["total", "overall", "all", "lifetime"] },
+    ];
+    const overrideFields = fields.map((field) => {
+      const value = field.aliases.map((alias) => config[alias]).find(Boolean) || "";
+      return `
+        <label>${this._escape(this._t(field.labelKey))}
+          <input data-path="energy_entities.${metric.key}.${field.key}" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_${this._escape(field.key)}_energy" value="${this._escape(value)}" autocomplete="off" />
+        </label>
+      `;
+    }).join("");
+
     return `
-      <label>${this._escape(this._t("editor.energyDayEntity"))}
-        <input data-path="energy_entities.${metric.key}.day" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_day_energy" value="${this._escape(config.day || config.daily || config.today || "")}" autocomplete="off" />
+      <label>${this._escape(this._t("editor.energyCounterEntity"))}
+        <input data-path="energy_entities.${metric.key}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_energy_total" value="${this._escape(counterValue)}" autocomplete="off" />
       </label>
-      <label>${this._escape(this._t("editor.energyMonthEntity"))}
-        <input data-path="energy_entities.${metric.key}.month" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_month_energy" value="${this._escape(config.month || config.monthly || "")}" autocomplete="off" />
-      </label>
-      <label>${this._escape(this._t("editor.energyYearEntity"))}
-        <input data-path="energy_entities.${metric.key}.year" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_year_energy" value="${this._escape(config.year || config.yearly || "")}" autocomplete="off" />
-      </label>
+      <details>
+        <summary>${this._escape(this._t("editor.energyRangeOverride"))}</summary>
+        <div class="details-grid">${overrideFields}</div>
+      </details>
     `;
   }
 
@@ -3410,6 +3543,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
         .section-title{font-size:13px;font-weight:700;margin-top:4px}
         .box-field{display:grid;gap:8px;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px}
+        details{display:grid;gap:8px;min-width:0}
+        summary{cursor:pointer;font-size:13px;font-weight:600}
+        .details-grid{display:grid;gap:8px;margin-top:8px;min-width:0}
         .kpi-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;min-width:0}
         .kpi-head strong{min-width:0;overflow-wrap:anywhere}
         .inline{display:flex;align-items:center;gap:8px}

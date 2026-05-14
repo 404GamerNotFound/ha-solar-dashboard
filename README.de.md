@@ -18,11 +18,16 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Automatische Leistungsanzeige in `W` bis `999 W` und ab `1000 W` in `kW` mit zwei Nachkommastellen
 - Einzelne HUD- und Übersichtsboxen können ausgeblendet werden
 - Dynamische Farben und Glow-Zustände je Tile über konfigurierbare Grenzwerte, z. B. grün bei hoher PV-Leistung oder orange bei Netzbezug
+- Batterie-Ladezustand als kompakter Balken in Batterie-HUD und Batterie-Kachel
+- Optionale Netzstatus-Kachel mit Bezug, Einspeisung oder Autarkie aus der Import-/Export-Entität
+- Tooltips pro Wert mit Entität, Rohwert, formatiertem Wert und Aktualisierungszeit
+- Warnzustände für nicht verfügbare/offline Sensoren und niedrigen Batteriestand
 - Frei definierbare KPI-Kacheln unter dem Bild, z. B. CO₂ gespart heute, Autarkiegrad oder spezifischer Ertrag
 - Variante `apartment_building_balcony_solar` für Balkonsolar mit PV-Leistung, Batterie und Wechselrichter
 - Dezentes Statuslabel im Bild mit letzter Aktualisierung und optionalem Import-/Exportwert
 - Optionale Wetterbilder per `weather_entity`, zum Beispiel `_sunny`, `_rainy`, `_cloudy`, `_snowy` oder `_thunderstorm`
 - UI- und Editor-Labels folgen automatisch der Home-Assistant-Sprache (`en`, `de`, `es`, `fr`, `pl`)
+- In der Home-Assistant-Kartenauswahl mit Preview registriert
 
 ## Installation (HACS)
 

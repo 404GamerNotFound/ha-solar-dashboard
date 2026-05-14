@@ -54,6 +54,7 @@ const I18N = {
     "editor.sectionKpis": "Custom KPI tiles",
     "editor.showBox": "Show {label}",
     "editor.showHouseSelector": "Show house selector",
+    "editor.showGridStatusTile": "Show grid status tile",
     "editor.showLiveLabel": "Show live label",
     "editor.showMetricTiles": "Show metric boxes below image",
     "editor.showStatusLabel": "Show image status label",
@@ -74,6 +75,7 @@ const I18N = {
     "house.single_family_home": "Single Family Home",
     "house.terraced_middle_house": "Terraced Middle House",
     "metrics.battery_level": "Battery",
+    "metrics.grid_status": "Grid",
     "metrics.import_export_power": "Import/Export",
     "metrics.inverter_power": "Inverter",
     "metrics.pv_power": "PV Power",
@@ -84,7 +86,13 @@ const I18N = {
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Last updated: {time}",
+    "status.selfSufficient": "Self-sufficient",
     "status.weather": "Weather: {weather}",
+    "tooltip.entity": "Entity",
+    "tooltip.raw": "Raw value",
+    "tooltip.status": "Status",
+    "tooltip.updated": "Updated",
+    "tooltip.value": "Value",
     "weather.clear": "Clear",
     "weather.clear-night": "Clear",
     "weather.cloudy": "Cloudy",
@@ -100,6 +108,10 @@ const I18N = {
     "weather.sunny": "Sunny",
     "weather.windy": "Windy",
     "weather.windy-variant": "Windy/cloudy",
+    "warning.batteryLow": "Battery low",
+    "warning.sensorMissing": "Entity not found",
+    "warning.sensorOffline": "Sensor offline",
+    "warning.sensorUnavailable": "Sensor unavailable",
   },
   de: {
     "aria.houseSelector": "Haus auswählen",
@@ -131,6 +143,7 @@ const I18N = {
     "editor.sectionKpis": "Eigene KPI-Kacheln",
     "editor.showBox": "{label} anzeigen",
     "editor.showHouseSelector": "Hausauswahl anzeigen",
+    "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
     "editor.showLiveLabel": "Live-Label anzeigen",
     "editor.showMetricTiles": "Messwertboxen unter dem Bild anzeigen",
     "editor.showStatusLabel": "Statuslabel im Bild anzeigen",
@@ -151,6 +164,7 @@ const I18N = {
     "house.single_family_home": "Einfamilienhaus",
     "house.terraced_middle_house": "Reihenmittelhaus",
     "metrics.battery_level": "Batterie",
+    "metrics.grid_status": "Netz",
     "metrics.import_export_power": "Import/Export",
     "metrics.inverter_power": "Wechselrichter",
     "metrics.pv_power": "PV-Leistung",
@@ -158,10 +172,16 @@ const I18N = {
     "metrics.pv_shed_power": "PV Schuppen",
     "metrics.pv_total_power": "PV Gesamt",
     "metrics.wallbox_power": "Wallbox",
-    "status.export": "Export",
-    "status.import": "Import",
+    "status.export": "Einspeisung",
+    "status.import": "Bezug",
     "status.lastUpdated": "Zuletzt aktualisiert: {time}",
+    "status.selfSufficient": "Autark",
     "status.weather": "Wetter: {weather}",
+    "tooltip.entity": "Entität",
+    "tooltip.raw": "Rohwert",
+    "tooltip.status": "Status",
+    "tooltip.updated": "Aktualisiert",
+    "tooltip.value": "Wert",
     "weather.clear": "Klar",
     "weather.clear-night": "Klar",
     "weather.cloudy": "Bewölkt",
@@ -177,6 +197,10 @@ const I18N = {
     "weather.sunny": "Sonnig",
     "weather.windy": "Windig",
     "weather.windy-variant": "Windig/bewölkt",
+    "warning.batteryLow": "Batterie niedrig",
+    "warning.sensorMissing": "Entität nicht gefunden",
+    "warning.sensorOffline": "Sensor offline",
+    "warning.sensorUnavailable": "Sensor nicht verfügbar",
   },
   es: {
     "aria.houseSelector": "Seleccionar casa",
@@ -208,6 +232,7 @@ const I18N = {
     "editor.sectionKpis": "Mosaicos KPI personalizados",
     "editor.showBox": "Mostrar {label}",
     "editor.showHouseSelector": "Mostrar selector de casa",
+    "editor.showGridStatusTile": "Mostrar mosaico de red",
     "editor.showLiveLabel": "Mostrar etiqueta en vivo",
     "editor.showMetricTiles": "Mostrar cajas de métricas bajo la imagen",
     "editor.showStatusLabel": "Mostrar etiqueta de estado en la imagen",
@@ -228,6 +253,7 @@ const I18N = {
     "house.single_family_home": "Casa unifamiliar",
     "house.terraced_middle_house": "Casa adosada central",
     "metrics.battery_level": "Batería",
+    "metrics.grid_status": "Red",
     "metrics.import_export_power": "Importación/exportación",
     "metrics.inverter_power": "Inversor",
     "metrics.pv_power": "Potencia FV",
@@ -238,7 +264,13 @@ const I18N = {
     "status.export": "Exportación",
     "status.import": "Importación",
     "status.lastUpdated": "Última actualización: {time}",
+    "status.selfSufficient": "Autosuficiente",
     "status.weather": "Clima: {weather}",
+    "tooltip.entity": "Entidad",
+    "tooltip.raw": "Valor bruto",
+    "tooltip.status": "Estado",
+    "tooltip.updated": "Actualizado",
+    "tooltip.value": "Valor",
     "weather.clear": "Despejado",
     "weather.clear-night": "Despejado",
     "weather.cloudy": "Nublado",
@@ -254,6 +286,10 @@ const I18N = {
     "weather.sunny": "Soleado",
     "weather.windy": "Ventoso",
     "weather.windy-variant": "Ventoso/nublado",
+    "warning.batteryLow": "Batería baja",
+    "warning.sensorMissing": "Entidad no encontrada",
+    "warning.sensorOffline": "Sensor sin conexión",
+    "warning.sensorUnavailable": "Sensor no disponible",
   },
   fr: {
     "aria.houseSelector": "Sélectionner une maison",
@@ -285,6 +321,7 @@ const I18N = {
     "editor.sectionKpis": "Tuiles KPI personnalisées",
     "editor.showBox": "Afficher {label}",
     "editor.showHouseSelector": "Afficher le sélecteur de maison",
+    "editor.showGridStatusTile": "Afficher la tuile réseau",
     "editor.showLiveLabel": "Afficher le libellé en direct",
     "editor.showMetricTiles": "Afficher les boîtes de mesure sous l'image",
     "editor.showStatusLabel": "Afficher le libellé d'état dans l'image",
@@ -305,6 +342,7 @@ const I18N = {
     "house.single_family_home": "Maison individuelle",
     "house.terraced_middle_house": "Maison mitoyenne centrale",
     "metrics.battery_level": "Batterie",
+    "metrics.grid_status": "Réseau",
     "metrics.import_export_power": "Import/export",
     "metrics.inverter_power": "Onduleur",
     "metrics.pv_power": "Puissance PV",
@@ -315,7 +353,13 @@ const I18N = {
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Dernière mise à jour : {time}",
+    "status.selfSufficient": "Autonome",
     "status.weather": "Météo : {weather}",
+    "tooltip.entity": "Entité",
+    "tooltip.raw": "Valeur brute",
+    "tooltip.status": "État",
+    "tooltip.updated": "Mis à jour",
+    "tooltip.value": "Valeur",
     "weather.clear": "Dégagé",
     "weather.clear-night": "Dégagé",
     "weather.cloudy": "Nuageux",
@@ -331,6 +375,10 @@ const I18N = {
     "weather.sunny": "Ensoleillé",
     "weather.windy": "Venteux",
     "weather.windy-variant": "Venteux/nuageux",
+    "warning.batteryLow": "Batterie faible",
+    "warning.sensorMissing": "Entité introuvable",
+    "warning.sensorOffline": "Capteur hors ligne",
+    "warning.sensorUnavailable": "Capteur indisponible",
   },
   pl: {
     "aria.houseSelector": "Wybierz dom",
@@ -362,6 +410,7 @@ const I18N = {
     "editor.sectionKpis": "Własne kafelki KPI",
     "editor.showBox": "Pokaż {label}",
     "editor.showHouseSelector": "Pokaż wybór domu",
+    "editor.showGridStatusTile": "Pokaż kafelek sieci",
     "editor.showLiveLabel": "Pokaż etykietę na żywo",
     "editor.showMetricTiles": "Pokaż pola metryk pod obrazem",
     "editor.showStatusLabel": "Pokaż etykietę statusu na obrazie",
@@ -382,6 +431,7 @@ const I18N = {
     "house.single_family_home": "Dom jednorodzinny",
     "house.terraced_middle_house": "Środkowy dom szeregowy",
     "metrics.battery_level": "Bateria",
+    "metrics.grid_status": "Sieć",
     "metrics.import_export_power": "Import/eksport",
     "metrics.inverter_power": "Falownik",
     "metrics.pv_power": "Moc PV",
@@ -392,7 +442,13 @@ const I18N = {
     "status.export": "Eksport",
     "status.import": "Import",
     "status.lastUpdated": "Ostatnia aktualizacja: {time}",
+    "status.selfSufficient": "Samowystarczalny",
     "status.weather": "Pogoda: {weather}",
+    "tooltip.entity": "Encja",
+    "tooltip.raw": "Wartość surowa",
+    "tooltip.status": "Status",
+    "tooltip.updated": "Zaktualizowano",
+    "tooltip.value": "Wartość",
     "weather.clear": "Bezchmurnie",
     "weather.clear-night": "Bezchmurnie",
     "weather.cloudy": "Pochmurno",
@@ -408,6 +464,10 @@ const I18N = {
     "weather.sunny": "Słonecznie",
     "weather.windy": "Wietrznie",
     "weather.windy-variant": "Wietrznie/pochmurno",
+    "warning.batteryLow": "Niski poziom baterii",
+    "warning.sensorMissing": "Nie znaleziono encji",
+    "warning.sensorOffline": "Sensor offline",
+    "warning.sensorUnavailable": "Sensor niedostępny",
   },
 };
 
@@ -563,6 +623,14 @@ const TILE_METRICS = [
 ];
 
 const STATUS_METRIC = { key: "import_export_power", label: "Import/Export", unit: "power", color: "blue" };
+const GRID_STATUS_METRIC = {
+  ...STATUS_METRIC,
+  label: "Grid",
+  labelKey: "metrics.grid_status",
+  gridStatus: true,
+  hud: false,
+  tileOrder: 90,
+};
 
 const DEFAULT_TILE_COLOR_RULES = {
   pv_roof_power: [
@@ -586,8 +654,8 @@ const DEFAULT_TILE_COLOR_RULES = {
     { above: 80, color: "#34d399" },
   ],
   import_export_power: [
-    { above: 0, color: "#fb923c", glow: true },
-    { below: 0, color: "#34d399", glow: true },
+    { gt: 25, color: "#fb923c", glow: true },
+    { lt: -25, color: "#34d399", glow: true },
   ],
 };
 
@@ -662,8 +730,11 @@ class HaSolarDashboardCard extends HTMLElement {
       show_metric_tiles: true,
       show_status_label: true,
       show_weather_status: false,
+      show_grid_status_tile: true,
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
+      battery_low_threshold: 20,
+      grid_neutral_threshold: 25,
       dynamic_tile_colors: true,
       daylight_entity: "sun.sun",
       weather_entity: "",
@@ -683,7 +754,7 @@ class HaSolarDashboardCard extends HTMLElement {
         inverter_power: "sensor.wechselrichter_power",
         wallbox_power: "sensor.wallbox_power",
         pv_total_power: "sensor.pv_total_power",
-        import_export_power: "",
+        import_export_power: "sensor.grid_power",
       },
     };
   }
@@ -705,8 +776,11 @@ class HaSolarDashboardCard extends HTMLElement {
       show_metric_tiles: true,
       show_status_label: true,
       show_weather_status: false,
+      show_grid_status_tile: true,
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
+      battery_low_threshold: 20,
+      grid_neutral_threshold: 25,
       daylight_entity: "sun.sun",
       weather_entity: "",
       dynamic_tile_colors: true,
@@ -744,6 +818,8 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.hud_box_opacity = this._clampNumber(this.config.hud_box_opacity, 0.65, 0, 1);
     this.config.hud_box_scale = this._clampNumber(this.config.hud_box_scale, 1, 0.6, 1.8);
     this.config.power_decimals = this._clampNumber(this.config.power_decimals, 2, 0, 3);
+    this.config.battery_low_threshold = this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
+    this.config.grid_neutral_threshold = this._clampNumber(this.config.grid_neutral_threshold, 25, 0, 1000000);
 
     this._selectedHouse = house;
 
@@ -796,20 +872,39 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _getEntityValue(entityId, fallback = "0") {
-    if (!entityId || !this._hass?.states?.[entityId]) return fallback;
-    return this._hass.states[entityId].state;
+    const entity = this._getEntity(entityId);
+    if (!entity) return fallback;
+    return entity.state;
+  }
+
+  _getEntity(entityId) {
+    if (!entityId) return undefined;
+    return this._hass?.states?.[entityId];
   }
 
   _getEntityUnit(entityId) {
-    return this._hass?.states?.[entityId]?.attributes?.unit_of_measurement;
+    return this._getEntity(entityId)?.attributes?.unit_of_measurement;
   }
 
   _getEntityLastUpdated(entityId) {
-    return this._hass?.states?.[entityId]?.last_updated || this._hass?.states?.[entityId]?.last_changed;
+    const entity = this._getEntity(entityId);
+    return entity?.last_updated || entity?.last_changed;
+  }
+
+  _metricEntityId(metric) {
+    if (metric.customKpi) return metric.customKpi.entity || "";
+    return this.config.entities?.[metric.key] || "";
   }
 
   _formatValue(value) {
-    if (value === undefined || value === null || value === "unknown" || value === "unavailable") return "—";
+    const normalized = String(value ?? "").toLowerCase();
+    if (
+      value === undefined
+      || value === null
+      || normalized === "unknown"
+      || normalized === "unavailable"
+      || normalized === "offline"
+    ) return "—";
     return value;
   }
 
@@ -821,9 +916,10 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _formatReading(metric) {
+    if (metric.gridStatus) return this._formatGridStatusReading();
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
     const entityId = this.config.entities[metric.key];
-    const value = this._getEntityValue(entityId, "0");
+    const value = this._getEntityValue(entityId, entityId ? undefined : "0");
     const unit = this._unitForMetric(metric);
     const entityUnit = this._getEntityUnit(entityId);
     if (metric.unit === "power") return this._formatPowerValue(value, unit, entityUnit);
@@ -911,24 +1007,55 @@ class HaSolarDashboardCard extends HTMLElement {
     return new Date(Math.max(...timestamps)).toISOString();
   }
 
-  _formatImportExportStatus() {
+  _gridNeutralThreshold() {
+    return this._clampNumber(this.config.grid_neutral_threshold, 25, 0, 1000000);
+  }
+
+  _gridStatusInfo() {
     const entityId = this.config.entities?.import_export_power;
-    if (!entityId) return "";
+    if (!entityId) return { kind: "none", label: "", value: "" };
     const rawValue = this._getEntityValue(entityId, undefined);
     const value = this._formatValue(rawValue);
-    if (value === "—") return "";
+    if (value === "—") {
+      const warning = this._metricWarning(GRID_STATUS_METRIC);
+      return { kind: "unavailable", label: warning?.label || this._t("warning.sensorUnavailable"), value: "—" };
+    }
 
-    const numericValue = Number(rawValue);
-    const direction = Number.isFinite(numericValue) && numericValue < 0
+    const entityUnit = this._getEntityUnit(entityId);
+    const watts = this._valueAsWatts(rawValue, entityUnit);
+    const unit = this.config.units?.import_export_power || "auto";
+    if (!Number.isFinite(watts)) {
+      const formattedValue = this._isEnergyUnit(entityUnit)
+        ? this._formatEnergyValue(rawValue, entityUnit, unit === "auto" ? "kWh" : unit)
+        : this._formatPowerValue(rawValue, unit, entityUnit);
+      return { kind: "unknown", label: String(value), value: formattedValue };
+    }
+
+    const magnitude = Math.abs(watts);
+    if (magnitude <= this._gridNeutralThreshold()) {
+      return { kind: "neutral", label: this._t("status.selfSufficient"), value: this._formatPowerValue(0, unit, "W") };
+    }
+
+    const direction = watts < 0
       ? this._t("status.export")
       : this._t("status.import");
-    const positiveValue = Number.isFinite(numericValue) ? Math.abs(numericValue) : rawValue;
-    const entityUnit = this._getEntityUnit(entityId);
-    const unit = this.config.units?.import_export_power || "auto";
-    const formattedValue = this._isEnergyUnit(entityUnit)
-      ? this._formatEnergyValue(positiveValue, entityUnit, unit === "auto" ? "kWh" : unit)
-      : this._formatPowerValue(positiveValue, unit, entityUnit);
-    return `${direction}: ${formattedValue}`;
+    const formattedValue = this._formatPowerValue(magnitude, unit, "W");
+    return { kind: watts < 0 ? "export" : "import", label: direction, value: formattedValue };
+  }
+
+  _formatGridStatusReading() {
+    const status = this._gridStatusInfo();
+    if (!status.label) return "—";
+    if (status.kind === "neutral") return status.label;
+    if (status.value && status.value !== "—") return `${status.label} ${status.value}`;
+    return status.label;
+  }
+
+  _formatImportExportStatus() {
+    const status = this._gridStatusInfo();
+    if (!status.label || status.kind === "unavailable") return "";
+    if (status.kind === "neutral") return status.label;
+    return `${status.label}: ${status.value}`;
   }
 
   _statusLabel() {
@@ -1053,6 +1180,86 @@ class HaSolarDashboardCard extends HTMLElement {
     return Number.isFinite(number) ? number : undefined;
   }
 
+  _batteryPercent(metric) {
+    if (metric.key !== "battery_level") return undefined;
+    const value = this._metricNumericValue(metric);
+    if (!Number.isFinite(value)) return undefined;
+    return Math.min(100, Math.max(0, value));
+  }
+
+  _renderBatteryIndicator(metric) {
+    if (metric.key !== "battery_level") return "";
+    const percent = this._batteryPercent(metric) ?? 0;
+    return `<div class="battery-meter" data-battery-meter="${this._escape(metric.key)}" aria-hidden="true"><span style="width:${percent.toFixed(0)}%"></span></div>`;
+  }
+
+  _formatLocalDateTime(dateString) {
+    const timestamp = Date.parse(dateString || "");
+    if (!Number.isFinite(timestamp)) return "";
+    try {
+      return new Intl.DateTimeFormat(this._language(), {
+        dateStyle: "short",
+        timeStyle: "medium",
+      }).format(new Date(timestamp));
+    } catch (_err) {
+      return new Date(timestamp).toLocaleString();
+    }
+  }
+
+  _metricWarning(metric) {
+    const entityId = this._metricEntityId(metric);
+    const entity = this._getEntity(entityId);
+    if (entityId && this._hass?.states && !entity) {
+      return { type: "missing", label: this._t("warning.sensorMissing") };
+    }
+
+    const state = String(entity?.state || "").toLowerCase().trim();
+    if (state === "unavailable" || state === "unknown") {
+      return { type: "unavailable", label: this._t("warning.sensorUnavailable") };
+    }
+    if (state === "offline" || (metric.key === "inverter_power" && state === "off")) {
+      return { type: "offline", label: this._t("warning.sensorOffline") };
+    }
+
+    if (metric.key === "battery_level") {
+      const value = this._metricNumericValue(metric);
+      if (Number.isFinite(value) && value <= this.config.battery_low_threshold) {
+        return { type: "battery-low", label: this._t("warning.batteryLow") };
+      }
+    }
+
+    return undefined;
+  }
+
+  _metricStateClass(metric) {
+    return this._metricWarning(metric) ? " is-warning" : "";
+  }
+
+  _metricTooltip(metric, variant) {
+    const entityId = this._metricEntityId(metric);
+    const entity = this._getEntity(entityId);
+    const warning = this._metricWarning(metric);
+    const rawValue = entity
+      ? entity.state
+      : metric.customKpi && !entityId
+        ? metric.customKpi.value
+        : undefined;
+    const entityUnit = entityId ? this._getEntityUnit(entityId) : "";
+    const updatedAt = entityId ? this._formatLocalDateTime(this._getEntityLastUpdated(entityId)) : "";
+    const rawLabel = rawValue !== undefined && rawValue !== ""
+      ? `${this._t("tooltip.raw")}: ${rawValue}${entityUnit ? ` ${entityUnit}` : ""}`
+      : "";
+
+    return [
+      this._metricLabel(metric, variant),
+      entityId ? `${this._t("tooltip.entity")}: ${entityId}` : "",
+      `${this._t("tooltip.value")}: ${this._formatReading(metric)}`,
+      rawLabel,
+      updatedAt ? `${this._t("tooltip.updated")}: ${updatedAt}` : "",
+      warning ? `${this._t("tooltip.status")}: ${warning.label}` : "",
+    ].filter(Boolean).join("\n");
+  }
+
   _ruleMatches(rule, value) {
     if (!rule || value === undefined) return false;
     const checks = [
@@ -1142,6 +1349,14 @@ class HaSolarDashboardCard extends HTMLElement {
     return metrics.filter((metric) => this._metricVisible(metric, variant));
   }
 
+  _showGridStatusTile() {
+    return (
+      this.config.show_grid_status_tile !== false
+      && Boolean(this.config.entities?.import_export_power)
+      && this.config.visible_boxes?.import_export_power !== false
+    );
+  }
+
   _visibleTileMetrics(variant) {
     return [
       ...this._visibleMetrics(variant).map((metric, index) => ({
@@ -1149,6 +1364,7 @@ class HaSolarDashboardCard extends HTMLElement {
         tileOrder: metric.tileOrder ?? index,
         tileColumns: metric.tileColumns ?? 1,
       })),
+      ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
     ].sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
   }
@@ -1162,6 +1378,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _metricLabel(metric, variant) {
     if (metric.customKpi) return metric.customKpi.label || metric.label;
+    if (metric.labelKey) return this._t(metric.labelKey, {}, metric.label);
     if (variant?.labelKeys?.[metric.key]) return this._t(variant.labelKeys[metric.key], {}, variant?.labels?.[metric.key] || metric.label);
     if (variant?.labels?.[metric.key]) return this._t(`metrics.${metric.key}`, {}, variant.labels[metric.key]);
     return this._t(`metrics.${metric.key}`, {}, metric.label);
@@ -1308,11 +1525,14 @@ class HaSolarDashboardCard extends HTMLElement {
     const position = this._metricPosition(variant, metric.key);
     const left = this._toPercent(position.left, 50);
     const top = this._toPercent(position.top, 50);
+    const tooltip = this._metricTooltip(metric, variant);
+    const warning = this._metricWarning(metric);
 
     return `
-      <div class="metric" data-accent-key="${metric.key}" data-metric="${metric.key}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
+      <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
         <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
         <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+        ${this._renderBatteryIndicator(metric)}
       </div>
     `;
   }
@@ -1359,6 +1579,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderCardShell(state) {
     this._lastImageKey = this._imageStateKey();
     this._lastLanguage = this._language();
+    this._currentVariant = state.variant;
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
     const visibleTileMetrics = this._visibleTileMetrics(state.variant);
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
@@ -1371,14 +1592,17 @@ class HaSolarDashboardCard extends HTMLElement {
       this._renderHouseSelector(state.activeHouse),
       this.config.show_time_label !== false ? `<div class="badge">${this._escape(this._displayTimeLabel())}</div>` : "",
     ].filter(Boolean).join("");
-    const gridHtml = visibleTileMetrics.map(
-      (metric) => `
-        <div class="tile" data-accent-key="${metric.key}" data-tile="${metric.key}" style="${this._escape(this._tileStyle(metric))}">
+    const gridHtml = visibleTileMetrics.map((metric) => {
+      const tooltip = this._metricTooltip(metric, state.variant);
+      const warning = this._metricWarning(metric);
+      return `
+        <div class="tile${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
           <div class="name">${this._escape(this._metricLabel(metric, state.variant))}</div>
           <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          ${this._renderBatteryIndicator(metric)}
         </div>
-      `,
-    ).join("");
+      `;
+    }).join("");
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -1391,13 +1615,17 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select { max-width:140px; padding:0 30px 0 10px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
-        .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:none; box-sizing:border-box; }
+        .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:help; box-sizing:border-box; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
         .metric .value,.tile .num { color:var(--tile-accent); font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
+        .battery-meter { width:100%; height:5px; margin-top:6px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
+        .battery-meter span { display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,color-mix(in srgb,var(--tile-accent) 64%,#fff),var(--tile-accent)); box-shadow:0 0 10px color-mix(in srgb,var(--tile-accent) 62%,transparent); transition:width .28s ease; }
+        .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
+        .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
         .scene-status:empty { display:none; }
         .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
-        .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
+        .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; position:relative; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; cursor:help; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
         @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select{width:100%;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} }
       </style>
       <ha-card>
@@ -1411,7 +1639,14 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _updateReadings() {
-    [...TILE_METRICS, ...this._customKpiMetrics()].forEach((metric) => {
+    const variant = this._currentVariant || this._layoutState().variant;
+    const liveMetrics = [
+      ...TILE_METRICS,
+      ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
+      ...this._customKpiMetrics(),
+    ];
+
+    liveMetrics.forEach((metric) => {
       const reading = this._formatReading(metric);
       this.shadowRoot.querySelectorAll(`[data-value="${metric.key}"]`).forEach((element) => {
         if (element.textContent !== reading) element.textContent = reading;
@@ -1420,6 +1655,18 @@ class HaSolarDashboardCard extends HTMLElement {
       this.shadowRoot.querySelectorAll(`[data-accent-key="${metric.key}"]`).forEach((element) => {
         element.style.setProperty("--tile-accent", accent.color);
         element.style.setProperty("--tile-glow", accent.glow);
+      });
+      const warning = this._metricWarning(metric);
+      const tooltip = this._metricTooltip(metric, variant);
+      this.shadowRoot.querySelectorAll(`[data-tooltip-key="${metric.key}"]`).forEach((element) => {
+        element.classList.toggle("is-warning", Boolean(warning));
+        element.dataset.warning = warning?.label || "";
+        element.setAttribute("title", tooltip);
+        element.setAttribute("aria-label", tooltip);
+      });
+      const batteryPercent = this._batteryPercent(metric);
+      this.shadowRoot.querySelectorAll(`[data-battery-meter="${metric.key}"] span`).forEach((element) => {
+        element.style.width = `${(batteryPercent ?? 0).toFixed(0)}%`;
       });
     });
     const statusAccent = this._metricAccent(STATUS_METRIC);
@@ -1741,6 +1988,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLiveLabel"))}</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+        <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
         <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
         <label><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> ${this._escape(this._t("editor.showWeatherStatus"))}</label>
         <label>${this._escape(this._t("editor.importExportEntity"))}
@@ -1802,5 +2050,7 @@ if (!window.customCards.some((card) => card.type === CARD_TYPE)) {
     type: CARD_TYPE,
     name: "HA Solar Dashboard Card",
     description: "PV energy overview dashboard card",
+    preview: true,
+    documentationURL: "https://github.com/404GamerNotFound/ha-solar-dashboard",
   });
 }

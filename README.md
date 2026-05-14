@@ -29,10 +29,15 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - PV Total (summary tile below the image)
 - Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
+- Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
+- Optional grid status tile showing import, export, or self-sufficient operation from the import/export entity
+- Hover tooltips on values show the linked entity, raw state, formatted value, and update time
+- Warning states highlight unavailable/offline sensors and low battery levels
 - Configurable KPI tiles below the image, including custom labels, entities or static values, units, color, sort position, and tile width
 - Custom standard and daylight images
 - Free X/Y positioning for every overlay box
 - Localized card and editor labels based on the Home Assistant language (`en`, `de`, `es`, `fr`, `pl`)
+- Registered for Home Assistant's card picker with a live preview
 - Dark glass style matching the provided design
 
 ## Installation (HACS)
@@ -67,6 +72,7 @@ entities:
   import_export_power: sensor.netzbezug_einspeisung
 visible_boxes:
   wallbox_power: false
+show_grid_status_tile: true
 positions:
   pv_roof_power:
     left: 64
@@ -79,6 +85,8 @@ units:
   battery: "%"
 power_display_mode: auto_kw
 power_decimals: 2
+grid_neutral_threshold: 25
+battery_low_threshold: 20
 dynamic_tile_colors: true
 tile_color_rules:
   pv_total_power:
@@ -90,10 +98,10 @@ tile_color_rules:
     - below: 100
       color: "#9ba3b8"
   import_export_power:
-    - above: 0
+    - gt: 25
       color: "#fb923c"
       glow: true
-    - below: 0
+    - lt: -25
       color: "#34d399"
       glow: true
 custom_kpis:
@@ -128,6 +136,7 @@ custom_kpis:
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
+- `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` is configured)
 - `daylight_entity` (string, default: `sun.sun`; uses `_day` images during the day and standard images before sunrise/after sunset)
 - `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
@@ -147,6 +156,8 @@ custom_kpis:
 - `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`; `auto` respects Home Assistant units such as `W`, `kW`, and `kWh`)
 - `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)
+- `grid_neutral_threshold` (number, default: `25`; watt threshold below which the grid tile shows self-sufficient/autark operation)
+- `battery_low_threshold` (number, default: `20`; battery percentage at or below which the battery tile is highlighted as a warning)
 - `dynamic_tile_colors` (boolean, default: `true`; enables threshold-based accent colors and glow states for HUD boxes, summary tiles, and the import/export status label)
 - `tile_color_rules.<entity_key>[]` (array, optional; first matching rule wins; supported keys include the visible box keys plus `import_export_power`)
 - `tile_color_rules.<entity_key>[].color` (CSS color, for example `#34d399`, `orange`, `rgb(251,146,60)`, or `var(--my-color)`)

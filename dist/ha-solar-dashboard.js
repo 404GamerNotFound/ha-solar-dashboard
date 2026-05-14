@@ -23,8 +23,16 @@ const WEATHER_IMAGE_SUFFIXES = {
   "windy-variant": ["wind", "cloudy"],
 };
 
+const ENERGY_RANGE_OPTIONS = [
+  { key: "live", labelKey: "range.live", label: "Live" },
+  { key: "day", labelKey: "range.day", label: "Day" },
+  { key: "month", labelKey: "range.month", label: "Month" },
+  { key: "year", labelKey: "range.year", label: "Year" },
+];
+
 const I18N = {
   en: {
+    "aria.energyRangeSelector": "Select value range",
     "aria.houseSelector": "Select house",
     "card.defaultTitle": "Energy Flow",
     "card.defaultTimeLabel": "Live",
@@ -42,6 +50,9 @@ const I18N = {
     "editor.batteryFlowEntity": "Battery flow entity (+/-)",
     "editor.entity": "Entity",
     "editor.entityPlaceholder": "{label} entity",
+    "editor.energyDayEntity": "Daily kWh entity",
+    "editor.energyMonthEntity": "Monthly kWh entity",
+    "editor.energyYearEntity": "Yearly kWh entity",
     "editor.houseType": "House Type",
     "editor.hudBoxOpacity": "HUD box opacity",
     "editor.hudBoxScale": "HUD box scale",
@@ -75,6 +86,7 @@ const I18N = {
     "editor.sectionKpis": "Custom KPI tiles",
     "editor.sectionOverlays": "Image overlays",
     "editor.showBox": "Show {label}",
+    "editor.showEnergyRangeSelector": "Show Live/Day/Month/Year selector",
     "editor.showHouseSelector": "Show house selector",
     "editor.showGridStatusTile": "Show grid status tile",
     "editor.showLiveLabel": "Show live label",
@@ -112,6 +124,10 @@ const I18N = {
     "metrics.wallbox2_power": "EV Charger 2",
     "overlay.heatpump": "Heat pump",
     "overlay.smoke": "Gas",
+    "range.day": "Day",
+    "range.live": "Live",
+    "range.month": "Month",
+    "range.year": "Year",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Last updated: {time}",
@@ -146,6 +162,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor unavailable",
   },
   de: {
+    "aria.energyRangeSelector": "Wertebereich auswählen",
     "aria.houseSelector": "Haus auswählen",
     "card.defaultTitle": "Energiefluss",
     "card.defaultTimeLabel": "Live",
@@ -163,6 +180,9 @@ const I18N = {
     "editor.batteryFlowEntity": "Batteriefluss-Entität (+/-)",
     "editor.entity": "Entität",
     "editor.entityPlaceholder": "{label} Entität",
+    "editor.energyDayEntity": "Tages-kWh-Entität",
+    "editor.energyMonthEntity": "Monats-kWh-Entität",
+    "editor.energyYearEntity": "Jahres-kWh-Entität",
     "editor.houseType": "Haustyp",
     "editor.hudBoxOpacity": "HUD-Box-Deckkraft",
     "editor.hudBoxScale": "HUD-Box-Skalierung",
@@ -196,6 +216,7 @@ const I18N = {
     "editor.sectionKpis": "Eigene KPI-Kacheln",
     "editor.sectionOverlays": "Bild-Overlays",
     "editor.showBox": "{label} anzeigen",
+    "editor.showEnergyRangeSelector": "Live-/Tag-/Monat-/Jahr-Auswahl anzeigen",
     "editor.showHouseSelector": "Hausauswahl anzeigen",
     "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
     "editor.showLiveLabel": "Live-Label anzeigen",
@@ -233,6 +254,10 @@ const I18N = {
     "metrics.wallbox2_power": "Wallbox 2",
     "overlay.heatpump": "Wärmepumpe",
     "overlay.smoke": "Gas",
+    "range.day": "Tag",
+    "range.live": "Live",
+    "range.month": "Monat",
+    "range.year": "Jahr",
     "status.export": "Einspeisung",
     "status.import": "Bezug",
     "status.lastUpdated": "Zuletzt aktualisiert: {time}",
@@ -267,6 +292,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor nicht verfügbar",
   },
   es: {
+    "aria.energyRangeSelector": "Seleccionar rango de valores",
     "aria.houseSelector": "Seleccionar casa",
     "card.defaultTitle": "Flujo de energía",
     "card.defaultTimeLabel": "En vivo",
@@ -284,6 +310,9 @@ const I18N = {
     "editor.batteryFlowEntity": "Entidad de flujo de batería (+/-)",
     "editor.entity": "Entidad",
     "editor.entityPlaceholder": "Entidad de {label}",
+    "editor.energyDayEntity": "Entidad kWh diaria",
+    "editor.energyMonthEntity": "Entidad kWh mensual",
+    "editor.energyYearEntity": "Entidad kWh anual",
     "editor.houseType": "Tipo de casa",
     "editor.hudBoxOpacity": "Opacidad de cajas HUD",
     "editor.hudBoxScale": "Escala de cajas HUD",
@@ -317,6 +346,7 @@ const I18N = {
     "editor.sectionKpis": "Mosaicos KPI personalizados",
     "editor.sectionOverlays": "Superposiciones de imagen",
     "editor.showBox": "Mostrar {label}",
+    "editor.showEnergyRangeSelector": "Mostrar selector en vivo/día/mes/año",
     "editor.showHouseSelector": "Mostrar selector de casa",
     "editor.showGridStatusTile": "Mostrar mosaico de red",
     "editor.showLiveLabel": "Mostrar etiqueta en vivo",
@@ -354,6 +384,10 @@ const I18N = {
     "metrics.wallbox2_power": "Cargador VE 2",
     "overlay.heatpump": "Bomba de calor",
     "overlay.smoke": "Gas",
+    "range.day": "Día",
+    "range.live": "En vivo",
+    "range.month": "Mes",
+    "range.year": "Año",
     "status.export": "Exportación",
     "status.import": "Importación",
     "status.lastUpdated": "Última actualización: {time}",
@@ -388,6 +422,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor no disponible",
   },
   fr: {
+    "aria.energyRangeSelector": "Sélectionner la période de valeur",
     "aria.houseSelector": "Sélectionner une maison",
     "card.defaultTitle": "Flux d'énergie",
     "card.defaultTimeLabel": "En direct",
@@ -405,6 +440,9 @@ const I18N = {
     "editor.batteryFlowEntity": "Entité de flux batterie (+/-)",
     "editor.entity": "Entité",
     "editor.entityPlaceholder": "Entité {label}",
+    "editor.energyDayEntity": "Entité kWh jour",
+    "editor.energyMonthEntity": "Entité kWh mois",
+    "editor.energyYearEntity": "Entité kWh année",
     "editor.houseType": "Type de maison",
     "editor.hudBoxOpacity": "Opacité des boîtes HUD",
     "editor.hudBoxScale": "Échelle des boîtes HUD",
@@ -438,6 +476,7 @@ const I18N = {
     "editor.sectionKpis": "Tuiles KPI personnalisées",
     "editor.sectionOverlays": "Superpositions d'image",
     "editor.showBox": "Afficher {label}",
+    "editor.showEnergyRangeSelector": "Afficher le sélecteur direct/jour/mois/année",
     "editor.showHouseSelector": "Afficher le sélecteur de maison",
     "editor.showGridStatusTile": "Afficher la tuile réseau",
     "editor.showLiveLabel": "Afficher le libellé en direct",
@@ -475,6 +514,10 @@ const I18N = {
     "metrics.wallbox2_power": "Chargeur VE 2",
     "overlay.heatpump": "Pompe à chaleur",
     "overlay.smoke": "Gaz",
+    "range.day": "Jour",
+    "range.live": "Direct",
+    "range.month": "Mois",
+    "range.year": "Année",
     "status.export": "Export",
     "status.import": "Import",
     "status.lastUpdated": "Dernière mise à jour : {time}",
@@ -509,6 +552,7 @@ const I18N = {
     "warning.sensorUnavailable": "Capteur indisponible",
   },
   pl: {
+    "aria.energyRangeSelector": "Wybierz zakres wartości",
     "aria.houseSelector": "Wybierz dom",
     "card.defaultTitle": "Przepływ energii",
     "card.defaultTimeLabel": "Na żywo",
@@ -526,6 +570,9 @@ const I18N = {
     "editor.batteryFlowEntity": "Encja przepływu baterii (+/-)",
     "editor.entity": "Encja",
     "editor.entityPlaceholder": "Encja {label}",
+    "editor.energyDayEntity": "Dzienna encja kWh",
+    "editor.energyMonthEntity": "Miesięczna encja kWh",
+    "editor.energyYearEntity": "Roczna encja kWh",
     "editor.houseType": "Typ domu",
     "editor.hudBoxOpacity": "Przezroczystość pól HUD",
     "editor.hudBoxScale": "Skala pól HUD",
@@ -559,6 +606,7 @@ const I18N = {
     "editor.sectionKpis": "Własne kafelki KPI",
     "editor.sectionOverlays": "Nakładki obrazu",
     "editor.showBox": "Pokaż {label}",
+    "editor.showEnergyRangeSelector": "Pokaż wybór na żywo/dzień/miesiąc/rok",
     "editor.showHouseSelector": "Pokaż wybór domu",
     "editor.showGridStatusTile": "Pokaż kafelek sieci",
     "editor.showLiveLabel": "Pokaż etykietę na żywo",
@@ -596,6 +644,10 @@ const I18N = {
     "metrics.wallbox2_power": "Ładowarka EV 2",
     "overlay.heatpump": "Pompa ciepła",
     "overlay.smoke": "Gaz",
+    "range.day": "Dzień",
+    "range.live": "Na żywo",
+    "range.month": "Miesiąc",
+    "range.year": "Rok",
     "status.export": "Eksport",
     "status.import": "Import",
     "status.lastUpdated": "Ostatnia aktualizacja: {time}",
@@ -944,6 +996,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_title: true,
       show_time_label: true,
       show_house_selector: true,
+      show_energy_range_selector: true,
       show_metric_tiles: true,
       show_power_flows: false,
       show_status_label: true,
@@ -965,6 +1018,8 @@ class HaSolarDashboardCard extends HTMLElement {
       dynamic_tile_colors: true,
       daylight_entity: "sun.sun",
       weather_entity: "",
+      labels: {},
+      energy_entities: {},
       tile_color_rules: DEFAULT_TILE_COLOR_RULES,
       custom_kpis: [],
       image_overlays: {
@@ -999,6 +1054,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (!config) throw new Error("Invalid configuration");
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
+    const energyRange = this._normalizeEnergyRange(config.energy_range) || "live";
     this._hasCustomTitle = Object.prototype.hasOwnProperty.call(config, "title");
     this._hasCustomTimeLabel = Object.prototype.hasOwnProperty.call(config, "time_label");
 
@@ -1009,6 +1065,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_title: true,
       show_time_label: true,
       show_house_selector: true,
+      show_energy_range_selector: true,
       show_metric_tiles: true,
       show_power_flows: false,
       show_status_label: true,
@@ -1024,16 +1081,20 @@ class HaSolarDashboardCard extends HTMLElement {
       dynamic_tile_colors: true,
       power_display_mode: "auto_kw",
       power_decimals: 2,
+      energy_range: energyRange,
       units: { power: "auto", battery: "%" },
       entities: {},
       positions: {},
       visible_boxes: {},
       max_power_kw: {},
+      labels: {},
+      energy_entities: {},
       image_overlays: {},
       tile_color_rules: {},
       custom_kpis: [],
       ...config,
       house,
+      energy_range: energyRange,
       units: {
         power: "auto",
         battery: "%",
@@ -1050,6 +1111,14 @@ class HaSolarDashboardCard extends HTMLElement {
       },
       max_power_kw: {
         ...(config.max_power_kw || {}),
+      },
+      labels: {
+        ...(config.metric_labels || {}),
+        ...(config.labels || {}),
+      },
+      energy_entities: {
+        ...(config.energy_counters || {}),
+        ...(config.energy_entities || {}),
       },
       image_overlays: {
         smoke: {
@@ -1080,6 +1149,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();
 
     this._selectedHouse = house;
+    this._selectedEnergyRange = this._normalizeEnergyRange(this._selectedEnergyRange || this.config.energy_range) || "live";
 
     if (!this.shadowRoot) {
       this.attachShadow({ mode: "open" });
@@ -1129,6 +1199,42 @@ class HaSolarDashboardCard extends HTMLElement {
     return normalizeHouse(value);
   }
 
+  _normalizeEnergyRange(value) {
+    const normalized = String(value || "").trim().toLowerCase();
+    if (normalized === "today" || normalized === "daily") return "day";
+    if (normalized === "monthly") return "month";
+    if (normalized === "yearly") return "year";
+    return ENERGY_RANGE_OPTIONS.some((option) => option.key === normalized) ? normalized : undefined;
+  }
+
+  _currentEnergyRange() {
+    return this._normalizeEnergyRange(this._selectedEnergyRange || this.config?.energy_range) || "live";
+  }
+
+  _energyEntityConfig(key) {
+    const config = this.config.energy_entities?.[key];
+    if (!config) return {};
+    if (typeof config === "string") return { day: config };
+    return typeof config === "object" ? config : {};
+  }
+
+  _metricEnergyEntityId(metric, range = this._currentEnergyRange()) {
+    if (!metric || metric.overlay || metric.customKpi || metric.gridStatus || metric.unit !== "power") return "";
+    const normalizedRange = this._normalizeEnergyRange(range);
+    if (!normalizedRange || normalizedRange === "live") return "";
+    const config = this._energyEntityConfig(metric.key);
+    const aliases = {
+      day: ["day", "daily", "today", "day_energy", "daily_energy"],
+      month: ["month", "monthly", "month_energy", "monthly_energy"],
+      year: ["year", "yearly", "year_energy", "yearly_energy"],
+    }[normalizedRange] || [normalizedRange];
+    return aliases.map((alias) => config[alias]).find(Boolean) || "";
+  }
+
+  _isMetricEnergyMode(metric) {
+    return this._currentEnergyRange() !== "live" && Boolean(this._metricEnergyEntityId(metric));
+  }
+
   _getEntityValue(entityId, fallback = "0") {
     const entity = this._getEntity(entityId);
     if (!entity) return fallback;
@@ -1152,6 +1258,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _metricEntityId(metric) {
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric.customKpi) return metric.customKpi.entity || "";
+    if (this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
     return this.config.entities?.[metric.key] || "";
   }
 
@@ -1179,6 +1286,12 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.gridStatus) return this._formatGridStatusReading();
     if (metric.overlay) return this._formatOverlayReading(metric.overlay);
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
+    if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
+      const energyEntityId = this._metricEnergyEntityId(metric);
+      if (!energyEntityId) return "—";
+      const value = this._getEntityValue(energyEntityId, undefined);
+      return this._formatEnergyValue(value, this._getEntityUnit(energyEntityId), "kWh");
+    }
     const entityId = this.config.entities[metric.key];
     const value = this._getEntityValue(entityId, entityId ? undefined : "0");
     const unit = this._unitForMetric(metric);
@@ -1439,10 +1552,11 @@ class HaSolarDashboardCard extends HTMLElement {
       const number = Number(rawValue);
       return Number.isFinite(number) ? number : undefined;
     }
-    const entityId = this.config.entities?.[metric.key];
+    const entityId = this._metricEntityId(metric);
     const value = this._getEntityValue(entityId, undefined);
     if (value === undefined || value === null || value === "unknown" || value === "unavailable") return undefined;
     const entityUnit = this._getEntityUnit(entityId);
+    if (this._isMetricEnergyMode(metric)) return this._valueAsKwh(value, entityUnit);
     if (metric.unit === "power") return this._valueAsWatts(value, entityUnit);
     const number = Number(value);
     return Number.isFinite(number) ? number : undefined;
@@ -1483,6 +1597,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _meterPercent(metric) {
+    if (this._currentEnergyRange() !== "live" && metric.unit === "power") return undefined;
     const batteryPercent = this._batteryPercent(metric);
     if (batteryPercent !== undefined) return batteryPercent;
 
@@ -1675,6 +1790,12 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._t(`overlay.${key}`, {}, key);
   }
 
+  _customMetricLabel(key) {
+    const customLabel = this.config.labels?.[key];
+    if (customLabel !== undefined && String(customLabel).trim() !== "") return String(customLabel).trim();
+    return "";
+  }
+
   _batteryFlowDirectionLabel(direction) {
     return direction === "charge"
       ? this._t("flow.charge", {}, "Incoming")
@@ -1683,6 +1804,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _renderBatteryFlow(metric, { showLabel = false } = {}) {
     if (metric.key !== "battery_level") return "";
+    if (this._currentEnergyRange() !== "live") return "";
     const info = this._batteryFlowInfo();
     const value = this._formatBatteryFlowValue(info);
     if (!info || !value) return "";
@@ -1862,7 +1984,9 @@ class HaSolarDashboardCard extends HTMLElement {
     const value = this._formatValue(rawValue);
     if (value === "—") return undefined;
     const entityUnit = entry.attributes?.unit_of_measurement || this._getEntityUnit(this._metricEntityId(metric));
-    const numericValue = metric.unit === "power" || (metric.overlay === "heatpump" && this._isPowerUnit(entityUnit))
+    const numericValue = this._isMetricEnergyMode(metric)
+      ? this._valueAsKwh(rawValue, entityUnit)
+      : metric.unit === "power" || (metric.overlay === "heatpump" && this._isPowerUnit(entityUnit))
       ? this._valueAsWatts(rawValue, entityUnit)
       : Number(rawValue);
     if (!Number.isFinite(numericValue)) return undefined;
@@ -1873,6 +1997,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _formatChartValue(value, metric) {
+    if (this._isMetricEnergyMode(metric)) return this._formatEnergyValue(value, "kWh", "kWh");
     if (metric.overlay === "heatpump") {
       const entityUnit = this._getEntityUnit(this._metricEntityId(metric));
       if (this._isPowerUnit(entityUnit)) return this._formatPowerValue(value, "auto", "W");
@@ -2032,6 +2157,9 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _metricAccent(metric) {
     const fallbackColor = metric.accentColor || STATIC_METRIC_COLORS[metric.color] || "var(--text-main)";
+    if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
+      return { color: fallbackColor, glow: "transparent" };
+    }
     if (this.config.dynamic_tile_colors === false) {
       return { color: fallbackColor, glow: "transparent" };
     }
@@ -2104,6 +2232,8 @@ class HaSolarDashboardCard extends HTMLElement {
   _metricLabel(metric, variant) {
     if (metric.overlay) return this._overlayLabel(metric.overlay);
     if (metric.customKpi) return metric.customKpi.label || metric.label;
+    const customLabel = this._customMetricLabel(metric.key);
+    if (customLabel) return customLabel;
     if (metric.labelKey) return this._t(metric.labelKey, {}, metric.label);
     if (variant?.labelKeys?.[metric.key]) return this._t(variant.labelKeys[metric.key], {}, variant?.labels?.[metric.key] || metric.label);
     if (variant?.labels?.[metric.key]) return this._t(`metrics.${metric.key}`, {}, variant.labels[metric.key]);
@@ -2260,6 +2390,19 @@ class HaSolarDashboardCard extends HTMLElement {
       .join("");
 
     return `<select class="house-select" aria-label="${this._escape(this._t("aria.houseSelector"))}">${options}</select>`;
+  }
+
+  _renderEnergyRangeSelector() {
+    if (this.config.show_energy_range_selector === false) return "";
+    const activeRange = this._currentEnergyRange();
+    const options = ENERGY_RANGE_OPTIONS
+      .map((option) => {
+        const selected = option.key === activeRange ? " selected" : "";
+        return `<option value="${option.key}"${selected}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`;
+      })
+      .join("");
+
+    return `<select class="energy-range-select" aria-label="${this._escape(this._t("aria.energyRangeSelector"))}">${options}</select>`;
   }
 
   _overlayDefault(activeHouse, key) {
@@ -2515,6 +2658,16 @@ class HaSolarDashboardCard extends HTMLElement {
       });
     }
 
+    const energyRangeSelect = this.shadowRoot.querySelector(".energy-range-select");
+    if (energyRangeSelect) {
+      energyRangeSelect.addEventListener("change", (event) => {
+        const nextRange = this._normalizeEnergyRange(event.target.value);
+        if (!nextRange || nextRange === this._currentEnergyRange()) return;
+        this._selectedEnergyRange = nextRange;
+        this._renderCardShell(this._layoutState());
+      });
+    }
+
     const image = this.shadowRoot.querySelector(".scene-image");
     if (image) {
       image.addEventListener("error", () => this._applyImageFallback(image));
@@ -2586,6 +2739,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const headerHtml = [
       this.config.show_title !== false ? `<div class="title">${this._escape(this._displayTitle())}</div>` : "",
       this._renderHouseSelector(state.activeHouse),
+      this._renderEnergyRangeSelector(),
       this.config.show_time_label !== false ? `<div class="badge">${this._escape(this._displayTimeLabel())}</div>` : "",
     ].filter(Boolean).join("");
     const gridHtml = visibleTileMetrics.map((metric) => {
@@ -2612,11 +2766,12 @@ class HaSolarDashboardCard extends HTMLElement {
       <style>
         :host { display:block; --text-main:#f3f6ff; --text-muted:#9ba3b8; --glass-soft:rgba(255,255,255,.08); --accent-yellow:#ffc233; --accent-blue:#1f8fff; --accent-green:#34d399; --hud-box-opacity:${this.config.hud_box_opacity}; --hud-box-scale:${this.config.hud_box_scale}; --hud-box-bg:rgba(8,16,38,var(--hud-box-opacity)); }
         ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 80% at 15% 0%, #232b44 0%, #111727 70%); color:var(--text-main); box-shadow:0 18px 45px rgba(0,0,0,.55); padding:16px; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
-        .header { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:10px; margin-bottom:12px; }
+        .header { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; align-items:center; gap:10px; margin-bottom:12px; }
         .title { min-width:0; overflow-wrap:anywhere; font-size:1.28rem; font-weight:700; line-height:1.2; }
-        .badge,.house-select { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
+        .badge,.house-select,.energy-range-select { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
         .badge { display:inline-flex; align-items:center; padding:0 10px; white-space:nowrap; }
-        .house-select { max-width:140px; padding:0 30px 0 10px; }
+        .house-select,.energy-range-select { max-width:140px; padding:0 30px 0 10px; }
+        .energy-range-select { max-width:110px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
         .image-overlay-wrap { position:absolute; z-index:1; width:10%; transform:translate(-50%,var(--overlay-translate-y,-50%)); transform-origin:center bottom; pointer-events:none; user-select:none; }
@@ -2675,7 +2830,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .chart-label,.chart-current { fill:var(--text-muted); font-size:12px; }
         .chart-current { fill:var(--tile-accent); text-anchor:end; font-weight:700; }
         .chart-label.end { text-anchor:end; }
-        @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select{width:100%;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
+        @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
@@ -2788,6 +2943,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       units: {},
       positions: {},
       max_power_kw: {},
+      labels: {},
+      energy_entities: {},
       image_overlays: {},
       custom_kpis: [],
       ...config,
@@ -2801,6 +2958,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
           ...(((config || {}).image_overlays || {}).heatpump || {}),
         },
       },
+      labels: { ...((config || {}).metric_labels || {}), ...((config || {}).labels || {}) },
+      energy_entities: { ...((config || {}).energy_counters || {}), ...((config || {}).energy_entities || {}) },
       visible_boxes: { ...((config || {}).boxes || {}), ...((config || {}).visible_boxes || {}) },
       custom_kpis: Array.isArray((config || {}).custom_kpis || (config || {}).kpis)
         ? [...(((config || {}).custom_kpis || (config || {}).kpis))]
@@ -2931,6 +3090,45 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _defaultMetricLabel(metric) {
+    const variant = this._houseVariant();
+    if (variant.labelKeys?.[metric.key]) return this._t(variant.labelKeys[metric.key], {}, variant.labels?.[metric.key] || metric.label);
+    if (variant.labels?.[metric.key]) return this._t(`metrics.${metric.key}`, {}, variant.labels[metric.key]);
+    return this._t(`metrics.${metric.key}`, {}, metric.label);
+  }
+
+  _renderLabelInput(metric) {
+    const value = this._config.labels?.[metric.key] || "";
+    return `
+      <label>${this._escape(this._t("editor.overlayLabel"))}
+        <input data-path="labels.${metric.key}" placeholder="${this._escape(this._defaultMetricLabel(metric))}" value="${this._escape(value)}" />
+      </label>
+    `;
+  }
+
+  _energyEntityConfig(metric) {
+    const config = this._config.energy_entities?.[metric.key];
+    if (!config) return {};
+    if (typeof config === "string") return { day: config };
+    return typeof config === "object" ? config : {};
+  }
+
+  _renderEnergyEntityInputs(metric) {
+    if (metric.unit !== "power") return "";
+    const config = this._energyEntityConfig(metric);
+    return `
+      <label>${this._escape(this._t("editor.energyDayEntity"))}
+        <input data-path="energy_entities.${metric.key}.day" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_day_energy" value="${this._escape(config.day || config.daily || config.today || "")}" autocomplete="off" />
+      </label>
+      <label>${this._escape(this._t("editor.energyMonthEntity"))}
+        <input data-path="energy_entities.${metric.key}.month" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_month_energy" value="${this._escape(config.month || config.monthly || "")}" autocomplete="off" />
+      </label>
+      <label>${this._escape(this._t("editor.energyYearEntity"))}
+        <input data-path="energy_entities.${metric.key}.year" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(metric.key)}_year_energy" value="${this._escape(config.year || config.yearly || "")}" autocomplete="off" />
+      </label>
+    `;
+  }
+
   _unitValue(metric) {
     const metricUnit = this._config?.units?.[metric.key];
     if (metricUnit !== undefined && String(metricUnit).trim() !== "") return String(metricUnit);
@@ -3011,10 +3209,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _metricLabel(metric) {
     if (metric.overlay) return this._overlayLabel(metric.overlay);
-    const variant = this._houseVariant();
-    if (variant.labelKeys?.[metric.key]) return this._t(variant.labelKeys[metric.key], {}, variant.labels?.[metric.key] || metric.label);
-    if (variant.labels?.[metric.key]) return this._t(`metrics.${metric.key}`, {}, variant.labels[metric.key]);
-    return this._t(`metrics.${metric.key}`, {}, metric.label);
+    const customLabel = this._config.labels?.[metric.key];
+    if (customLabel !== undefined && String(customLabel).trim() !== "") return String(customLabel).trim();
+    return this._defaultMetricLabel(metric);
   }
 
   _metricPosition(metric) {
@@ -3044,7 +3241,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return `
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
+        ${this._renderLabelInput(metric)}
         ${this._renderEntityInput(metric)}
+        ${this._renderEnergyEntityInputs(metric)}
         ${this._renderUnitSelect(metric)}
         ${this._renderBatteryFlowInputs(metric)}
         ${this._renderMaxPowerInput(metric)}
@@ -3229,6 +3428,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
         <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLiveLabel"))}</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
+        <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
         <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
         <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>

@@ -89,6 +89,19 @@ entities:
 visible_boxes:
   wallbox_power: false
   wallbox2_power: false
+labels:
+  pv_roof_power: PV Dach
+  battery_level: Speicher
+  wallbox_power: Wallbox Garage
+energy_entities:
+  pv_roof_power:
+    day: sensor.pv_dach_energy_daily
+    month: sensor.pv_dach_energy_monthly
+    year: sensor.pv_dach_energy_yearly
+  house_consumption_power:
+    day: sensor.house_consumption_daily
+    month: sensor.house_consumption_monthly
+    year: sensor.house_consumption_yearly
 show_grid_status_tile: true
 show_power_flows: false
 image_overlays:
@@ -176,6 +189,7 @@ custom_kpis:
 - `show_title` (boolean, default: `true`; shows/hides the title)
 - `show_time_label` (boolean, default: `true`; shows/hides the live label)
 - `show_house_selector` (boolean, default: `true`)
+- `show_energy_range_selector` (boolean, default: `true`; shows the `Live` / `Day` / `Month` / `Year` selector in the header)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
@@ -195,6 +209,8 @@ custom_kpis:
 - `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
 - `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, and `wallbox2_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
+- `labels.<entity_key>` (string, optional; custom label for HUD boxes and summary tiles, for example `PV Dach`, `Speicher` or `Wallbox Garage`)
+- `energy_entities.<entity_key>.day` / `.month` / `.year` (entity ids, optional; kWh sensors shown when the header selector is switched away from `Live`)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)

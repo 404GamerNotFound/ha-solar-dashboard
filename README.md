@@ -34,12 +34,14 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
 - Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
 - Optional battery flow badge on the image and battery summary tile: green down arrow for charging/incoming, red up arrow for discharging/outgoing; the badge follows the entity unit, so power sensors show `W`/`kW` and energy sensors show `kWh`
+- Optional battery temperature badge on the battery HUD and tile
 - Animated power flow overlay between the existing image elements, using the configured HUD positions without changing the image files
 - Optional smoke and heat pump image overlays with per-element enable, position, size, and heat pump orientation controls
 - PV, inverter, and EV charger values can show utilization bars based on configurable kW/kWp maxima
 - Optional second EV charger entity, disabled by default and positioned automatically next to the first EV charger
 - Optional EV charger phase badges from separate phase entities (`Auto`, `1`, `2`, or `3`)
 - Optional EV vehicle SoC badges shown next to the EV charger phase badges
+- Optional remaining EV charge time badge, shown only while the EV charger is actively charging
 - Optional grid status tile showing import, export, or self-sufficient operation from the import/export entity
 - Hover tooltips on values show the linked entity, raw state, formatted value, and update time
 - Clickable entity boxes and tiles open a 24/48 hour history chart using Home Assistant history data
@@ -82,13 +84,16 @@ entities:
   # Option B: separate entities; used when the signed entity is empty
   battery_charge_power: sensor.batterie_ladeleistung
   battery_discharge_power: sensor.batterie_entladeleistung
+  battery_temperature: sensor.batterie_temperatur
   inverter_power: sensor.wechselrichter_leistung
   wallbox_power: sensor.wallbox_leistung
   wallbox_phase: sensor.wallbox_phasen
   wallbox_soc: sensor.wallbox_auto_soc
+  wallbox_remaining_time: sensor.wallbox_verbleibende_ladezeit
   wallbox2_power: sensor.wallbox_2_leistung
   wallbox2_phase: sensor.wallbox_2_phasen
   wallbox2_soc: sensor.wallbox_2_auto_soc
+  wallbox2_remaining_time: sensor.wallbox_2_verbleibende_ladezeit
   pv_total_power: sensor.pv_gesamt_leistung
   house_consumption_power: sensor.hausverbrauch_leistung
   import_export_power: sensor.netzbezug_einspeisung

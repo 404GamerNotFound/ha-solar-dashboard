@@ -50,6 +50,7 @@ const I18N = {
     "editor.batteryChargeEntity": "Battery charge entity",
     "editor.batteryDischargeEntity": "Battery discharge entity",
     "editor.batteryFlowEntity": "Battery flow entity (+/-)",
+    "editor.batteryTemperatureEntity": "Battery temperature entity",
     "editor.entity": "Entity",
     "editor.entityPlaceholder": "{label} entity",
     "editor.energy1hEntity": "1h kWh entity",
@@ -90,6 +91,7 @@ const I18N = {
     "editor.period24h": "24 hours",
     "editor.period30m": "30 minutes",
     "editor.phaseEntity": "Phase entity",
+    "editor.remainingChargeTimeEntity": "Remaining charge time entity",
     "editor.vehicleSocEntity": "Vehicle SoC entity",
     "editor.sectionBoxes": "Boxes, live/kWh entities, unit, and position",
     "editor.sectionKpis": "Custom KPI tiles",
@@ -153,10 +155,14 @@ const I18N = {
     "tooltip.max": "Maximum",
     "tooltip.phases": "Phases",
     "tooltip.raw": "Raw value",
+    "tooltip.remainingChargeTime": "Remaining charge time",
     "tooltip.status": "Status",
+    "tooltip.temperature": "Temperature",
     "tooltip.updated": "Updated",
     "tooltip.value": "Value",
     "tooltip.vehicleSoc": "Vehicle SoC",
+    "value.remainingChargeTime": "{value} left",
+    "value.temperature": "Temp {value}",
     "weather.clear": "Clear",
     "weather.clear-night": "Clear",
     "weather.cloudy": "Cloudy",
@@ -194,6 +200,7 @@ const I18N = {
     "editor.batteryChargeEntity": "Batterie-Lade-Entität",
     "editor.batteryDischargeEntity": "Batterie-Entlade-Entität",
     "editor.batteryFlowEntity": "Batteriefluss-Entität (+/-)",
+    "editor.batteryTemperatureEntity": "Batterie-Temperatur-Entität",
     "editor.entity": "Entität",
     "editor.entityPlaceholder": "{label} Entität",
     "editor.energy1hEntity": "1h-kWh-Entität",
@@ -234,6 +241,7 @@ const I18N = {
     "editor.period24h": "24 Stunden",
     "editor.period30m": "30 Minuten",
     "editor.phaseEntity": "Phasen-Entität",
+    "editor.remainingChargeTimeEntity": "Verbleibende Ladezeit-Entität",
     "editor.vehicleSocEntity": "Auto-SoC-Entität",
     "editor.sectionBoxes": "Boxen, Live-/kWh-Entitäten, Einheit und Position",
     "editor.sectionKpis": "Eigene KPI-Kacheln",
@@ -297,10 +305,14 @@ const I18N = {
     "tooltip.max": "Maximum",
     "tooltip.phases": "Phasen",
     "tooltip.raw": "Rohwert",
+    "tooltip.remainingChargeTime": "Verbleibende Ladezeit",
     "tooltip.status": "Status",
+    "tooltip.temperature": "Temperatur",
     "tooltip.updated": "Aktualisiert",
     "tooltip.value": "Wert",
     "tooltip.vehicleSoc": "Auto SoC",
+    "value.remainingChargeTime": "Noch {value}",
+    "value.temperature": "Temp {value}",
     "weather.clear": "Klar",
     "weather.clear-night": "Klar",
     "weather.cloudy": "Bewölkt",
@@ -338,6 +350,7 @@ const I18N = {
     "editor.batteryChargeEntity": "Entidad de carga de batería",
     "editor.batteryDischargeEntity": "Entidad de descarga de batería",
     "editor.batteryFlowEntity": "Entidad de flujo de batería (+/-)",
+    "editor.batteryTemperatureEntity": "Entidad de temperatura de batería",
     "editor.entity": "Entidad",
     "editor.entityPlaceholder": "Entidad de {label}",
     "editor.energy1hEntity": "Entidad kWh 1h",
@@ -378,6 +391,7 @@ const I18N = {
     "editor.period24h": "24 horas",
     "editor.period30m": "30 minutos",
     "editor.phaseEntity": "Entidad de fases",
+    "editor.remainingChargeTimeEntity": "Entidad de tiempo de carga restante",
     "editor.vehicleSocEntity": "Entidad SoC del vehículo",
     "editor.sectionBoxes": "Cajas, entidades en vivo/kWh, unidad y posición",
     "editor.sectionKpis": "Mosaicos KPI personalizados",
@@ -441,10 +455,14 @@ const I18N = {
     "tooltip.max": "Máximo",
     "tooltip.phases": "Fases",
     "tooltip.raw": "Valor bruto",
+    "tooltip.remainingChargeTime": "Tiempo de carga restante",
     "tooltip.status": "Estado",
+    "tooltip.temperature": "Temperatura",
     "tooltip.updated": "Actualizado",
     "tooltip.value": "Valor",
     "tooltip.vehicleSoc": "SoC del vehículo",
+    "value.remainingChargeTime": "Quedan {value}",
+    "value.temperature": "Temp {value}",
     "weather.clear": "Despejado",
     "weather.clear-night": "Despejado",
     "weather.cloudy": "Nublado",
@@ -482,6 +500,7 @@ const I18N = {
     "editor.batteryChargeEntity": "Entité de charge batterie",
     "editor.batteryDischargeEntity": "Entité de décharge batterie",
     "editor.batteryFlowEntity": "Entité de flux batterie (+/-)",
+    "editor.batteryTemperatureEntity": "Entité température batterie",
     "editor.entity": "Entité",
     "editor.entityPlaceholder": "Entité {label}",
     "editor.energy1hEntity": "Entité kWh 1h",
@@ -522,6 +541,7 @@ const I18N = {
     "editor.period24h": "24 heures",
     "editor.period30m": "30 minutes",
     "editor.phaseEntity": "Entité phases",
+    "editor.remainingChargeTimeEntity": "Entité temps de charge restant",
     "editor.vehicleSocEntity": "Entité SoC véhicule",
     "editor.sectionBoxes": "Boîtes, entités directes/kWh, unité et position",
     "editor.sectionKpis": "Tuiles KPI personnalisées",
@@ -585,10 +605,14 @@ const I18N = {
     "tooltip.max": "Maximum",
     "tooltip.phases": "Phases",
     "tooltip.raw": "Valeur brute",
+    "tooltip.remainingChargeTime": "Temps de charge restant",
     "tooltip.status": "État",
+    "tooltip.temperature": "Température",
     "tooltip.updated": "Mis à jour",
     "tooltip.value": "Valeur",
     "tooltip.vehicleSoc": "SoC véhicule",
+    "value.remainingChargeTime": "{value} restant",
+    "value.temperature": "Temp {value}",
     "weather.clear": "Dégagé",
     "weather.clear-night": "Dégagé",
     "weather.cloudy": "Nuageux",
@@ -626,6 +650,7 @@ const I18N = {
     "editor.batteryChargeEntity": "Encja ładowania baterii",
     "editor.batteryDischargeEntity": "Encja rozładowania baterii",
     "editor.batteryFlowEntity": "Encja przepływu baterii (+/-)",
+    "editor.batteryTemperatureEntity": "Encja temperatury baterii",
     "editor.entity": "Encja",
     "editor.entityPlaceholder": "Encja {label}",
     "editor.energy1hEntity": "Encja kWh 1h",
@@ -666,6 +691,7 @@ const I18N = {
     "editor.period24h": "24 godziny",
     "editor.period30m": "30 minut",
     "editor.phaseEntity": "Encja faz",
+    "editor.remainingChargeTimeEntity": "Encja pozostałego czasu ładowania",
     "editor.vehicleSocEntity": "Encja SoC pojazdu",
     "editor.sectionBoxes": "Pola, encje na żywo/kWh, jednostka i pozycja",
     "editor.sectionKpis": "Własne kafelki KPI",
@@ -729,10 +755,14 @@ const I18N = {
     "tooltip.max": "Maksimum",
     "tooltip.phases": "Fazy",
     "tooltip.raw": "Wartość surowa",
+    "tooltip.remainingChargeTime": "Pozostały czas ładowania",
     "tooltip.status": "Status",
+    "tooltip.temperature": "Temperatura",
     "tooltip.updated": "Zaktualizowano",
     "tooltip.value": "Wartość",
     "tooltip.vehicleSoc": "SoC pojazdu",
+    "value.remainingChargeTime": "Pozostało {value}",
+    "value.temperature": "Temp {value}",
     "weather.clear": "Bezchmurnie",
     "weather.clear-night": "Bezchmurnie",
     "weather.cloudy": "Pochmurno",
@@ -1113,13 +1143,16 @@ class HaSolarDashboardCard extends HTMLElement {
         battery_flow_power: "",
         battery_charge_power: "",
         battery_discharge_power: "",
+        battery_temperature: "",
         inverter_power: "sensor.wechselrichter_power",
         wallbox_power: "sensor.wallbox_power",
         wallbox_phase: "",
         wallbox_soc: "",
+        wallbox_remaining_time: "",
         wallbox2_power: "",
         wallbox2_phase: "",
         wallbox2_soc: "",
+        wallbox2_remaining_time: "",
         pv_total_power: "sensor.pv_total_power",
         import_export_power: "sensor.grid_power",
       },
@@ -1964,6 +1997,42 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
   }
 
+  _batteryTemperatureEntityId() {
+    const aliases = ["battery_temperature", "battery_temp", "battery_level_temperature"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _formatTemperatureLabel(rawValue, entityUnit = "°C") {
+    const normalized = String(rawValue ?? "").trim().toLowerCase();
+    if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return "";
+    const numericValue = Number(String(rawValue).replace(",", "."));
+    const unit = entityUnit || "°C";
+    const value = Number.isFinite(numericValue)
+      ? `${Math.abs(numericValue) >= 100 || Number.isInteger(numericValue) ? numericValue.toFixed(0) : numericValue.toFixed(1)} ${unit}`
+      : `${String(rawValue).trim()}${unit && !String(rawValue).includes(unit) ? ` ${unit}` : ""}`;
+    return this._t("value.temperature", { value }, `Temp ${value}`);
+  }
+
+  _batteryTemperatureLabel() {
+    const entityId = this._batteryTemperatureEntityId();
+    if (!entityId) return "";
+    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "°C");
+  }
+
+  _renderBatteryTemperature(metric) {
+    if (metric.key !== "battery_level" || !this._batteryTemperatureEntityId()) return "";
+    const label = this._batteryTemperatureLabel();
+    const tooltip = `${this._t("tooltip.temperature", {}, "Temperature")}: ${label}`;
+    return `
+      <span class="temp-badge" data-battery-temperature title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+    `;
+  }
+
+  _renderBatteryMetaRow(metric) {
+    const tempHtml = this._renderBatteryTemperature(metric);
+    return tempHtml ? `<div class="meta-row">${tempHtml}</div>` : "";
+  }
+
   _wallboxPhaseEntityKey(metric) {
     if (metric?.key === "wallbox_power") return "wallbox_phase";
     if (metric?.key === "wallbox2_power") return "wallbox2_phase";
@@ -2040,12 +2109,96 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
   }
 
+  _wallboxRemainingTimeEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_remaining_time";
+    if (metric?.key === "wallbox2_power") return "wallbox2_remaining_time";
+    return "";
+  }
+
+  _wallboxRemainingTimeEntityId(metric) {
+    const entityKey = this._wallboxRemainingTimeEntityKey(metric);
+    if (!entityKey) return "";
+    const aliases = entityKey === "wallbox2_remaining_time"
+      ? ["wallbox2_remaining_time", "wallbox2_charge_time", "wallbox2_charging_time_left", "wallbox2_power_remaining_time"]
+      : ["wallbox_remaining_time", "wallbox_charge_time", "wallbox_charging_time_left", "wallbox_power_remaining_time"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _formatDurationMinutes(minutes) {
+    if (!Number.isFinite(minutes) || minutes <= 0) return "";
+    const rounded = Math.max(1, Math.round(minutes));
+    const hours = Math.floor(rounded / 60);
+    const restMinutes = rounded % 60;
+    if (hours <= 0) return `${restMinutes}min`;
+    if (restMinutes <= 0) return `${hours}h`;
+    return `${hours}h ${restMinutes}m`;
+  }
+
+  _formatRemainingChargeTimeValue(rawValue, entityUnit = "") {
+    const raw = String(rawValue ?? "").trim();
+    const normalized = raw.toLowerCase();
+    if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return "";
+
+    const durationMatch = normalized.match(/^(\d{1,3}):([0-5]\d)(?::([0-5]\d))?$/);
+    if (durationMatch) {
+      const first = Number(durationMatch[1]);
+      const second = Number(durationMatch[2]);
+      const third = durationMatch[3] !== undefined ? Number(durationMatch[3]) : undefined;
+      const minutes = third === undefined ? first * 60 + second : first * 60 + second + third / 60;
+      return this._formatDurationMinutes(minutes);
+    }
+
+    if (/[a-z]{3,}:\/\//i.test(raw) || /\d{4}-\d{2}-\d{2}/.test(raw)) {
+      const timestamp = Date.parse(raw);
+      const minutes = (timestamp - Date.now()) / 60000;
+      const formatted = this._formatDurationMinutes(minutes);
+      if (formatted) return formatted;
+    }
+
+    const numericValue = Number(raw.replace(",", "."));
+    if (Number.isFinite(numericValue)) {
+      const unit = String(entityUnit || "").trim().toLowerCase();
+      if (unit.includes("h") || unit.includes("std") || unit.includes("hour") || unit.includes("stunde")) return this._formatDurationMinutes(numericValue * 60);
+      if (unit.includes("min") || unit === "m") return this._formatDurationMinutes(numericValue);
+      if (unit.includes("s") && !unit.includes("stunden")) return this._formatDurationMinutes(numericValue / 60);
+      return numericValue > 24 ? this._formatDurationMinutes(numericValue) : this._formatDurationMinutes(numericValue * 60);
+    }
+
+    return raw;
+  }
+
+  _wallboxIsCharging(metric) {
+    const entityId = this.config.entities?.[metric?.key];
+    if (!entityId) return false;
+    const watts = this._valueAsWatts(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId));
+    const threshold = this._clampNumber(this.config.wallbox_charging_threshold, 25, 0, 1000000);
+    return Number.isFinite(watts) && watts > threshold;
+  }
+
+  _wallboxRemainingTimeLabel(metric) {
+    if (!this._wallboxIsCharging(metric)) return "";
+    const entityId = this._wallboxRemainingTimeEntityId(metric);
+    if (!entityId) return "";
+    const value = this._formatRemainingChargeTimeValue(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId));
+    return value ? this._t("value.remainingChargeTime", { value }, `${value} left`) : "";
+  }
+
+  _renderWallboxRemainingTime(metric) {
+    if (!this._wallboxRemainingTimeEntityId(metric)) return "";
+    const label = this._wallboxRemainingTimeLabel(metric);
+    const tooltip = `${this._t("tooltip.remainingChargeTime", {}, "Remaining charge time")}: ${label}`;
+    return `
+      <span class="time-badge" data-remaining-charge-time="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+    `;
+  }
+
   _renderWallboxPhaseRow(metric) {
     const metaHtml = [
       this._renderWallboxPhase(metric),
       this._renderWallboxSoc(metric),
+      this._renderWallboxRemainingTime(metric),
     ].filter(Boolean).join("");
-    return metaHtml ? `<div class="phase-row">${metaHtml}</div>` : "";
+    return metaHtml ? `<div class="meta-row">${metaHtml}</div>` : "";
   }
 
   _formatLocalDateTime(dateString) {
@@ -2114,8 +2267,12 @@ class HaSolarDashboardCard extends HTMLElement {
       metric.key === "battery_level" && this._formatBatteryFlowValue()
         ? `${this._t("tooltip.flow")}: ${this._formatBatteryFlowValue()}`
         : "",
+      metric.key === "battery_level" && this._batteryTemperatureLabel()
+        ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${this._batteryTemperatureLabel()}`
+        : "",
       this._wallboxPhaseLabel(metric) ? `${this._t("tooltip.phases", {}, "Phases")}: ${this._wallboxPhaseLabel(metric)}` : "",
       this._wallboxSocLabel(metric) ? `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${this._wallboxSocLabel(metric)}` : "",
+      this._wallboxRemainingTimeLabel(metric) ? `${this._t("tooltip.remainingChargeTime", {}, "Remaining charge time")}: ${this._wallboxRemainingTimeLabel(metric)}` : "",
       updatedAt ? `${this._t("tooltip.updated")}: ${updatedAt}` : "",
       warning ? `${this._t("tooltip.status")}: ${warning.label}` : "",
     ].filter(Boolean).join("\n");
@@ -2716,6 +2873,7 @@ class HaSolarDashboardCard extends HTMLElement {
           <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
           ${this._renderBatteryFlow(metric)}
         </div>
+        ${this._renderBatteryMetaRow(metric)}
         ${this._renderWallboxPhaseRow(metric)}
         ${this._renderMetricMeter(metric)}
       </div>
@@ -2982,6 +3140,7 @@ class HaSolarDashboardCard extends HTMLElement {
             <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
             ${this._renderBatteryFlow(metric, { showLabel: true })}
           </div>
+          ${this._renderBatteryMetaRow(metric)}
         `
         : this._wallboxPhaseEntityKey(metric)
         ? `
@@ -3038,11 +3197,15 @@ class HaSolarDashboardCard extends HTMLElement {
         .battery-flow-arrow { flex:0 0 auto; font-size:.78rem; line-height:1; }
         .battery-flow-label { min-width:0; overflow:hidden; text-overflow:ellipsis; }
         [data-battery-flow-value] { min-width:0; overflow:hidden; text-overflow:ellipsis; }
-        .phase-row { display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-width:0; max-width:100%; margin-top:3px; }
+        .meta-row { display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-width:0; max-width:100%; margin-top:3px; }
         .phase-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:72px; border-radius:999px; padding:2px 5px; background:rgba(31,143,255,.14); color:#93c5fd; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(147,197,253,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .phase-badge:empty { display:none; }
         .soc-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:82px; border-radius:999px; padding:2px 5px; background:rgba(52,211,153,.14); color:#86efac; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(134,239,172,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .soc-badge:empty { display:none; }
+        .temp-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:86px; border-radius:999px; padding:2px 5px; background:rgba(251,146,60,.14); color:#fdba74; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(253,186,116,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .temp-badge:empty { display:none; }
+        .time-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:96px; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .time-badge:empty { display:none; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; z-index:3; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
@@ -3134,7 +3297,23 @@ class HaSolarDashboardCard extends HTMLElement {
         element.setAttribute("title", socTitle);
         element.setAttribute("aria-label", socTitle);
       });
+      const remainingTimeLabel = this._wallboxRemainingTimeLabel(metric);
+      const remainingTimeTitle = remainingTimeLabel ? `${this._t("tooltip.remainingChargeTime", {}, "Remaining charge time")}: ${remainingTimeLabel}` : "";
+      this.shadowRoot.querySelectorAll(`[data-remaining-charge-time="${metric.key}"]`).forEach((element) => {
+        if (element.textContent !== remainingTimeLabel) element.textContent = remainingTimeLabel;
+        element.style.display = remainingTimeLabel ? "inline-flex" : "none";
+        element.setAttribute("title", remainingTimeTitle);
+        element.setAttribute("aria-label", remainingTimeTitle);
+      });
       if (metric.key === "battery_level") {
+        const temperatureLabel = this._batteryTemperatureLabel();
+        const temperatureTitle = temperatureLabel ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${temperatureLabel}` : "";
+        this.shadowRoot.querySelectorAll("[data-battery-temperature]").forEach((element) => {
+          if (element.textContent !== temperatureLabel) element.textContent = temperatureLabel;
+          element.style.display = temperatureLabel ? "inline-flex" : "none";
+          element.setAttribute("title", temperatureTitle);
+          element.setAttribute("aria-label", temperatureTitle);
+        });
         const flowInfo = this._batteryFlowInfo();
         const flowValue = this._formatBatteryFlowValue(flowInfo);
         this.shadowRoot.querySelectorAll("[data-battery-flow]").forEach((element) => {
@@ -3423,6 +3602,26 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _wallboxRemainingTimeEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_remaining_time";
+    if (metric?.key === "wallbox2_power") return "wallbox2_remaining_time";
+    return "";
+  }
+
+  _renderWallboxRemainingTimeInput(metric) {
+    const entityKey = this._wallboxRemainingTimeEntityKey(metric);
+    if (!entityKey) return "";
+    const value = this._config.entities?.[entityKey] || "";
+    const placeholder = metric.key === "wallbox2_power"
+      ? "sensor.wallbox_2_remaining_time"
+      : "sensor.wallbox_remaining_time";
+    return `
+      <label>${this._escape(this._t("editor.remainingChargeTimeEntity"))}
+        <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
+      </label>
+    `;
+  }
+
   _unitValue(metric) {
     const metricUnit = this._config?.units?.[metric.key];
     if (metricUnit !== undefined && String(metricUnit).trim() !== "") return String(metricUnit);
@@ -3486,6 +3685,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <label>${this._escape(this._t("editor.batteryDischargeEntity"))}
         <input data-path="entities.battery_discharge_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_discharge_power" value="${this._escape(this._config.entities?.battery_discharge_power || "")}" autocomplete="off" />
       </label>
+      <label>${this._escape(this._t("editor.batteryTemperatureEntity"))}
+        <input data-path="entities.battery_temperature" list="ha-solar-dashboard-entities" placeholder="sensor.battery_temperature" value="${this._escape(this._config.entities?.battery_temperature || "")}" autocomplete="off" />
+      </label>
     `;
   }
 
@@ -3540,6 +3742,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ${this._renderEnergyEntityInputs(metric)}
         ${this._renderWallboxPhaseInput(metric)}
         ${this._renderWallboxSocInput(metric)}
+        ${this._renderWallboxRemainingTimeInput(metric)}
         ${this._renderUnitSelect(metric)}
         ${this._renderBatteryFlowInputs(metric)}
         ${this._renderMaxPowerInput(metric)}

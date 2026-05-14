@@ -28,6 +28,13 @@ const I18N = {
     "aria.houseSelector": "Select house",
     "card.defaultTitle": "Energy Flow",
     "card.defaultTimeLabel": "Live",
+    "chart.close": "Close",
+    "chart.empty": "No history data found",
+    "chart.error": "History could not be loaded",
+    "chart.loading": "Loading history…",
+    "chart.range24": "24h",
+    "chart.range48": "48h",
+    "chart.subtitle": "Last {hours} hours",
     "editor.customDayImage": "Custom Day Image",
     "editor.customImage": "Custom Image",
     "editor.entity": "Entity",
@@ -76,6 +83,7 @@ const I18N = {
     "house.terraced_middle_house": "Terraced Middle House",
     "metrics.battery_level": "Battery",
     "metrics.grid_status": "Grid",
+    "metrics.house_consumption_power": "Consumption",
     "metrics.import_export_power": "Import/Export",
     "metrics.inverter_power": "Inverter",
     "metrics.pv_power": "PV Power",
@@ -117,6 +125,13 @@ const I18N = {
     "aria.houseSelector": "Haus auswählen",
     "card.defaultTitle": "Energiefluss",
     "card.defaultTimeLabel": "Live",
+    "chart.close": "Schließen",
+    "chart.empty": "Keine Verlaufsdaten gefunden",
+    "chart.error": "Verlauf konnte nicht geladen werden",
+    "chart.loading": "Verlauf wird geladen…",
+    "chart.range24": "24h",
+    "chart.range48": "48h",
+    "chart.subtitle": "Letzte {hours} Stunden",
     "editor.customDayImage": "Eigenes Tagbild",
     "editor.customImage": "Eigenes Bild",
     "editor.entity": "Entität",
@@ -165,6 +180,7 @@ const I18N = {
     "house.terraced_middle_house": "Reihenmittelhaus",
     "metrics.battery_level": "Batterie",
     "metrics.grid_status": "Netz",
+    "metrics.house_consumption_power": "Verbrauch",
     "metrics.import_export_power": "Import/Export",
     "metrics.inverter_power": "Wechselrichter",
     "metrics.pv_power": "PV-Leistung",
@@ -206,6 +222,13 @@ const I18N = {
     "aria.houseSelector": "Seleccionar casa",
     "card.defaultTitle": "Flujo de energía",
     "card.defaultTimeLabel": "En vivo",
+    "chart.close": "Cerrar",
+    "chart.empty": "No se encontraron datos históricos",
+    "chart.error": "No se pudo cargar el historial",
+    "chart.loading": "Cargando historial…",
+    "chart.range24": "24h",
+    "chart.range48": "48h",
+    "chart.subtitle": "Últimas {hours} horas",
     "editor.customDayImage": "Imagen diurna personalizada",
     "editor.customImage": "Imagen personalizada",
     "editor.entity": "Entidad",
@@ -254,6 +277,7 @@ const I18N = {
     "house.terraced_middle_house": "Casa adosada central",
     "metrics.battery_level": "Batería",
     "metrics.grid_status": "Red",
+    "metrics.house_consumption_power": "Consumo",
     "metrics.import_export_power": "Importación/exportación",
     "metrics.inverter_power": "Inversor",
     "metrics.pv_power": "Potencia FV",
@@ -295,6 +319,13 @@ const I18N = {
     "aria.houseSelector": "Sélectionner une maison",
     "card.defaultTitle": "Flux d'énergie",
     "card.defaultTimeLabel": "En direct",
+    "chart.close": "Fermer",
+    "chart.empty": "Aucune donnée historique trouvée",
+    "chart.error": "Impossible de charger l'historique",
+    "chart.loading": "Chargement de l'historique…",
+    "chart.range24": "24h",
+    "chart.range48": "48h",
+    "chart.subtitle": "Dernières {hours} heures",
     "editor.customDayImage": "Image de jour personnalisée",
     "editor.customImage": "Image personnalisée",
     "editor.entity": "Entité",
@@ -343,6 +374,7 @@ const I18N = {
     "house.terraced_middle_house": "Maison mitoyenne centrale",
     "metrics.battery_level": "Batterie",
     "metrics.grid_status": "Réseau",
+    "metrics.house_consumption_power": "Consommation",
     "metrics.import_export_power": "Import/export",
     "metrics.inverter_power": "Onduleur",
     "metrics.pv_power": "Puissance PV",
@@ -384,6 +416,13 @@ const I18N = {
     "aria.houseSelector": "Wybierz dom",
     "card.defaultTitle": "Przepływ energii",
     "card.defaultTimeLabel": "Na żywo",
+    "chart.close": "Zamknij",
+    "chart.empty": "Nie znaleziono danych historii",
+    "chart.error": "Nie udało się wczytać historii",
+    "chart.loading": "Ładowanie historii…",
+    "chart.range24": "24h",
+    "chart.range48": "48h",
+    "chart.subtitle": "Ostatnie {hours} godzin",
     "editor.customDayImage": "Własny obraz dzienny",
     "editor.customImage": "Własny obraz",
     "editor.entity": "Encja",
@@ -432,6 +471,7 @@ const I18N = {
     "house.terraced_middle_house": "Środkowy dom szeregowy",
     "metrics.battery_level": "Bateria",
     "metrics.grid_status": "Sieć",
+    "metrics.house_consumption_power": "Zużycie",
     "metrics.import_export_power": "Import/eksport",
     "metrics.inverter_power": "Falownik",
     "metrics.pv_power": "Moc PV",
@@ -620,6 +660,7 @@ const METRICS = [
 const TILE_METRICS = [
   ...METRICS,
   { key: "pv_total_power", label: "PV Total", unit: "power", color: "yellow", hud: false },
+  { key: "house_consumption_power", label: "Consumption", unit: "power", color: "blue", hud: false, optional: true, tileOrder: 6 },
 ];
 
 const STATUS_METRIC = { key: "import_export_power", label: "Import/Export", unit: "power", color: "blue" };
@@ -735,6 +776,7 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_scale: 1,
       battery_low_threshold: 20,
       grid_neutral_threshold: 25,
+      chart_hours: 24,
       dynamic_tile_colors: true,
       daylight_entity: "sun.sun",
       weather_entity: "",
@@ -781,6 +823,7 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_scale: 1,
       battery_low_threshold: 20,
       grid_neutral_threshold: 25,
+      chart_hours: 24,
       daylight_entity: "sun.sun",
       weather_entity: "",
       dynamic_tile_colors: true,
@@ -820,6 +863,9 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.power_decimals = this._clampNumber(this.config.power_decimals, 2, 0, 3);
     this.config.battery_low_threshold = this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
     this.config.grid_neutral_threshold = this._clampNumber(this.config.grid_neutral_threshold, 25, 0, 1000000);
+    this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
+    this._chartHours = this._chartHours || this.config.chart_hours;
+    this._historyCache = this._historyCache || new Map();
 
     this._selectedHouse = house;
 
@@ -1260,6 +1306,204 @@ class HaSolarDashboardCard extends HTMLElement {
     ].filter(Boolean).join("\n");
   }
 
+  _allChartMetrics(variant = this._currentVariant || this._layoutState().variant) {
+    return [
+      ...this._visibleHudMetrics(variant),
+      ...this._visibleTileMetrics(variant),
+    ].filter((metric, index, metrics) => {
+      if (!this._metricEntityId(metric)) return false;
+      return metrics.findIndex((item) => item.key === metric.key) === index;
+    });
+  }
+
+  _chartMetric(metricKey) {
+    return this._allChartMetrics().find((metric) => metric.key === metricKey);
+  }
+
+  _historyCacheKey(entityId, hours) {
+    const bucket = Math.floor(Date.now() / 60000);
+    return `${entityId}|${hours}|${bucket}`;
+  }
+
+  async _openChart(metricKey, hours = this._chartHours || this.config.chart_hours || 24) {
+    const metric = this._chartMetric(metricKey);
+    if (!metric) return;
+    const entityId = this._metricEntityId(metric);
+    if (!entityId) return;
+
+    this._chartHours = [24, 48].includes(Number(hours)) ? Number(hours) : 24;
+    this._activeChart = {
+      metricKey,
+      hours: this._chartHours,
+      loading: true,
+      error: "",
+      points: [],
+    };
+    this._renderCardShell(this._layoutState());
+
+    try {
+      const points = await this._loadHistoryPoints(metric, entityId, this._chartHours);
+      if (!this._activeChart || this._activeChart.metricKey !== metricKey || this._activeChart.hours !== this._chartHours) return;
+      this._activeChart = {
+        ...this._activeChart,
+        loading: false,
+        error: "",
+        points,
+      };
+    } catch (_err) {
+      if (!this._activeChart || this._activeChart.metricKey !== metricKey) return;
+      this._activeChart = {
+        ...this._activeChart,
+        loading: false,
+        error: this._t("chart.error"),
+        points: [],
+      };
+    }
+
+    this._renderCardShell(this._layoutState());
+  }
+
+  _closeChart() {
+    this._activeChart = undefined;
+    this._renderCardShell(this._layoutState());
+  }
+
+  async _loadHistoryPoints(metric, entityId, hours) {
+    if (!this._hass?.callApi) throw new Error("Home Assistant history API is unavailable");
+    const cacheKey = this._historyCacheKey(entityId, hours);
+    const cached = this._historyCache.get(cacheKey);
+    if (cached) return cached;
+
+    const end = new Date();
+    const start = new Date(end.getTime() - hours * 60 * 60 * 1000);
+    const query = [
+      `filter_entity_id=${encodeURIComponent(entityId)}`,
+      `end_time=${encodeURIComponent(end.toISOString())}`,
+      "significant_changes_only=0",
+    ].join("&");
+    const path = `history/period/${start.toISOString()}?${query}`;
+    const history = await this._hass.callApi("GET", path);
+    const states = Array.isArray(history?.[0]) ? history[0] : [];
+    const points = states
+      .map((entry) => this._historyPoint(metric, entry))
+      .filter(Boolean)
+      .sort((a, b) => a.time - b.time);
+
+    this._historyCache.set(cacheKey, points);
+    return points;
+  }
+
+  _historyPoint(metric, entry) {
+    if (!entry || typeof entry !== "object") return undefined;
+    const rawValue = entry.state ?? entry.s;
+    const value = this._formatValue(rawValue);
+    if (value === "—") return undefined;
+    const entityUnit = entry.attributes?.unit_of_measurement || this._getEntityUnit(this._metricEntityId(metric));
+    const numericValue = metric.unit === "power"
+      ? this._valueAsWatts(rawValue, entityUnit)
+      : Number(rawValue);
+    if (!Number.isFinite(numericValue)) return undefined;
+    const rawTime = entry.last_changed || entry.last_updated || entry.lu;
+    const time = Date.parse(rawTime || "");
+    if (!Number.isFinite(time)) return undefined;
+    return { time, value: numericValue };
+  }
+
+  _formatChartValue(value, metric) {
+    if (metric.unit === "power") return this._formatPowerValue(value, this._unitForMetric(metric), "W");
+    if (metric.key === "battery_level") return this._formatWithUnit(Math.round(value), this._unitForMetric(metric));
+    const unit = this._unitForMetric(metric);
+    return this._formatWithUnit(Number(value.toFixed(2)), unit === "auto" ? this._getEntityUnit(this._metricEntityId(metric)) : unit);
+  }
+
+  _formatChartTime(timestamp) {
+    try {
+      return new Intl.DateTimeFormat(this._language(), { hour: "2-digit", minute: "2-digit" }).format(new Date(timestamp));
+    } catch (_err) {
+      return new Date(timestamp).toLocaleTimeString();
+    }
+  }
+
+  _chartPath(points, min, max, start, end, width, height, padding) {
+    const range = max - min || 1;
+    return points.map((point) => {
+      const x = padding.left + ((point.time - start) / Math.max(1, end - start)) * (width - padding.left - padding.right);
+      const y = padding.top + (1 - ((point.value - min) / range)) * (height - padding.top - padding.bottom);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+  }
+
+  _renderChartSvg(metric, chart) {
+    const points = chart.points || [];
+    if (chart.loading) return `<div class="chart-message">${this._escape(this._t("chart.loading"))}</div>`;
+    if (chart.error) return `<div class="chart-message is-error">${this._escape(chart.error)}</div>`;
+    if (points.length < 2) return `<div class="chart-message">${this._escape(this._t("chart.empty"))}</div>`;
+
+    const width = 720;
+    const height = 260;
+    const padding = { top: 22, right: 22, bottom: 36, left: 58 };
+    const values = points.map((point) => point.value);
+    const rawMin = Math.min(...values);
+    const rawMax = Math.max(...values);
+    const pad = Math.max((rawMax - rawMin) * 0.12, rawMax === rawMin ? Math.abs(rawMax || 1) * 0.1 : 0);
+    const min = rawMin === rawMax ? rawMin - pad : rawMin - pad;
+    const max = rawMin === rawMax ? rawMax + pad : rawMax + pad;
+    const start = Date.now() - chart.hours * 60 * 60 * 1000;
+    const end = Date.now();
+    const line = this._chartPath(points, min, max, start, end, width, height, padding);
+    const latest = points[points.length - 1];
+    const zeroY = min < 0 && max > 0
+      ? padding.top + (1 - ((0 - min) / (max - min))) * (height - padding.top - padding.bottom)
+      : undefined;
+
+    return `
+      <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${this._escape(this._metricLabel(metric, this._currentVariant))}">
+        <line class="chart-gridline" x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}"></line>
+        <line class="chart-gridline" x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}"></line>
+        <line class="chart-gridline soft" x1="${padding.left}" y1="${padding.top + (height - padding.top - padding.bottom) / 2}" x2="${width - padding.right}" y2="${padding.top + (height - padding.top - padding.bottom) / 2}"></line>
+        ${zeroY ? `<line class="chart-zero" x1="${padding.left}" y1="${zeroY.toFixed(1)}" x2="${width - padding.right}" y2="${zeroY.toFixed(1)}"></line>` : ""}
+        <polyline class="chart-line" points="${this._escape(line)}"></polyline>
+        <circle class="chart-dot" cx="${this._escape(line.split(" ").at(-1)?.split(",")[0] || padding.left)}" cy="${this._escape(line.split(" ").at(-1)?.split(",")[1] || padding.top)}" r="4"></circle>
+        <text class="chart-label" x="${padding.left}" y="16">${this._escape(this._formatChartValue(max, metric))}</text>
+        <text class="chart-label" x="${padding.left}" y="${height - 8}">${this._escape(this._formatChartTime(start))}</text>
+        <text class="chart-label end" x="${width - padding.right}" y="${height - 8}">${this._escape(this._formatChartTime(end))}</text>
+        <text class="chart-current" x="${width - padding.right}" y="16">${this._escape(this._formatChartValue(latest.value, metric))}</text>
+      </svg>
+    `;
+  }
+
+  _renderChartOverlay() {
+    if (!this._activeChart) return "";
+    const metric = this._chartMetric(this._activeChart.metricKey);
+    if (!metric) return "";
+    const entityId = this._metricEntityId(metric);
+    const title = this._metricLabel(metric, this._currentVariant);
+    const hours = this._activeChart.hours;
+    const rangeButton = (value) => `
+      <button type="button" class="chart-range${hours === value ? " active" : ""}" data-chart-hours="${value}">${this._escape(this._t(`chart.range${value}`))}</button>
+    `;
+
+    return `
+      <div class="chart-backdrop" data-chart-close></div>
+      <div class="chart-dialog" role="dialog" aria-modal="true" aria-label="${this._escape(title)}" style="${this._escape(this._accentStyle(metric))}">
+        <div class="chart-head">
+          <div class="chart-title">
+            <strong>${this._escape(title)}</strong>
+            <span>${this._escape(this._t("chart.subtitle", { hours }))}${entityId ? ` / ${this._escape(entityId)}` : ""}</span>
+          </div>
+          <div class="chart-actions">
+            ${rangeButton(24)}
+            ${rangeButton(48)}
+            <button type="button" class="chart-close" data-chart-close aria-label="${this._escape(this._t("chart.close"))}">×</button>
+          </div>
+        </div>
+        <div class="chart-body">
+          ${this._renderChartSvg(metric, this._activeChart)}
+        </div>
+      </div>
+    `;
+  }
+
   _ruleMatches(rule, value) {
     if (!rule || value === undefined) return false;
     const checks = [
@@ -1342,6 +1586,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.customKpi) return metric.customKpi.visible !== false;
     const configured = this.config.visible_boxes?.[metric.key];
     if (configured !== undefined) return configured !== false;
+    if (metric.optional && !this.config.entities?.[metric.key]) return false;
     return variant?.visible_boxes?.[metric.key] !== false;
   }
 
@@ -1529,7 +1774,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const warning = this._metricWarning(metric);
 
     return `
-      <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
+      <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
         <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
         <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
         ${this._renderBatteryIndicator(metric)}
@@ -1559,6 +1804,34 @@ class HaSolarDashboardCard extends HTMLElement {
       image.addEventListener("error", () => this._applyImageFallback(image));
       if (image.complete && image.naturalWidth === 0) this._applyImageFallback(image);
     }
+
+    this.shadowRoot.querySelectorAll("[data-chart-key]").forEach((element) => {
+      const metricKey = element.dataset.chartKey;
+      if (!metricKey) return;
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._openChart(metricKey);
+      });
+    });
+
+    this.shadowRoot.querySelectorAll("[data-chart-hours]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const metricKey = this._activeChart?.metricKey;
+        if (!metricKey) return;
+        this._openChart(metricKey, Number(event.currentTarget.dataset.chartHours));
+      });
+    });
+
+    this.shadowRoot.querySelectorAll("[data-chart-close]").forEach((element) => {
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._closeChart();
+      });
+    });
   }
 
   _applyImageFallback(image) {
@@ -1596,7 +1869,7 @@ class HaSolarDashboardCard extends HTMLElement {
       const tooltip = this._metricTooltip(metric, state.variant);
       const warning = this._metricWarning(metric);
       return `
-        <div class="tile${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
+        <div class="tile${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
           <div class="name">${this._escape(this._metricLabel(metric, state.variant))}</div>
           <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
           ${this._renderBatteryIndicator(metric)}
@@ -1615,7 +1888,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select { max-width:140px; padding:0 30px 0 10px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
-        .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:help; box-sizing:border-box; }
+        .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:pointer; box-sizing:border-box; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
         .metric .value,.tile .num { color:var(--tile-accent); font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
         .battery-meter { width:100%; height:5px; margin-top:6px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
@@ -1625,14 +1898,37 @@ class HaSolarDashboardCard extends HTMLElement {
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
         .scene-status:empty { display:none; }
         .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
-        .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; position:relative; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; cursor:help; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
-        @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select{width:100%;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} }
+        .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; position:relative; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; cursor:pointer; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
+        .chart-backdrop { position:fixed; inset:0; z-index:1000; background:rgba(2,6,18,.58); backdrop-filter:blur(3px); }
+        .chart-dialog { --tile-accent:#1f8fff; --tile-glow:transparent; position:fixed; z-index:1001; left:50%; top:50%; width:min(760px,calc(100vw - 28px)); max-height:calc(100vh - 32px); transform:translate(-50%,-50%); overflow:hidden; border-radius:14px; border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.18)); background:linear-gradient(135deg,rgba(15,24,45,.98),rgba(8,14,28,.98)); box-shadow:0 24px 70px rgba(0,0,0,.62),0 0 26px var(--tile-glow); color:var(--text-main); }
+        .chart-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px 14px 10px; border-bottom:1px solid rgba(255,255,255,.1); }
+        .chart-title { display:grid; gap:3px; min-width:0; }
+        .chart-title strong { color:var(--tile-accent); font-size:1rem; line-height:1.2; overflow-wrap:anywhere; }
+        .chart-title span { color:var(--text-muted); font-size:.78rem; line-height:1.25; overflow-wrap:anywhere; }
+        .chart-actions { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+        .chart-range,.chart-close { min-width:34px; height:32px; border-radius:8px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.08); color:var(--text-main); font:inherit; font-size:.78rem; cursor:pointer; }
+        .chart-range.active { background:color-mix(in srgb,var(--tile-accent) 24%,rgba(255,255,255,.08)); border-color:color-mix(in srgb,var(--tile-accent) 56%,rgba(255,255,255,.16)); color:#fff; }
+        .chart-close { font-size:1.2rem; line-height:1; }
+        .chart-body { padding:12px 14px 14px; min-height:260px; display:grid; place-items:center; }
+        .chart-message { min-height:220px; display:grid; place-items:center; color:var(--text-muted); text-align:center; font-size:.92rem; }
+        .chart-message.is-error { color:#fca5a5; }
+        .chart-svg { display:block; width:100%; height:auto; min-height:220px; overflow:visible; }
+        .chart-gridline { stroke:rgba(255,255,255,.18); stroke-width:1; }
+        .chart-gridline.soft { stroke:rgba(255,255,255,.08); }
+        .chart-zero { stroke:rgba(255,255,255,.28); stroke-dasharray:4 5; stroke-width:1; }
+        .chart-line { fill:none; stroke:var(--tile-accent); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; filter:drop-shadow(0 0 8px var(--tile-glow)); }
+        .chart-dot { fill:var(--tile-accent); stroke:#fff; stroke-width:2; }
+        .chart-label,.chart-current { fill:var(--text-muted); font-size:12px; }
+        .chart-current { fill:var(--tile-accent); text-anchor:end; font-weight:700; }
+        .chart-label.end { text-anchor:end; }
+        @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select{width:100%;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
         <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${metricHtml}${statusHtml}</div>
         ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
       </ha-card>
+      ${this._renderChartOverlay()}
     `;
 
     this._attachControls();
@@ -1867,6 +2163,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   _metricVisible(metric) {
     const configured = this._config.visible_boxes?.[metric.key];
     if (configured !== undefined) return configured !== false;
+    if (metric.optional && !this._config.entities?.[metric.key]) return false;
     return this._houseVariant().visible_boxes?.[metric.key] !== false;
   }
 

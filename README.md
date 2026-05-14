@@ -4,7 +4,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 
 ## Example
 
-![HA Solar Dashboard Card example](https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/example2.png)
+![HA Solar Dashboard Card example](https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/example3.png)
 
 ## Features
 
@@ -27,11 +27,13 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - Inverter power
   - EV charger power
   - PV Total (summary tile below the image)
+  - Optional house consumption power
 - Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
 - Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
 - Optional grid status tile showing import, export, or self-sufficient operation from the import/export entity
 - Hover tooltips on values show the linked entity, raw state, formatted value, and update time
+- Clickable entity boxes and tiles open a 24/48 hour history chart using Home Assistant history data
 - Warning states highlight unavailable/offline sensors and low battery levels
 - Configurable KPI tiles below the image, including custom labels, entities or static values, units, color, sort position, and tile width
 - Custom standard and daylight images
@@ -69,6 +71,7 @@ entities:
   inverter_power: sensor.wechselrichter_leistung
   wallbox_power: sensor.wallbox_leistung
   pv_total_power: sensor.pv_gesamt_leistung
+  house_consumption_power: sensor.hausverbrauch_leistung
   import_export_power: sensor.netzbezug_einspeisung
 visible_boxes:
   wallbox_power: false
@@ -87,6 +90,7 @@ power_display_mode: auto_kw
 power_decimals: 2
 grid_neutral_threshold: 25
 battery_low_threshold: 20
+chart_hours: 24
 dynamic_tile_colors: true
 tile_color_rules:
   pv_total_power:
@@ -141,12 +145,13 @@ custom_kpis:
 - `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
 - `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
-- `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `battery_level`, `inverter_power`, and `wallbox_power`)
+- `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, and `wallbox_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)
 - `entities.pv_total_power` (entity id; shown as `PV Total` in the summary boxes below the image)
+- `entities.house_consumption_power` (entity id, optional; shown as `Consumption` in the summary boxes below the image)
 - `entities.battery_level` (entity id)
 - `entities.inverter_power` (entity id)
 - `entities.wallbox_power` (entity id)
@@ -158,6 +163,7 @@ custom_kpis:
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)
 - `grid_neutral_threshold` (number, default: `25`; watt threshold below which the grid tile shows self-sufficient/autark operation)
 - `battery_low_threshold` (number, default: `20`; battery percentage at or below which the battery tile is highlighted as a warning)
+- `chart_hours` (number, default: `24`; initial range for the click-to-open history chart, supported values: `24` or `48`)
 - `dynamic_tile_colors` (boolean, default: `true`; enables threshold-based accent colors and glow states for HUD boxes, summary tiles, and the import/export status label)
 - `tile_color_rules.<entity_key>[]` (array, optional; first matching rule wins; supported keys include the visible box keys plus `import_export_power`)
 - `tile_color_rules.<entity_key>[].color` (CSS color, for example `#34d399`, `orange`, `rgb(251,146,60)`, or `var(--my-color)`)

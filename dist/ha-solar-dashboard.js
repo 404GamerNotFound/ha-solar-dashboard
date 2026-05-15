@@ -65,6 +65,10 @@ const I18N = {
     "editor.hudBoxOpacity": "HUD box opacity",
     "editor.hudBoxScale": "HUD box scale",
     "editor.importExportEntity": "Import/Export Entity",
+    "editor.importExportLabels": "Import/Export labels",
+    "editor.importLabel": "Import label",
+    "editor.exportLabel": "Export label",
+    "editor.neutralLabel": "Self-sufficient label",
     "editor.kpiAdd": "Add tile",
     "editor.kpiColor": "Color",
     "editor.kpiColumns": "Tile width",
@@ -229,6 +233,10 @@ const I18N = {
     "editor.hudBoxOpacity": "HUD-Box-Deckkraft",
     "editor.hudBoxScale": "HUD-Box-Skalierung",
     "editor.importExportEntity": "Import-/Export-Entität",
+    "editor.importExportLabels": "Import-/Export-Labels",
+    "editor.importLabel": "Bezugs-Label",
+    "editor.exportLabel": "Einspeise-Label",
+    "editor.neutralLabel": "Autark-Label",
     "editor.kpiAdd": "Kachel hinzufügen",
     "editor.kpiColor": "Farbe",
     "editor.kpiColumns": "Kachelbreite",
@@ -393,6 +401,10 @@ const I18N = {
     "editor.hudBoxOpacity": "Opacidad de cajas HUD",
     "editor.hudBoxScale": "Escala de cajas HUD",
     "editor.importExportEntity": "Entidad de importación/exportación",
+    "editor.importExportLabels": "Etiquetas de importación/exportación",
+    "editor.importLabel": "Etiqueta de importación",
+    "editor.exportLabel": "Etiqueta de exportación",
+    "editor.neutralLabel": "Etiqueta de autosuficiencia",
     "editor.kpiAdd": "Añadir mosaico",
     "editor.kpiColor": "Color",
     "editor.kpiColumns": "Ancho del mosaico",
@@ -543,6 +555,10 @@ const I18N = {
     "editor.hudBoxOpacity": "Opacité des boîtes HUD",
     "editor.hudBoxScale": "Échelle des boîtes HUD",
     "editor.importExportEntity": "Entité import/export",
+    "editor.importExportLabels": "Libellés import/export",
+    "editor.importLabel": "Libellé import",
+    "editor.exportLabel": "Libellé export",
+    "editor.neutralLabel": "Libellé autonomie",
     "editor.kpiAdd": "Ajouter une tuile",
     "editor.kpiColor": "Couleur",
     "editor.kpiColumns": "Largeur de tuile",
@@ -693,6 +709,10 @@ const I18N = {
     "editor.hudBoxOpacity": "Przezroczystość pól HUD",
     "editor.hudBoxScale": "Skala pól HUD",
     "editor.importExportEntity": "Encja importu/eksportu",
+    "editor.importExportLabels": "Etykiety importu/eksportu",
+    "editor.importLabel": "Etykieta importu",
+    "editor.exportLabel": "Etykieta eksportu",
+    "editor.neutralLabel": "Etykieta samowystarczalności",
     "editor.kpiAdd": "Dodaj kafelek",
     "editor.kpiColor": "Kolor",
     "editor.kpiColumns": "Szerokość kafelka",
@@ -844,6 +864,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 49, top: 66 },
       inverter_power: { left: 53, top: 72 },
       wallbox_power: { left: 23, top: 57 },
+      import_export_power: { left: 82, top: 83 },
     },
   },
   duplex_house: {
@@ -857,6 +878,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 49, top: 73 },
       inverter_power: { left: 37, top: 56 },
       wallbox_power: { left: 27, top: 66 },
+      import_export_power: { left: 82, top: 82 },
     },
   },
   terraced_middle_house: {
@@ -870,6 +892,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 33, top: 61 },
       inverter_power: { left: 34, top: 51 },
       wallbox_power: { left: 44, top: 66 },
+      import_export_power: { left: 82, top: 82 },
     },
   },
   apartment_building: {
@@ -883,6 +906,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 35, top: 65 },
       inverter_power: { left: 35, top: 72 },
       wallbox_power: { left: 21, top: 59 },
+      import_export_power: { left: 82, top: 82 },
     },
   },
   apartment_building_balcony_solar: {
@@ -894,15 +918,17 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 42, top: 70 },
       inverter_power: { left: 52, top: 58 },
       pv_total_power: { left: 62, top: 58 },
+      import_export_power: { left: 82, top: 82 },
     },
-      visible_boxes: {
-        pv_roof_power: false,
-        pv_shed_power: false,
-        wallbox_power: false,
-        wallbox2_power: false,
-        battery_level: true,
-        inverter_power: true,
-        pv_total_power: true,
+    visible_boxes: {
+      pv_roof_power: false,
+      pv_shed_power: false,
+      wallbox_power: false,
+      wallbox2_power: false,
+      import_export_power: true,
+      battery_level: true,
+      inverter_power: true,
+      pv_total_power: true,
     },
     labels: {
       pv_total_power: "PV Power",
@@ -922,6 +948,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 40, top: 66 },
       inverter_power: { left: 54, top: 69 },
       wallbox_power: { left: 25, top: 59 },
+      import_export_power: { left: 82, top: 82 },
     },
   },
   city_villa: {
@@ -935,6 +962,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 43, top: 71 },
       inverter_power: { left: 58, top: 58 },
       wallbox_power: { left: 25, top: 57 },
+      import_export_power: { left: 82, top: 82 },
     },
   },
   city_villa_pitched_roof: {
@@ -948,6 +976,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 41, top: 66 },
       inverter_power: { left: 55, top: 56 },
       wallbox_power: { left: 25, top: 60 },
+      import_export_power: { left: 82, top: 82 },
     },
   },
 };
@@ -1001,6 +1030,7 @@ const METRICS = [
   { key: "inverter_power", label: "Inverter", unit: "power", color: "blue" },
   { key: "wallbox_power", label: "EV Charger", unit: "power", color: "blue" },
   { key: "wallbox2_power", label: "EV Charger 2", unit: "power", color: "blue", optional: true },
+  { key: "import_export_power", label: "Import/Export", unit: "power", color: "blue", optional: true, tile: false },
 ];
 
 const PV_LABELS = [
@@ -1019,6 +1049,8 @@ const TILE_METRICS = [
 const STATUS_METRIC = { key: "import_export_power", label: "Import/Export", unit: "power", color: "blue" };
 const GRID_STATUS_METRIC = {
   ...STATUS_METRIC,
+  key: "grid_status",
+  sourceKey: "import_export_power",
   label: "Grid",
   labelKey: "metrics.grid_status",
   gridStatus: true,
@@ -1151,6 +1183,7 @@ class HaSolarDashboardCard extends HTMLElement {
         inverter_power: 10,
         wallbox_power: 11,
         wallbox2_power: 11,
+        import_export_power: 10,
       },
       dynamic_tile_colors: true,
       daylight_entity: "sun.sun",
@@ -1171,6 +1204,7 @@ class HaSolarDashboardCard extends HTMLElement {
         inverter_power: true,
         wallbox_power: true,
         wallbox2_power: false,
+        import_export_power: true,
       },
       entities: {
         pv_roof_power: "sensor.pv_roof_power",
@@ -1422,8 +1456,8 @@ class HaSolarDashboardCard extends HTMLElement {
   _metricEntityId(metric) {
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric.customKpi) return metric.customKpi.entity || "";
-    if (this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
-    return this.config.entities?.[metric.key] || "";
+    if (!metric.gridStatus && this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
+    return this.config.entities?.[metric.sourceKey || metric.key] || "";
   }
 
   _formatValue(value) {
@@ -1450,10 +1484,11 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.gridStatus) return this._formatGridStatusReading();
     if (metric.overlay) return this._formatOverlayReading(metric.overlay);
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
+    if (metric.key === "import_export_power" && this._currentEnergyRange() === "live") return this._formatGridStatusReading();
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
       return this._formatEnergyRangeReading(metric);
     }
-    const entityId = this.config.entities[metric.key];
+    const entityId = this.config.entities[metric.sourceKey || metric.key];
     const value = this._getEntityValue(entityId, entityId ? undefined : "0");
     const unit = this._unitForMetric(metric);
     const entityUnit = this._getEntityUnit(entityId);
@@ -1559,6 +1594,19 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._clampNumber(this.config.grid_neutral_threshold, 25, 0, 1000000);
   }
 
+  _configuredLabel(key, fallback) {
+    const customLabel = this.config.labels?.[key];
+    if (customLabel !== undefined && String(customLabel).trim() !== "") return String(customLabel).trim();
+    return fallback;
+  }
+
+  _gridStatusLabel(kind) {
+    if (kind === "import") return this._configuredLabel("import_export_import", this._t("status.import"));
+    if (kind === "export") return this._configuredLabel("import_export_export", this._t("status.export"));
+    if (kind === "neutral") return this._configuredLabel("import_export_neutral", this._t("status.selfSufficient"));
+    return "";
+  }
+
   _gridStatusInfo() {
     const entityId = this.config.entities?.import_export_power;
     if (!entityId) return { kind: "none", label: "", value: "" };
@@ -1581,14 +1629,13 @@ class HaSolarDashboardCard extends HTMLElement {
 
     const magnitude = Math.abs(watts);
     if (magnitude <= this._gridNeutralThreshold()) {
-      return { kind: "neutral", label: this._t("status.selfSufficient"), value: this._formatPowerValue(0, unit, "W") };
+      return { kind: "neutral", label: this._gridStatusLabel("neutral"), value: this._formatPowerValue(0, unit, "W") };
     }
 
-    const direction = watts < 0
-      ? this._t("status.export")
-      : this._t("status.import");
+    const directionKind = watts < 0 ? "export" : "import";
+    const direction = this._gridStatusLabel(directionKind);
     const formattedValue = this._formatPowerValue(magnitude, unit, "W");
-    return { kind: watts < 0 ? "export" : "import", label: direction, value: formattedValue };
+    return { kind: directionKind, label: direction, value: formattedValue };
   }
 
   _formatGridStatusReading() {
@@ -2682,7 +2729,7 @@ class HaSolarDashboardCard extends HTMLElement {
       return { color: fallbackColor, glow: "transparent" };
     }
 
-    const rules = this.config.tile_color_rules?.[metric.key];
+    const rules = this.config.tile_color_rules?.[metric.sourceKey || metric.key];
     const normalizedRules = Array.isArray(rules) ? rules : [];
     const value = this._metricNumericValue(metric);
     const matchedRule = normalizedRules.find((rule) => this._ruleMatches(rule, value));
@@ -2750,11 +2797,13 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _visibleTileMetrics(variant) {
     return [
-      ...this._visibleMetrics(variant).map((metric, index) => ({
-        ...metric,
-        tileOrder: metric.tileOrder ?? index,
-        tileColumns: metric.tileColumns ?? 1,
-      })),
+      ...this._visibleMetrics(variant)
+        .filter((metric) => metric.tile !== false)
+        .map((metric, index) => ({
+          ...metric,
+          tileOrder: metric.tileOrder ?? index,
+          tileColumns: metric.tileColumns ?? 1,
+        })),
       ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
@@ -3725,6 +3774,28 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _renderImportExportLabelInputs(metric) {
+    if (metric.key !== "import_export_power") return "";
+    const labelFields = [
+      ["import_export_import", "editor.importLabel", this._t("status.import", {}, "Import")],
+      ["import_export_export", "editor.exportLabel", this._t("status.export", {}, "Export")],
+      ["import_export_neutral", "editor.neutralLabel", this._t("status.selfSufficient", {}, "Self-sufficient")],
+    ].map(([key, labelKey, placeholder]) => {
+      const value = this._config.labels?.[key] || "";
+      return `
+        <label>${this._escape(this._t(labelKey, {}, placeholder))}
+          <input data-path="labels.${key}" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" />
+        </label>
+      `;
+    }).join("");
+    return `
+      <details class="pv-labels">
+        <summary>${this._escape(this._t("editor.importExportLabels", {}, "Import/Export labels"))}</summary>
+        <div class="details-grid">${labelFields}</div>
+      </details>
+    `;
+  }
+
   _labelVisibility(key) {
     const configured = this._config.label_visibility?.[key] || {};
     return {
@@ -3987,6 +4058,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
         ${this._renderLabelInput(metric)}
+        ${this._renderImportExportLabelInputs(metric)}
         ${this._renderEntityInput(metric)}
         ${this._renderPvLabelInputs(metric)}
         ${this._renderEnergyEntityInputs(metric)}
@@ -4193,10 +4265,6 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
         <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
         <label><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> ${this._escape(this._t("editor.showWeatherStatus"))}</label>
-        <label>${this._escape(this._t("editor.importExportEntity"))}
-          <input data-path="entities.import_export_power" list="ha-solar-dashboard-entities" placeholder="sensor.grid_power" value="${this._escape(this._config.entities?.import_export_power || "")}" autocomplete="off" />
-        </label>
-        ${this._renderUnitSelect({ key: "import_export_power", label: "Import/Export", unit: "power" })}
         <label>${this._escape(this._t("editor.hudBoxOpacity"))} (${this._escape((Number(this._config.hud_box_opacity ?? 0.65)).toFixed(2))})
           <input type="range" min="0" max="1" step="0.05" data-path="hud_box_opacity" value="${this._escape(this._config.hud_box_opacity ?? 0.65)}" />
         </label>

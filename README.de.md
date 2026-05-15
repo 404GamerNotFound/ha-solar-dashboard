@@ -14,7 +14,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Wählbare Hauslayouts aus dem `images`-Ordner
 - Variante `terraced_middle_house` mit Tag-/Nachtbild
 - Variante `bungalow` mit Tag-/Nachtbild
-- Konfigurierbare Entitäten und eigene Labels für PV, Batterie, Wechselrichter, Wallbox und Gesamtleistung
+- Konfigurierbare Entitäten und eigene Labels für PV, Batterie, Wechselrichter, Wallbox, Gesamtleistung und Import/Export
 - Optionaler Umschalter oben für Live-, 1h-, 24h-, Monats-, Jahres- und Gesamtwerte über separate kWh-Zähler je Leistungsbox
 - Optionale zweite Wallbox-Entität, standardmäßig deaktiviert und automatisch neben der ersten Wallbox positioniert
 - Optionale Verbrauchs-Kachel für den Hausverbrauch
@@ -26,7 +26,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Animierte Stromfluss-Linien zwischen den vorhandenen Bildelementen, basierend auf den konfigurierten HUD-Positionen ohne Anpassung der Bilddateien
 - Optionale Gas- und Wärmepumpen-Overlays mit eigener Aktivierung, frei definierbarem Label, Entität, Position, Größe und Ausrichtung der Wärmepumpe; Gas kann einen Zählerverbrauch für 30 Minuten, 1 Stunde oder 24 Stunden anzeigen
 - PV, Wechselrichter und Wallbox können Auslastungsbalken anhand konfigurierbarer kW/kWp-Maximalwerte anzeigen
-- Optionale Netzstatus-Kachel mit Bezug, Einspeisung oder Autarkie aus der Import-/Export-Entität
+- Optionale Import-/Export-Box im Bild, standardmäßig unten rechts beim Stromkabel positioniert, plus Netzstatus-Kachel mit Bezug, Einspeisung oder Autarkie
 - Tooltips pro Wert mit Entität, Rohwert, formatiertem Wert und Aktualisierungszeit
 - Klick auf entity-basierte Boxen und Kacheln öffnet ein 24/48-Stunden-Verlaufsdiagramm aus Home-Assistant-History-Daten
 - Warnzustände für nicht verfügbare/offline Sensoren und niedrigen Batteriestand

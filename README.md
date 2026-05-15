@@ -30,6 +30,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - Optional second EV charger power
   - PV Total (summary tile below the image)
   - Optional house consumption power
+  - Optional import/export power
 - Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
 - Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
@@ -42,7 +43,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Optional EV charger phase badges from separate phase entities (`Auto`, `1`, `2`, or `3`)
 - Optional EV vehicle SoC badges shown next to the EV charger phase badges
 - Optional remaining EV charge time badge, shown only while the EV charger is actively charging
-- Optional grid status tile showing import, export, or self-sufficient operation from the import/export entity
+- Optional import/export HUD box, positioned near the lower-right power cable by default, plus a grid status tile showing import, export, or self-sufficient operation
 - Hover tooltips on values show the linked entity, raw state, formatted value, and update time
 - Clickable entity boxes and tiles open a 24/48 hour history chart using Home Assistant history data
 - Warning states highlight unavailable/offline sensors and low battery levels
@@ -104,6 +105,10 @@ labels:
   pv_roof_power: PV Dach
   battery_level: Speicher
   wallbox_power: Wallbox Garage
+  import_export_power: Grid
+  import_export_import: Import
+  import_export_export: Export
+  import_export_neutral: Self-sufficient
 energy_entities:
   pv_roof_power:
     entity: sensor.pv_dach_energy_total
@@ -214,9 +219,10 @@ custom_kpis:
 - `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
 - `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
-- `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, and `wallbox2_power`)
+- `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, `wallbox2_power`, and `import_export_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
 - `labels.<entity_key>` (string, optional; custom label for HUD boxes and summary tiles, for example `PV Dach`, `Speicher` or `Wallbox Garage`)
+- `labels.import_export_import` / `labels.import_export_export` / `labels.import_export_neutral` (strings, optional; custom direction labels for `entities.import_export_power`, for example `Grid import`, `Feed-in`, and `Self-sufficient`)
 - `energy_entities.<entity_key>.entity` (entity id, optional; cumulative kWh counter used like the gas meter: `1h`, `24h`, `1 month`, and `1 year` are calculated from Home Assistant history, while `Total` shows the current counter value)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)

@@ -75,6 +75,7 @@ const I18N = {
     "editor.kpiStaticValue": "Static value",
     "editor.labelHideDesktop": "Hide on desktop",
     "editor.labelHideMobile": "Hide on phones",
+    "editor.labelOptions": "Label display",
     "editor.labelShowFooter": "Show label in footer KPIs",
     "editor.labelShowImage": "Show label in image",
     "editor.maxPowerKw": "Max power (kW/kWp)",
@@ -229,6 +230,7 @@ const I18N = {
     "editor.kpiStaticValue": "Fester Wert",
     "editor.labelHideDesktop": "Auf PC ausblenden",
     "editor.labelHideMobile": "Auf Handys ausblenden",
+    "editor.labelOptions": "Label-Anzeige",
     "editor.labelShowFooter": "Label in den KPIs im Footer anzeigen",
     "editor.labelShowImage": "Label im Bild anzeigen",
     "editor.maxPowerKw": "Maximalleistung (kW/kWp)",
@@ -1993,9 +1995,10 @@ class HaSolarDashboardCard extends HTMLElement {
       : this._t("flow.discharge", {}, "Outgoing");
   }
 
-  _renderBatteryFlow(metric, { showLabel = false } = {}) {
+  _renderBatteryFlow(metric, { showLabel = false, placement = showLabel ? "footer" : "image" } = {}) {
     if (metric.key !== "battery_level") return "";
     if (this._currentEnergyRange() !== "live") return "";
+    if (!this._showLabelIn("battery_flow_power", placement)) return "";
     const info = this._batteryFlowInfo();
     const value = this._formatBatteryFlowValue(info);
     if (!info || !value) return "";
@@ -2003,7 +2006,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const directionLabel = this._batteryFlowDirectionLabel(info.direction);
     const label = `${directionLabel}: ${value}`;
     return `
-      <div class="battery-flow ${info.direction}${showLabel ? " with-label" : ""}" data-battery-flow title="${this._escape(label)}" aria-label="${this._escape(label)}">
+      <div class="battery-flow ${info.direction}${showLabel ? " with-label" : ""}${this._labelVisibilityClass("battery_flow_power")}" data-battery-flow title="${this._escape(label)}" aria-label="${this._escape(label)}">
         ${showLabel ? `<span class="battery-flow-label" data-battery-flow-label>${this._escape(directionLabel)}</span>` : ""}
         <span class="battery-flow-arrow">${this._escape(arrow)}</span>
         <span data-battery-flow-value>${this._escape(value)}</span>
@@ -2033,19 +2036,20 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "°C");
   }
 
-  _renderBatteryTemperature(metric) {
+  _renderBatteryTemperature(metric, { placement = "footer" } = {}) {
     if (metric.key !== "battery_level" || !this._batteryTemperatureEntityId()) return "";
+    if (!this._showLabelIn("battery_temperature", placement)) return "";
     const label = this._batteryTemperatureLabel();
     const tooltip = `${this._t("tooltip.temperature", {}, "Temperature")}: ${label}`;
     return `
-      <span class="temp-badge" data-battery-temperature title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="temp-badge${this._labelVisibilityClass("battery_temperature")}" data-battery-temperature title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
-  _renderBatteryMetaRow(metric, { showFlowLabel = true } = {}) {
+  _renderBatteryMetaRow(metric, { showFlowLabel = true, placement = showFlowLabel ? "footer" : "image" } = {}) {
     const metaHtml = [
-      this._renderBatteryFlow(metric, { showLabel: showFlowLabel }),
-      this._renderBatteryTemperature(metric),
+      this._renderBatteryFlow(metric, { showLabel: showFlowLabel, placement }),
+      this._renderBatteryTemperature(metric, { placement }),
     ].filter(Boolean).join("");
     return metaHtml ? `<div class="meta-row">${metaHtml}</div>` : "";
   }
@@ -2079,12 +2083,14 @@ class HaSolarDashboardCard extends HTMLElement {
     return String(rawValue).trim();
   }
 
-  _renderWallboxPhase(metric) {
+  _renderWallboxPhase(metric, { placement = "footer" } = {}) {
     if (!this._wallboxPhaseEntityId(metric)) return "";
+    const entityKey = this._wallboxPhaseEntityKey(metric);
+    if (!this._showLabelIn(entityKey, placement)) return "";
     const label = this._wallboxPhaseLabel(metric);
     const tooltip = `${this._t("tooltip.phases", {}, "Phases")}: ${label}`;
     return `
-      <span class="phase-badge" data-phase="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="phase-badge${this._labelVisibilityClass(entityKey)}" data-phase="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
@@ -2117,12 +2123,14 @@ class HaSolarDashboardCard extends HTMLElement {
     return `Auto ${value}`;
   }
 
-  _renderWallboxSoc(metric) {
+  _renderWallboxSoc(metric, { placement = "footer" } = {}) {
     if (!this._wallboxSocEntityId(metric)) return "";
+    const entityKey = this._wallboxSocEntityKey(metric);
+    if (!this._showLabelIn(entityKey, placement)) return "";
     const label = this._wallboxSocLabel(metric);
     const tooltip = `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${label}`;
     return `
-      <span class="soc-badge" data-vehicle-soc="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="soc-badge${this._labelVisibilityClass(entityKey)}" data-vehicle-soc="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
@@ -2200,20 +2208,22 @@ class HaSolarDashboardCard extends HTMLElement {
     return value ? this._t("value.remainingChargeTime", { value }, `${value} left`) : "";
   }
 
-  _renderWallboxRemainingTime(metric) {
+  _renderWallboxRemainingTime(metric, { placement = "footer" } = {}) {
     if (!this._wallboxRemainingTimeEntityId(metric)) return "";
+    const entityKey = this._wallboxRemainingTimeEntityKey(metric);
+    if (!this._showLabelIn(entityKey, placement)) return "";
     const label = this._wallboxRemainingTimeLabel(metric);
     const tooltip = `${this._t("tooltip.remainingChargeTime", {}, "Remaining charge time")}: ${label}`;
     return `
-      <span class="time-badge" data-remaining-charge-time="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="time-badge${this._labelVisibilityClass(entityKey)}" data-remaining-charge-time="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
-  _renderWallboxPhaseRow(metric) {
+  _renderWallboxPhaseRow(metric, { placement = "footer" } = {}) {
     const metaHtml = [
-      this._renderWallboxPhase(metric),
-      this._renderWallboxSoc(metric),
-      this._renderWallboxRemainingTime(metric),
+      this._renderWallboxPhase(metric, { placement }),
+      this._renderWallboxSoc(metric, { placement }),
+      this._renderWallboxRemainingTime(metric, { placement }),
     ].filter(Boolean).join("");
     return metaHtml ? `<div class="meta-row">${metaHtml}</div>` : "";
   }
@@ -2604,6 +2614,11 @@ class HaSolarDashboardCard extends HTMLElement {
     ].join("");
   }
 
+  _showLabelIn(key, placement) {
+    const visibility = this._labelVisibility(key);
+    return placement === "footer" ? visibility.footer : visibility.image;
+  }
+
   _metricEnabled(metric, variant) {
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.enabled === true;
     if (metric.customKpi) return metric.customKpi.visible !== false;
@@ -2631,13 +2646,11 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _visibleTileMetrics(variant) {
     return [
-      ...this._visibleMetrics(variant)
-        .filter((metric) => this._labelVisibility(metric.key).footer)
-        .map((metric, index) => ({
-          ...metric,
-          tileOrder: metric.tileOrder ?? index,
-          tileColumns: metric.tileColumns ?? 1,
-        })),
+      ...this._visibleMetrics(variant).map((metric, index) => ({
+        ...metric,
+        tileOrder: metric.tileOrder ?? index,
+        tileColumns: metric.tileColumns ?? 1,
+      })),
       ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
@@ -2653,7 +2666,6 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _visibleHudMetrics(variant) {
     return this._visibleMetrics(variant).filter((metric) => {
-      if (!this._labelVisibility(metric.key).image) return false;
       if (metric.hud !== false) return true;
       return Boolean(variant?.positions?.[metric.key]) || this.config.visible_boxes?.[metric.key] === true;
     });
@@ -2909,16 +2921,15 @@ class HaSolarDashboardCard extends HTMLElement {
     const top = this._toPercent(position.top, 50);
     const tooltip = this._metricTooltip(metric, variant);
     const warning = this._metricWarning(metric);
-    const visibilityClass = this._labelVisibilityClass(metric.key);
 
     return `
-      <div class="metric${this._metricStateClass(metric)}${visibilityClass}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
+      <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
         <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
         <div class="value-row">
           <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
         </div>
-        ${this._renderBatteryMetaRow(metric, { showFlowLabel: false })}
-        ${this._renderWallboxPhaseRow(metric)}
+        ${this._renderBatteryMetaRow(metric, { showFlowLabel: false, placement: "image" })}
+        ${this._renderWallboxPhaseRow(metric, { placement: "image" })}
         ${this._renderMetricMeter(metric)}
       </div>
     `;
@@ -3178,18 +3189,18 @@ class HaSolarDashboardCard extends HTMLElement {
     const gridHtml = visibleTileMetrics.map((metric) => {
       const tooltip = this._metricTooltip(metric, state.variant);
       const warning = this._metricWarning(metric);
-      const visibilityClass = this._labelVisibilityClass(metric.key);
+      const visibilityClass = metric.overlay ? this._labelVisibilityClass(metric.key) : "";
       const valueHtml = metric.key === "battery_level"
         ? `
           <div class="tile-value-row">
             <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
           </div>
-          ${this._renderBatteryMetaRow(metric)}
+          ${this._renderBatteryMetaRow(metric, { placement: "footer" })}
         `
         : this._wallboxPhaseEntityKey(metric)
         ? `
           <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
-          ${this._renderWallboxPhaseRow(metric)}
+          ${this._renderWallboxPhaseRow(metric, { placement: "footer" })}
         `
         : `<div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>`;
       return `
@@ -3603,12 +3614,15 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   _renderLabelVisibilityOptions(key) {
     const visibility = this._labelVisibility(key);
     return `
-      <div class="checkbox-grid">
-        <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.image" ${visibility.image ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show label in image"))}</label>
-        <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.footer" ${visibility.footer ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowFooter", {}, "Show label in footer KPIs"))}</label>
-        <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.hide_mobile" ${visibility.hideMobile ? "checked" : ""}/> ${this._escape(this._t("editor.labelHideMobile", {}, "Hide on phones"))}</label>
-        <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.hide_desktop" ${visibility.hideDesktop ? "checked" : ""}/> ${this._escape(this._t("editor.labelHideDesktop", {}, "Hide on desktop"))}</label>
-      </div>
+      <details class="label-options">
+        <summary>${this._escape(this._t("editor.labelOptions", {}, "Label display"))}</summary>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.image" ${visibility.image ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show label in image"))}</label>
+          <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.footer" ${visibility.footer ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowFooter", {}, "Show label in footer KPIs"))}</label>
+          <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.hide_mobile" ${visibility.hideMobile ? "checked" : ""}/> ${this._escape(this._t("editor.labelHideMobile", {}, "Hide on phones"))}</label>
+          <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.hide_desktop" ${visibility.hideDesktop ? "checked" : ""}/> ${this._escape(this._t("editor.labelHideDesktop", {}, "Hide on desktop"))}</label>
+        </div>
+      </details>
     `;
   }
 
@@ -3648,6 +3662,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <label>${this._escape(this._t("editor.phaseEntity"))}
         <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
       </label>
+      ${this._renderLabelVisibilityOptions(entityKey)}
     `;
   }
 
@@ -3668,6 +3683,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <label>${this._escape(this._t("editor.vehicleSocEntity"))}
         <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
       </label>
+      ${this._renderLabelVisibilityOptions(entityKey)}
     `;
   }
 
@@ -3688,6 +3704,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <label>${this._escape(this._t("editor.remainingChargeTimeEntity"))}
         <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
       </label>
+      ${this._renderLabelVisibilityOptions(entityKey)}
     `;
   }
 
@@ -3748,6 +3765,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <label>${this._escape(this._t("editor.batteryFlowEntity"))}
         <input data-path="entities.battery_flow_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_power" value="${this._escape(this._config.entities?.battery_flow_power || "")}" autocomplete="off" />
       </label>
+      ${this._renderLabelVisibilityOptions("battery_flow_power")}
       <label>${this._escape(this._t("editor.batteryChargeEntity"))}
         <input data-path="entities.battery_charge_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_charge_power" value="${this._escape(this._config.entities?.battery_charge_power || "")}" autocomplete="off" />
       </label>
@@ -3757,6 +3775,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <label>${this._escape(this._t("editor.batteryTemperatureEntity"))}
         <input data-path="entities.battery_temperature" list="ha-solar-dashboard-entities" placeholder="sensor.battery_temperature" value="${this._escape(this._config.entities?.battery_temperature || "")}" autocomplete="off" />
       </label>
+      ${this._renderLabelVisibilityOptions("battery_temperature")}
     `;
   }
 
@@ -3806,7 +3825,6 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return `
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
-        ${this._renderLabelVisibilityOptions(metric.key)}
         ${this._renderLabelInput(metric)}
         ${this._renderEntityInput(metric)}
         ${this._renderEnergyEntityInputs(metric)}
@@ -3896,11 +3914,11 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return `
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.enabled" ${enabled ? "checked" : ""}/> ${this._escape(this._t("editor.overlayEnable", { label }))}</label>
-        ${this._renderLabelVisibilityOptions(`overlay_${key}`)}
         <label>${this._escape(this._t("editor.overlayLabel"))}
           <input data-path="image_overlays.${key}.label" placeholder="${this._escape(defaultLabel)}" value="${this._escape(this._config.image_overlays?.[key]?.label || "")}" />
         </label>
         ${entityHtml}
+        ${this._renderLabelVisibilityOptions(`overlay_${key}`)}
         ${periodHtml}
         <label>${this._escape(this._t("editor.xPosition"))} (${this._escape(left)})
           <input type="range" min="0" max="100" step="1" data-path="image_overlays.${key}.left" value="${this._escape(left)}" />
@@ -3977,18 +3995,20 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         input,select,button{box-sizing:border-box;min-width:0;max-width:100%;padding:8px;border:1px solid #bbb;border-radius:8px;text-overflow:ellipsis}
         input,select{width:100%}
         button{width:auto;background:#f7f7f7;cursor:pointer}
-        .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
+        .grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0}
         .section-title{font-size:13px;font-weight:700;margin-top:4px}
         .box-field{display:grid;gap:8px;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px}
         .checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
         details{display:grid;gap:8px;min-width:0}
+        .label-options{margin-top:-2px}
+        .label-options .checkbox-grid{margin-top:8px}
         summary{cursor:pointer;font-size:13px;font-weight:600}
         .details-grid{display:grid;gap:8px;margin-top:8px;min-width:0}
         .kpi-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;min-width:0}
         .kpi-head strong{min-width:0;overflow-wrap:anywhere}
         .inline{display:flex;align-items:center;gap:8px}
         .inline input{width:auto;min-width:auto;padding:0}
-        @media (max-width:700px){.grid,.checkbox-grid{grid-template-columns:minmax(0,1fr)}}
+        @media (max-width:700px){.checkbox-grid{grid-template-columns:minmax(0,1fr)}}
       </style>
       <div class="editor">
         <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>

@@ -3613,8 +3613,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _renderLabelVisibilityOptions(key) {
     const visibility = this._labelVisibility(key);
+    const isOpen = this._openLabelOptions?.has(key);
     return `
-      <details class="label-options">
+      <details class="label-options" data-label-options="${this._escape(key)}"${isOpen ? " open" : ""}>
         <summary>${this._escape(this._t("editor.labelOptions", {}, "Label display"))}</summary>
         <div class="checkbox-grid">
           <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.image" ${visibility.image ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show label in image"))}</label>
@@ -4073,6 +4074,15 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         const target = event.currentTarget;
         if (target.dataset.action === "add-kpi") this._addCustomKpi();
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
+      });
+    });
+    this.shadowRoot.querySelectorAll("details[data-label-options]").forEach((details) => {
+      details.addEventListener("toggle", (event) => {
+        const key = event.currentTarget.dataset.labelOptions;
+        if (!key) return;
+        this._openLabelOptions = this._openLabelOptions || new Set();
+        if (event.currentTarget.open) this._openLabelOptions.add(key);
+        else this._openLabelOptions.delete(key);
       });
     });
 

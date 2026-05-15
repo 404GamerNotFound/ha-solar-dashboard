@@ -97,6 +97,7 @@ const I18N = {
     "editor.period30m": "30 minutes",
     "editor.phaseEntity": "Phase entity",
     "editor.pvForecastTodayEntity": "Forecast today entity",
+    "editor.pvLabels": "PV labels",
     "editor.pvPeakTodayEntity": "Peak today entity",
     "editor.pvPowerLabel": "Power label",
     "editor.pvTodayEnergyEntity": "Generated today entity",
@@ -260,6 +261,7 @@ const I18N = {
     "editor.period30m": "30 Minuten",
     "editor.phaseEntity": "Phasen-Entität",
     "editor.pvForecastTodayEntity": "Prognose-heute-Entität",
+    "editor.pvLabels": "PV-Labels",
     "editor.pvPeakTodayEntity": "Peak-heute-Entität",
     "editor.pvPowerLabel": "Leistungs-Label",
     "editor.pvTodayEnergyEntity": "Heute-erzeugt-Entität",
@@ -3764,7 +3766,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _renderPvLabelInputs(metric) {
     if (!this._isPvMetric(metric)) return "";
-    return PV_LABELS.map((label) => {
+    const fieldHtml = PV_LABELS.map((label) => {
       const key = this._pvLabelKey(metric, label);
       if (label.source === "metric") {
         return `
@@ -3782,6 +3784,12 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ${this._renderLabelVisibilityOptions(key)}
       `;
     }).join("");
+    return `
+      <details class="pv-labels" open>
+        <summary>${this._escape(this._t("editor.pvLabels", {}, "PV labels"))}</summary>
+        <div class="details-grid">${fieldHtml}</div>
+      </details>
+    `;
   }
 
   _wallboxPhaseEntityKey(metric) {
@@ -4140,6 +4148,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         .box-field{display:grid;gap:8px;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px}
         .checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
         details{display:grid;gap:8px;min-width:0}
+        .pv-labels{padding:8px;border:1px solid #ddd;border-radius:8px}
         .label-options{margin-top:-2px}
         .label-options .checkbox-grid{margin-top:8px}
         .label-entity-block{display:grid;gap:6px;min-width:0}

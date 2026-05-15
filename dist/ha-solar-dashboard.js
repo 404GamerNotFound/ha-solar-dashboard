@@ -1034,7 +1034,6 @@ const METRICS = [
 ];
 
 const PV_LABELS = [
-  { suffix: "power_label", labelKey: "pvLabel.power", editorKey: "editor.pvPowerLabel", source: "metric", unit: "power" },
   { suffix: "today_energy", labelKey: "pvLabel.todayEnergy", editorKey: "editor.pvTodayEnergyEntity", source: "entity", unit: "energy" },
   { suffix: "forecast_today", labelKey: "pvLabel.forecastToday", editorKey: "editor.pvForecastTodayEntity", source: "entity", unit: "energy" },
   { suffix: "peak_today", labelKey: "pvLabel.peakToday", editorKey: "editor.pvPeakTodayEntity", source: "entity", unit: "power" },

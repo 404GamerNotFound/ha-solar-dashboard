@@ -96,6 +96,10 @@ const I18N = {
     "editor.period24h": "24 hours",
     "editor.period30m": "30 minutes",
     "editor.phaseEntity": "Phase entity",
+    "editor.pvForecastTodayEntity": "Forecast today entity",
+    "editor.pvPeakTodayEntity": "Peak today entity",
+    "editor.pvPowerLabel": "Power label",
+    "editor.pvTodayEnergyEntity": "Generated today entity",
     "editor.remainingChargeTimeEntity": "Remaining charge time entity",
     "editor.vehicleSocEntity": "Vehicle SoC entity",
     "editor.sectionBoxes": "Boxes, live/kWh entities, unit, and position",
@@ -143,6 +147,10 @@ const I18N = {
     "phase.auto": "Auto",
     "phase.many": "{count} phases",
     "phase.one": "1 phase",
+    "pvLabel.forecastToday": "Forecast today",
+    "pvLabel.peakToday": "Peak today",
+    "pvLabel.power": "Power",
+    "pvLabel.todayEnergy": "Generated today",
     "range.1h": "1h",
     "range.24h": "24h",
     "range.live": "Live",
@@ -251,6 +259,10 @@ const I18N = {
     "editor.period24h": "24 Stunden",
     "editor.period30m": "30 Minuten",
     "editor.phaseEntity": "Phasen-Entität",
+    "editor.pvForecastTodayEntity": "Prognose-heute-Entität",
+    "editor.pvPeakTodayEntity": "Peak-heute-Entität",
+    "editor.pvPowerLabel": "Leistungs-Label",
+    "editor.pvTodayEnergyEntity": "Heute-erzeugt-Entität",
     "editor.remainingChargeTimeEntity": "Verbleibende Ladezeit-Entität",
     "editor.vehicleSocEntity": "Auto-SoC-Entität",
     "editor.sectionBoxes": "Boxen, Live-/kWh-Entitäten, Einheit und Position",
@@ -298,6 +310,10 @@ const I18N = {
     "phase.auto": "Auto",
     "phase.many": "{count} Phasen",
     "phase.one": "1 Phase",
+    "pvLabel.forecastToday": "Prognose heute",
+    "pvLabel.peakToday": "Peak heute",
+    "pvLabel.power": "Leistung",
+    "pvLabel.todayEnergy": "Heute erzeugt",
     "range.1h": "1h",
     "range.24h": "24h",
     "range.live": "Live",
@@ -985,6 +1001,13 @@ const METRICS = [
   { key: "wallbox2_power", label: "EV Charger 2", unit: "power", color: "blue", optional: true },
 ];
 
+const PV_LABELS = [
+  { suffix: "power_label", labelKey: "pvLabel.power", editorKey: "editor.pvPowerLabel", source: "metric", unit: "power" },
+  { suffix: "today_energy", labelKey: "pvLabel.todayEnergy", editorKey: "editor.pvTodayEnergyEntity", source: "entity", unit: "energy" },
+  { suffix: "forecast_today", labelKey: "pvLabel.forecastToday", editorKey: "editor.pvForecastTodayEntity", source: "entity", unit: "energy" },
+  { suffix: "peak_today", labelKey: "pvLabel.peakToday", editorKey: "editor.pvPeakTodayEntity", source: "entity", unit: "power" },
+];
+
 const TILE_METRICS = [
   ...METRICS,
   { key: "pv_total_power", label: "PV Total", unit: "power", color: "yellow", hud: false },
@@ -1149,7 +1172,13 @@ class HaSolarDashboardCard extends HTMLElement {
       },
       entities: {
         pv_roof_power: "sensor.pv_roof_power",
+        pv_roof_power_today_energy: "",
+        pv_roof_power_forecast_today: "",
+        pv_roof_power_peak_today: "",
         pv_shed_power: "sensor.pv_shed_power",
+        pv_shed_power_today_energy: "",
+        pv_shed_power_forecast_today: "",
+        pv_shed_power_peak_today: "",
         battery_level: "sensor.battery_level",
         battery_flow_power: "",
         battery_charge_power: "",
@@ -1165,6 +1194,9 @@ class HaSolarDashboardCard extends HTMLElement {
         wallbox2_soc: "",
         wallbox2_remaining_time: "",
         pv_total_power: "sensor.pv_total_power",
+        pv_total_power_today_energy: "",
+        pv_total_power_forecast_today: "",
+        pv_total_power_peak_today: "",
         import_export_power: "sensor.grid_power",
       },
     };
@@ -2054,6 +2086,62 @@ class HaSolarDashboardCard extends HTMLElement {
     return metaHtml ? `<div class="meta-row">${metaHtml}</div>` : "";
   }
 
+  _isPvMetric(metric) {
+    return ["pv_roof_power", "pv_shed_power", "pv_total_power"].includes(metric?.key);
+  }
+
+  _pvLabelKey(metric, label) {
+    return `${metric.key}_${label.suffix}`;
+  }
+
+  _pvLabelEntityId(metric, label) {
+    if (label.source !== "entity") return "";
+    return this.config.entities?.[this._pvLabelKey(metric, label)] || "";
+  }
+
+  _formatPvLabelEntityValue(entityId, unit) {
+    if (!entityId) return "";
+    const rawValue = this._getEntityValue(entityId, undefined);
+    const formatted = this._formatValue(rawValue);
+    if (formatted === "—") return formatted;
+    const entityUnit = this._getEntityUnit(entityId);
+    if (unit === "energy") {
+      const targetUnit = this._isEnergyUnit(entityUnit) ? "kWh" : entityUnit || "kWh";
+      return this._formatEnergyValue(rawValue, entityUnit, targetUnit);
+    }
+    if (unit === "power") return this._formatPowerValue(rawValue, this.config.units?.power || "auto", entityUnit);
+    return entityUnit ? `${formatted} ${entityUnit}` : String(formatted);
+  }
+
+  _pvLabelText(metric, label) {
+    const title = this._t(label.labelKey, {}, label.suffix);
+    const value = label.source === "metric"
+      ? this._formatReading(metric)
+      : this._formatPvLabelEntityValue(this._pvLabelEntityId(metric, label), label.unit);
+    return value && value !== "—" ? `${title}: ${value}` : "";
+  }
+
+  _renderPvLabel(metric, label, { placement = "footer" } = {}) {
+    if (!this._isPvMetric(metric)) return "";
+    const key = this._pvLabelKey(metric, label);
+    if (!this._showLabelIn(key, placement)) return "";
+    if (label.source === "entity" && !this._pvLabelEntityId(metric, label)) return "";
+    const text = this._pvLabelText(metric, label);
+    const tooltip = text || this._t(label.labelKey, {}, label.suffix);
+    return `
+      <span class="pv-badge${this._labelVisibilityClass(key)}" data-pv-label="${this._escape(key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${text ? "" : "display:none"}">${this._escape(text)}</span>
+    `;
+  }
+
+  _renderPvMetaRow(metric, { placement = "footer" } = {}) {
+    if (!this._isPvMetric(metric)) return "";
+    const metaHtml = PV_LABELS
+      .map((label) => this._renderPvLabel(metric, label, { placement }))
+      .filter(Boolean)
+      .join("");
+    return metaHtml ? `<div class="meta-row">${metaHtml}</div>` : "";
+  }
+
   _wallboxPhaseEntityKey(metric) {
     if (metric?.key === "wallbox_power") return "wallbox_phase";
     if (metric?.key === "wallbox2_power") return "wallbox2_phase";
@@ -2928,6 +3016,7 @@ class HaSolarDashboardCard extends HTMLElement {
         <div class="value-row">
           <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
         </div>
+        ${this._renderPvMetaRow(metric, { placement: "image" })}
         ${this._renderBatteryMetaRow(metric, { showFlowLabel: false, placement: "image" })}
         ${this._renderWallboxPhaseRow(metric, { placement: "image" })}
         ${this._renderMetricMeter(metric)}
@@ -3202,6 +3291,11 @@ class HaSolarDashboardCard extends HTMLElement {
           <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
           ${this._renderWallboxPhaseRow(metric, { placement: "footer" })}
         `
+        : this._isPvMetric(metric)
+        ? `
+          <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          ${this._renderPvMetaRow(metric, { placement: "footer" })}
+        `
         : `<div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>`;
       return `
         <div class="tile${this._metricStateClass(metric)}${visibilityClass}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
@@ -3261,6 +3355,8 @@ class HaSolarDashboardCard extends HTMLElement {
         .temp-badge:empty { display:none; }
         .time-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:96px; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .time-badge:empty { display:none; }
+        .pv-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:100%; border-radius:999px; padding:2px 5px; background:rgba(255,194,51,.14); color:#fde68a; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(253,230,138,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .pv-badge:empty { display:none; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; z-index:3; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
@@ -3361,6 +3457,18 @@ class HaSolarDashboardCard extends HTMLElement {
         element.setAttribute("title", remainingTimeTitle);
         element.setAttribute("aria-label", remainingTimeTitle);
       });
+      if (this._isPvMetric(metric)) {
+        PV_LABELS.forEach((label) => {
+          const key = this._pvLabelKey(metric, label);
+          const text = this._pvLabelText(metric, label);
+          this.shadowRoot.querySelectorAll(`[data-pv-label="${key}"]`).forEach((element) => {
+            if (element.textContent !== text) element.textContent = text;
+            element.style.display = text ? "inline-flex" : "none";
+            element.setAttribute("title", text);
+            element.setAttribute("aria-label", text);
+          });
+        });
+      }
       if (metric.key === "battery_level") {
         const temperatureLabel = this._batteryTemperatureLabel();
         const temperatureTitle = temperatureLabel ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${temperatureLabel}` : "";
@@ -3646,6 +3754,36 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _isPvMetric(metric) {
+    return ["pv_roof_power", "pv_shed_power", "pv_total_power"].includes(metric?.key);
+  }
+
+  _pvLabelKey(metric, label) {
+    return `${metric.key}_${label.suffix}`;
+  }
+
+  _renderPvLabelInputs(metric) {
+    if (!this._isPvMetric(metric)) return "";
+    return PV_LABELS.map((label) => {
+      const key = this._pvLabelKey(metric, label);
+      if (label.source === "metric") {
+        return `
+          <div class="label-entity-block">
+            <div class="label-entity-title">${this._escape(this._t(label.editorKey, {}, "Power label"))}</div>
+            ${this._renderLabelVisibilityOptions(key)}
+          </div>
+        `;
+      }
+      const value = this._config.entities?.[key] || "";
+      return `
+        <label>${this._escape(this._t(label.editorKey, {}, label.suffix))}
+          <input data-path="entities.${key}" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(key)}" value="${this._escape(value)}" autocomplete="off" />
+        </label>
+        ${this._renderLabelVisibilityOptions(key)}
+      `;
+    }).join("");
+  }
+
   _wallboxPhaseEntityKey(metric) {
     if (metric?.key === "wallbox_power") return "wallbox_phase";
     if (metric?.key === "wallbox2_power") return "wallbox2_phase";
@@ -3828,6 +3966,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
         ${this._renderLabelInput(metric)}
         ${this._renderEntityInput(metric)}
+        ${this._renderPvLabelInputs(metric)}
         ${this._renderEnergyEntityInputs(metric)}
         ${this._renderWallboxPhaseInput(metric)}
         ${this._renderWallboxSocInput(metric)}
@@ -4003,6 +4142,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         details{display:grid;gap:8px;min-width:0}
         .label-options{margin-top:-2px}
         .label-options .checkbox-grid{margin-top:8px}
+        .label-entity-block{display:grid;gap:6px;min-width:0}
+        .label-entity-title{font-size:13px;color:inherit}
         summary{cursor:pointer;font-size:13px;font-weight:600}
         .details-grid{display:grid;gap:8px;margin-top:8px;min-width:0}
         .kpi-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;min-width:0}

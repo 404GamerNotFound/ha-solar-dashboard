@@ -336,8 +336,8 @@ const I18N = {
     "range.month": "1 Monat",
     "range.total": "Gesamt",
     "range.year": "1 Jahr",
-    "status.export": "Einspeisung",
-    "status.import": "Bezug",
+    "status.export": "Export",
+    "status.import": "Import",
     "status.lastUpdated": "Zuletzt aktualisiert: {time}",
     "status.selfSufficient": "Autark",
     "status.weather": "Wetter: {weather}",
@@ -1523,7 +1523,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.gridStatus) return this._formatGridStatusReading();
     if (metric.overlay) return this._formatOverlayReading(metric.overlay);
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
-    if (metric.key === "import_export_power") return this._formatGridStatusReading();
+    if (metric.key === "import_export_power") return this._formatGridValueReading();
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
       return this._formatEnergyRangeReading(metric);
     }
@@ -1719,6 +1719,12 @@ class HaSolarDashboardCard extends HTMLElement {
     if (status.kind === "neutral") return status.label;
     if (status.value && status.value !== "—") return `${status.label} ${status.value}`;
     return status.label;
+  }
+
+  _formatGridValueReading() {
+    const status = this._gridStatusInfo();
+    if (!status.label) return "—";
+    return status.value || "—";
   }
 
   _formatImportExportStatus() {
@@ -2925,6 +2931,10 @@ class HaSolarDashboardCard extends HTMLElement {
   _metricLabel(metric, variant) {
     if (metric.overlay) return this._overlayLabel(metric.overlay);
     if (metric.customKpi) return metric.customKpi.label || metric.label;
+    if (metric.key === "import_export_power") {
+      const status = this._gridStatusInfo();
+      if (["import", "export", "neutral"].includes(status.kind) && status.label) return status.label;
+    }
     const customLabel = this._customMetricLabel(metric.key);
     if (customLabel) return customLabel;
     if (metric.labelKey) return this._t(metric.labelKey, {}, metric.label);
@@ -3175,7 +3185,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     return `
       <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
-        <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
+        <div class="label" data-label="${metric.key}">${this._escape(this._metricLabel(metric, variant))}</div>
         <div class="value-row">
           <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
         </div>
@@ -3466,7 +3476,7 @@ class HaSolarDashboardCard extends HTMLElement {
         : `<div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>`;
       return `
         <div class="tile${this._metricStateClass(metric)}${visibilityClass}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
-          <div class="name">${this._escape(this._metricLabel(metric, state.variant))}</div>
+          <div class="name" data-label="${metric.key}">${this._escape(this._metricLabel(metric, state.variant))}</div>
           ${valueHtml}
           ${this._renderMetricMeter(metric)}
         </div>
@@ -3577,6 +3587,10 @@ class HaSolarDashboardCard extends HTMLElement {
 
     liveMetrics.forEach((metric) => {
       const reading = this._formatReading(metric);
+      const label = this._metricLabel(metric, variant);
+      this.shadowRoot.querySelectorAll(`[data-label="${metric.key}"]`).forEach((element) => {
+        if (element.textContent !== label) element.textContent = label;
+      });
       this.shadowRoot.querySelectorAll(`[data-value="${metric.key}"]`).forEach((element) => {
         if (element.textContent !== reading) element.textContent = reading;
       });

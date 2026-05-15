@@ -97,7 +97,11 @@ entities:
   wallbox2_remaining_time: sensor.wallbox_2_verbleibende_ladezeit
   pv_total_power: sensor.pv_gesamt_leistung
   house_consumption_power: sensor.hausverbrauch_leistung
+  # Option A: one signed entity; positive = import, negative = export
   import_export_power: sensor.netzbezug_einspeisung
+  # Option B: separate entities; used when the signed entity is empty
+  import_power: sensor.netzbezug_leistung
+  export_power: sensor.netzeinspeisung_leistung
 visible_boxes:
   wallbox_power: false
   wallbox2_power: false
@@ -205,7 +209,7 @@ custom_kpis:
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
-- `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` is configured)
+- `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` or split import/export entities are configured)
 - `show_power_flows` (boolean, default: `false`; shows animated SVG power flow lines between configured image/HUD positions when enabled)
 - `image_overlays.smoke.enabled` / `image_overlays.heatpump.enabled` (boolean, default: `false`; shows the smoke or heat pump overlay on the house image)
 - `image_overlays.<overlay>.label` (string, optional; custom label shown in the image badge and bottom tile, for example `Gas` or `Wärmepumpe`)
@@ -222,7 +226,7 @@ custom_kpis:
 - `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, `wallbox2_power`, and `import_export_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
 - `labels.<entity_key>` (string, optional; custom label for HUD boxes and summary tiles, for example `PV Dach`, `Speicher` or `Wallbox Garage`)
-- `labels.import_export_import` / `labels.import_export_export` / `labels.import_export_neutral` (strings, optional; custom direction labels for `entities.import_export_power`, for example `Grid import`, `Feed-in`, and `Self-sufficient`)
+- `labels.import_export_import` / `labels.import_export_export` / `labels.import_export_neutral` (strings, optional; custom direction labels for the import/export display, for example `Grid import`, `Feed-in`, and `Self-sufficient`)
 - `energy_entities.<entity_key>.entity` (entity id, optional; cumulative kWh counter used like the gas meter: `1h`, `24h`, `1 month`, and `1 year` are calculated from Home Assistant history, while `Total` shows the current counter value)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)
@@ -242,7 +246,8 @@ custom_kpis:
 - `entities.wallbox2_phase` (entity id, optional; phase badge for the second EV charger)
 - `entities.wallbox2_soc` (entity id, optional; vehicle battery SoC badge for the second EV charger)
 - `entities.wallbox2_remaining_time` (entity id, optional; remaining charge time badge for the second EV charger)
-- `entities.import_export_power` (entity id, optional; positive values are shown as `Import`, negative values as `Export`)
+- `entities.import_export_power` (entity id, optional; signed grid power where positive values are shown as `Import` and negative values as `Export`)
+- `entities.import_power` / `entities.export_power` (entity ids, optional; separate positive import and export sensors, used when `entities.import_export_power` is empty; aliases `grid_import_power`, `grid_export_power`, `import_export_import_power`, and `import_export_export_power` are also accepted)
 - `units.power` (string, default: `auto`; power values are shown in `W` below `1000 W` and in `kW` with two decimals from `1000 W`)
 - `units.battery` (string, default: `%`)
 - `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`; `auto` respects Home Assistant units such as `W`, `kW`, and `kWh`)

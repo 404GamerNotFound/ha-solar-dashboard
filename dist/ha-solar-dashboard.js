@@ -65,6 +65,9 @@ const I18N = {
     "editor.hudBoxOpacity": "HUD box opacity",
     "editor.hudBoxScale": "HUD box scale",
     "editor.importExportEntity": "Import/Export Entity",
+    "editor.importExportSignedEntity": "Signed import/export entity (+/-)",
+    "editor.importPowerEntity": "Import entity",
+    "editor.exportPowerEntity": "Export entity",
     "editor.importExportLabels": "Import/Export labels",
     "editor.importLabel": "Import label",
     "editor.exportLabel": "Export label",
@@ -233,6 +236,9 @@ const I18N = {
     "editor.hudBoxOpacity": "HUD-Box-Deckkraft",
     "editor.hudBoxScale": "HUD-Box-Skalierung",
     "editor.importExportEntity": "Import-/Export-Entität",
+    "editor.importExportSignedEntity": "Import-/Export-Entität mit Vorzeichen (+/-)",
+    "editor.importPowerEntity": "Bezugs-Entität",
+    "editor.exportPowerEntity": "Einspeise-Entität",
     "editor.importExportLabels": "Import-/Export-Labels",
     "editor.importLabel": "Bezugs-Label",
     "editor.exportLabel": "Einspeise-Label",
@@ -401,6 +407,9 @@ const I18N = {
     "editor.hudBoxOpacity": "Opacidad de cajas HUD",
     "editor.hudBoxScale": "Escala de cajas HUD",
     "editor.importExportEntity": "Entidad de importación/exportación",
+    "editor.importExportSignedEntity": "Entidad importación/exportación con signo (+/-)",
+    "editor.importPowerEntity": "Entidad de importación",
+    "editor.exportPowerEntity": "Entidad de exportación",
     "editor.importExportLabels": "Etiquetas de importación/exportación",
     "editor.importLabel": "Etiqueta de importación",
     "editor.exportLabel": "Etiqueta de exportación",
@@ -555,6 +564,9 @@ const I18N = {
     "editor.hudBoxOpacity": "Opacité des boîtes HUD",
     "editor.hudBoxScale": "Échelle des boîtes HUD",
     "editor.importExportEntity": "Entité import/export",
+    "editor.importExportSignedEntity": "Entité import/export signée (+/-)",
+    "editor.importPowerEntity": "Entité import",
+    "editor.exportPowerEntity": "Entité export",
     "editor.importExportLabels": "Libellés import/export",
     "editor.importLabel": "Libellé import",
     "editor.exportLabel": "Libellé export",
@@ -709,6 +721,9 @@ const I18N = {
     "editor.hudBoxOpacity": "Przezroczystość pól HUD",
     "editor.hudBoxScale": "Skala pól HUD",
     "editor.importExportEntity": "Encja importu/eksportu",
+    "editor.importExportSignedEntity": "Encja importu/eksportu ze znakiem (+/-)",
+    "editor.importPowerEntity": "Encja importu",
+    "editor.exportPowerEntity": "Encja eksportu",
     "editor.importExportLabels": "Etykiety importu/eksportu",
     "editor.importLabel": "Etykieta importu",
     "editor.exportLabel": "Etykieta eksportu",
@@ -1233,6 +1248,8 @@ class HaSolarDashboardCard extends HTMLElement {
         pv_total_power_forecast_today: "",
         pv_total_power_peak_today: "",
         import_export_power: "sensor.grid_power",
+        import_power: "",
+        export_power: "",
       },
     };
   }
@@ -1452,9 +1469,32 @@ class HaSolarDashboardCard extends HTMLElement {
     return entity?.last_updated || entity?.last_changed;
   }
 
+  _gridSignedEntityId() {
+    return this.config.entities?.import_export_power || "";
+  }
+
+  _gridImportEntityId() {
+    const aliases = ["import_power", "grid_import_power", "import_export_import_power"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _gridExportEntityId() {
+    const aliases = ["export_power", "grid_export_power", "import_export_export_power"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _hasGridPowerSource() {
+    return Boolean(this._gridSignedEntityId() || this._gridImportEntityId() || this._gridExportEntityId());
+  }
+
+  _gridPrimaryEntityId() {
+    return this._gridSignedEntityId() || this._gridImportEntityId() || this._gridExportEntityId();
+  }
+
   _metricEntityId(metric) {
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric.customKpi) return metric.customKpi.entity || "";
+    if ((metric.sourceKey || metric.key) === "import_export_power") return this._gridPrimaryEntityId();
     if (!metric.gridStatus && this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
     return this.config.entities?.[metric.sourceKey || metric.key] || "";
   }
@@ -1483,7 +1523,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.gridStatus) return this._formatGridStatusReading();
     if (metric.overlay) return this._formatOverlayReading(metric.overlay);
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
-    if (metric.key === "import_export_power" && this._currentEnergyRange() === "live") return this._formatGridStatusReading();
+    if (metric.key === "import_export_power") return this._formatGridStatusReading();
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
       return this._formatEnergyRangeReading(metric);
     }
@@ -1606,9 +1646,9 @@ class HaSolarDashboardCard extends HTMLElement {
     return "";
   }
 
-  _gridStatusInfo() {
-    const entityId = this.config.entities?.import_export_power;
-    if (!entityId) return { kind: "none", label: "", value: "" };
+  _gridSignedFlowInfo() {
+    const entityId = this._gridSignedEntityId();
+    if (!entityId) return undefined;
     const rawValue = this._getEntityValue(entityId, undefined);
     const value = this._formatValue(rawValue);
     if (value === "—") {
@@ -1625,7 +1665,39 @@ class HaSolarDashboardCard extends HTMLElement {
         : this._formatPowerValue(rawValue, unit, entityUnit);
       return { kind: "unknown", label: String(value), value: formattedValue };
     }
+    return { kind: "flow", watts, unit };
+  }
 
+  _gridSplitFlowInfo() {
+    const importEntityId = this._gridImportEntityId();
+    const exportEntityId = this._gridExportEntityId();
+    if (!importEntityId && !exportEntityId) return undefined;
+
+    const importValue = this._entityFlowValue(importEntityId);
+    const exportValue = this._entityFlowValue(exportEntityId);
+    if (!importValue && !exportValue) {
+      const warning = this._metricWarning(GRID_STATUS_METRIC);
+      return { kind: "unavailable", label: warning?.label || this._t("warning.sensorUnavailable"), value: "—" };
+    }
+
+    const importWatts = Math.abs(importValue?.kind === "energy" ? importValue.amount * 1000 : importValue?.amount || 0);
+    const exportWatts = Math.abs(exportValue?.kind === "energy" ? exportValue.amount * 1000 : exportValue?.amount || 0);
+    return {
+      kind: "flow",
+      watts: importWatts - exportWatts,
+      unit: this.config.units?.import_export_power || this.config.units?.power || "auto",
+    };
+  }
+
+  _gridFlowInfo() {
+    return this._gridSignedFlowInfo() || this._gridSplitFlowInfo();
+  }
+
+  _gridStatusFromFlowInfo(info) {
+    if (!info) return { kind: "none", label: "", value: "" };
+    if (info.kind !== "flow") return info;
+    const watts = info.watts;
+    const unit = info.unit || "auto";
     const magnitude = Math.abs(watts);
     if (magnitude <= this._gridNeutralThreshold()) {
       return { kind: "neutral", label: this._gridStatusLabel("neutral"), value: this._formatPowerValue(0, unit, "W") };
@@ -1635,6 +1707,10 @@ class HaSolarDashboardCard extends HTMLElement {
     const direction = this._gridStatusLabel(directionKind);
     const formattedValue = this._formatPowerValue(magnitude, unit, "W");
     return { kind: directionKind, label: direction, value: formattedValue };
+  }
+
+  _gridStatusInfo() {
+    return this._gridStatusFromFlowInfo(this._gridFlowInfo());
   }
 
   _formatGridStatusReading() {
@@ -1834,6 +1910,10 @@ class HaSolarDashboardCard extends HTMLElement {
       const rawValue = kpi.entity ? this._getEntityValue(kpi.entity, undefined) : kpi.value;
       const number = Number(rawValue);
       return Number.isFinite(number) ? number : undefined;
+    }
+    if ((metric.sourceKey || metric.key) === "import_export_power") {
+      const flowInfo = this._gridFlowInfo();
+      return Number.isFinite(flowInfo?.watts) ? flowInfo.watts : undefined;
     }
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
       const info = this._energyRangeConsumptionInfo(metric);
@@ -2392,6 +2472,24 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricWarning(metric) {
+    if ((metric.sourceKey || metric.key) === "import_export_power") {
+      const signedEntityId = this._gridSignedEntityId();
+      const entityIds = signedEntityId
+        ? [signedEntityId]
+        : [this._gridImportEntityId(), this._gridExportEntityId()].filter(Boolean);
+      if (entityIds.length === 0) return undefined;
+      const entities = entityIds.map((entityId) => this._getEntity(entityId)).filter(Boolean);
+      if (this._hass?.states && entities.length === 0) return { type: "missing", label: this._t("warning.sensorMissing") };
+      const states = entities.map((entity) => String(entity?.state || "").toLowerCase().trim());
+      if (states.length > 0 && states.every((state) => state === "unavailable" || state === "unknown")) {
+        return { type: "unavailable", label: this._t("warning.sensorUnavailable") };
+      }
+      if (states.length > 0 && states.every((state) => state === "offline")) {
+        return { type: "offline", label: this._t("warning.sensorOffline") };
+      }
+      return undefined;
+    }
+
     const entityId = this._metricEntityId(metric);
     const entity = this._getEntity(entityId);
     if (entityId && this._hass?.states && !entity) {
@@ -2774,6 +2872,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.customKpi) return metric.customKpi.visible !== false;
     const configured = this.config.visible_boxes?.[metric.key];
     if (configured !== undefined) return configured !== false;
+    if (metric.key === "import_export_power") return this._hasGridPowerSource();
     if (metric.optional && !this.config.entities?.[metric.key]) return false;
     return variant?.visible_boxes?.[metric.key] !== false;
   }
@@ -2789,7 +2888,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _showGridStatusTile() {
     return (
       this.config.show_grid_status_tile !== false
-      && Boolean(this.config.entities?.import_export_power)
+      && this._hasGridPowerSource()
       && this.config.visible_boxes?.import_export_power !== false
     );
   }
@@ -3128,6 +3227,10 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _flowWattsForKey(key) {
+    if (key === "import_export_power") {
+      const flowInfo = this._gridFlowInfo();
+      return Number.isFinite(flowInfo?.watts) ? flowInfo.watts : undefined;
+    }
     const entityId = this.config.entities?.[key];
     if (!entityId) return undefined;
     const value = this._getEntityValue(entityId, undefined);
@@ -3747,6 +3850,19 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   }
 
   _renderEntityInput(metric) {
+    if (metric.key === "import_export_power") {
+      return `
+        <label>${this._escape(this._t("editor.importExportSignedEntity", {}, "Signed import/export entity (+/-)"))}
+          <input data-path="entities.import_export_power" list="ha-solar-dashboard-entities" placeholder="sensor.grid_power" value="${this._escape(this._config?.entities?.import_export_power || "")}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.importPowerEntity", {}, "Import entity"))}
+          <input data-path="entities.import_power" list="ha-solar-dashboard-entities" placeholder="sensor.grid_import_power" value="${this._escape(this._config?.entities?.import_power || "")}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.exportPowerEntity", {}, "Export entity"))}
+          <input data-path="entities.export_power" list="ha-solar-dashboard-entities" placeholder="sensor.grid_export_power" value="${this._escape(this._config?.entities?.export_power || "")}" autocomplete="off" />
+        </label>
+      `;
+    }
     const selected = this._config?.entities?.[metric.key] || "";
     const label = this._metricLabel(metric);
     const fieldLabel = metric.unit === "power" ? this._t("editor.liveEntity") : this._t("editor.entity");

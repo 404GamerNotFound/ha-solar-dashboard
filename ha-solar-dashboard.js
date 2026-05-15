@@ -1737,6 +1737,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _formatPowerValue(rawValue, unit, entityUnit) {
     const value = this._formatValue(rawValue);
     if (value === "—") return value;
+    const decimals = Math.round(this._clampNumber(this.config.power_decimals, 2, 0, 3));
 
     const normalizedUnit = this._normalizeUnit(unit);
     const normalizedEntityUnit = this._normalizeUnit(entityUnit);
@@ -1751,12 +1752,12 @@ class HaSolarDashboardCard extends HTMLElement {
     if (normalizedUnit === "kwh") return this._formatEnergyValue(rawValue, entityUnit, "kWh");
     if (normalizedUnit === "w") {
       const wattValue = this._valueAsWatts(rawValue, entityUnit);
-      return `${wattValue === undefined ? value : wattValue.toFixed(0)} W`;
+      return `${wattValue === undefined ? value : wattValue.toFixed(decimals)} W`;
     }
     if (normalizedUnit === "kw") {
       const wattValue = this._valueAsWatts(rawValue, entityUnit);
       if (wattValue === undefined) return `${value} kW`;
-      return `${(wattValue / 1000).toFixed(this.config.power_decimals)} kW`;
+      return `${(wattValue / 1000).toFixed(decimals)} kW`;
     }
     if (unit && normalizedUnit !== "auto") return `${value} ${unit}`;
 
@@ -1768,10 +1769,10 @@ class HaSolarDashboardCard extends HTMLElement {
     const mode = this.config.power_display_mode || "auto_kw";
     if (mode === "auto_kw" && Math.abs(numericValue) >= 1000) {
       const kwValue = numericValue / 1000;
-      return `${kwValue.toFixed(this.config.power_decimals)} kW`;
+      return `${kwValue.toFixed(decimals)} kW`;
     }
 
-    return `${value} W`;
+    return `${numericValue.toFixed(decimals)} W`;
   }
 
   _metricNumericValue(metric) {

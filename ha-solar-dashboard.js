@@ -73,6 +73,10 @@ const I18N = {
     "editor.kpiPosition": "Tile position",
     "editor.kpiRemove": "Remove",
     "editor.kpiStaticValue": "Static value",
+    "editor.labelHideDesktop": "Hide on desktop",
+    "editor.labelHideMobile": "Hide on phones",
+    "editor.labelShowFooter": "Show label in footer KPIs",
+    "editor.labelShowImage": "Show label in image",
     "editor.maxPowerKw": "Max power (kW/kWp)",
     "editor.optionalDayImage": "Optional daylight image",
     "editor.powerDecimals": "Power decimals",
@@ -223,6 +227,10 @@ const I18N = {
     "editor.kpiPosition": "Kachelposition",
     "editor.kpiRemove": "Entfernen",
     "editor.kpiStaticValue": "Fester Wert",
+    "editor.labelHideDesktop": "Auf PC ausblenden",
+    "editor.labelHideMobile": "Auf Handys ausblenden",
+    "editor.labelShowFooter": "Label in den KPIs im Footer anzeigen",
+    "editor.labelShowImage": "Label im Bild anzeigen",
     "editor.maxPowerKw": "Maximalleistung (kW/kWp)",
     "editor.optionalDayImage": "Optionales Tagesbild",
     "editor.powerDecimals": "Leistungs-Nachkommastellen",
@@ -1121,6 +1129,7 @@ class HaSolarDashboardCard extends HTMLElement {
       daylight_entity: "sun.sun",
       weather_entity: "",
       labels: {},
+      label_visibility: {},
       energy_entities: {},
       tile_color_rules: DEFAULT_TILE_COLOR_RULES,
       custom_kpis: [],
@@ -1197,6 +1206,7 @@ class HaSolarDashboardCard extends HTMLElement {
       visible_boxes: {},
       max_power_kw: {},
       labels: {},
+      label_visibility: {},
       energy_entities: {},
       image_overlays: {},
       tile_color_rules: {},
@@ -1224,6 +1234,10 @@ class HaSolarDashboardCard extends HTMLElement {
       labels: {
         ...(config.metric_labels || {}),
         ...(config.labels || {}),
+      },
+      label_visibility: {
+        ...(config.label_display || {}),
+        ...(config.label_visibility || {}),
       },
       energy_entities: {
         ...(config.energy_counters || {}),
@@ -2572,7 +2586,25 @@ class HaSolarDashboardCard extends HTMLElement {
     return `--tile-accent:${accent.color};--tile-glow:${accent.glow};`;
   }
 
-  _metricVisible(metric, variant) {
+  _labelVisibility(key) {
+    const configured = this.config.label_visibility?.[key] || {};
+    return {
+      image: configured.image !== false,
+      footer: configured.footer !== false && configured.kpi !== false,
+      hideMobile: configured.hide_mobile === true || configured.mobile === false,
+      hideDesktop: configured.hide_desktop === true || configured.desktop === false,
+    };
+  }
+
+  _labelVisibilityClass(key) {
+    const visibility = this._labelVisibility(key);
+    return [
+      visibility.hideMobile ? " hide-mobile" : "",
+      visibility.hideDesktop ? " hide-desktop" : "",
+    ].join("");
+  }
+
+  _metricEnabled(metric, variant) {
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.enabled === true;
     if (metric.customKpi) return metric.customKpi.visible !== false;
     const configured = this.config.visible_boxes?.[metric.key];
@@ -2581,8 +2613,12 @@ class HaSolarDashboardCard extends HTMLElement {
     return variant?.visible_boxes?.[metric.key] !== false;
   }
 
+  _metricVisible(metric, variant) {
+    return this._metricEnabled(metric, variant);
+  }
+
   _visibleMetrics(variant, metrics = TILE_METRICS) {
-    return metrics.filter((metric) => this._metricVisible(metric, variant));
+    return metrics.filter((metric) => this._metricEnabled(metric, variant));
   }
 
   _showGridStatusTile() {
@@ -2595,11 +2631,13 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _visibleTileMetrics(variant) {
     return [
-      ...this._visibleMetrics(variant).map((metric, index) => ({
-        ...metric,
-        tileOrder: metric.tileOrder ?? index,
-        tileColumns: metric.tileColumns ?? 1,
-      })),
+      ...this._visibleMetrics(variant)
+        .filter((metric) => this._labelVisibility(metric.key).footer)
+        .map((metric, index) => ({
+          ...metric,
+          tileOrder: metric.tileOrder ?? index,
+          tileColumns: metric.tileColumns ?? 1,
+        })),
       ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
@@ -2609,11 +2647,13 @@ class HaSolarDashboardCard extends HTMLElement {
   _visibleOverlayMetrics() {
     return OVERLAY_TILE_METRICS
       .filter((metric) => this.config.image_overlays?.[metric.overlay]?.enabled === true)
+      .filter((metric) => this._labelVisibility(metric.key).footer)
       .map((metric) => ({ ...metric, tileColumns: 1 }));
   }
 
   _visibleHudMetrics(variant) {
     return this._visibleMetrics(variant).filter((metric) => {
+      if (!this._labelVisibility(metric.key).image) return false;
       if (metric.hud !== false) return true;
       return Boolean(variant?.positions?.[metric.key]) || this.config.visible_boxes?.[metric.key] === true;
     });
@@ -2848,8 +2888,9 @@ class HaSolarDashboardCard extends HTMLElement {
       ].join(";");
       const [src, ...fallbacks] = this._overlayAssetUrls(key);
       const reading = this._formatOverlayReading(key);
-      const readingHtml = this.config.image_overlays?.[key]?.entity
-        ? `<div class="overlay-reading"><span class="overlay-reading-label" data-overlay-label="${this._escape(key)}">${this._escape(label)}</span><span class="overlay-reading-value" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</span></div>`
+      const visibilityKey = `overlay_${key}`;
+      const readingHtml = this.config.image_overlays?.[key]?.entity && this._labelVisibility(visibilityKey).image
+        ? `<div class="overlay-reading${this._labelVisibilityClass(visibilityKey)}"><span class="overlay-reading-label" data-overlay-label="${this._escape(key)}">${this._escape(label)}</span><span class="overlay-reading-value" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</span></div>`
         : "";
       return `
         <div class="image-overlay-wrap image-overlay-wrap-${this._escape(key)}" style="${this._escape(style)}">
@@ -2868,9 +2909,10 @@ class HaSolarDashboardCard extends HTMLElement {
     const top = this._toPercent(position.top, 50);
     const tooltip = this._metricTooltip(metric, variant);
     const warning = this._metricWarning(metric);
+    const visibilityClass = this._labelVisibilityClass(metric.key);
 
     return `
-      <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
+      <div class="metric${this._metricStateClass(metric)}${visibilityClass}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
         <div class="label">${this._escape(this._metricLabel(metric, variant))}</div>
         <div class="value-row">
           <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
@@ -3136,6 +3178,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const gridHtml = visibleTileMetrics.map((metric) => {
       const tooltip = this._metricTooltip(metric, state.variant);
       const warning = this._metricWarning(metric);
+      const visibilityClass = this._labelVisibilityClass(metric.key);
       const valueHtml = metric.key === "battery_level"
         ? `
           <div class="tile-value-row">
@@ -3150,7 +3193,7 @@ class HaSolarDashboardCard extends HTMLElement {
         `
         : `<div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>`;
       return `
-        <div class="tile${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
+        <div class="tile${this._metricStateClass(metric)}${visibilityClass}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
           <div class="name">${this._escape(this._metricLabel(metric, state.variant))}</div>
           ${valueHtml}
           ${this._renderMetricMeter(metric)}
@@ -3235,7 +3278,8 @@ class HaSolarDashboardCard extends HTMLElement {
         .chart-label,.chart-current { fill:var(--text-muted); font-size:12px; }
         .chart-current { fill:var(--tile-accent); text-anchor:end; font-weight:700; }
         .chart-label.end { text-anchor:end; }
-        @media (max-width:700px){ .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
+        @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
@@ -3381,6 +3425,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       positions: {},
       max_power_kw: {},
       labels: {},
+      label_visibility: {},
       energy_entities: {},
       image_overlays: {},
       custom_kpis: [],
@@ -3396,6 +3441,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         },
       },
       labels: { ...((config || {}).metric_labels || {}), ...((config || {}).labels || {}) },
+      label_visibility: { ...((config || {}).label_display || {}), ...((config || {}).label_visibility || {}) },
       energy_entities: { ...((config || {}).energy_counters || {}), ...((config || {}).energy_entities || {}) },
       visible_boxes: { ...((config || {}).boxes || {}), ...((config || {}).visible_boxes || {}) },
       custom_kpis: Array.isArray((config || {}).custom_kpis || (config || {}).kpis)
@@ -3541,6 +3587,28 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <label>${this._escape(this._t("editor.overlayLabel"))}
         <input data-path="labels.${metric.key}" placeholder="${this._escape(this._defaultMetricLabel(metric))}" value="${this._escape(value)}" />
       </label>
+    `;
+  }
+
+  _labelVisibility(key) {
+    const configured = this._config.label_visibility?.[key] || {};
+    return {
+      image: configured.image !== false,
+      footer: configured.footer !== false && configured.kpi !== false,
+      hideMobile: configured.hide_mobile === true || configured.mobile === false,
+      hideDesktop: configured.hide_desktop === true || configured.desktop === false,
+    };
+  }
+
+  _renderLabelVisibilityOptions(key) {
+    const visibility = this._labelVisibility(key);
+    return `
+      <div class="checkbox-grid">
+        <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.image" ${visibility.image ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show label in image"))}</label>
+        <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.footer" ${visibility.footer ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowFooter", {}, "Show label in footer KPIs"))}</label>
+        <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.hide_mobile" ${visibility.hideMobile ? "checked" : ""}/> ${this._escape(this._t("editor.labelHideMobile", {}, "Hide on phones"))}</label>
+        <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.hide_desktop" ${visibility.hideDesktop ? "checked" : ""}/> ${this._escape(this._t("editor.labelHideDesktop", {}, "Hide on desktop"))}</label>
+      </div>
     `;
   }
 
@@ -3738,6 +3806,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return `
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
+        ${this._renderLabelVisibilityOptions(metric.key)}
         ${this._renderLabelInput(metric)}
         ${this._renderEntityInput(metric)}
         ${this._renderEnergyEntityInputs(metric)}
@@ -3827,6 +3896,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return `
       <div class="box-field">
         <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.enabled" ${enabled ? "checked" : ""}/> ${this._escape(this._t("editor.overlayEnable", { label }))}</label>
+        ${this._renderLabelVisibilityOptions(`overlay_${key}`)}
         <label>${this._escape(this._t("editor.overlayLabel"))}
           <input data-path="image_overlays.${key}.label" placeholder="${this._escape(defaultLabel)}" value="${this._escape(this._config.image_overlays?.[key]?.label || "")}" />
         </label>
@@ -3910,6 +3980,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
         .section-title{font-size:13px;font-weight:700;margin-top:4px}
         .box-field{display:grid;gap:8px;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px}
+        .checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
         details{display:grid;gap:8px;min-width:0}
         summary{cursor:pointer;font-size:13px;font-weight:600}
         .details-grid{display:grid;gap:8px;margin-top:8px;min-width:0}
@@ -3917,7 +3988,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         .kpi-head strong{min-width:0;overflow-wrap:anywhere}
         .inline{display:flex;align-items:center;gap:8px}
         .inline input{width:auto;min-width:auto;padding:0}
-        @media (max-width:700px){.grid{grid-template-columns:minmax(0,1fr)}}
+        @media (max-width:700px){.grid,.checkbox-grid{grid-template-columns:minmax(0,1fr)}}
       </style>
       <div class="editor">
         <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>

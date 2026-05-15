@@ -1501,17 +1501,30 @@ class HaSolarDashboardCard extends HTMLElement {
       }));
   }
 
+  _formatRoundedCustomValue(value) {
+    const normalized = String(value ?? "").trim().replace(",", ".");
+    if (!normalized || !/^-?\d+(?:\.\d+)?$/.test(normalized)) return String(value);
+    const number = Number(normalized);
+    if (!Number.isFinite(number)) return String(value);
+    const decimals = Math.round(this._clampNumber(this.config.power_decimals, 2, 0, 3));
+    return number
+      .toFixed(decimals)
+      .replace(/(\.\d*?)0+$/, "$1")
+      .replace(/\.$/, "");
+  }
+
   _formatCustomKpiValue(kpi) {
     const hasEntity = Boolean(kpi.entity);
     const rawValue = hasEntity ? this._getEntityValue(kpi.entity, undefined) : kpi.value;
     const value = this._formatValue(rawValue);
     if (value === "—") return value;
+    const roundedValue = this._formatRoundedCustomValue(value);
 
     const entityUnit = hasEntity ? this._getEntityUnit(kpi.entity) : "";
     const configuredUnit = String(kpi.unit ?? "auto").trim();
-    if (!configuredUnit || configuredUnit.toLowerCase() === "none") return String(value);
-    if (configuredUnit.toLowerCase() === "auto") return entityUnit ? `${value} ${entityUnit}` : String(value);
-    return `${value} ${configuredUnit}`;
+    if (!configuredUnit || configuredUnit.toLowerCase() === "none") return String(roundedValue);
+    if (configuredUnit.toLowerCase() === "auto") return entityUnit ? `${roundedValue} ${entityUnit}` : String(roundedValue);
+    return `${roundedValue} ${configuredUnit}`;
   }
 
   _formatRelativeTime(dateString) {

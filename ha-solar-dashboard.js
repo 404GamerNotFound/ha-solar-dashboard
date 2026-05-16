@@ -127,6 +127,20 @@ const I18N = {
     "editor.title": "Title",
     "editor.unit": "Unit",
     "editor.weatherEntity": "Weather Entity",
+    "editor.setupWizard": "Setup wizard",
+    "editor.setupIntro": "Detect likely Home Assistant entities and fill the card configuration.",
+    "editor.setupEntityCount": "{count} entities available",
+    "editor.setupNoEntities": "Open this editor in Home Assistant so entities can be detected.",
+    "editor.setupFillEmpty": "Fill empty fields",
+    "editor.setupReplaceAll": "Replace detected fields",
+    "editor.setupSuggestions": "Detected suggestions",
+    "editor.setupNoSuggestions": "No strong entity matches found yet.",
+    "editor.setupApplyOne": "Use",
+    "editor.setupCurrent": "Current",
+    "editor.setupSuggested": "Suggested",
+    "editor.setupConfidence": "{score}% match",
+    "editor.setupApplied": "Applied {count} suggestion(s).",
+    "editor.setupApplyNone": "No empty fields were changed.",
     "editor.xPosition": "X Position",
     "editor.yPosition": "Y Position",
     "flow.charge": "Incoming",
@@ -298,6 +312,20 @@ const I18N = {
     "editor.title": "Titel",
     "editor.unit": "Einheit",
     "editor.weatherEntity": "Wetter-Entität",
+    "editor.setupWizard": "Einrichtungs-Assistent",
+    "editor.setupIntro": "Erkennt passende Home-Assistant-Entitäten und füllt die Card-Konfiguration.",
+    "editor.setupEntityCount": "{count} Entitäten verfügbar",
+    "editor.setupNoEntities": "Öffne diesen Editor in Home Assistant, damit Entitäten erkannt werden können.",
+    "editor.setupFillEmpty": "Leere Felder füllen",
+    "editor.setupReplaceAll": "Erkannte Felder ersetzen",
+    "editor.setupSuggestions": "Erkannte Vorschläge",
+    "editor.setupNoSuggestions": "Noch keine sicheren Entitäts-Treffer gefunden.",
+    "editor.setupApplyOne": "Übernehmen",
+    "editor.setupCurrent": "Aktuell",
+    "editor.setupSuggested": "Vorschlag",
+    "editor.setupConfidence": "{score}% Treffer",
+    "editor.setupApplied": "{count} Vorschlag/Vorschläge übernommen.",
+    "editor.setupApplyNone": "Keine leeren Felder wurden geändert.",
     "editor.xPosition": "X-Position",
     "editor.yPosition": "Y-Position",
     "flow.charge": "Eingehend",
@@ -3854,6 +3882,227 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return Object.keys(this._hass?.states || {}).sort();
   }
 
+  _entityCatalog() {
+    return Object.entries(this._hass?.states || {}).map(([entityId, stateObj]) => {
+      const attributes = stateObj?.attributes || {};
+      const domain = entityId.split(".")[0] || "";
+      const name = attributes.friendly_name || attributes.name || entityId;
+      const unit = attributes.unit_of_measurement || "";
+      const deviceClass = attributes.device_class || "";
+      const stateClass = attributes.state_class || "";
+      const haystack = this._normalizeSearchText([
+        entityId,
+        name,
+        unit,
+        deviceClass,
+        stateClass,
+        attributes.integration,
+        attributes.manufacturer,
+        attributes.model,
+      ].filter(Boolean).join(" "));
+      return { entityId, stateObj, attributes, domain, name, unit, deviceClass, stateClass, haystack };
+    });
+  }
+
+  _normalizeSearchText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/ä/g, "ae")
+      .replace(/ö/g, "oe")
+      .replace(/ü/g, "ue")
+      .replace(/ß/g, "ss")
+      .replace(/[^a-z0-9%°]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  _searchMatches(haystack, term) {
+    const normalized = this._normalizeSearchText(term);
+    if (!normalized) return false;
+    return haystack.includes(normalized);
+  }
+
+  _pathValue(target, path) {
+    return path.split(".").reduce((cursor, part) => {
+      if (cursor === undefined || cursor === null) return undefined;
+      return cursor[part];
+    }, target);
+  }
+
+  _isPlaceholderEntity(path, value) {
+    const placeholders = {
+      "entities.pv_roof_power": "sensor.pv_roof_power",
+      "entities.pv_shed_power": "sensor.pv_shed_power",
+      "entities.battery_level": "sensor.battery_level",
+      "entities.inverter_power": "sensor.wechselrichter_power",
+      "entities.wallbox_power": "sensor.wallbox_power",
+      "entities.pv_total_power": "sensor.pv_total_power",
+      "entities.import_export_power": "sensor.grid_power",
+    };
+    return placeholders[path] && String(value || "").trim() === placeholders[path];
+  }
+
+  _entityLabelForPath(path) {
+    const key = path.split(".").pop();
+    const metric = TILE_METRICS.find((item) => item.key === key);
+    if (metric) return this._metricLabel(metric);
+    const labels = {
+      weather_entity: this._t("editor.weatherEntity", {}, "Weather Entity"),
+      battery_flow_power: this._t("editor.batteryFlowEntity", {}, "Battery flow entity (+/-)"),
+      battery_charge_power: this._t("editor.batteryChargeEntity", {}, "Battery charge entity"),
+      battery_discharge_power: this._t("editor.batteryDischargeEntity", {}, "Battery discharge entity"),
+      battery_temperature: this._t("editor.batteryTemperatureEntity", {}, "Battery temperature entity"),
+      import_power: this._t("editor.importPowerEntity", {}, "Import entity"),
+      export_power: this._t("editor.exportPowerEntity", {}, "Export entity"),
+      wallbox_phase: this._t("editor.phaseEntity", {}, "Phase entity"),
+      wallbox_soc: this._t("editor.vehicleSocEntity", {}, "Vehicle SoC entity"),
+      wallbox_remaining_time: this._t("editor.remainingChargeTimeEntity", {}, "Remaining charge time entity"),
+      wallbox2_phase: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.phaseEntity", {}, "Phase entity")}`,
+      wallbox2_soc: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.vehicleSocEntity", {}, "Vehicle SoC entity")}`,
+      wallbox2_remaining_time: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.remainingChargeTimeEntity", {}, "Remaining charge time entity")}`,
+    };
+    if (labels[key]) return labels[key];
+    const energyMatch = path.match(/^energy_entities\.([^.]+)\.entity$/);
+    if (energyMatch) {
+      const energyMetric = TILE_METRICS.find((item) => item.key === energyMatch[1]);
+      return `${this._metricLabel(energyMetric || { key: energyMatch[1], label: energyMatch[1] })} ${this._t("editor.energyCounterEntity", {}, "kWh counter entity")}`;
+    }
+    return key || path;
+  }
+
+  _autoDetectTargets() {
+    const powerTarget = {
+      domains: ["sensor"],
+      deviceClasses: ["power"],
+      units: ["w", "kw"],
+      include: [{ terms: ["power", "leistung"], weight: 14 }],
+    };
+    const energyTarget = {
+      domains: ["sensor"],
+      deviceClasses: ["energy"],
+      units: ["wh", "kwh", "mwh"],
+      include: [{ terms: ["energy", "energie", "kwh", "yield", "ertrag", "total", "gesamt"], weight: 16 }],
+    };
+    const pvTerms = { terms: ["pv", "solar", "photovoltaic", "photovoltaik"], weight: 36 };
+    const gridTerms = { terms: ["grid", "netz", "meter", "utility", "power meter", "smart meter"], weight: 28 };
+    const wallboxTerms = { terms: ["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], weight: 34 };
+    const batteryTerms = { terms: ["battery", "batterie", "speicher", "akku"], weight: 34 };
+
+    return [
+      { path: "weather_entity", domains: ["weather"], include: [{ terms: ["weather", "wetter", "home", "haus"], weight: 14 }], threshold: 35 },
+      { path: "entities.pv_roof_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["roof", "dach", "rooftop"]], include: [pvTerms, { terms: ["roof", "dach", "rooftop"], weight: 24 }, ...powerTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", "forecast", "prognose"], threshold: 60 },
+      { path: "entities.pv_shed_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["shed", "garage", "carport", "schuppen", "balkon", "balcony"]], include: [pvTerms, { terms: ["shed", "garage", "carport", "schuppen", "balkon", "balcony"], weight: 28 }, ...powerTarget.include], exclude: ["roof", "dach", "total", "gesamt", "forecast", "prognose"], threshold: 62 },
+      { path: "entities.pv_total_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["total", "gesamt", "sum", "summe", "all", "anlage"]], block: ["forecast", "prognose", "today", "heute", "daily"], include: [pvTerms, { terms: ["total", "gesamt", "sum", "summe", "all", "anlage"], weight: 28 }, ...powerTarget.include], exclude: ["forecast", "prognose", "today", "heute", "daily"], threshold: 60 },
+      { path: "entities.pv_roof_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"]], include: [pvTerms, ...powerTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", "forecast", "prognose", "today", "heute", "daily"], threshold: 70 },
+      { path: "entities.pv_total_power_today_energy", ...energyTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["today", "heute", "daily", "day", "tag"]], include: [pvTerms, { terms: ["today", "heute", "daily", "day", "tag"], weight: 30 }, ...energyTarget.include], exclude: ["forecast", "prognose"], threshold: 62 },
+      { path: "energy_entities.pv_total_power.entity", ...energyTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"]], block: ["power", "leistung", "today", "heute", "daily", "day", "tag", "forecast", "prognose"], include: [pvTerms, { terms: ["total", "gesamt", "lifetime", "counter", "zaehler"], weight: 22 }, ...energyTarget.include], exclude: ["today", "heute", "daily", "forecast", "prognose"], threshold: 58 },
+      { path: "entities.battery_level", domains: ["sensor"], deviceClasses: ["battery"], units: ["%"], required: [["battery", "batterie", "speicher", "akku"], ["soc", "level", "stand", "charge", "ladestand"]], include: [batteryTerms, { terms: ["soc", "level", "stand", "charge", "ladestand"], weight: 34 }], exclude: ["power", "leistung", "temp", "temperature", "temperatur", "flow", "fluss"], threshold: 58 },
+      { path: "entities.battery_flow_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"]], include: [batteryTerms, { terms: ["power", "leistung", "flow", "fluss", "charge discharge", "laden entladen"], weight: 26 }], exclude: ["soc", "level", "stand", "temperature", "temperatur", "temp"], threshold: 58 },
+      { path: "entities.battery_charge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["charge", "charging", "laden", "ladeleistung"]], include: [batteryTerms, { terms: ["charge", "charging", "laden", "ladeleistung"], weight: 30 }], exclude: ["discharge", "entladen", "entlade", "soc", "temperature", "temperatur"], threshold: 62 },
+      { path: "entities.battery_discharge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["discharge", "discharging", "entladen", "entladeleistung"]], include: [batteryTerms, { terms: ["discharge", "discharging", "entladen", "entladeleistung"], weight: 30 }], exclude: ["charge", "charging", "laden", "ladeleistung", "soc", "temperature", "temperatur"], threshold: 62 },
+      { path: "entities.battery_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c"], required: [["battery", "batterie", "speicher", "akku"], ["temperature", "temperatur", "temp"]], include: [batteryTerms, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["power", "leistung", "soc"], threshold: 58 },
+      { path: "entities.inverter_power", ...powerTarget, required: [["inverter", "wechselrichter", "wr"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, ...powerTarget.include], exclude: ["battery", "batterie", "soc", "temperature"], threshold: 56 },
+      { path: "entities.wallbox_power", ...powerTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"]], include: [wallboxTerms, ...powerTarget.include], exclude: ["2", "second", "zweite", "two", "phase", "phasen", "soc", "remaining", "time", "zeit", "energy", "kwh"], threshold: 56 },
+      { path: "entities.wallbox_phase", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["phase", "phases", "phasen"]], include: [wallboxTerms, { terms: ["phase", "phases", "phasen"], weight: 34 }], exclude: ["power", "leistung", "energy", "kwh"], threshold: 58 },
+      { path: "entities.wallbox_soc", domains: ["sensor"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"]], include: [wallboxTerms, { terms: ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen"], threshold: 58 },
+      { path: "entities.wallbox_remaining_time", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"]], include: [wallboxTerms, { terms: ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"], weight: 30 }], exclude: ["power", "leistung", "phase", "soc"], threshold: 58 },
+      { path: "entities.wallbox2_power", ...powerTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 22 }, ...powerTarget.include], exclude: ["phase", "phasen", "soc", "remaining", "time", "zeit", "energy", "kwh"], threshold: 62 },
+      { path: "entities.wallbox2_phase", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["phase", "phases", "phasen"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["phase", "phases", "phasen"], weight: 34 }], exclude: ["power", "leistung", "energy", "kwh"], threshold: 64 },
+      { path: "entities.wallbox2_soc", domains: ["sensor"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen"], threshold: 64 },
+      { path: "entities.wallbox2_remaining_time", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"], weight: 30 }], exclude: ["power", "leistung", "phase", "soc"], threshold: 64 },
+      { path: "entities.import_export_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import export", "bezug einspeisung", "net", "saldo", "balance", "signed"]], include: [gridTerms, { terms: ["import export", "bezug einspeisung", "net", "saldo", "balance", "signed"], weight: 28 }, ...powerTarget.include], exclude: ["energy", "kwh", "total"], threshold: 58 },
+      { path: "entities.import_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "verbrauch netz", "from grid"]], include: [gridTerms, { terms: ["import", "bezug", "purchase", "verbrauch netz", "from grid"], weight: 32 }], exclude: ["export", "einspeis", "feed", "energy", "kwh"], threshold: 62 },
+      { path: "entities.export_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["export", "einspeis", "feed", "feedin", "to grid"]], include: [gridTerms, { terms: ["export", "einspeis", "feed", "feedin", "to grid"], weight: 32 }], exclude: ["import", "bezug", "purchase", "energy", "kwh"], threshold: 62 },
+      { path: "entities.house_consumption_power", ...powerTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...powerTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 56 },
+      { path: "energy_entities.house_consumption_power.entity", ...energyTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], block: ["power", "leistung"], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 32 }, ...energyTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 58 },
+    ];
+  }
+
+  _scoreEntityForTarget(entity, target) {
+    if (target.required?.some((terms) => !(terms || []).some((term) => this._searchMatches(entity.haystack, term)))) {
+      return 0;
+    }
+    if (target.block?.some((term) => this._searchMatches(entity.haystack, term))) return 0;
+    let score = 0;
+    if (target.domains?.includes(entity.domain)) score += 24;
+    else if (target.domains?.length) score -= 18;
+
+    const deviceClass = this._normalizeSearchText(entity.deviceClass);
+    if (target.deviceClasses?.some((item) => this._normalizeSearchText(item) === deviceClass)) score += 28;
+    else if (target.deviceClasses?.length && deviceClass) score -= 10;
+
+    const unit = this._normalizeSearchText(entity.unit);
+    if (target.units?.some((item) => unit === this._normalizeSearchText(item))) score += 22;
+    else if (target.units?.length && unit) score -= 5;
+
+    (target.include || []).forEach((group) => {
+      const terms = Array.isArray(group) ? group : group.terms;
+      const weight = Array.isArray(group) ? 16 : group.weight || 16;
+      if ((terms || []).some((term) => this._searchMatches(entity.haystack, term))) score += weight;
+    });
+    (target.exclude || []).forEach((term) => {
+      if (this._searchMatches(entity.haystack, term)) score -= 40;
+    });
+
+    if (entity.stateObj?.state && !["unknown", "unavailable", "none"].includes(String(entity.stateObj.state).toLowerCase())) score += 6;
+    return Math.max(0, Math.min(100, score));
+  }
+
+  _autoDetectSuggestions() {
+    const catalog = this._entityCatalog();
+    if (catalog.length === 0) return [];
+    const usedEntityIds = new Set();
+    const usedPaths = new Set();
+    return this._autoDetectTargets().map((target) => {
+      if (usedPaths.has(target.path)) return null;
+      const candidates = catalog
+        .filter((entity) => !usedEntityIds.has(entity.entityId) || target.path.includes("energy_entities"))
+        .map((entity) => ({ entity, score: this._scoreEntityForTarget(entity, target) }))
+        .filter((candidate) => candidate.score >= (target.threshold || 50))
+        .sort((a, b) => b.score - a.score || a.entity.entityId.localeCompare(b.entity.entityId));
+      const best = candidates[0];
+      if (!best) return null;
+      if (!target.path.includes("energy_entities")) usedEntityIds.add(best.entity.entityId);
+      const current = this._pathValue(this._config || {}, target.path) || "";
+      usedPaths.add(target.path);
+      return {
+        path: target.path,
+        label: this._entityLabelForPath(target.path),
+        entityId: best.entity.entityId,
+        score: best.score,
+        current,
+        name: best.entity.name,
+      };
+    }).filter(Boolean);
+  }
+
+  _applyAutoDetection(mode = "fill", onePath = "") {
+    const suggestions = this._autoDetectSuggestions().filter((suggestion) => !onePath || suggestion.path === onePath);
+    const next = this._cloneConfig(this._config || {});
+    let changed = 0;
+    suggestions.forEach((suggestion) => {
+      const current = this._pathValue(next, suggestion.path);
+      const hasCurrent = current !== undefined && current !== null && String(current).trim() !== "";
+      if (mode === "fill" && hasCurrent && !this._isPlaceholderEntity(suggestion.path, current) && !onePath) return;
+      if (onePath && hasCurrent && String(current) === suggestion.entityId) return;
+      this._setPath(next, suggestion.path.split("."), suggestion.entityId);
+      if (suggestion.path === "entities.wallbox2_power") this._setPath(next, ["visible_boxes", "wallbox2_power"], true);
+      if (suggestion.path === "entities.import_export_power" || suggestion.path === "entities.import_power" || suggestion.path === "entities.export_power") {
+        this._setPath(next, ["visible_boxes", "import_export_power"], true);
+        next.show_grid_status_tile = true;
+      }
+      changed += 1;
+    });
+    this._config = next;
+    this._wizardMessage = changed > 0
+      ? this._t("editor.setupApplied", { count: changed }, `Applied ${changed} suggestion(s).`)
+      : this._t("editor.setupApplyNone", {}, "No empty fields were changed.");
+    if (changed > 0) this._dispatchConfig(next);
+    this._render();
+  }
+
   _escape(value) {
     return String(value ?? "")
       .replace(/&/g, "&amp;")
@@ -4337,6 +4586,55 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _renderSetupWizard() {
+    const entityCount = this._entityOptions().length;
+    const suggestions = this._autoDetectSuggestions();
+    const suggestionRows = suggestions.map((suggestion) => {
+      const current = suggestion.current ? `
+        <div class="wizard-current">
+          <span>${this._escape(this._t("editor.setupCurrent", {}, "Current"))}</span>
+          <code>${this._escape(suggestion.current)}</code>
+        </div>
+      ` : "";
+      return `
+        <div class="wizard-suggestion">
+          <div class="wizard-suggestion-main">
+            <strong>${this._escape(suggestion.label)}</strong>
+            <code>${this._escape(suggestion.entityId)}</code>
+            ${current}
+          </div>
+          <div class="wizard-suggestion-side">
+            <span>${this._escape(this._t("editor.setupConfidence", { score: suggestion.score }, `${suggestion.score}% match`))}</span>
+            <button type="button" data-action="apply-suggestion" data-path="${this._escape(suggestion.path)}">${this._escape(this._t("editor.setupApplyOne", {}, "Use"))}</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <details class="setup-wizard" open>
+        <summary>${this._escape(this._t("editor.setupWizard", {}, "Setup wizard"))}</summary>
+        <div class="wizard-body">
+          <p>${this._escape(this._t("editor.setupIntro", {}, "Detect likely Home Assistant entities and fill the card configuration."))}</p>
+          <div class="wizard-status">
+            ${entityCount > 0
+              ? this._escape(this._t("editor.setupEntityCount", { count: entityCount }, `${entityCount} entities available`))
+              : this._escape(this._t("editor.setupNoEntities", {}, "Open this editor in Home Assistant so entities can be detected."))}
+          </div>
+          <div class="wizard-actions">
+            <button type="button" data-action="auto-detect" data-mode="fill" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupFillEmpty", {}, "Fill empty fields"))}</button>
+            <button type="button" data-action="auto-detect" data-mode="replace" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupReplaceAll", {}, "Replace detected fields"))}</button>
+          </div>
+          ${this._wizardMessage ? `<div class="wizard-message">${this._escape(this._wizardMessage)}</div>` : ""}
+          <div class="wizard-suggestions-title">${this._escape(this._t("editor.setupSuggestions", {}, "Detected suggestions"))}</div>
+          <div class="wizard-suggestions">
+            ${suggestionRows || `<div class="wizard-empty">${this._escape(this._t("editor.setupNoSuggestions", {}, "No strong entity matches found yet."))}</div>`}
+          </div>
+        </div>
+      </details>
+    `;
+  }
+
   _render() {
     if (!this._config) return;
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
@@ -4374,7 +4672,24 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         .kpi-head strong{min-width:0;overflow-wrap:anywhere}
         .inline{display:flex;align-items:center;gap:8px}
         .inline input{width:auto;min-width:auto;padding:0}
+        .setup-wizard{padding:10px;border:1px solid #c8d4e4;border-radius:8px;background:rgba(31,143,255,.06)}
+        .setup-wizard summary{font-weight:700}
+        .wizard-body{display:grid;gap:10px;margin-top:10px;min-width:0}
+        .wizard-body p{margin:0;font-size:13px;color:#4b5563}
+        .wizard-status,.wizard-message,.wizard-empty{font-size:12px;color:#5f6b7a}
+        .wizard-message{padding:8px;border-radius:8px;background:rgba(52,211,153,.12);color:#0f766e}
+        .wizard-actions{display:flex;flex-wrap:wrap;gap:8px}
+        .wizard-actions button:disabled,.wizard-suggestion button:disabled{opacity:.55;cursor:not-allowed}
+        .wizard-suggestions-title{font-size:13px;font-weight:700}
+        .wizard-suggestions{display:grid;gap:8px;min-width:0}
+        .wizard-suggestion{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border:1px solid #d8e0eb;border-radius:8px;background:rgba(255,255,255,.72);min-width:0}
+        .wizard-suggestion-main{display:grid;gap:4px;min-width:0}
+        .wizard-suggestion-main strong{font-size:13px;overflow-wrap:anywhere}
+        .wizard-suggestion code,.wizard-current code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;overflow-wrap:anywhere;white-space:normal}
+        .wizard-current{display:grid;gap:2px;color:#6b7280;font-size:12px;min-width:0}
+        .wizard-suggestion-side{display:grid;justify-items:end;gap:6px;font-size:12px;color:#5f6b7a;white-space:nowrap}
         @media (max-width:700px){.checkbox-grid{grid-template-columns:minmax(0,1fr)}}
+        @media (max-width:700px){.wizard-suggestion{grid-template-columns:minmax(0,1fr)}.wizard-suggestion-side{justify-items:start;white-space:normal}}
       </style>
       <div class="editor">
         <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
@@ -4410,6 +4725,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
           <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
         <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
+        ${this._renderSetupWizard()}
         <div class="section-title">${this._escape(this._t("editor.sectionBoxes"))}</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
         <div class="section-title">${this._escape(this._t("editor.sectionOverlays"))}</div>
@@ -4435,6 +4751,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         const target = event.currentTarget;
         if (target.dataset.action === "add-kpi") this._addCustomKpi();
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
+        if (target.dataset.action === "auto-detect") this._applyAutoDetection(target.dataset.mode || "fill");
+        if (target.dataset.action === "apply-suggestion") this._applyAutoDetection("replace", target.dataset.path || "");
       });
     });
     this.shadowRoot.querySelectorAll("details[data-label-options]").forEach((details) => {

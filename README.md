@@ -52,6 +52,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Free X/Y positioning for every overlay box
 - Localized card and editor labels based on the Home Assistant language (`en`, `de`, `es`, `fr`, `pl`)
 - Registered for Home Assistant's card picker with a live preview
+- Built-in setup wizard in the card editor that detects likely Home Assistant entities for PV, battery, inverter, wallbox, grid import/export, house consumption, weather, and kWh counters
 - Dark glass style matching the provided design
 
 ## Installation (HACS)
@@ -67,6 +68,12 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 url: /hacsfiles/ha-solar-dashboard/ha-solar-dashboard.js
 type: module
 ```
+
+## Setup wizard
+
+When the card is edited in Home Assistant, the editor includes a setup wizard that scans available entities and suggests matching sensors. It can fill only empty fields or replace detected fields on request.
+
+The wizard uses entity ids, friendly names, units, `device_class`, and `state_class` to suggest common sensors such as PV power, battery SoC and flow, inverter power, wallbox power and badges, grid import/export, house consumption, weather, and cumulative kWh counters. Review the suggestions before applying them, especially when your system has multiple inverters, batteries, EV chargers, or split import/export sensors.
 
 ## Example configuration
 

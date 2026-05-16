@@ -38,6 +38,40 @@ const I18N = {
     "aria.houseSelector": "Select house",
     "card.defaultTitle": "Energy Flow",
     "card.defaultTimeLabel": "Live",
+    "advisor.action": "Action",
+    "advisor.autarky": "Autarky",
+    "advisor.batteryIdle": "Battery is not charging while surplus is exported. Check battery limits or charge mode.",
+    "advisor.batteryLow": "Battery is low. Keep an eye on backup reserve and avoid flexible loads if possible.",
+    "advisor.batteryNearlyFull": "Battery is nearly full, so additional PV is likely to be exported.",
+    "advisor.batteryStatus": "Battery",
+    "advisor.checkSensors": "Check unavailable or missing sensors so the energy balance stays reliable.",
+    "advisor.configureConsumption": "Add a house consumption sensor to improve autarky and load analysis.",
+    "advisor.configureGrid": "Add grid import/export sensors for better advice about surplus and grid draw.",
+    "advisor.configurePvTotal": "Add PV total power or roof/shed PV sensors to improve production analysis.",
+    "advisor.consumption": "Load",
+    "advisor.evChargingGrid": "EV charging is active while importing from the grid. Reduce charging power or wait for more PV if this is not intended.",
+    "advisor.evChargingPv": "EV charging is currently covered well by PV or stored energy.",
+    "advisor.exporting": "Exporting surplus",
+    "advisor.grid": "Grid",
+    "advisor.headlineExport": "PV surplus is available",
+    "advisor.headlineImport": "Grid import is active",
+    "advisor.headlineNeutral": "Energy flow is balanced",
+    "advisor.headlineSetup": "More sensors unlock better advice",
+    "advisor.headlineWarning": "Energy setup needs attention",
+    "advisor.highLoad": "Current load is high compared with PV production. Check large consumers if this is unexpected.",
+    "advisor.importing": "Importing",
+    "advisor.lowPv": "PV production is low despite daylight. If the weather is clear, check inverter or PV sensors.",
+    "advisor.noAdvice": "No urgent action right now.",
+    "advisor.panelTitle": "Energy Advisor",
+    "advisor.pv": "PV",
+    "advisor.selfConsumption": "Self-use",
+    "advisor.selfSufficient": "Self-sufficient",
+    "advisor.startFlexibleLoad": "Use the surplus now: start EV charging, heat pump boost, dishwasher, washing machine, or another flexible load.",
+    "advisor.status": "Status",
+    "advisor.surplus": "Surplus",
+    "advisor.unknown": "Unknown",
+    "advisor.wallbox": "EV",
+    "editor.showEnergyAdvisor": "Show Energy Advisor panel",
     "chart.close": "Close",
     "chart.empty": "No history data found",
     "chart.error": "History could not be loaded",
@@ -223,6 +257,40 @@ const I18N = {
     "aria.houseSelector": "Haus auswählen",
     "card.defaultTitle": "Energiefluss",
     "card.defaultTimeLabel": "Live",
+    "advisor.action": "Aktion",
+    "advisor.autarky": "Autarkie",
+    "advisor.batteryIdle": "Die Batterie lädt nicht, obwohl Überschuss eingespeist wird. Prüfe Batterielimits oder den Lademodus.",
+    "advisor.batteryLow": "Der Batteriestand ist niedrig. Behalte die Reserve im Blick und vermeide flexible Verbraucher, wenn möglich.",
+    "advisor.batteryNearlyFull": "Die Batterie ist fast voll, zusätzlicher PV-Ertrag wird wahrscheinlich eingespeist.",
+    "advisor.batteryStatus": "Batterie",
+    "advisor.checkSensors": "Prüfe nicht verfügbare oder fehlende Sensoren, damit die Energiebilanz zuverlässig bleibt.",
+    "advisor.configureConsumption": "Füge einen Hausverbrauchs-Sensor hinzu, um Autarkie und Lastanalyse zu verbessern.",
+    "advisor.configureGrid": "Füge Import-/Export-Sensoren hinzu, damit Überschuss und Netzbezug besser bewertet werden können.",
+    "advisor.configurePvTotal": "Füge PV-Gesamtleistung oder Dach-/Schuppen-PV-Sensoren hinzu, um die Erzeugungsanalyse zu verbessern.",
+    "advisor.consumption": "Last",
+    "advisor.evChargingGrid": "Die Wallbox lädt, während Netzbezug aktiv ist. Reduziere die Ladeleistung oder warte auf mehr PV, falls das nicht gewollt ist.",
+    "advisor.evChargingPv": "Die Wallbox wird aktuell gut durch PV oder gespeicherte Energie gedeckt.",
+    "advisor.exporting": "Einspeisung",
+    "advisor.grid": "Netz",
+    "advisor.headlineExport": "PV-Überschuss ist verfügbar",
+    "advisor.headlineImport": "Netzbezug ist aktiv",
+    "advisor.headlineNeutral": "Der Energiefluss ist ausgeglichen",
+    "advisor.headlineSetup": "Mehr Sensoren schalten bessere Hinweise frei",
+    "advisor.headlineWarning": "Die Energiekonfiguration braucht Aufmerksamkeit",
+    "advisor.highLoad": "Die aktuelle Last ist im Vergleich zur PV-Erzeugung hoch. Prüfe große Verbraucher, falls das unerwartet ist.",
+    "advisor.importing": "Netzbezug",
+    "advisor.lowPv": "Die PV-Produktion ist trotz Tageslicht niedrig. Wenn das Wetter klar ist, prüfe Wechselrichter oder PV-Sensoren.",
+    "advisor.noAdvice": "Aktuell besteht kein dringender Handlungsbedarf.",
+    "advisor.panelTitle": "Energy Advisor",
+    "advisor.pv": "PV",
+    "advisor.selfConsumption": "Eigenverbrauch",
+    "advisor.selfSufficient": "Autark",
+    "advisor.startFlexibleLoad": "Nutze den Überschuss jetzt: Starte Wallbox, Wärmepumpen-Boost, Spülmaschine, Waschmaschine oder einen anderen flexiblen Verbraucher.",
+    "advisor.status": "Status",
+    "advisor.surplus": "Überschuss",
+    "advisor.unknown": "Unbekannt",
+    "advisor.wallbox": "Wallbox",
+    "editor.showEnergyAdvisor": "Energy-Advisor-Panel anzeigen",
     "chart.close": "Schließen",
     "chart.empty": "Keine Verlaufsdaten gefunden",
     "chart.error": "Verlauf konnte nicht geladen werden",
@@ -1209,6 +1277,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
+      show_energy_advisor: true,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -1217,6 +1286,9 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_scale: 1,
       battery_low_threshold: 20,
       grid_neutral_threshold: 25,
+      advisor_surplus_threshold: 250,
+      advisor_import_threshold: 250,
+      advisor_high_load_threshold: 3000,
       chart_hours: 24,
       max_power_kw: {
         pv_roof_power: 10,
@@ -1299,6 +1371,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
+      show_energy_advisor: true,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -1307,6 +1380,9 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_scale: 1,
       battery_low_threshold: 20,
       grid_neutral_threshold: 25,
+      advisor_surplus_threshold: 250,
+      advisor_import_threshold: 250,
+      advisor_high_load_threshold: 3000,
       chart_hours: 24,
       daylight_entity: "sun.sun",
       weather_entity: "",
@@ -1379,6 +1455,9 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.power_decimals = this._clampNumber(this.config.power_decimals, 2, 0, 3);
     this.config.battery_low_threshold = this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
     this.config.grid_neutral_threshold = this._clampNumber(this.config.grid_neutral_threshold, 25, 0, 1000000);
+    this.config.advisor_surplus_threshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
+    this.config.advisor_import_threshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
+    this.config.advisor_high_load_threshold = this._clampNumber(this.config.advisor_high_load_threshold, 3000, 0, 1000000);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
     this._chartHours = this._chartHours || this.config.chart_hours;
     this._historyCache = this._historyCache || new Map();
@@ -3379,6 +3458,241 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
   }
 
+  _positiveWattsForKey(key) {
+    const watts = this._flowWattsForKey(key);
+    return Number.isFinite(watts) ? Math.max(0, watts) : undefined;
+  }
+
+  _advisorSnapshot() {
+    const pvTotal = this._positiveWattsForKey("pv_total_power");
+    const pvParts = ["pv_roof_power", "pv_shed_power"]
+      .map((key) => this._positiveWattsForKey(key))
+      .filter(Number.isFinite);
+    const pvWatts = Number.isFinite(pvTotal)
+      ? pvTotal
+      : pvParts.length > 0
+        ? pvParts.reduce((sum, value) => sum + value, 0)
+        : undefined;
+    const gridInfo = this._gridFlowInfo();
+    const gridWatts = Number.isFinite(gridInfo?.watts) ? gridInfo.watts : undefined;
+    const importWatts = Number.isFinite(gridWatts) ? Math.max(0, gridWatts) : undefined;
+    const exportWatts = Number.isFinite(gridWatts) ? Math.max(0, -gridWatts) : undefined;
+    const houseWatts = this._positiveWattsForKey("house_consumption_power");
+    const wallboxWatts = ["wallbox_power", "wallbox2_power"]
+      .map((key) => this._positiveWattsForKey(key))
+      .filter(Number.isFinite)
+      .reduce((sum, value) => sum + value, 0);
+    const hasWallbox = ["wallbox_power", "wallbox2_power"].some((key) => Boolean(this.config.entities?.[key]));
+    const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", unit: "battery" };
+    const batteryPercent = this._batteryPercent(batteryMetric);
+    const batteryFlow = this._batteryFlowInfo();
+    const batteryFlowWatts = batteryFlow?.kind === "energy" ? batteryFlow.amount * 1000 : batteryFlow?.amount;
+    const batteryChargeWatts = batteryFlow?.direction === "charge" && Number.isFinite(batteryFlowWatts) ? batteryFlowWatts : 0;
+    const batteryDischargeWatts = batteryFlow?.direction === "discharge" && Number.isFinite(batteryFlowWatts) ? batteryFlowWatts : 0;
+    const loadWatts = Number.isFinite(houseWatts)
+      ? houseWatts
+      : wallboxWatts > 0
+        ? wallboxWatts
+        : undefined;
+    const selfConsumptionPercent = Number.isFinite(pvWatts) && pvWatts > 0 && Number.isFinite(exportWatts)
+      ? this._clampNumber(((pvWatts - exportWatts) / pvWatts) * 100, 0, 0, 100)
+      : undefined;
+    const autarkyPercent = Number.isFinite(loadWatts) && loadWatts > 0 && Number.isFinite(importWatts)
+      ? this._clampNumber(((loadWatts - importWatts) / loadWatts) * 100, 0, 0, 100)
+      : undefined;
+
+    return {
+      pvWatts,
+      gridWatts,
+      importWatts,
+      exportWatts,
+      houseWatts,
+      wallboxWatts,
+      hasWallbox,
+      batteryPercent,
+      batteryFlow,
+      batteryChargeWatts,
+      batteryDischargeWatts,
+      loadWatts,
+      selfConsumptionPercent,
+      autarkyPercent,
+      hasPv: Number.isFinite(pvWatts),
+      hasGrid: Number.isFinite(gridWatts),
+      hasLoad: Number.isFinite(loadWatts),
+    };
+  }
+
+  _advisorWarnings() {
+    const variant = this._currentVariant || this._layoutState().variant;
+    const metrics = [
+      ...this._visibleMetrics(variant),
+      ...this._visibleTileMetrics(variant).filter((metric) => metric.customKpi),
+      ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
+      ...this._visibleOverlayMetrics(),
+    ];
+    return metrics.filter((metric, index, list) => list.findIndex((item) => item.key === metric.key) === index)
+      .map((metric) => {
+        const warning = this._metricWarning(metric);
+        if (!warning) return undefined;
+        return {
+          type: "warning",
+          priority: 100,
+          title: this._metricLabel(metric, this._currentVariant),
+          text: warning.label,
+          diagnostic: true,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  _advisorItems(snapshot = this._advisorSnapshot()) {
+    const items = [...this._advisorWarnings()];
+    const add = (type, priority, title, text, value = "") => {
+      items.push({ type, priority, title, text, value });
+    };
+    const surplusThreshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
+    const importThreshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
+    const highLoadThreshold = this._clampNumber(this.config.advisor_high_load_threshold, 3000, 0, 1000000);
+    const lowBatteryThreshold = this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
+
+    if (!snapshot.hasPv) {
+      add("setup", 62, this._t("advisor.pv", {}, "PV"), this._t("advisor.configurePvTotal", {}, "Add PV total power or roof/shed PV sensors to improve production analysis."));
+    }
+    if (!snapshot.hasGrid) {
+      add("setup", 61, this._t("advisor.grid", {}, "Grid"), this._t("advisor.configureGrid", {}, "Add grid import/export sensors for better advice about surplus and grid draw."));
+    }
+    if (!snapshot.hasLoad) {
+      add("setup", 38, this._t("advisor.consumption", {}, "Load"), this._t("advisor.configureConsumption", {}, "Add a house consumption sensor to improve autarky and load analysis."));
+    }
+
+    if (items.some((item) => item.type === "warning")) {
+      add("warning", 95, this._t("advisor.status", {}, "Status"), this._t("advisor.checkSensors", {}, "Check unavailable or missing sensors so the energy balance stays reliable."));
+    }
+
+    if (Number.isFinite(snapshot.exportWatts) && snapshot.exportWatts > surplusThreshold) {
+      const value = this._formatPowerValue(snapshot.exportWatts, this.config.units?.power || "auto", "W");
+      add("opportunity", 88, this._t("advisor.surplus", {}, "Surplus"), this._t("advisor.startFlexibleLoad", {}, "Use the surplus now: start EV charging, heat pump boost, dishwasher, washing machine, or another flexible load."), value);
+      if (snapshot.hasWallbox && snapshot.wallboxWatts <= surplusThreshold) {
+        add("opportunity", 82, this._t("advisor.wallbox", {}, "EV"), this._t("advisor.startFlexibleLoad", {}, "Use the surplus now: start EV charging, heat pump boost, dishwasher, washing machine, or another flexible load."), value);
+      }
+      if (Number.isFinite(snapshot.batteryPercent) && snapshot.batteryPercent >= 92) {
+        add("info", 70, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryNearlyFull", {}, "Battery is nearly full, so additional PV is likely to be exported."), `${Math.round(snapshot.batteryPercent)}%`);
+      } else if (snapshot.batteryFlow?.direction !== "charge" && (this.config.entities?.battery_flow_power || this.config.entities?.battery_charge_power)) {
+        add("info", 64, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryIdle", {}, "Battery is not charging while surplus is exported. Check battery limits or charge mode."));
+      }
+    }
+
+    if (Number.isFinite(snapshot.importWatts) && snapshot.importWatts > importThreshold) {
+      const value = this._formatPowerValue(snapshot.importWatts, this.config.units?.power || "auto", "W");
+      add("warning", 86, this._t("advisor.grid", {}, "Grid"), this._t("advisor.headlineImport", {}, "Grid import is active"), value);
+      if (snapshot.wallboxWatts > importThreshold) {
+        add("warning", 80, this._t("advisor.wallbox", {}, "EV"), this._t("advisor.evChargingGrid", {}, "EV charging is active while importing from the grid. Reduce charging power or wait for more PV if this is not intended."), this._formatPowerValue(snapshot.wallboxWatts, this.config.units?.power || "auto", "W"));
+      }
+      if (Number.isFinite(snapshot.loadWatts) && snapshot.loadWatts > highLoadThreshold) {
+        add("info", 58, this._t("advisor.consumption", {}, "Load"), this._t("advisor.highLoad", {}, "Current load is high compared with PV production. Check large consumers if this is unexpected."), this._formatPowerValue(snapshot.loadWatts, this.config.units?.power || "auto", "W"));
+      }
+    }
+
+    if (Number.isFinite(snapshot.batteryPercent) && snapshot.batteryPercent <= lowBatteryThreshold) {
+      add("warning", 78, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryLow", {}, "Battery is low. Keep an eye on backup reserve and avoid flexible loads if possible."), `${Math.round(snapshot.batteryPercent)}%`);
+    }
+
+    if (
+      this._isDaylight()
+      && Number.isFinite(snapshot.pvWatts)
+      && snapshot.pvWatts <= Math.max(100, surplusThreshold * 0.5)
+      && !["rainy", "pouring", "snowy", "snowy-rainy", "fog"].includes(this._weatherState())
+    ) {
+      add("info", 46, this._t("advisor.pv", {}, "PV"), this._t("advisor.lowPv", {}, "PV production is low despite daylight. If the weather is clear, check inverter or PV sensors."), this._formatPowerValue(snapshot.pvWatts, this.config.units?.power || "auto", "W"));
+    }
+
+    if (
+      snapshot.wallboxWatts > importThreshold
+      && (!Number.isFinite(snapshot.importWatts) || snapshot.importWatts <= importThreshold)
+    ) {
+      add("success", 42, this._t("advisor.wallbox", {}, "EV"), this._t("advisor.evChargingPv", {}, "EV charging is currently covered well by PV or stored energy."), this._formatPowerValue(snapshot.wallboxWatts, this.config.units?.power || "auto", "W"));
+    }
+
+    if (items.length === 0) {
+      add("success", 10, this._t("advisor.status", {}, "Status"), this._t("advisor.noAdvice", {}, "No urgent action right now."));
+    }
+
+    return items.sort((a, b) => b.priority - a.priority).slice(0, 6);
+  }
+
+  _advisorStatus(snapshot = this._advisorSnapshot(), items = this._advisorItems(snapshot)) {
+    const hasDiagnosticWarning = items.some((item) => item.diagnostic === true);
+    const hasSetup = items.some((item) => item.type === "setup");
+    const surplusThreshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
+    const importThreshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
+    if (hasDiagnosticWarning) return { type: "warning", label: this._t("advisor.headlineWarning", {}, "Energy setup needs attention") };
+    if (Number.isFinite(snapshot.exportWatts) && snapshot.exportWatts > surplusThreshold) {
+      return { type: "opportunity", label: this._t("advisor.headlineExport", {}, "PV surplus is available") };
+    }
+    if (Number.isFinite(snapshot.importWatts) && snapshot.importWatts > importThreshold) {
+      return { type: "warning", label: this._t("advisor.headlineImport", {}, "Grid import is active") };
+    }
+    if (hasSetup) return { type: "setup", label: this._t("advisor.headlineSetup", {}, "More sensors unlock better advice") };
+    return { type: "success", label: this._t("advisor.headlineNeutral", {}, "Energy flow is balanced") };
+  }
+
+  _advisorMetricValue(value, formatter) {
+    return Number.isFinite(value) ? formatter(value) : this._t("advisor.unknown", {}, "Unknown");
+  }
+
+  _renderEnergyAdvisor() {
+    if (this.config.show_energy_advisor === false) return "";
+    const snapshot = this._advisorSnapshot();
+    const items = this._advisorItems(snapshot);
+    const status = this._advisorStatus(snapshot, items);
+    const powerFormatter = (value) => this._formatPowerValue(value, this.config.units?.power || "auto", "W");
+    const percentFormatter = (value) => `${Math.round(value)}%`;
+    const gridStatus = Number.isFinite(snapshot.gridWatts)
+      ? snapshot.gridWatts > this._gridNeutralThreshold()
+        ? `${this._t("advisor.importing", {}, "Importing")} ${powerFormatter(snapshot.importWatts)}`
+        : snapshot.gridWatts < -this._gridNeutralThreshold()
+          ? `${this._t("advisor.exporting", {}, "Exporting surplus")} ${powerFormatter(snapshot.exportWatts)}`
+          : this._t("advisor.selfSufficient", {}, "Self-sufficient")
+      : this._t("advisor.unknown", {}, "Unknown");
+    const metrics = [
+      [this._t("advisor.pv", {}, "PV"), this._advisorMetricValue(snapshot.pvWatts, powerFormatter)],
+      [this._t("advisor.grid", {}, "Grid"), gridStatus],
+      [this._t("advisor.batteryStatus", {}, "Battery"), Number.isFinite(snapshot.batteryPercent) ? `${Math.round(snapshot.batteryPercent)}%` : this._formatBatteryFlowValue(snapshot.batteryFlow) || this._t("advisor.unknown", {}, "Unknown")],
+      [this._t("advisor.consumption", {}, "Load"), this._advisorMetricValue(snapshot.loadWatts, powerFormatter)],
+      [this._t("advisor.selfConsumption", {}, "Self-use"), this._advisorMetricValue(snapshot.selfConsumptionPercent, percentFormatter)],
+      [this._t("advisor.autarky", {}, "Autarky"), this._advisorMetricValue(snapshot.autarkyPercent, percentFormatter)],
+    ];
+    const metricHtml = metrics.map(([label, value]) => `
+      <div class="advisor-metric">
+        <span>${this._escape(label)}</span>
+        <strong>${this._escape(value)}</strong>
+      </div>
+    `).join("");
+    const itemHtml = items.map((item) => `
+      <div class="advisor-item advisor-${this._escape(item.type)}">
+        <div class="advisor-item-head">
+          <strong>${this._escape(item.title)}</strong>
+          ${item.value ? `<span>${this._escape(item.value)}</span>` : ""}
+        </div>
+        <div class="advisor-item-text">${this._escape(item.text)}</div>
+      </div>
+    `).join("");
+
+    return `
+      <section class="advisor advisor-${this._escape(status.type)}" data-energy-advisor>
+        <div class="advisor-head">
+          <div>
+            <div class="advisor-label">${this._escape(this._t("advisor.panelTitle", {}, "Energy Advisor"))}</div>
+            <div class="advisor-title" data-advisor-title>${this._escape(status.label)}</div>
+          </div>
+          <div class="advisor-state">${this._escape(this._t("advisor.status", {}, "Status"))}</div>
+        </div>
+        <div class="advisor-metrics" data-advisor-metrics>${metricHtml}</div>
+        <div class="advisor-items" data-advisor-items>${itemHtml}</div>
+      </section>
+    `;
+  }
+
   _tileStyle(metric) {
     const columns = Math.round(this._clampNumber(metric.tileColumns ?? 1, 1, 1, 6));
     const mobileColumns = Math.min(columns, 2);
@@ -3470,6 +3784,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
+    const advisorHtml = this._renderEnergyAdvisor();
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
       ? `<div class="scene-status" data-accent-key="${STATUS_METRIC.key}" data-status-label style="${this._escape(this._accentStyle(STATUS_METRIC))}">${this._escape(statusLabel)}</div>`
@@ -3568,6 +3883,30 @@ class HaSolarDashboardCard extends HTMLElement {
         .scene-status:empty { display:none; }
         .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
         .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; position:relative; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; cursor:pointer; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
+        .advisor { --advisor-accent:#93c5fd; display:grid; gap:10px; margin-top:12px; padding:12px; border-radius:8px; border:1px solid color-mix(in srgb,var(--advisor-accent) 36%,rgba(255,255,255,.1)); background:linear-gradient(135deg,rgba(15,23,42,.76),rgba(8,13,28,.68)); box-shadow:inset 3px 0 0 var(--advisor-accent),0 10px 24px rgba(0,0,0,.18); }
+        .advisor-warning { --advisor-accent:#fb923c; }
+        .advisor-opportunity { --advisor-accent:#34d399; }
+        .advisor-success { --advisor-accent:#34d399; }
+        .advisor-setup { --advisor-accent:#93c5fd; }
+        .advisor-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-width:0; }
+        .advisor-label,.advisor-state { color:var(--text-muted); font-size:.72rem; line-height:1.2; font-weight:700; text-transform:uppercase; letter-spacing:0; }
+        .advisor-title { color:var(--advisor-accent); font-size:1rem; line-height:1.25; font-weight:800; overflow-wrap:anywhere; }
+        .advisor-state { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:color-mix(in srgb,var(--advisor-accent) 14%,rgba(255,255,255,.08)); color:var(--advisor-accent); text-transform:none; }
+        .advisor-metrics { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; min-width:0; }
+        .advisor-metric { display:grid; gap:2px; min-width:0; padding:7px 8px; border-radius:8px; background:rgba(255,255,255,.06); box-shadow:inset 0 0 0 1px rgba(255,255,255,.07); }
+        .advisor-metric span { color:var(--text-muted); font-size:.68rem; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .advisor-metric strong { color:var(--text-main); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
+        .advisor-items { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; min-width:0; }
+        .advisor-item { --item-accent:#93c5fd; display:grid; gap:4px; min-width:0; padding:9px; border-radius:8px; background:rgba(255,255,255,.055); border:1px solid color-mix(in srgb,var(--item-accent) 28%,rgba(255,255,255,.08)); box-shadow:inset 2px 0 0 var(--item-accent); }
+        .advisor-item.advisor-warning { --item-accent:#fb923c; }
+        .advisor-item.advisor-opportunity { --item-accent:#34d399; }
+        .advisor-item.advisor-success { --item-accent:#34d399; }
+        .advisor-item.advisor-setup { --item-accent:#93c5fd; }
+        .advisor-item.advisor-info { --item-accent:#facc15; }
+        .advisor-item-head { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
+        .advisor-item-head strong { color:var(--item-accent); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
+        .advisor-item-head span { flex:0 0 auto; color:var(--text-main); font-size:.74rem; font-weight:800; line-height:1.1; border-radius:999px; padding:3px 6px; background:rgba(255,255,255,.08); }
+        .advisor-item-text { color:rgba(243,246,255,.86); font-size:.78rem; line-height:1.35; overflow-wrap:anywhere; }
         .chart-backdrop { position:fixed; inset:0; z-index:1000; background:rgba(2,6,18,.58); backdrop-filter:blur(3px); }
         .chart-dialog { --tile-accent:#1f8fff; --tile-glow:transparent; position:fixed; z-index:1001; left:50%; top:50%; width:min(760px,calc(100vw - 28px)); max-height:calc(100vh - 32px); transform:translate(-50%,-50%); overflow:hidden; border-radius:14px; border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.18)); background:linear-gradient(135deg,rgba(15,24,45,.98),rgba(8,14,28,.98)); box-shadow:0 24px 70px rgba(0,0,0,.62),0 0 26px var(--tile-glow); color:var(--text-main); }
         .chart-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px 14px 10px; border-bottom:1px solid rgba(255,255,255,.1); }
@@ -3590,13 +3929,14 @@ class HaSolarDashboardCard extends HTMLElement {
         .chart-label,.chart-current { fill:var(--text-muted); font-size:12px; }
         .chart-current { fill:var(--tile-accent); text-anchor:end; font-weight:700; }
         .chart-label.end { text-anchor:end; }
-        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
         <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
         ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
+        ${advisorHtml}
       </ha-card>
       ${this._renderChartOverlay()}
     `;
@@ -3736,6 +4076,15 @@ class HaSolarDashboardCard extends HTMLElement {
     if (statusElement) {
       const statusLabel = this._statusLabel();
       if (statusElement.textContent !== statusLabel) statusElement.textContent = statusLabel;
+    }
+    const nextAdvisorHtml = this._renderEnergyAdvisor();
+    const advisorElement = this.shadowRoot.querySelector("[data-energy-advisor]");
+    if (advisorElement && nextAdvisorHtml) {
+      advisorElement.outerHTML = nextAdvisorHtml.trim();
+    } else if (advisorElement && !nextAdvisorHtml) {
+      advisorElement.remove();
+    } else if (!advisorElement && nextAdvisorHtml) {
+      this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextAdvisorHtml);
     }
   }
 
@@ -4705,6 +5054,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
         <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+        <label><input type="checkbox" data-path="show_energy_advisor" ${this._config.show_energy_advisor !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyAdvisor", {}, "Show Energy Advisor panel"))}</label>
         <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
         <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
         <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>

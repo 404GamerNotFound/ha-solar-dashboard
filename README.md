@@ -46,6 +46,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Optional import/export HUD box, positioned near the lower-right power cable by default, plus a grid status tile showing import, export, or self-sufficient operation
 - Hover tooltips on values show the linked entity, raw state, formatted value, and update time
 - Clickable entity boxes and tiles open a 24/48 hour history chart using Home Assistant history data
+- Energy Advisor panel with live status, PV/grid/load/battery KPIs, autarky/self-consumption estimates, sensor diagnostics, and prioritized recommendations for surplus, grid import, battery state, EV charging, and unusual PV/load situations
 - Warning states highlight unavailable/offline sensors and low battery levels
 - Configurable KPI tiles below the image, including custom labels, entities or static values, units, color, sort position, and tile width
 - Custom standard and daylight images
@@ -126,6 +127,7 @@ energy_entities:
   house_consumption_power:
     entity: sensor.house_consumption_total
 show_grid_status_tile: true
+show_energy_advisor: true
 show_power_flows: false
 image_overlays:
   smoke:
@@ -157,6 +159,9 @@ units:
 power_display_mode: auto_kw
 power_decimals: 2
 grid_neutral_threshold: 25
+advisor_surplus_threshold: 250
+advisor_import_threshold: 250
+advisor_high_load_threshold: 3000
 battery_low_threshold: 20
 chart_hours: 24
 max_power_kw:
@@ -214,6 +219,7 @@ custom_kpis:
 - `show_house_selector` (boolean, default: `true`)
 - `show_energy_range_selector` (boolean, default: `false`; shows the `Live` / `1h` / `24h` / `1 month` / `1 year` / `Total` selector in the header when enabled)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
+- `show_energy_advisor` (boolean, default: `true`; shows/hides the Energy Advisor panel below the metric tiles)
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional import/export)
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
 - `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` or split import/export entities are configured)
@@ -261,6 +267,9 @@ custom_kpis:
 - `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)
 - `grid_neutral_threshold` (number, default: `25`; watt threshold below which the grid tile shows self-sufficient/autark operation)
+- `advisor_surplus_threshold` (number, default: `250`; watts of export before the Energy Advisor treats PV surplus as actionable)
+- `advisor_import_threshold` (number, default: `250`; watts of import before the Energy Advisor highlights grid draw)
+- `advisor_high_load_threshold` (number, default: `3000`; watts of load before the Energy Advisor calls out unusually high consumption)
 - `battery_low_threshold` (number, default: `20`; battery percentage at or below which the battery tile is highlighted as a warning)
 - `chart_hours` (number, default: `24`; initial range for the click-to-open history chart, supported values: `24` or `48`)
 - `max_power_kw.<entity_key>` (number/string, optional; enables a utilization bar for power metrics based on max kW/kWp, for example `max_power_kw.wallbox_power: 11`)

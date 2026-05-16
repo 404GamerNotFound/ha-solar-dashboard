@@ -162,7 +162,8 @@ const I18N = {
     "editor.unit": "Unit",
     "editor.weatherEntity": "Weather Entity",
     "editor.setupWizard": "Setup wizard",
-    "editor.setupIntro": "Detect likely Home Assistant entities and fill the card configuration.",
+    "editor.setupIntro": "Helps with the first setup by suggesting sensors for PV, battery, inverter, EV charger, grid, consumption, weather, and kWh counters.",
+    "editor.setupHelp": "Review the suggestions before applying them. Use \"Fill empty fields\" for a safe first pass or \"Replace detected fields\" when you want to overwrite existing detected assignments.",
     "editor.setupEntityCount": "{count} entities available",
     "editor.setupNoEntities": "Open this editor in Home Assistant so entities can be detected.",
     "editor.setupFillEmpty": "Fill empty fields",
@@ -381,7 +382,8 @@ const I18N = {
     "editor.unit": "Einheit",
     "editor.weatherEntity": "Wetter-Entität",
     "editor.setupWizard": "Einrichtungs-Assistent",
-    "editor.setupIntro": "Erkennt passende Home-Assistant-Entitäten und füllt die Card-Konfiguration.",
+    "editor.setupIntro": "Hilft bei der Ersteinrichtung, indem passende Sensoren für PV, Batterie, Wechselrichter, Wallbox, Netz, Verbrauch, Wetter und kWh-Zähler vorgeschlagen werden.",
+    "editor.setupHelp": "Prüfe die Vorschläge vor dem Übernehmen. \"Leere Felder füllen\" ist der sichere erste Schritt, \"Erkannte Felder ersetzen\" überschreibt vorhandene erkannte Zuordnungen.",
     "editor.setupEntityCount": "{count} Entitäten verfügbar",
     "editor.setupNoEntities": "Öffne diesen Editor in Home Assistant, damit Entitäten erkannt werden können.",
     "editor.setupFillEmpty": "Leere Felder füllen",
@@ -1277,7 +1279,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
-      show_energy_advisor: true,
+      show_energy_advisor: false,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -1371,7 +1373,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
-      show_energy_advisor: true,
+      show_energy_advisor: false,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -3641,7 +3643,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderEnergyAdvisor() {
-    if (this.config.show_energy_advisor === false) return "";
+    if (this.config.show_energy_advisor !== true) return "";
     const snapshot = this._advisorSnapshot();
     const items = this._advisorItems(snapshot);
     const status = this._advisorStatus(snapshot, items);
@@ -4961,10 +4963,11 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     }).join("");
 
     return `
-      <details class="setup-wizard" open>
+      <details class="setup-wizard" data-setup-wizard${this._setupWizardOpen ? " open" : ""}>
         <summary>${this._escape(this._t("editor.setupWizard", {}, "Setup wizard"))}</summary>
         <div class="wizard-body">
           <p>${this._escape(this._t("editor.setupIntro", {}, "Detect likely Home Assistant entities and fill the card configuration."))}</p>
+          <p>${this._escape(this._t("editor.setupHelp", {}, "Review the suggestions before applying them. Use Fill empty fields for a safe first pass or Replace detected fields when you want to overwrite existing detected assignments."))}</p>
           <div class="wizard-status">
             ${entityCount > 0
               ? this._escape(this._t("editor.setupEntityCount", { count: entityCount }, `${entityCount} entities available`))
@@ -5000,47 +5003,52 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        .editor{display:grid;gap:12px;font-family:system-ui,sans-serif;min-width:0;max-width:100%;overflow:hidden}
-        label{display:grid;gap:4px;font-size:13px;min-width:0;max-width:100%}
-        input,select,button{box-sizing:border-box;min-width:0;max-width:100%;padding:8px;border:1px solid #bbb;border-radius:8px;text-overflow:ellipsis}
+        .editor{display:grid;gap:12px;font-family:system-ui,sans-serif;min-width:0;max-width:100%;overflow:hidden;color:var(--primary-text-color,#e5e7eb)}
+        label{display:grid;gap:4px;font-size:13px;min-width:0;max-width:100%;color:var(--primary-text-color,#e5e7eb)}
+        input,select,button{box-sizing:border-box;min-width:0;max-width:100%;padding:8px;border:1px solid var(--divider-color,#4b5563);border-radius:8px;text-overflow:ellipsis;color:var(--primary-text-color,#e5e7eb)}
         input,select{width:100%}
-        button{width:auto;background:#f7f7f7;cursor:pointer}
+        input,select{background:var(--input-fill-color,rgba(255,255,255,.04))}
+        button{width:auto;background:var(--secondary-background-color,rgba(255,255,255,.08));cursor:pointer}
+        button:hover:not(:disabled){border-color:var(--primary-color,#1f8fff)}
         .grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0}
-        .section-title{font-size:13px;font-weight:700;margin-top:4px}
-        .box-field{display:grid;gap:8px;min-width:0;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px}
+        .section-title{font-size:13px;font-weight:700;margin-top:4px;color:var(--primary-text-color,#e5e7eb)}
+        .box-field{display:grid;gap:8px;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--divider-color,#4b5563);border-radius:8px;background:var(--card-background-color,rgba(17,24,39,.72))}
         .checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
         details{display:grid;gap:8px;min-width:0}
-        .pv-labels{padding:8px;border:1px solid #ddd;border-radius:8px}
+        .pv-labels{padding:8px;border:1px solid var(--divider-color,#4b5563);border-radius:8px}
         .label-options{margin-top:-2px}
         .label-options .checkbox-grid{margin-top:8px}
         .label-entity-block{display:grid;gap:6px;min-width:0}
         .label-entity-title{font-size:13px;color:inherit}
-        summary{cursor:pointer;font-size:13px;font-weight:600}
+        summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--primary-text-color,#e5e7eb)}
         .details-grid{display:grid;gap:8px;margin-top:8px;min-width:0}
         .kpi-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;min-width:0}
         .kpi-head strong{min-width:0;overflow-wrap:anywhere}
         .inline{display:flex;align-items:center;gap:8px}
         .inline input{width:auto;min-width:auto;padding:0}
-        .setup-wizard{padding:10px;border:1px solid #c8d4e4;border-radius:8px;background:rgba(31,143,255,.06)}
-        .setup-wizard summary{font-weight:700}
+        .setup-wizard{padding:10px;border:1px solid color-mix(in srgb,var(--primary-color,#1f8fff) 42%,var(--divider-color,#4b5563));border-radius:8px;background:color-mix(in srgb,var(--primary-color,#1f8fff) 8%,var(--card-background-color,#111827));box-shadow:inset 3px 0 0 var(--primary-color,#1f8fff)}
+        .setup-wizard summary{font-weight:700;font-size:14px}
         .wizard-body{display:grid;gap:10px;margin-top:10px;min-width:0}
-        .wizard-body p{margin:0;font-size:13px;color:#4b5563}
-        .wizard-status,.wizard-message,.wizard-empty{font-size:12px;color:#5f6b7a}
-        .wizard-message{padding:8px;border-radius:8px;background:rgba(52,211,153,.12);color:#0f766e}
+        .wizard-body p{margin:0;font-size:13px;line-height:1.4;color:var(--secondary-text-color,#9ca3af)}
+        .wizard-status,.wizard-empty{font-size:12px;color:var(--secondary-text-color,#9ca3af)}
+        .wizard-message{font-size:12px;padding:8px;border-radius:8px;background:rgba(52,211,153,.14);color:#34d399}
         .wizard-actions{display:flex;flex-wrap:wrap;gap:8px}
         .wizard-actions button:disabled,.wizard-suggestion button:disabled{opacity:.55;cursor:not-allowed}
-        .wizard-suggestions-title{font-size:13px;font-weight:700}
+        .wizard-actions button,.wizard-suggestion button{border-color:color-mix(in srgb,var(--primary-color,#1f8fff) 45%,var(--divider-color,#4b5563));background:color-mix(in srgb,var(--primary-color,#1f8fff) 14%,var(--card-background-color,#111827));color:var(--primary-text-color,#e5e7eb);font-weight:600}
+        .wizard-suggestions-title{font-size:13px;font-weight:700;color:var(--primary-text-color,#e5e7eb)}
         .wizard-suggestions{display:grid;gap:8px;min-width:0}
-        .wizard-suggestion{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border:1px solid #d8e0eb;border-radius:8px;background:rgba(255,255,255,.72);min-width:0}
+        .wizard-suggestion{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px;border:1px solid var(--divider-color,#4b5563);border-radius:8px;background:var(--secondary-background-color,rgba(31,41,55,.72));min-width:0}
         .wizard-suggestion-main{display:grid;gap:4px;min-width:0}
-        .wizard-suggestion-main strong{font-size:13px;overflow-wrap:anywhere}
-        .wizard-suggestion code,.wizard-current code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;overflow-wrap:anywhere;white-space:normal}
-        .wizard-current{display:grid;gap:2px;color:#6b7280;font-size:12px;min-width:0}
-        .wizard-suggestion-side{display:grid;justify-items:end;gap:6px;font-size:12px;color:#5f6b7a;white-space:nowrap}
+        .wizard-suggestion-main strong{font-size:13px;overflow-wrap:anywhere;color:var(--primary-text-color,#f3f4f6)}
+        .wizard-suggestion code,.wizard-current code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;overflow-wrap:anywhere;white-space:normal;color:var(--secondary-text-color,#cbd5e1)}
+        .wizard-current{display:grid;gap:2px;color:var(--secondary-text-color,#9ca3af);font-size:12px;min-width:0}
+        .wizard-suggestion-side{display:grid;justify-items:end;gap:6px;font-size:12px;color:var(--secondary-text-color,#9ca3af);white-space:nowrap}
         @media (max-width:700px){.checkbox-grid{grid-template-columns:minmax(0,1fr)}}
         @media (max-width:700px){.wizard-suggestion{grid-template-columns:minmax(0,1fr)}.wizard-suggestion-side{justify-items:start;white-space:normal}}
       </style>
       <div class="editor">
+        <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
+        ${this._renderSetupWizard()}
         <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
         <label>${this._escape(this._t("editor.timeLabel"))} <input data-path="time_label" value="${this._escape(this._config.time_label || "")}" /></label>
         <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
@@ -5054,7 +5062,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
         <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
-        <label><input type="checkbox" data-path="show_energy_advisor" ${this._config.show_energy_advisor !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyAdvisor", {}, "Show Energy Advisor panel"))}</label>
+        <label><input type="checkbox" data-path="show_energy_advisor" ${this._config.show_energy_advisor === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyAdvisor", {}, "Show Energy Advisor panel"))}</label>
         <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
         <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
         <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
@@ -5074,8 +5082,6 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>${this._escape(this._t("editor.powerDecimals"))} (${this._escape(Number(this._config.power_decimals ?? 2).toFixed(0))})
           <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
-        <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
-        ${this._renderSetupWizard()}
         <div class="section-title">${this._escape(this._t("editor.sectionBoxes"))}</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
         <div class="section-title">${this._escape(this._t("editor.sectionOverlays"))}</div>
@@ -5105,6 +5111,12 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         if (target.dataset.action === "apply-suggestion") this._applyAutoDetection("replace", target.dataset.path || "");
       });
     });
+    const setupWizard = this.shadowRoot.querySelector("details[data-setup-wizard]");
+    if (setupWizard) {
+      setupWizard.addEventListener("toggle", (event) => {
+        this._setupWizardOpen = event.currentTarget.open;
+      });
+    }
     this.shadowRoot.querySelectorAll("details[data-label-options]").forEach((details) => {
       details.addEventListener("toggle", (event) => {
         const key = event.currentTarget.dataset.labelOptions;

@@ -29,7 +29,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Optionale Import-/Export-Box im Bild, standardmäßig unten rechts beim Stromkabel positioniert, plus Netzstatus-Kachel mit Bezug, Einspeisung oder Autarkie; unterstützt einen Vorzeichen-Sensor oder getrennte Bezugs-/Einspeise-Sensoren
 - Tooltips pro Wert mit Entität, Rohwert, formatiertem Wert und Aktualisierungszeit
 - Klick auf entity-basierte Boxen und Kacheln öffnet ein 24/48-Stunden-Verlaufsdiagramm aus Home-Assistant-History-Daten
-- Energy-Advisor-Panel mit Live-Status, PV-/Netz-/Last-/Batterie-Kennzahlen, Autarkie-/Eigenverbrauchsschätzung, Sensor-Diagnosen und priorisierten Empfehlungen bei Überschuss, Netzbezug, Batteriestand, Wallbox-Laden und auffälliger PV-/Lastsituation
+- Optionales Energy-Advisor-Panel mit Live-Status, PV-/Netz-/Last-/Batterie-Kennzahlen, Autarkie-/Eigenverbrauchsschätzung, Sensor-Diagnosen und priorisierten Empfehlungen bei Überschuss, Netzbezug, Batteriestand, Wallbox-Laden und auffälliger PV-/Lastsituation
 - Warnzustände für nicht verfügbare/offline Sensoren und niedrigen Batteriestand
 - Frei definierbare KPI-Kacheln unter dem Bild, z. B. CO₂ gespart heute, Autarkiegrad oder spezifischer Ertrag
 - Variante `apartment_building_balcony_solar` für Balkonsolar mit PV-Leistung, Batterie und Wechselrichter

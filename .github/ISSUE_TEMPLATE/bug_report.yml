@@ -1,0 +1,68 @@
+name: Bug report
+description: Report a reproducible problem with the HA Solar Dashboard Card.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please remove secrets, tokens, private URLs, and personal entity data before submitting.
+  - type: input
+    id: card-version
+    attributes:
+      label: Card version or commit
+      description: HACS version, release tag, or commit SHA.
+      placeholder: "Example: v1.2.3 or main@abc1234"
+    validations:
+      required: true
+  - type: input
+    id: home-assistant-version
+    attributes:
+      label: Home Assistant version
+      placeholder: "Example: 2026.5.1"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: "Example: Chrome on desktop, Safari on iPhone"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Add card with ...
+        2. Open dashboard ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: yaml
+    attributes:
+      label: Minimal card YAML
+      description: Include the smallest configuration that reproduces the issue.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console or Home Assistant logs
+      description: Paste relevant browser console errors or Home Assistant logs.
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or recordings
+      description: Drag and drop screenshots or recordings here if this is a visual issue.

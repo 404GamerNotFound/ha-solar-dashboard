@@ -297,7 +297,7 @@ custom_kpis:
 - `advisor_import_threshold` (number, default: `250`; watts of import before the Energy Advisor highlights grid draw)
 - `advisor_high_load_threshold` (number, default: `3000`; watts of load before the Energy Advisor calls out unusually high consumption)
 - `advisor_max_suggestions` (number, default: `8`; maximum number of prioritized recommendations shown in the Advisor Dashboard, clamped from `1` to `12`)
-- `advisor_stale_sensor_warning_minutes` (number, default: `30`; minutes without an entity update before the Advisor shows a yellow stale-sensor diagnostic for dynamic live sensors only, such as PV, grid, load, inverter, battery flow/temperature, and charger power)
+- `advisor_stale_sensor_warning_minutes` (number, default: `30`; minutes without an entity update before the Advisor shows a yellow stale-sensor diagnostic for dynamic live sensors only, such as PV, grid, load, inverter, battery flow/temperature, and charger power; power sensors below 100 W are treated as idle and do not trigger this diagnostic)
 - `advisor_stale_sensor_critical_minutes` (number, default: `120`; minutes without an entity update before the Advisor escalates the dynamic stale-sensor diagnostic to red)
 - `battery_low_threshold` (number, default: `20`; battery percentage at or below which the battery tile is highlighted as a warning)
 - `chart_hours` (number, default: `24`; initial range for the click-to-open history chart, supported values: `24` or `48`)

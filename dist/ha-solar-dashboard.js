@@ -4050,22 +4050,20 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _advisorSensorCandidates() {
     const candidates = [];
-    const add = (entityId, label = "", dynamic = false) => {
+    const add = (entityId, label = "", dynamic = false, options = {}) => {
       if (!entityId || typeof entityId !== "string") return;
       if (!dynamic) return;
-      candidates.push({ entityId, label: label || this._entityDisplayName(entityId) });
+      candidates.push({ entityId, label: label || this._entityDisplayName(entityId), ...options });
     };
 
-    const dynamicEntityKeys = new Set([
+    const dynamicPowerEntityKeys = new Set([
       "pv_roof_power",
       "pv_shed_power",
       "pv_total_power",
       "house_consumption_power",
-      "battery_level",
       "battery_flow_power",
       "battery_charge_power",
       "battery_discharge_power",
-      "battery_temperature",
       "inverter_power",
       "wallbox_power",
       "wallbox2_power",
@@ -4073,9 +4071,14 @@ class HaSolarDashboardCard extends HTMLElement {
       "import_power",
       "export_power",
     ]);
+    const dynamicStateEntityKeys = new Set(["battery_level", "battery_temperature"]);
 
     Object.entries(this.config.entities || {}).forEach(([key, entityId]) => {
-      add(entityId, this._entityLabelForPath?.(`entities.${key}`) || key, dynamicEntityKeys.has(key));
+      const isDynamicPower = dynamicPowerEntityKeys.has(key);
+      add(entityId, this._entityLabelForPath?.(`entities.${key}`) || key, isDynamicPower || dynamicStateEntityKeys.has(key), {
+        key,
+        minActiveWatts: isDynamicPower ? 100 : undefined,
+      });
     });
     Object.entries(this.config.image_overlays || {}).forEach(([key, config]) => {
       add(config?.entity, this._overlayLabel(key), key === "heatpump");
@@ -4090,6 +4093,13 @@ class HaSolarDashboardCard extends HTMLElement {
       });
   }
 
+  _advisorStaleSensorIsActive(candidate) {
+    if (!Number.isFinite(candidate?.minActiveWatts)) return true;
+    const value = this._getEntityValue(candidate.entityId, undefined);
+    const watts = this._valueAsWatts(value, this._getEntityUnit(candidate.entityId));
+    return Number.isFinite(watts) && Math.abs(watts) >= candidate.minActiveWatts;
+  }
+
   _advisorStaleSensorItem() {
     const warningMinutes = this._clampNumber(this.config.advisor_stale_sensor_warning_minutes, 30, 1, 10080);
     const criticalMinutes = this._clampNumber(this.config.advisor_stale_sensor_critical_minutes, 120, warningMinutes, 20160);
@@ -4099,6 +4109,7 @@ class HaSolarDashboardCard extends HTMLElement {
         if (!entity) return undefined;
         const state = String(entity.state || "").toLowerCase().trim();
         if (["unknown", "unavailable", "offline"].includes(state)) return undefined;
+        if (!this._advisorStaleSensorIsActive(candidate)) return undefined;
         const ageMinutes = this._entityAgeMinutes(candidate.entityId);
         if (!Number.isFinite(ageMinutes) || ageMinutes < warningMinutes) return undefined;
         return {

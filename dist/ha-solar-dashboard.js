@@ -68,16 +68,22 @@ const I18N = {
     "advisor.importing": "Importing",
     "advisor.lowPv": "PV production is low despite daylight. If the weather is clear, check inverter or PV sensors.",
     "advisor.noAdvice": "No urgent action right now.",
+    "advisor.appliances": "Appliances",
     "advisor.panelTitle": "Energy Advisor",
     "advisor.pv": "PV",
+    "advisor.recommendations": "Recommendations",
+    "advisor.runAppliance": "Run a flexible household appliance now if it is waiting.",
     "advisor.selfConsumption": "Self-use",
     "advisor.selfSufficient": "Self-sufficient",
-    "advisor.startFlexibleLoad": "Use the surplus now: start EV charging, heat pump boost, dishwasher, washing machine, or another flexible load.",
+    "advisor.startEvCharging": "Start or increase EV charging while surplus is available.",
     "advisor.status": "Status",
+    "advisor.suggestionCountOne": "{count} suggestion",
+    "advisor.suggestionCount": "{count} suggestions",
     "advisor.surplus": "Surplus",
+    "advisor.surplusGeneral": "PV surplus is available. Prioritize flexible loads while export is active.",
     "advisor.unknown": "Unknown",
+    "advisor.useHeatPump": "Use heat pump boost or preheat hot water while PV surplus is available.",
     "advisor.wallbox": "EV",
-    "editor.showEnergyAdvisor": "Show Energy Advisor panel",
     "editor.showViewSelector": "Show House/Advisor view selector",
     "chart.close": "Close",
     "chart.empty": "No history data found",
@@ -133,6 +139,7 @@ const I18N = {
     "editor.rawMode": "Raw value + configured unit",
     "editor.auto": "Auto",
     "editor.autoWKw": "Auto W/kW",
+    "editor.advisorMaxSuggestions": "Advisor suggestions",
     "editor.overlayEnable": "Show {label}",
     "editor.overlayLabel": "Label",
     "editor.overlayOrientation": "Orientation",
@@ -293,16 +300,22 @@ const I18N = {
     "advisor.importing": "Netzbezug",
     "advisor.lowPv": "Die PV-Produktion ist trotz Tageslicht niedrig. Wenn das Wetter klar ist, prüfe Wechselrichter oder PV-Sensoren.",
     "advisor.noAdvice": "Aktuell besteht kein dringender Handlungsbedarf.",
+    "advisor.appliances": "Haushalt",
     "advisor.panelTitle": "Energy Advisor",
     "advisor.pv": "PV",
+    "advisor.recommendations": "Empfehlungen",
+    "advisor.runAppliance": "Starte jetzt einen wartenden flexiblen Haushaltsverbraucher.",
     "advisor.selfConsumption": "Eigenverbrauch",
     "advisor.selfSufficient": "Autark",
-    "advisor.startFlexibleLoad": "Nutze den Überschuss jetzt: Starte Wallbox, Wärmepumpen-Boost, Spülmaschine, Waschmaschine oder einen anderen flexiblen Verbraucher.",
+    "advisor.startEvCharging": "Starte oder erhöhe die Wallbox-Ladung, solange Überschuss verfügbar ist.",
     "advisor.status": "Status",
+    "advisor.suggestionCountOne": "{count} Hinweis",
+    "advisor.suggestionCount": "{count} Hinweise",
     "advisor.surplus": "Überschuss",
+    "advisor.surplusGeneral": "PV-Überschuss ist verfügbar. Priorisiere flexible Verbraucher, solange eingespeist wird.",
     "advisor.unknown": "Unbekannt",
+    "advisor.useHeatPump": "Nutze Wärmepumpen-Boost oder Warmwasser-Vorheizen, solange PV-Überschuss verfügbar ist.",
     "advisor.wallbox": "Wallbox",
-    "editor.showEnergyAdvisor": "Energy-Advisor-Panel anzeigen",
     "editor.showViewSelector": "Haus-/Advisor-Ansichtsauswahl anzeigen",
     "chart.close": "Schließen",
     "chart.empty": "Keine Verlaufsdaten gefunden",
@@ -358,6 +371,7 @@ const I18N = {
     "editor.rawMode": "Rohwert + konfigurierte Einheit",
     "editor.auto": "Auto",
     "editor.autoWKw": "Automatisch W/kW",
+    "editor.advisorMaxSuggestions": "Advisor-Hinweise",
     "editor.overlayEnable": "{label} anzeigen",
     "editor.overlayLabel": "Label",
     "editor.overlayOrientation": "Ausrichtung",
@@ -1320,7 +1334,6 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
-      show_energy_advisor: false,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -1332,6 +1345,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_surplus_threshold: 250,
       advisor_import_threshold: 250,
       advisor_high_load_threshold: 3000,
+      advisor_max_suggestions: 8,
       chart_hours: 24,
       max_power_kw: {
         pv_roof_power: 10,
@@ -1421,7 +1435,6 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
-      show_energy_advisor: false,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -1433,6 +1446,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_surplus_threshold: 250,
       advisor_import_threshold: 250,
       advisor_high_load_threshold: 3000,
+      advisor_max_suggestions: 8,
       chart_hours: 24,
       daylight_entity: "sun.sun",
       weather_entity: "",
@@ -1500,6 +1514,7 @@ class HaSolarDashboardCard extends HTMLElement {
       },
       custom_kpis: this._normalizeCustomKpis(config.custom_kpis || config.kpis || []),
     };
+    delete this.config.show_energy_advisor;
 
     this.config.hud_box_opacity = this._clampNumber(this.config.hud_box_opacity, 0.65, 0, 1);
     this.config.hud_box_scale = this._clampNumber(this.config.hud_box_scale, 1, 0.6, 1.8);
@@ -1509,6 +1524,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.advisor_surplus_threshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
     this.config.advisor_import_threshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
     this.config.advisor_high_load_threshold = this._clampNumber(this.config.advisor_high_load_threshold, 3000, 0, 1000000);
+    this.config.advisor_max_suggestions = Math.round(this._clampNumber(this.config.advisor_max_suggestions, 8, 1, 12));
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
     this._chartHours = this._chartHours || this.config.chart_hours;
     this._historyCache = this._historyCache || new Map();
@@ -3690,11 +3706,16 @@ class HaSolarDashboardCard extends HTMLElement {
       .filter(Boolean);
   }
 
-  _advisorItems(snapshot = this._advisorSnapshot()) {
+  _advisorSuggestionLimit() {
+    return Math.round(this._clampNumber(this.config.advisor_max_suggestions, 8, 1, 12));
+  }
+
+  _advisorItems(snapshot = this._advisorSnapshot(), { maxItems = this._advisorSuggestionLimit() } = {}) {
     const items = [...this._advisorWarnings()];
     const add = (type, priority, title, text, value = "") => {
       items.push({ type, priority, title, text, value });
     };
+    const itemLimit = Math.round(this._clampNumber(maxItems, this._advisorSuggestionLimit(), 1, 12));
     const surplusThreshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
     const importThreshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
     const highLoadThreshold = this._clampNumber(this.config.advisor_high_load_threshold, 3000, 0, 1000000);
@@ -3716,15 +3737,19 @@ class HaSolarDashboardCard extends HTMLElement {
 
     if (Number.isFinite(snapshot.exportWatts) && snapshot.exportWatts > surplusThreshold) {
       const value = this._formatPowerValue(snapshot.exportWatts, this.config.units?.power || "auto", "W");
-      add("opportunity", 88, this._t("advisor.surplus", {}, "Surplus"), this._t("advisor.startFlexibleLoad", {}, "Use the surplus now: start EV charging, heat pump boost, dishwasher, washing machine, or another flexible load."), value);
+      add("opportunity", 88, this._t("advisor.surplus", {}, "Surplus"), this._t("advisor.surplusGeneral", {}, "PV surplus is available. Prioritize flexible loads while export is active."), value);
       if (snapshot.hasWallbox && snapshot.wallboxWatts <= surplusThreshold) {
-        add("opportunity", 82, this._t("advisor.wallbox", {}, "EV"), this._t("advisor.startFlexibleLoad", {}, "Use the surplus now: start EV charging, heat pump boost, dishwasher, washing machine, or another flexible load."), value);
+        add("opportunity", 82, this._t("advisor.wallbox", {}, "EV"), this._t("advisor.startEvCharging", {}, "Start or increase EV charging while surplus is available."), value);
+      }
+      if (this.config.image_overlays?.heatpump?.enabled === true || this.config.image_overlays?.heatpump?.entity) {
+        add("opportunity", 74, this._overlayLabel("heatpump"), this._t("advisor.useHeatPump", {}, "Use heat pump boost or preheat hot water while PV surplus is available."), value);
       }
       if (Number.isFinite(snapshot.batteryPercent) && snapshot.batteryPercent >= 92) {
         add("info", 70, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryNearlyFull", {}, "Battery is nearly full, so additional PV is likely to be exported."), `${Math.round(snapshot.batteryPercent)}%`);
       } else if (snapshot.batteryFlow?.direction !== "charge" && (this.config.entities?.battery_flow_power || this.config.entities?.battery_charge_power)) {
         add("info", 64, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryIdle", {}, "Battery is not charging while surplus is exported. Check battery limits or charge mode."));
       }
+      add("opportunity", 60, this._t("advisor.appliances", {}, "Appliances"), this._t("advisor.runAppliance", {}, "Run a flexible household appliance now if it is waiting."), value);
     }
 
     if (Number.isFinite(snapshot.importWatts) && snapshot.importWatts > importThreshold) {
@@ -3762,7 +3787,7 @@ class HaSolarDashboardCard extends HTMLElement {
       add("success", 10, this._t("advisor.status", {}, "Status"), this._t("advisor.noAdvice", {}, "No urgent action right now."));
     }
 
-    return items.sort((a, b) => b.priority - a.priority).slice(0, 6);
+    return items.sort((a, b) => b.priority - a.priority).slice(0, itemLimit);
   }
 
   _advisorStatus(snapshot = this._advisorSnapshot(), items = this._advisorItems(snapshot)) {
@@ -3785,10 +3810,10 @@ class HaSolarDashboardCard extends HTMLElement {
     return Number.isFinite(value) ? formatter(value) : this._t("advisor.unknown", {}, "Unknown");
   }
 
-  _renderEnergyAdvisor({ force = false, dashboard = false } = {}) {
-    if (!force && this.config.show_energy_advisor !== true) return "";
+  _renderEnergyAdvisor({ dashboard = false } = {}) {
+    if (!dashboard) return "";
     const snapshot = this._advisorSnapshot();
-    const items = this._advisorItems(snapshot);
+    const items = this._advisorItems(snapshot, { maxItems: this._advisorSuggestionLimit() });
     const status = this._advisorStatus(snapshot, items);
     const powerFormatter = (value) => this._formatPowerValue(value, this.config.units?.power || "auto", "W");
     const percentFormatter = (value) => `${Math.round(value)}%`;
@@ -3806,9 +3831,10 @@ class HaSolarDashboardCard extends HTMLElement {
       [this._t("advisor.consumption", {}, "Load"), this._advisorMetricValue(snapshot.loadWatts, powerFormatter)],
       [this._t("advisor.selfConsumption", {}, "Self-use"), this._advisorMetricValue(snapshot.selfConsumptionPercent, percentFormatter)],
       [this._t("advisor.autarky", {}, "Autarky"), this._advisorMetricValue(snapshot.autarkyPercent, percentFormatter)],
+      ...this._customKpiMetrics().map((metric) => [this._metricLabel(metric), this._formatReading(metric), this._accentStyle(metric)]),
     ];
-    const metricHtml = metrics.map(([label, value]) => `
-      <div class="advisor-metric">
+    const metricHtml = metrics.map(([label, value, style = ""]) => `
+      <div class="advisor-metric" style="${this._escape(style)}">
         <span>${this._escape(label)}</span>
         <strong>${this._escape(value)}</strong>
       </div>
@@ -3832,8 +3858,14 @@ class HaSolarDashboardCard extends HTMLElement {
           </div>
           <div class="advisor-state">${this._escape(this._t("advisor.status", {}, "Status"))}</div>
         </div>
-        <div class="advisor-metrics" data-advisor-metrics>${metricHtml}</div>
+        <div class="advisor-items-head">
+          <span>${this._escape(this._t("advisor.recommendations", {}, "Recommendations"))}</span>
+          <strong>${this._escape(items.length === 1
+            ? this._t("advisor.suggestionCountOne", { count: items.length }, `${items.length} suggestion`)
+            : this._t("advisor.suggestionCount", { count: items.length }, `${items.length} suggestions`))}</strong>
+        </div>
         <div class="advisor-items" data-advisor-items>${itemHtml}</div>
+        <div class="advisor-metrics" data-advisor-metrics>${metricHtml}</div>
       </section>
     `;
   }
@@ -3967,7 +3999,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
-    const advisorHtml = this._renderEnergyAdvisor({ force: activeView === "advisor", dashboard: activeView === "advisor" });
+    const advisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
       ? `<div class="scene-status" data-accent-key="${STATUS_METRIC.key}" data-status-label style="${this._escape(this._accentStyle(STATUS_METRIC))}">${this._escape(statusLabel)}</div>`
@@ -4082,10 +4114,12 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-title { color:var(--advisor-accent); font-size:1rem; line-height:1.25; font-weight:800; overflow-wrap:anywhere; }
         .advisor-state { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:color-mix(in srgb,var(--advisor-accent) 14%,rgba(255,255,255,.08)); color:var(--advisor-accent); text-transform:none; }
         .advisor-metrics { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; min-width:0; }
-        .advisor-metric { display:grid; gap:2px; min-width:0; padding:7px 8px; border-radius:8px; background:rgba(255,255,255,.06); box-shadow:inset 0 0 0 1px rgba(255,255,255,.07); }
+        .advisor-metric { --tile-accent:var(--text-main); --tile-glow:transparent; display:grid; gap:2px; min-width:0; padding:7px 8px; border-radius:8px; background:rgba(255,255,255,.06); box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 0 16px var(--tile-glow); }
         .advisor-metric span { color:var(--text-muted); font-size:.68rem; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .advisor-metric strong { color:var(--text-main); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
-        .advisor-items { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; min-width:0; }
+        .advisor-metric strong { color:var(--tile-accent,var(--text-main)); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
+        .advisor-items-head { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; color:var(--text-muted); font-size:.72rem; line-height:1.2; font-weight:800; text-transform:uppercase; letter-spacing:0; }
+        .advisor-items-head strong { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:rgba(255,255,255,.08); color:var(--text-main); font-size:.7rem; line-height:1.1; text-transform:none; }
+        .advisor-items { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; min-width:0; }
         .advisor-item { --item-accent:#93c5fd; display:grid; gap:4px; min-width:0; padding:9px; border-radius:8px; background:rgba(255,255,255,.055); border:1px solid color-mix(in srgb,var(--item-accent) 28%,rgba(255,255,255,.08)); box-shadow:inset 2px 0 0 var(--item-accent); }
         .advisor-item.advisor-warning { --item-accent:#fb923c; }
         .advisor-item.advisor-opportunity { --item-accent:#34d399; }
@@ -4128,7 +4162,6 @@ class HaSolarDashboardCard extends HTMLElement {
           : `
             <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
             ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
-            ${advisorHtml}
           `}
       </ha-card>
       ${this._renderChartOverlay()}
@@ -4271,7 +4304,7 @@ class HaSolarDashboardCard extends HTMLElement {
       if (statusElement.textContent !== statusLabel) statusElement.textContent = statusLabel;
     }
     const activeView = this._currentViewMode();
-    const nextAdvisorHtml = this._renderEnergyAdvisor({ force: activeView === "advisor", dashboard: activeView === "advisor" });
+    const nextAdvisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
     const advisorElement = this.shadowRoot.querySelector("[data-energy-advisor]");
     if (advisorElement && nextAdvisorHtml) {
       advisorElement.outerHTML = nextAdvisorHtml.trim();
@@ -4319,6 +4352,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ? [...(((config || {}).custom_kpis || (config || {}).kpis))]
         : [],
     };
+    delete this._config.show_energy_advisor;
     this._render();
   }
 
@@ -4368,9 +4402,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _onInput(path, value, isCheckbox = false) {
     const next = this._cloneConfig(this._config || {});
+    delete next.show_energy_advisor;
     const parts = path.split(".");
     const lastPart = parts[parts.length - 1];
-    const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals"]);
+    const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals", "advisor_max_suggestions"]);
     const numericProps = new Set(["left", "top", "width", "position", "columns"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
@@ -5265,6 +5300,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
         <label>${this._escape(this._t("editor.timeLabel"))} <input data-path="time_label" value="${this._escape(this._config.time_label || "")}" /></label>
         <label>${this._escape(this._t("editor.viewMode", {}, "Default view"))} <select data-path="view_mode">${viewModeOptions}</select></label>
+        <label>${this._escape(this._t("editor.advisorMaxSuggestions", {}, "Advisor suggestions"))} (${this._escape(Number(this._config.advisor_max_suggestions ?? 8).toFixed(0))})
+          <input type="range" min="1" max="12" step="1" data-path="advisor_max_suggestions" value="${this._escape(this._config.advisor_max_suggestions ?? 8)}" />
+        </label>
         <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
         <label>${this._escape(this._t("editor.customImage"))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
         <label>${this._escape(this._t("editor.customDayImage"))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
@@ -5277,7 +5315,6 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
         <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
-        <label><input type="checkbox" data-path="show_energy_advisor" ${this._config.show_energy_advisor === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyAdvisor", {}, "Show Energy Advisor panel"))}</label>
         <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
         <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
         <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>

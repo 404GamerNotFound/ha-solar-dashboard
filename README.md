@@ -219,7 +219,7 @@ custom_kpis:
 - `view_mode` (string, default: `house`; options: `house`, `advisor`; controls whether the card opens with the house visualization or the Advisor Dashboard)
 - `show_title` (boolean, default: `true`; shows/hides the title)
 - `show_time_label` (boolean, default: `true`; shows/hides the live label)
-- `show_view_selector` (boolean, default: `true`; shows/hides the House / Advisor Dashboard selector in the card header)
+- `show_view_selector` (boolean, default: `true`; shows/hides the House View / Advisor Dashboard selector in the card header)
 - `show_house_selector` (boolean, default: `true`)
 - `show_energy_range_selector` (boolean, default: `false`; shows the `Live` / `1h` / `24h` / `1 month` / `1 year` / `Total` selector in the header when enabled)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)

@@ -33,7 +33,7 @@ const ENERGY_RANGE_OPTIONS = [
 ];
 
 const VIEW_MODE_OPTIONS = [
-  { key: "house", labelKey: "view.house", label: "House" },
+  { key: "house", labelKey: "view.house", label: "House View" },
   { key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard" },
 ];
 
@@ -242,7 +242,7 @@ const I18N = {
     "value.remainingChargeTime": "{value} left",
     "value.temperature": "Temp {value}",
     "view.advisor": "Advisor Dashboard",
-    "view.house": "House",
+    "view.house": "House View",
     "weather.clear": "Clear",
     "weather.clear-night": "Clear",
     "weather.cloudy": "Cloudy",
@@ -467,7 +467,7 @@ const I18N = {
     "value.remainingChargeTime": "Noch {value}",
     "value.temperature": "Temp {value}",
     "view.advisor": "Advisor Dashboard",
-    "view.house": "Haus",
+    "view.house": "Hausansicht",
     "weather.clear": "Klar",
     "weather.clear-night": "Klar",
     "weather.cloudy": "Bewölkt",
@@ -3760,12 +3760,19 @@ class HaSolarDashboardCard extends HTMLElement {
   _attachControls() {
     const viewModeSelect = this.shadowRoot.querySelector(".view-mode-select");
     if (viewModeSelect) {
-      viewModeSelect.addEventListener("change", (event) => {
+      const handleViewModeSelect = (event) => {
+        event.stopPropagation();
         const nextViewMode = this._normalizeViewMode(event.target.value);
         if (!nextViewMode || nextViewMode === this._currentViewMode()) return;
         this._selectedViewMode = nextViewMode;
+        viewModeSelect.blur();
         this._renderCardShell(this._layoutState());
+      };
+      ["pointerdown", "mousedown", "click", "touchstart"].forEach((eventName) => {
+        viewModeSelect.addEventListener(eventName, (event) => event.stopPropagation());
       });
+      viewModeSelect.addEventListener("input", handleViewModeSelect);
+      viewModeSelect.addEventListener("change", handleViewModeSelect);
     }
 
     const select = this.shadowRoot.querySelector(".house-select");
@@ -3906,7 +3913,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .badge { display:inline-flex; align-items:center; padding:0 10px; white-space:nowrap; }
         .house-select,.energy-range-select,.view-mode-select { max-width:170px; padding:0 30px 0 10px; }
         .energy-range-select { max-width:110px; }
-        .view-mode-select { max-width:190px; }
+        .view-mode-select { min-width:150px; max-width:220px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
         .image-overlay-wrap { position:absolute; z-index:1; width:10%; transform:translate(-50%,var(--overlay-translate-y,-50%)); transform-origin:center bottom; pointer-events:none; user-select:none; }

@@ -48,7 +48,9 @@ const I18N = {
     "advisor.autarky": "Autarky",
     "advisor.batteryIdle": "Battery is not charging while surplus is exported. Check battery limits or charge mode.",
     "advisor.batteryLow": "Battery is low. Keep an eye on backup reserve and avoid flexible loads if possible.",
+    "advisor.batteryMaxReached": "Battery is at the configured max SoC. Additional PV is likely to be exported.",
     "advisor.batteryNearlyFull": "Battery is nearly full, so additional PV is likely to be exported.",
+    "advisor.batteryReserveDischarging": "Battery is at or below reserve SoC and still discharging. Check min SoC or backup reserve settings.",
     "advisor.batteryStatus": "Battery",
     "advisor.checkSensors": "Check unavailable or missing sensors so the energy balance stays reliable.",
     "advisor.configureConsumption": "Add a house consumption sensor to improve autarky and load analysis.",
@@ -101,6 +103,8 @@ const I18N = {
     "editor.batteryChargeEntity": "Battery charge entity",
     "editor.batteryDischargeEntity": "Battery discharge entity",
     "editor.batteryFlowEntity": "Battery flow entity (+/-)",
+    "editor.batteryMaxSocEntity": "Battery max SoC entity",
+    "editor.batteryMinSocEntity": "Battery min SoC entity",
     "editor.batteryTemperatureEntity": "Battery temperature entity",
     "editor.entity": "Entity",
     "editor.entityPlaceholder": "{label} entity",
@@ -287,7 +291,9 @@ const I18N = {
     "advisor.autarky": "Autarkie",
     "advisor.batteryIdle": "Die Batterie lädt nicht, obwohl Überschuss eingespeist wird. Prüfe Batterielimits oder den Lademodus.",
     "advisor.batteryLow": "Der Batteriestand ist niedrig. Behalte die Reserve im Blick und vermeide flexible Verbraucher, wenn möglich.",
+    "advisor.batteryMaxReached": "Die Batterie ist am konfigurierten Max-SoC. Zusätzlicher PV-Ertrag wird wahrscheinlich eingespeist.",
     "advisor.batteryNearlyFull": "Die Batterie ist fast voll, zusätzlicher PV-Ertrag wird wahrscheinlich eingespeist.",
+    "advisor.batteryReserveDischarging": "Die Batterie ist auf oder unter Reserve-SoC und entlädt weiter. Prüfe Min-SoC oder Backup-Reserve.",
     "advisor.batteryStatus": "Batterie",
     "advisor.checkSensors": "Prüfe nicht verfügbare oder fehlende Sensoren, damit die Energiebilanz zuverlässig bleibt.",
     "advisor.configureConsumption": "Füge einen Hausverbrauchs-Sensor hinzu, um Autarkie und Lastanalyse zu verbessern.",
@@ -340,6 +346,8 @@ const I18N = {
     "editor.batteryChargeEntity": "Batterie-Lade-Entität",
     "editor.batteryDischargeEntity": "Batterie-Entlade-Entität",
     "editor.batteryFlowEntity": "Batteriefluss-Entität (+/-)",
+    "editor.batteryMaxSocEntity": "Batterie-Max-SoC-Entität",
+    "editor.batteryMinSocEntity": "Batterie-Min-SoC-Entität",
     "editor.batteryTemperatureEntity": "Batterie-Temperatur-Entität",
     "editor.entity": "Entität",
     "editor.entityPlaceholder": "{label} Entität",
@@ -1401,6 +1409,8 @@ class HaSolarDashboardCard extends HTMLElement {
         pv_shed_power_forecast_today: "",
         pv_shed_power_peak_today: "",
         battery_level: "sensor.battery_level",
+        battery_min_soc: "",
+        battery_max_soc: "",
         battery_flow_power: "",
         battery_charge_power: "",
         battery_discharge_power: "",
@@ -2199,6 +2209,32 @@ class HaSolarDashboardCard extends HTMLElement {
     return Math.min(100, Math.max(0, value));
   }
 
+  _batteryMinSocEntityId() {
+    const aliases = ["battery_min_soc", "battery_minimum_soc", "battery_reserve_soc", "battery_backup_reserve", "battery_level_min_soc"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _batteryMaxSocEntityId() {
+    const aliases = ["battery_max_soc", "battery_maximum_soc", "battery_target_soc", "battery_soc_limit", "battery_charge_limit", "battery_level_max_soc"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _batteryMinSocPercent() {
+    return this._numericPercentFromEntity(this._batteryMinSocEntityId());
+  }
+
+  _batteryMaxSocPercent() {
+    return this._numericPercentFromEntity(this._batteryMaxSocEntityId());
+  }
+
+  _batteryReserveThreshold() {
+    return this._batteryMinSocPercent() ?? this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
+  }
+
+  _batteryFullThreshold() {
+    return this._batteryMaxSocPercent() ?? 92;
+  }
+
   _parsePowerLimitWatts(rawValue, defaultUnit = "kw") {
     if (rawValue === undefined || rawValue === null || rawValue === "") return undefined;
     if (typeof rawValue === "number") {
@@ -2864,7 +2900,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     if (metric.key === "battery_level") {
       const value = this._metricNumericValue(metric);
-      if (Number.isFinite(value) && value <= this.config.battery_low_threshold) {
+      if (Number.isFinite(value) && value <= this._batteryReserveThreshold()) {
         return { type: "battery-low", label: this._t("warning.batteryLow") };
       }
     }
@@ -3777,6 +3813,10 @@ class HaSolarDashboardCard extends HTMLElement {
     const hasWallbox = ["wallbox_power", "wallbox2_power"].some((key) => Boolean(this.config.entities?.[key]));
     const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", unit: "battery" };
     const batteryPercent = this._batteryPercent(batteryMetric);
+    const batteryMinSocPercent = this._batteryMinSocPercent();
+    const batteryMaxSocPercent = this._batteryMaxSocPercent();
+    const batteryReserveThreshold = this._batteryReserveThreshold();
+    const batteryFullThreshold = this._batteryFullThreshold();
     const batteryFlow = this._batteryFlowInfo();
     const batteryFlowWatts = batteryFlow?.kind === "energy" ? batteryFlow.amount * 1000 : batteryFlow?.amount;
     const batteryChargeWatts = batteryFlow?.direction === "charge" && Number.isFinite(batteryFlowWatts) ? batteryFlowWatts : 0;
@@ -3803,6 +3843,10 @@ class HaSolarDashboardCard extends HTMLElement {
       wallboxes,
       hasWallbox,
       batteryPercent,
+      batteryMinSocPercent,
+      batteryMaxSocPercent,
+      batteryReserveThreshold,
+      batteryFullThreshold,
       batteryFlow,
       batteryChargeWatts,
       batteryDischargeWatts,
@@ -3851,7 +3895,10 @@ class HaSolarDashboardCard extends HTMLElement {
     const surplusThreshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
     const importThreshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
     const highLoadThreshold = this._clampNumber(this.config.advisor_high_load_threshold, 3000, 0, 1000000);
-    const lowBatteryThreshold = this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
+    const lowBatteryThreshold = Number.isFinite(snapshot.batteryReserveThreshold)
+      ? snapshot.batteryReserveThreshold
+      : this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
+    const fullBatteryThreshold = Number.isFinite(snapshot.batteryFullThreshold) ? snapshot.batteryFullThreshold : 92;
 
     if (!snapshot.hasPv) {
       add("setup", 62, this._t("advisor.pv", {}, "PV"), this._t("advisor.configurePvTotal", {}, "Add PV total power or roof/shed PV sensors to improve production analysis."));
@@ -3894,8 +3941,13 @@ class HaSolarDashboardCard extends HTMLElement {
       if (this.config.image_overlays?.heatpump?.enabled === true || this.config.image_overlays?.heatpump?.entity) {
         add("opportunity", 74, this._overlayLabel("heatpump"), this._t("advisor.useHeatPump", {}, "Use heat pump boost or preheat hot water while PV surplus is available."), value);
       }
-      if (Number.isFinite(snapshot.batteryPercent) && snapshot.batteryPercent >= 92) {
-        add("info", 70, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryNearlyFull", {}, "Battery is nearly full, so additional PV is likely to be exported."), `${Math.round(snapshot.batteryPercent)}%`);
+      if (Number.isFinite(snapshot.batteryPercent) && snapshot.batteryPercent >= fullBatteryThreshold - 0.5) {
+        const value = Number.isFinite(snapshot.batteryMaxSocPercent)
+          ? `${Math.round(snapshot.batteryPercent)} / ${Math.round(snapshot.batteryMaxSocPercent)}%`
+          : `${Math.round(snapshot.batteryPercent)}%`;
+        add("info", 70, this._t("advisor.batteryStatus", {}, "Battery"), Number.isFinite(snapshot.batteryMaxSocPercent)
+          ? this._t("advisor.batteryMaxReached", {}, "Battery is at the configured max SoC. Additional PV is likely to be exported.")
+          : this._t("advisor.batteryNearlyFull", {}, "Battery is nearly full, so additional PV is likely to be exported."), value);
       } else if (snapshot.batteryFlow?.direction !== "charge" && (this.config.entities?.battery_flow_power || this.config.entities?.battery_charge_power)) {
         add("info", 64, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryIdle", {}, "Battery is not charging while surplus is exported. Check battery limits or charge mode."));
       }
@@ -3923,7 +3975,13 @@ class HaSolarDashboardCard extends HTMLElement {
     }
 
     if (Number.isFinite(snapshot.batteryPercent) && snapshot.batteryPercent <= lowBatteryThreshold) {
-      add("warning", 78, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryLow", {}, "Battery is low. Keep an eye on backup reserve and avoid flexible loads if possible."), `${Math.round(snapshot.batteryPercent)}%`);
+      const reserveValue = Number.isFinite(snapshot.batteryMinSocPercent)
+        ? `${Math.round(snapshot.batteryPercent)} / ${Math.round(snapshot.batteryMinSocPercent)}%`
+        : `${Math.round(snapshot.batteryPercent)}%`;
+      if (snapshot.batteryFlow?.direction === "discharge") {
+        add("warning", 84, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryReserveDischarging", {}, "Battery is at or below reserve SoC and still discharging. Check min SoC or backup reserve settings."), reserveValue);
+      }
+      add("warning", 78, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryLow", {}, "Battery is low. Keep an eye on backup reserve and avoid flexible loads if possible."), reserveValue);
     }
 
     if (
@@ -3986,10 +4044,18 @@ class HaSolarDashboardCard extends HTMLElement {
           ? `${this._t("advisor.exporting", {}, "Exporting surplus")} ${powerFormatter(snapshot.exportWatts)}`
           : this._t("advisor.selfSufficient", {}, "Self-sufficient")
       : this._t("advisor.unknown", {}, "Unknown");
+    const batteryStatus = Number.isFinite(snapshot.batteryPercent)
+      ? [
+        `${Math.round(snapshot.batteryPercent)}%`,
+        Number.isFinite(snapshot.batteryMinSocPercent) || Number.isFinite(snapshot.batteryMaxSocPercent)
+          ? `(${Number.isFinite(snapshot.batteryMinSocPercent) ? Math.round(snapshot.batteryMinSocPercent) : "—"}-${Number.isFinite(snapshot.batteryMaxSocPercent) ? Math.round(snapshot.batteryMaxSocPercent) : "—"}%)`
+          : "",
+      ].filter(Boolean).join(" ")
+      : this._formatBatteryFlowValue(snapshot.batteryFlow) || this._t("advisor.unknown", {}, "Unknown");
     const metrics = [
       [this._t("advisor.pv", {}, "PV"), this._advisorMetricValue(snapshot.pvWatts, powerFormatter)],
       [this._t("advisor.grid", {}, "Grid"), gridStatus],
-      [this._t("advisor.batteryStatus", {}, "Battery"), Number.isFinite(snapshot.batteryPercent) ? `${Math.round(snapshot.batteryPercent)}%` : this._formatBatteryFlowValue(snapshot.batteryFlow) || this._t("advisor.unknown", {}, "Unknown")],
+      [this._t("advisor.batteryStatus", {}, "Battery"), batteryStatus],
       [this._t("advisor.consumption", {}, "Load"), this._advisorMetricValue(snapshot.loadWatts, powerFormatter)],
       [this._t("advisor.selfConsumption", {}, "Self-use"), this._advisorMetricValue(snapshot.selfConsumptionPercent, percentFormatter)],
       [this._t("advisor.autarky", {}, "Autarky"), this._advisorMetricValue(snapshot.autarkyPercent, percentFormatter)],
@@ -4710,6 +4776,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       battery_flow_power: this._t("editor.batteryFlowEntity", {}, "Battery flow entity (+/-)"),
       battery_charge_power: this._t("editor.batteryChargeEntity", {}, "Battery charge entity"),
       battery_discharge_power: this._t("editor.batteryDischargeEntity", {}, "Battery discharge entity"),
+      battery_min_soc: this._t("editor.batteryMinSocEntity", {}, "Battery min SoC entity"),
+      battery_max_soc: this._t("editor.batteryMaxSocEntity", {}, "Battery max SoC entity"),
       battery_temperature: this._t("editor.batteryTemperatureEntity", {}, "Battery temperature entity"),
       import_power: this._t("editor.importPowerEntity", {}, "Import entity"),
       export_power: this._t("editor.exportPowerEntity", {}, "Export entity"),
@@ -4761,7 +4829,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       { path: "entities.pv_roof_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"]], include: [pvTerms, ...powerTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", "forecast", "prognose", "today", "heute", "daily"], threshold: 70 },
       { path: "entities.pv_total_power_today_energy", ...energyTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["today", "heute", "daily", "day", "tag"]], include: [pvTerms, { terms: ["today", "heute", "daily", "day", "tag"], weight: 30 }, ...energyTarget.include], exclude: ["forecast", "prognose"], threshold: 62 },
       { path: "energy_entities.pv_total_power.entity", ...energyTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"]], block: ["power", "leistung", "today", "heute", "daily", "day", "tag", "forecast", "prognose"], include: [pvTerms, { terms: ["total", "gesamt", "lifetime", "counter", "zaehler"], weight: 22 }, ...energyTarget.include], exclude: ["today", "heute", "daily", "forecast", "prognose"], threshold: 58 },
-      { path: "entities.battery_level", domains: ["sensor"], deviceClasses: ["battery"], units: ["%"], required: [["battery", "batterie", "speicher", "akku"], ["soc", "level", "stand", "charge", "ladestand"]], include: [batteryTerms, { terms: ["soc", "level", "stand", "charge", "ladestand"], weight: 34 }], exclude: ["power", "leistung", "temp", "temperature", "temperatur", "flow", "fluss"], threshold: 58 },
+      { path: "entities.battery_level", domains: ["sensor"], deviceClasses: ["battery"], units: ["%"], required: [["battery", "batterie", "speicher", "akku"], ["soc", "level", "stand", "charge", "ladestand"]], include: [batteryTerms, { terms: ["soc", "level", "stand", "charge", "ladestand"], weight: 34 }], exclude: ["power", "leistung", "temp", "temperature", "temperatur", "flow", "fluss", "min", "minimum", "max", "maximum", "target", "ziel", "limit", "reserve"], threshold: 58 },
+      { path: "entities.battery_min_soc", domains: ["sensor", "number", "input_number"], units: ["%"], required: [["battery", "batterie", "speicher", "akku"], ["min", "minimum", "reserve", "backup", "untergrenze", "reserve"]], include: [batteryTerms, { terms: ["min", "minimum", "reserve", "backup", "untergrenze", "soc"], weight: 34 }], exclude: ["power", "leistung", "temp", "temperature", "fluss", "flow", "max", "maximum", "target", "ziel"], threshold: 58 },
+      { path: "entities.battery_max_soc", domains: ["sensor", "number", "input_number"], units: ["%"], required: [["battery", "batterie", "speicher", "akku"], ["max", "maximum", "target", "ziel", "limit", "obergrenze"]], include: [batteryTerms, { terms: ["max", "maximum", "target", "ziel", "limit", "obergrenze", "soc"], weight: 34 }], exclude: ["power", "leistung", "temp", "temperature", "fluss", "flow", "min", "minimum", "reserve", "backup"], threshold: 58 },
       { path: "entities.battery_flow_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"]], include: [batteryTerms, { terms: ["power", "leistung", "flow", "fluss", "charge discharge", "laden entladen"], weight: 26 }], exclude: ["soc", "level", "stand", "temperature", "temperatur", "temp"], threshold: 58 },
       { path: "entities.battery_charge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["charge", "charging", "laden", "ladeleistung"]], include: [batteryTerms, { terms: ["charge", "charging", "laden", "ladeleistung"], weight: 30 }], exclude: ["discharge", "entladen", "entlade", "soc", "temperature", "temperatur"], threshold: 62 },
       { path: "entities.battery_discharge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["discharge", "discharging", "entladen", "entladeleistung"]], include: [batteryTerms, { terms: ["discharge", "discharging", "entladen", "entladeleistung"], weight: 30 }], exclude: ["charge", "charging", "laden", "ladeleistung", "soc", "temperature", "temperatur"], threshold: 62 },
@@ -5210,6 +5280,12 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       </label>
       <label>${this._escape(this._t("editor.batteryDischargeEntity"))}
         <input data-path="entities.battery_discharge_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_discharge_power" value="${this._escape(this._config.entities?.battery_discharge_power || "")}" autocomplete="off" />
+      </label>
+      <label>${this._escape(this._t("editor.batteryMinSocEntity", {}, "Battery min SoC entity"))}
+        <input data-path="entities.battery_min_soc" list="ha-solar-dashboard-entities" placeholder="number.battery_min_soc" value="${this._escape(this._config.entities?.battery_min_soc || "")}" autocomplete="off" />
+      </label>
+      <label>${this._escape(this._t("editor.batteryMaxSocEntity", {}, "Battery max SoC entity"))}
+        <input data-path="entities.battery_max_soc" list="ha-solar-dashboard-entities" placeholder="number.battery_max_soc" value="${this._escape(this._config.entities?.battery_max_soc || "")}" autocomplete="off" />
       </label>
       <label>${this._escape(this._t("editor.batteryTemperatureEntity"))}
         <input data-path="entities.battery_temperature" list="ha-solar-dashboard-entities" placeholder="sensor.battery_temperature" value="${this._escape(this._config.entities?.battery_temperature || "")}" autocomplete="off" />

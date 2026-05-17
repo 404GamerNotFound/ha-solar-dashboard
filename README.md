@@ -35,6 +35,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
 - Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
 - Optional battery flow badge on the image and battery summary tile: green down arrow for charging/incoming, red up arrow for discharging/outgoing; the badge follows the entity unit, so power sensors show `W`/`kW` and energy sensors show `kWh`
+- Optional battery min/max SoC entities feed the Advisor Dashboard so reserve and target limits are respected
 - Optional battery temperature badge on the battery HUD and tile
 - Animated power flow overlay between the existing image elements, using the configured HUD positions without changing the image files
 - Optional smoke and heat pump image overlays with per-element enable, position, size, and heat pump orientation controls
@@ -96,6 +97,8 @@ entities:
   # Option B: separate entities; used when the signed entity is empty
   battery_charge_power: sensor.batterie_ladeleistung
   battery_discharge_power: sensor.batterie_entladeleistung
+  battery_min_soc: number.batterie_min_soc
+  battery_max_soc: number.batterie_max_soc
   battery_temperature: sensor.batterie_temperatur
   inverter_power: sensor.wechselrichter_leistung
   wallbox_power: sensor.wallbox_leistung
@@ -259,6 +262,8 @@ custom_kpis:
 - `entities.battery_level` (entity id)
 - `entities.battery_flow_power` (entity id, optional; signed battery power or energy shown on the battery HUD, positive values mean charging/incoming and negative values mean discharging/outgoing; the badge follows the entity unit)
 - `entities.battery_charge_power` / `entities.battery_discharge_power` (entity ids, optional; separate incoming/outgoing battery power or energy values, used when `battery_flow_power` is not configured; the badge follows the entity unit)
+- `entities.battery_min_soc` (entity id, optional; battery minimum/reserve SoC used by the Advisor Dashboard and low-battery warning; falls back to `battery_low_threshold`)
+- `entities.battery_max_soc` (entity id, optional; battery maximum/target SoC used by the Advisor Dashboard so exported surplus is treated as expected when the battery is already at its target)
 - `entities.battery_temperature` (entity id, optional; battery temperature badge shown on the battery HUD and tile)
 - `entities.inverter_power` (entity id)
 - `entities.wallbox_power` (entity id)

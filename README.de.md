@@ -23,12 +23,12 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Dynamische Farben und Glow-Zustände je Tile über konfigurierbare Grenzwerte, z. B. grün bei hoher PV-Leistung oder orange bei Netzbezug
 - Batterie-Ladezustand als kompakter Balken in Batterie-HUD und Batterie-Kachel
 - Dezente Batteriefluss-Anzeige im Bild und in der Batterie-Kachel mit grünem Pfeil nach unten beim Laden/Eingang und rotem Pfeil nach oben beim Entladen/Ausgang; die Anzeige folgt der Entitätseinheit, also `W`/`kW` bei Leistungssensoren und `kWh` bei Energiesensoren
-- Optionale Batterie-Min-/Max-SoC-Entitäten fließen ins Advisor Dashboard ein, damit Reserve und Ladeziel berücksichtigt werden
+- Optionale Batterie-Min-/Max-SoC-Entitäten fließen ins Advisor Dashboard ein, damit Reserve und Ladeziel berücksichtigt werden; zu lange volle Hausbatterien zwischen 90 und 100% werden hervorgehoben
 - Animierte Stromfluss-Linien zwischen den vorhandenen Bildelementen, basierend auf den konfigurierten HUD-Positionen ohne Anpassung der Bilddateien
 - Optionale Gas- und Wärmepumpen-Overlays mit eigener Aktivierung, frei definierbarem Label, Entität, Position, Größe und Ausrichtung der Wärmepumpe; Gas kann einen Zählerverbrauch für 30 Minuten, 1 Stunde oder 24 Stunden anzeigen
 - PV, Wechselrichter und Wallbox können Auslastungsbalken anhand konfigurierbarer kW/kWp-Maximalwerte anzeigen
 - Optionale Import-/Export-Box im Bild, standardmäßig unten rechts beim Stromkabel positioniert, plus Netzstatus-Kachel mit Bezug, Einspeisung oder Autarkie; unterstützt einen Vorzeichen-Sensor oder getrennte Bezugs-/Einspeise-Sensoren
-- Optionale Auto-Entitäten für Max-/Ziel-SoC, verbunden/eingesteckt und Laden aktiviert steuern die Advisor-Empfehlungen, damit kein Ladevorschlag erscheint, wenn das Auto schon am Ziel-SoC ist
+- Optionale Auto-Entitäten für Max-/Ziel-SoC, verbunden/eingesteckt und Laden aktiviert steuern die Advisor-Empfehlungen, damit kein Ladevorschlag erscheint, wenn das Auto schon am Ziel-SoC ist; länger hohe Auto-SoC-Werte über 80%/90% lösen priorisierte Batteriepflege-Hinweise aus
 - Tooltips pro Wert mit Entität, Rohwert, formatiertem Wert und Aktualisierungszeit
 - Klick auf entity-basierte Boxen und Kacheln öffnet ein 24/48-Stunden-Verlaufsdiagramm aus Home-Assistant-History-Daten
 - Eigenes Advisor Dashboard mit Live-Status, PV-/Netz-/Last-/Batterie-Kennzahlen, eigenen KPI-Werten, Autarkie-/Eigenverbrauchsschätzung, Sensor-Diagnosen und mehreren priorisierten Empfehlungen bei Überschuss, Netzbezug, Batteriestand, Wallbox-Laden, Wärmepumpe, flexiblen Haushaltsverbrauchern und auffälliger PV-/Lastsituation

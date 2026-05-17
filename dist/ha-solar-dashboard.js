@@ -47,6 +47,7 @@ const I18N = {
     "advisor.action": "Action",
     "advisor.autarky": "Autarky",
     "advisor.batteryIdle": "Battery is not charging while surplus is exported. Check battery limits or charge mode.",
+    "advisor.batteryHighSocLong": "House battery has been between 90 and 100% for more than 120 minutes. Batteries should not stay that full for too long.",
     "advisor.batteryLow": "Battery is low. Keep an eye on backup reserve and avoid flexible loads if possible.",
     "advisor.batteryMaxReached": "Battery is at the configured max SoC. Additional PV is likely to be exported.",
     "advisor.batteryNearlyFull": "Battery is nearly full, so additional PV is likely to be exported.",
@@ -61,6 +62,8 @@ const I18N = {
     "advisor.evChargingPv": "EV charging is currently covered well by PV or stored energy.",
     "advisor.evEnableCharging": "Charging is currently disabled. Enable charging if you want to use the PV surplus.",
     "advisor.evPlugIn": "Plug in the vehicle to use PV surplus for charging.",
+    "advisor.evSocAbove80Long": "Vehicle SoC is above 80% for more than 120 minutes. This can stress the battery if it stays there too long.",
+    "advisor.evSocAbove90Long": "Vehicle SoC is above 90% for more than 60 minutes. Stop charging or lower the target SoC if the car will stay parked.",
     "advisor.evTargetReached": "Vehicle is already at the configured target SoC. Use surplus for another flexible load.",
     "advisor.evTargetReachedGrid": "Vehicle is at target SoC while the charger is still drawing power. Check the charge limit or stop charging.",
     "advisor.exporting": "Exporting surplus",
@@ -290,6 +293,7 @@ const I18N = {
     "advisor.action": "Aktion",
     "advisor.autarky": "Autarkie",
     "advisor.batteryIdle": "Die Batterie lädt nicht, obwohl Überschuss eingespeist wird. Prüfe Batterielimits oder den Lademodus.",
+    "advisor.batteryHighSocLong": "Die Hausbatterie ist seit über 120 Minuten zwischen 90 und 100%. Batterien sollten nicht zu lange so voll bleiben.",
     "advisor.batteryLow": "Der Batteriestand ist niedrig. Behalte die Reserve im Blick und vermeide flexible Verbraucher, wenn möglich.",
     "advisor.batteryMaxReached": "Die Batterie ist am konfigurierten Max-SoC. Zusätzlicher PV-Ertrag wird wahrscheinlich eingespeist.",
     "advisor.batteryNearlyFull": "Die Batterie ist fast voll, zusätzlicher PV-Ertrag wird wahrscheinlich eingespeist.",
@@ -304,6 +308,8 @@ const I18N = {
     "advisor.evChargingPv": "Die Wallbox wird aktuell gut durch PV oder gespeicherte Energie gedeckt.",
     "advisor.evEnableCharging": "Das Laden ist aktuell deaktiviert. Aktiviere das Laden, wenn du den PV-Überschuss nutzen möchtest.",
     "advisor.evPlugIn": "Stecke das Auto ein, um den PV-Überschuss zum Laden zu nutzen.",
+    "advisor.evSocAbove80Long": "Das Auto ist seit über 120 Minuten über 80% SoC. Das kann der Batterie schaden, wenn es länger so bleibt.",
+    "advisor.evSocAbove90Long": "Das Auto ist seit über 60 Minuten über 90% SoC. Stoppe das Laden oder senke das Ziel-SoC, wenn es länger steht.",
     "advisor.evTargetReached": "Das Auto ist bereits am konfigurierten Ziel-SoC. Nutze den Überschuss für einen anderen flexiblen Verbraucher.",
     "advisor.evTargetReachedGrid": "Das Auto ist am Ziel-SoC, während die Wallbox weiter Leistung zieht. Prüfe das Ladelimit oder stoppe das Laden.",
     "advisor.exporting": "Einspeisung",
@@ -1329,7 +1335,10 @@ function normalizeHouse(value) {
 class HaSolarDashboardCard extends HTMLElement {
   connectedCallback() {
     this._isCardConnected = true;
-    if (this.config && this.shadowRoot) this._updateReadings();
+    if (this.config && this.shadowRoot) {
+      this._updateReadings();
+      this._syncAdvisorRefreshTimer(this._currentViewMode() === "advisor");
+    }
   }
 
   disconnectedCallback() {
@@ -1337,6 +1346,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
+    this._stopAdvisorRefreshTimer();
   }
 
   static getConfigElement() {
@@ -1447,6 +1457,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
+    this._advisorConditionSince = new Map();
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
     const energyRange = this._normalizeEnergyRange(config.energy_range) || "live";
@@ -1695,6 +1706,52 @@ class HaSolarDashboardCard extends HTMLElement {
   _getEntityLastUpdated(entityId) {
     const entity = this._getEntity(entityId);
     return entity?.last_updated || entity?.last_changed;
+  }
+
+  _getEntityLastChangedMs(entityId) {
+    const rawTimestamp = this._getEntity(entityId)?.last_changed;
+    const timestamp = Date.parse(rawTimestamp || "");
+    return Number.isFinite(timestamp) ? timestamp : undefined;
+  }
+
+  _trackedConditionMinutes(key, active, sinceHintMs) {
+    if (!this._advisorConditionSince) this._advisorConditionSince = new Map();
+    if (!key || !active) {
+      if (key) this._advisorConditionSince.delete(key);
+      return undefined;
+    }
+
+    const now = Date.now();
+    const hintedSince = Number.isFinite(sinceHintMs) && sinceHintMs > 0 && sinceHintMs <= now
+      ? sinceHintMs
+      : undefined;
+    const existingSince = this._advisorConditionSince.get(key);
+    const since = Number.isFinite(existingSince)
+      ? Math.min(existingSince, hintedSince ?? existingSince)
+      : hintedSince ?? now;
+    this._advisorConditionSince.set(key, since);
+    return Math.max(0, (now - since) / 60000);
+  }
+
+  _stopAdvisorRefreshTimer() {
+    if (!this._advisorRefreshTimer) return;
+    window.clearInterval(this._advisorRefreshTimer);
+    this._advisorRefreshTimer = undefined;
+  }
+
+  _syncAdvisorRefreshTimer(active) {
+    if (!active || !this._isCardConnected) {
+      this._stopAdvisorRefreshTimer();
+      return;
+    }
+    if (this._advisorRefreshTimer) return;
+    this._advisorRefreshTimer = window.setInterval(() => {
+      if (!this._isCardConnected || this._currentViewMode() !== "advisor") {
+        this._stopAdvisorRefreshTimer();
+        return;
+      }
+      this._updateReadings();
+    }, 60000);
   }
 
   _gridSignedEntityId() {
@@ -2207,6 +2264,10 @@ class HaSolarDashboardCard extends HTMLElement {
     const value = this._metricNumericValue(metric);
     if (!Number.isFinite(value)) return undefined;
     return Math.min(100, Math.max(0, value));
+  }
+
+  _batterySocEntityId() {
+    return this.config.entities?.battery_level || "";
   }
 
   _batteryMinSocEntityId() {
@@ -3772,17 +3833,34 @@ class HaSolarDashboardCard extends HTMLElement {
       const metric = TILE_METRICS.find((item) => item.key === key) || { key, label: key, unit: "power" };
       const entityId = this.config.entities?.[key] || "";
       const watts = this._positiveWattsForKey(key);
-      const socPercent = this._wallboxSocPercent(metric);
+      const socEntityId = this._wallboxSocEntityId(metric);
+      const maxSocEntityId = this._wallboxMaxSocEntityId(metric);
+      const socPercent = this._numericPercentFromEntity(socEntityId);
       const maxSocPercent = this._wallboxMaxSocPercent(metric);
+      const socLastChangedMs = this._getEntityLastChangedMs(socEntityId);
+      const socAbove80Minutes = this._trackedConditionMinutes(
+        `${key}:soc-above-80`,
+        Number.isFinite(socPercent) && socPercent > 80,
+        socLastChangedMs,
+      );
+      const socAbove90Minutes = this._trackedConditionMinutes(
+        `${key}:soc-above-90`,
+        Number.isFinite(socPercent) && socPercent > 90,
+        socLastChangedMs,
+      );
       return {
         key,
         metric,
         entityId,
+        socEntityId,
+        maxSocEntityId,
         hasPowerEntity: Boolean(entityId),
         label: this._metricLabel(metric, this._currentVariant),
         watts: Number.isFinite(watts) ? watts : 0,
         socPercent,
         maxSocPercent,
+        socAbove80Minutes,
+        socAbove90Minutes,
         targetReached: Number.isFinite(socPercent) && Number.isFinite(maxSocPercent) && socPercent >= maxSocPercent - 0.5,
         connected: this._wallboxConnectedState(metric),
         chargingEnabled: this._wallboxChargingEnabledState(metric),
@@ -3813,10 +3891,16 @@ class HaSolarDashboardCard extends HTMLElement {
     const hasWallbox = ["wallbox_power", "wallbox2_power"].some((key) => Boolean(this.config.entities?.[key]));
     const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", unit: "battery" };
     const batteryPercent = this._batteryPercent(batteryMetric);
+    const batterySocEntityId = this._batterySocEntityId();
     const batteryMinSocPercent = this._batteryMinSocPercent();
     const batteryMaxSocPercent = this._batteryMaxSocPercent();
     const batteryReserveThreshold = this._batteryReserveThreshold();
     const batteryFullThreshold = this._batteryFullThreshold();
+    const batteryHighSocMinutes = this._trackedConditionMinutes(
+      "battery:soc-90-100",
+      Number.isFinite(batteryPercent) && batteryPercent >= 90 && batteryPercent <= 100,
+      this._getEntityLastChangedMs(batterySocEntityId),
+    );
     const batteryFlow = this._batteryFlowInfo();
     const batteryFlowWatts = batteryFlow?.kind === "energy" ? batteryFlow.amount * 1000 : batteryFlow?.amount;
     const batteryChargeWatts = batteryFlow?.direction === "charge" && Number.isFinite(batteryFlowWatts) ? batteryFlowWatts : 0;
@@ -3843,10 +3927,12 @@ class HaSolarDashboardCard extends HTMLElement {
       wallboxes,
       hasWallbox,
       batteryPercent,
+      batterySocEntityId,
       batteryMinSocPercent,
       batteryMaxSocPercent,
       batteryReserveThreshold,
       batteryFullThreshold,
+      batteryHighSocMinutes,
       batteryFlow,
       batteryChargeWatts,
       batteryDischargeWatts,
@@ -3912,6 +3998,22 @@ class HaSolarDashboardCard extends HTMLElement {
 
     if (items.some((item) => item.type === "warning")) {
       add("warning", 95, this._t("advisor.status", {}, "Status"), this._t("advisor.checkSensors", {}, "Check unavailable or missing sensors so the energy balance stays reliable."));
+    }
+
+    (snapshot.wallboxes || []).forEach((wallbox) => {
+      if (!Number.isFinite(wallbox.socPercent)) return;
+      const value90 = `${Math.round(wallbox.socPercent)}% - ${this._formatDurationMinutes(wallbox.socAbove90Minutes)}`;
+      const value80 = `${Math.round(wallbox.socPercent)}% - ${this._formatDurationMinutes(wallbox.socAbove80Minutes)}`;
+      if (Number.isFinite(wallbox.socAbove90Minutes) && wallbox.socAbove90Minutes >= 60) {
+        add("critical", 97, wallbox.label, this._t("advisor.evSocAbove90Long", {}, "Vehicle SoC is above 90% for more than 60 minutes. Stop charging or lower the target SoC if the car will stay parked."), value90);
+      } else if (Number.isFinite(wallbox.socAbove80Minutes) && wallbox.socAbove80Minutes >= 120) {
+        add("info", 89, wallbox.label, this._t("advisor.evSocAbove80Long", {}, "Vehicle SoC is above 80% for more than 120 minutes. This can stress the battery if it stays there too long."), value80);
+      }
+    });
+
+    if (Number.isFinite(snapshot.batteryHighSocMinutes) && snapshot.batteryHighSocMinutes >= 120) {
+      const value = `${Math.round(snapshot.batteryPercent)}% - ${this._formatDurationMinutes(snapshot.batteryHighSocMinutes)}`;
+      add("info", 87, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryHighSocLong", {}, "House battery has been between 90 and 100% for more than 120 minutes. Batteries should not stay that full for too long."), value);
     }
 
     if (Number.isFinite(snapshot.exportWatts) && snapshot.exportWatts > surplusThreshold) {
@@ -4012,9 +4114,11 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _advisorStatus(snapshot = this._advisorSnapshot(), items = this._advisorItems(snapshot)) {
     const hasDiagnosticWarning = items.some((item) => item.diagnostic === true);
+    const hasCritical = items.some((item) => item.type === "critical");
     const hasSetup = items.some((item) => item.type === "setup");
     const surplusThreshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
     const importThreshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
+    if (hasCritical) return { type: "critical", label: this._t("advisor.headlineWarning", {}, "Energy setup needs attention") };
     if (hasDiagnosticWarning) return { type: "warning", label: this._t("advisor.headlineWarning", {}, "Energy setup needs attention") };
     if (Number.isFinite(snapshot.exportWatts) && snapshot.exportWatts > surplusThreshold) {
       return { type: "opportunity", label: this._t("advisor.headlineExport", {}, "PV surplus is available") };
@@ -4333,6 +4437,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; position:relative; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; cursor:pointer; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
         .advisor { --advisor-accent:#93c5fd; display:grid; gap:10px; margin-top:12px; padding:12px; border-radius:8px; border:1px solid color-mix(in srgb,var(--advisor-accent) 36%,rgba(255,255,255,.1)); background:linear-gradient(135deg,rgba(15,23,42,.76),rgba(8,13,28,.68)); box-shadow:inset 3px 0 0 var(--advisor-accent),0 10px 24px rgba(0,0,0,.18); }
         .advisor-dashboard { margin-top:0; min-height:320px; align-content:start; }
+        .advisor-critical { --advisor-accent:#f87171; }
         .advisor-warning { --advisor-accent:#fb923c; }
         .advisor-opportunity { --advisor-accent:#34d399; }
         .advisor-success { --advisor-accent:#34d399; }
@@ -4349,6 +4454,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-items-head strong { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:rgba(255,255,255,.08); color:var(--text-main); font-size:.7rem; line-height:1.1; text-transform:none; }
         .advisor-items { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; min-width:0; }
         .advisor-item { --item-accent:#93c5fd; display:grid; gap:4px; min-width:0; padding:9px; border-radius:8px; background:rgba(255,255,255,.055); border:1px solid color-mix(in srgb,var(--item-accent) 28%,rgba(255,255,255,.08)); box-shadow:inset 2px 0 0 var(--item-accent); }
+        .advisor-item.advisor-critical { --item-accent:#f87171; }
         .advisor-item.advisor-warning { --item-accent:#fb923c; }
         .advisor-item.advisor-opportunity { --item-accent:#34d399; }
         .advisor-item.advisor-success { --item-accent:#34d399; }
@@ -4396,6 +4502,7 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
 
     this._attachControls();
+    this._syncAdvisorRefreshTimer(activeView === "advisor");
   }
 
   _updateReadings() {

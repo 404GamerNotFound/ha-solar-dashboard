@@ -35,7 +35,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
 - Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
 - Optional battery flow badge on the image and battery summary tile: green down arrow for charging/incoming, red up arrow for discharging/outgoing; the badge follows the entity unit, so power sensors show `W`/`kW` and energy sensors show `kWh`
-- Optional battery min/max SoC entities feed the Advisor Dashboard so reserve and target limits are respected
+- Optional battery min/max SoC entities feed the Advisor Dashboard so reserve and target limits are respected; long high-SoC states are highlighted when the house battery stays between 90 and 100%
 - Optional battery temperature badge on the battery HUD and tile
 - Animated power flow overlay between the existing image elements, using the configured HUD positions without changing the image files
 - Optional smoke and heat pump image overlays with per-element enable, position, size, and heat pump orientation controls
@@ -43,7 +43,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Optional second EV charger entity, disabled by default and positioned automatically next to the first EV charger
 - Optional EV charger phase badges from separate phase entities (`Auto`, `1`, `2`, or `3`)
 - Optional EV vehicle SoC badges shown next to the EV charger phase badges
-- Optional EV max/target SoC, connected, and charging-enabled entities feed the Advisor Dashboard so surplus charging recommendations respect the vehicle's real charge state
+- Optional EV max/target SoC, connected, and charging-enabled entities feed the Advisor Dashboard so surplus charging recommendations respect the vehicle's real charge state; long EV SoC states above 80%/90% trigger prioritized battery-care warnings
 - Optional remaining EV charge time badge, shown only while the EV charger is actively charging
 - Optional import/export HUD box, positioned near the lower-right power cable by default, plus a grid status tile showing import, export, or self-sufficient operation
 - Hover tooltips on values show the linked entity, raw state, formatted value, and update time

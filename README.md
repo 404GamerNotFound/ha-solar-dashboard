@@ -37,6 +37,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Optional battery flow badge on the image and battery summary tile: green down arrow for charging/incoming, red up arrow for discharging/outgoing; the badge follows the entity unit, so power sensors show `W`/`kW` and energy sensors show `kWh`
 - Optional battery min/max SoC entities feed the Advisor Dashboard so reserve and target limits are respected; long high-SoC states are highlighted when the house battery stays between 90 and 100%
 - Optional battery temperature badge on the battery HUD and tile
+- Advisor diagnostics for stale sensors, high grid import despite a full battery, battery temperature limits, very deep SoC, frequent daily battery cycles, and simultaneous split import/export readings
 - Animated power flow overlay between the existing image elements, using the configured HUD positions without changing the image files
 - Optional smoke and heat pump image overlays with per-element enable, position, size, and heat pump orientation controls
 - PV, inverter, and EV charger values can show utilization bars based on configurable kW/kWp maxima
@@ -100,6 +101,7 @@ entities:
   battery_min_soc: number.batterie_min_soc
   battery_max_soc: number.batterie_max_soc
   battery_temperature: sensor.batterie_temperatur
+  battery_cycles_today: sensor.batterie_zyklen_heute
   inverter_power: sensor.wechselrichter_leistung
   wallbox_power: sensor.wallbox_leistung
   wallbox_phase: sensor.wallbox_phasen
@@ -174,6 +176,8 @@ grid_neutral_threshold: 25
 advisor_surplus_threshold: 250
 advisor_import_threshold: 250
 advisor_high_load_threshold: 3000
+advisor_stale_sensor_warning_minutes: 30
+advisor_stale_sensor_critical_minutes: 120
 battery_low_threshold: 20
 chart_hours: 24
 max_power_kw:
@@ -265,6 +269,7 @@ custom_kpis:
 - `entities.battery_min_soc` (entity id, optional; battery minimum/reserve SoC used by the Advisor Dashboard and low-battery warning; falls back to `battery_low_threshold`)
 - `entities.battery_max_soc` (entity id, optional; battery maximum/target SoC used by the Advisor Dashboard so exported surplus is treated as expected when the battery is already at its target)
 - `entities.battery_temperature` (entity id, optional; battery temperature badge shown on the battery HUD and tile)
+- `entities.battery_cycles_today` (entity id, optional; daily/full cycles used by the Advisor Dashboard to warn about frequent battery cycling)
 - `entities.inverter_power` (entity id)
 - `entities.wallbox_power` (entity id)
 - `entities.wallbox_phase` (entity id, optional; state can be `Auto`, `1`, `2`, or `3` and is shown as a compact phase badge on the Wallbox HUD and tile)
@@ -292,6 +297,8 @@ custom_kpis:
 - `advisor_import_threshold` (number, default: `250`; watts of import before the Energy Advisor highlights grid draw)
 - `advisor_high_load_threshold` (number, default: `3000`; watts of load before the Energy Advisor calls out unusually high consumption)
 - `advisor_max_suggestions` (number, default: `8`; maximum number of prioritized recommendations shown in the Advisor Dashboard, clamped from `1` to `12`)
+- `advisor_stale_sensor_warning_minutes` (number, default: `30`; minutes without an entity update before the Advisor shows a yellow stale-sensor diagnostic)
+- `advisor_stale_sensor_critical_minutes` (number, default: `120`; minutes without an entity update before the Advisor escalates the stale-sensor diagnostic to red)
 - `battery_low_threshold` (number, default: `20`; battery percentage at or below which the battery tile is highlighted as a warning)
 - `chart_hours` (number, default: `24`; initial range for the click-to-open history chart, supported values: `24` or `48`)
 - `max_power_kw.<entity_key>` (number/string, optional; enables a utilization bar for power metrics based on max kW/kWp, for example `max_power_kw.wallbox_power: 11`)

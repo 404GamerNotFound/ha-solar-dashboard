@@ -4664,7 +4664,13 @@ class HaSolarDashboardCard extends HTMLElement {
       });
     });
 
+    this._attachAdvisorControls();
+  }
+
+  _attachAdvisorControls() {
     this.shadowRoot.querySelectorAll("[data-advisor-item-key]").forEach((element) => {
+      if (element.dataset.advisorBound === "true") return;
+      element.dataset.advisorBound = "true";
       const toggle = (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -5029,13 +5035,17 @@ class HaSolarDashboardCard extends HTMLElement {
     const activeView = this._currentViewMode();
     const nextAdvisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
     const advisorElement = this.shadowRoot.querySelector("[data-energy-advisor]");
+    let advisorChanged = false;
     if (advisorElement && nextAdvisorHtml) {
       advisorElement.outerHTML = nextAdvisorHtml.trim();
+      advisorChanged = true;
     } else if (advisorElement && !nextAdvisorHtml) {
       advisorElement.remove();
     } else if (!advisorElement && nextAdvisorHtml) {
       this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextAdvisorHtml);
+      advisorChanged = true;
     }
+    if (advisorChanged) this._attachAdvisorControls();
   }
 
   renderCard() {

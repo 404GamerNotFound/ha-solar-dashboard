@@ -4050,20 +4050,36 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _advisorSensorCandidates() {
     const candidates = [];
-    const add = (entityId, label = "") => {
+    const add = (entityId, label = "", dynamic = false) => {
       if (!entityId || typeof entityId !== "string") return;
+      if (!dynamic) return;
       candidates.push({ entityId, label: label || this._entityDisplayName(entityId) });
     };
 
-    Object.entries(this.config.entities || {}).forEach(([key, entityId]) => add(entityId, this._entityLabelForPath?.(`entities.${key}`) || key));
-    Object.entries(this.config.energy_entities || {}).forEach(([key, config]) => {
-      const entityId = typeof config === "string" ? config : config?.entity;
-      add(entityId, this._entityLabelForPath?.(`energy_entities.${key}.entity`) || key);
+    const dynamicEntityKeys = new Set([
+      "pv_roof_power",
+      "pv_shed_power",
+      "pv_total_power",
+      "house_consumption_power",
+      "battery_level",
+      "battery_flow_power",
+      "battery_charge_power",
+      "battery_discharge_power",
+      "battery_temperature",
+      "inverter_power",
+      "wallbox_power",
+      "wallbox2_power",
+      "import_export_power",
+      "import_power",
+      "export_power",
+    ]);
+
+    Object.entries(this.config.entities || {}).forEach(([key, entityId]) => {
+      add(entityId, this._entityLabelForPath?.(`entities.${key}`) || key, dynamicEntityKeys.has(key));
     });
-    Object.entries(this.config.image_overlays || {}).forEach(([key, config]) => add(config?.entity, this._overlayLabel(key)));
-    (this.config.custom_kpis || []).forEach((kpi) => add(kpi.entity, kpi.label));
-    add(this.config.weather_entity, this._t("editor.weatherEntity", {}, "Weather entity"));
-    add(this.config.daylight_entity, "Daylight");
+    Object.entries(this.config.image_overlays || {}).forEach(([key, config]) => {
+      add(config?.entity, this._overlayLabel(key), key === "heatpump");
+    });
 
     const seen = new Set();
     return candidates

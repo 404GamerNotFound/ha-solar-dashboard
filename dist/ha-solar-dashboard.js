@@ -61,6 +61,10 @@ const I18N = {
     "advisor.configureGrid": "Add grid import/export sensors for better advice about surplus and grid draw.",
     "advisor.configurePvTotal": "Add PV total power or roof/shed PV sensors to improve production analysis.",
     "advisor.consumption": "Load",
+    "advisor.detailEntities": "Entities",
+    "advisor.detailValues": "Values",
+    "advisor.detailWhy": "Why this appears",
+    "advisor.detailsToggle": "Show details",
     "advisor.evChargingGrid": "EV charging is active while importing from the grid. Reduce charging power or wait for more PV if this is not intended.",
     "advisor.evChargingPv": "EV charging is currently covered well by PV or stored energy.",
     "advisor.evEnableCharging": "Charging is currently disabled. Enable charging if you want to use the PV surplus.",
@@ -314,6 +318,10 @@ const I18N = {
     "advisor.configureGrid": "Füge Import-/Export-Sensoren hinzu, damit Überschuss und Netzbezug besser bewertet werden können.",
     "advisor.configurePvTotal": "Füge PV-Gesamtleistung oder Dach-/Schuppen-PV-Sensoren hinzu, um die Erzeugungsanalyse zu verbessern.",
     "advisor.consumption": "Last",
+    "advisor.detailEntities": "Entitäten",
+    "advisor.detailValues": "Werte",
+    "advisor.detailWhy": "Warum dieser Hinweis erscheint",
+    "advisor.detailsToggle": "Details anzeigen",
     "advisor.evChargingGrid": "Die Wallbox lädt, während Netzbezug aktiv ist. Reduziere die Ladeleistung oder warte auf mehr PV, falls das nicht gewollt ist.",
     "advisor.evChargingPv": "Die Wallbox wird aktuell gut durch PV oder gespeicherte Energie gedeckt.",
     "advisor.evEnableCharging": "Das Laden ist aktuell deaktiviert. Aktiviere das Laden, wenn du den PV-Überschuss nutzen möchtest.",
@@ -4347,6 +4355,114 @@ class HaSolarDashboardCard extends HTMLElement {
     return Number.isFinite(value) ? formatter(value) : this._t("advisor.unknown", {}, "Unknown");
   }
 
+  _advisorEntityReference(label, entityId) {
+    if (!entityId) return undefined;
+    return `${label}: ${entityId}`;
+  }
+
+  _advisorConfiguredEntities(keys) {
+    return keys
+      .map(([label, entityId]) => this._advisorEntityReference(label, entityId))
+      .filter(Boolean);
+  }
+
+  _advisorItemKey(item, index) {
+    return [item.type, item.priority, item.title, item.text, item.value, index]
+      .map((part) => String(part ?? "").replace(/[^\w-]+/g, "_"))
+      .join("__")
+      .slice(0, 180);
+  }
+
+  _advisorItemDetails(item, snapshot) {
+    const powerFormatter = (value) => this._formatPowerValue(value, this.config.units?.power || "auto", "W");
+    const percentFormatter = (value) => Number.isFinite(value) ? `${Math.round(value)}%` : "";
+    const values = [];
+    const entities = [];
+    const addValue = (label, value) => {
+      if (value === undefined || value === null || value === "") return;
+      values.push(`${label}: ${value}`);
+    };
+    const addEntity = (label, entityId) => {
+      const entry = this._advisorEntityReference(label, entityId);
+      if (entry) entities.push(entry);
+    };
+
+    const title = String(item.title || "").toLowerCase();
+    const text = String(item.text || "").toLowerCase();
+    const isGrid = title.includes("netz") || title.includes("grid") || text.includes("netz") || text.includes("grid") || text.includes("import") || text.includes("export");
+    const isBattery = title.includes("batter") || text.includes("batter");
+    const isWallbox = title.includes("wallbox") || title.includes("ev") || text.includes("auto") || text.includes("wallbox") || text.includes("vehicle");
+    const isLoad = title.includes("last") || title.includes("haushalt") || title.includes("load") || title.includes("appliance") || text.includes("verbraucher");
+    const isPv = title.includes("pv") || title.includes("überschuss") || title.includes("surplus") || text.includes("pv") || text.includes("überschuss") || text.includes("surplus");
+    const isSensors = title.includes("sensor") || text.includes("sensor");
+
+    addValue(this._t("advisor.pv", {}, "PV"), this._advisorMetricValue(snapshot.pvWatts, powerFormatter));
+    if (isPv || isGrid || isLoad) {
+      addValue(this._t("advisor.exporting", {}, "Exporting surplus"), this._advisorMetricValue(snapshot.exportWatts, powerFormatter));
+      addValue(this._t("advisor.importing", {}, "Importing"), this._advisorMetricValue(snapshot.importWatts, powerFormatter));
+    }
+    if (isBattery || isPv || isGrid) {
+      addValue(this._t("advisor.batteryStatus", {}, "Battery"), Number.isFinite(snapshot.batteryPercent)
+        ? [
+          percentFormatter(snapshot.batteryPercent),
+          Number.isFinite(snapshot.batteryMinSocPercent) || Number.isFinite(snapshot.batteryMaxSocPercent)
+            ? `(${Number.isFinite(snapshot.batteryMinSocPercent) ? Math.round(snapshot.batteryMinSocPercent) : "—"}-${Number.isFinite(snapshot.batteryMaxSocPercent) ? Math.round(snapshot.batteryMaxSocPercent) : "—"}%)`
+            : "",
+        ].filter(Boolean).join(" ")
+        : "");
+      if (snapshot.batteryFlow?.direction) addValue("Batteriefluss", `${this._batteryFlowDirectionLabel(snapshot.batteryFlow.direction)} ${this._formatBatteryFlowValue(snapshot.batteryFlow)}`);
+      if (Number.isFinite(snapshot.batteryTemperatureCelsius)) addValue(this._t("tooltip.temperature", {}, "Temperature"), `${snapshot.batteryTemperatureCelsius.toFixed(Number.isInteger(snapshot.batteryTemperatureCelsius) ? 0 : 1)} °C`);
+      if (Number.isFinite(snapshot.batteryCyclesToday)) addValue(this._t("editor.batteryCyclesTodayEntity", {}, "Battery cycles today entity"), snapshot.batteryCyclesToday.toFixed(snapshot.batteryCyclesToday % 1 === 0 ? 0 : 1));
+    }
+    if (isWallbox) {
+      (snapshot.wallboxes || []).forEach((wallbox) => {
+        addValue(wallbox.label, [
+          Number.isFinite(wallbox.watts) ? powerFormatter(wallbox.watts) : "",
+          Number.isFinite(wallbox.socPercent) ? `${Math.round(wallbox.socPercent)}%` : "",
+          Number.isFinite(wallbox.maxSocPercent) ? `/ ${Math.round(wallbox.maxSocPercent)}%` : "",
+          wallbox.connected === false ? "nicht verbunden" : "",
+          wallbox.chargingEnabled === false ? "Laden deaktiviert" : "",
+        ].filter(Boolean).join(" "));
+      });
+    }
+    if (isLoad || isPv) addValue(this._t("advisor.consumption", {}, "Load"), this._advisorMetricValue(snapshot.loadWatts, powerFormatter));
+    addValue(this._t("advisor.selfConsumption", {}, "Self-use"), this._advisorMetricValue(snapshot.selfConsumptionPercent, (value) => `${Math.round(value)}%`));
+    addValue(this._t("advisor.autarky", {}, "Autarky"), this._advisorMetricValue(snapshot.autarkyPercent, (value) => `${Math.round(value)}%`));
+
+    if (isPv) {
+      addEntity(this._t("advisor.pv", {}, "PV"), this.config.entities?.pv_total_power || this.config.entities?.pv_roof_power || this.config.entities?.pv_shed_power);
+    }
+    if (isGrid || isPv) {
+      addEntity(this._t("advisor.grid", {}, "Grid"), this._gridPrimaryEntityId());
+      addEntity(this._t("editor.importPowerEntity", {}, "Import entity"), this._gridImportEntityId());
+      addEntity(this._t("editor.exportPowerEntity", {}, "Export entity"), this._gridExportEntityId());
+    }
+    if (isBattery || isPv || isGrid) {
+      addEntity(this._t("advisor.batteryStatus", {}, "Battery"), this._batterySocEntityId());
+      addEntity(this._t("editor.batteryMinSocEntity", {}, "Battery min SoC entity"), this._batteryMinSocEntityId());
+      addEntity(this._t("editor.batteryMaxSocEntity", {}, "Battery max SoC entity"), this._batteryMaxSocEntityId());
+      addEntity(this._t("editor.batteryFlowEntity", {}, "Battery flow entity (+/-)"), this.config.entities?.battery_flow_power || this.config.entities?.battery_charge_power || this.config.entities?.battery_discharge_power);
+      addEntity(this._t("editor.batteryTemperatureEntity", {}, "Battery temperature entity"), this._batteryTemperatureEntityId());
+      addEntity(this._t("editor.batteryCyclesTodayEntity", {}, "Battery cycles today entity"), this._batteryCyclesTodayEntityId());
+    }
+    if (isWallbox) {
+      (snapshot.wallboxes || []).forEach((wallbox) => {
+        addEntity(wallbox.label, wallbox.entityId);
+        addEntity(`${wallbox.label} SoC`, wallbox.socEntityId);
+        addEntity(`${wallbox.label} Max SoC`, wallbox.maxSocEntityId);
+      });
+    }
+    if (isLoad) addEntity(this._t("advisor.consumption", {}, "Load"), this.config.entities?.house_consumption_power);
+    if (isSensors && Array.isArray(item.details)) item.details.forEach((detail) => addValue(this._t("advisor.sensors", {}, "Sensors"), detail));
+
+    const dedupe = (list) => [...new Set(list)];
+    return {
+      why: item.text,
+      values: dedupe(values),
+      entities: dedupe(entities),
+    };
+  }
+
   _renderEnergyAdvisor({ dashboard = false } = {}) {
     if (!dashboard) return "";
     const snapshot = this._advisorSnapshot();
@@ -4384,18 +4500,42 @@ class HaSolarDashboardCard extends HTMLElement {
         <strong>${this._escape(value)}</strong>
       </div>
     `).join("");
-    const itemHtml = items.map((item) => {
+    const itemHtml = items.map((item, index) => {
+      const itemKey = this._advisorItemKey(item, index);
+      const open = this._openAdvisorDetails?.has(itemKey);
+      const explanation = this._advisorItemDetails(item, snapshot);
       const details = Array.isArray(item.details) && item.details.length > 0
         ? `<div class="advisor-item-details">${item.details.map((detail) => `<span>${this._escape(detail)}</span>`).join("")}</div>`
         : "";
+      const explanationHtml = `
+        <div class="advisor-explanation" ${open ? "" : "hidden"}>
+          <div class="advisor-explanation-section">
+            <strong>${this._escape(this._t("advisor.detailWhy", {}, "Why this appears"))}</strong>
+            <span>${this._escape(explanation.why)}</span>
+          </div>
+          ${explanation.values.length > 0 ? `
+            <div class="advisor-explanation-section">
+              <strong>${this._escape(this._t("advisor.detailValues", {}, "Values"))}</strong>
+              ${explanation.values.map((value) => `<span>${this._escape(value)}</span>`).join("")}
+            </div>
+          ` : ""}
+          ${explanation.entities.length > 0 ? `
+            <div class="advisor-explanation-section">
+              <strong>${this._escape(this._t("advisor.detailEntities", {}, "Entities"))}</strong>
+              ${explanation.entities.map((entity) => `<code>${this._escape(entity)}</code>`).join("")}
+            </div>
+          ` : ""}
+        </div>
+      `;
       return `
-        <div class="advisor-item advisor-${this._escape(item.type)}">
+        <div class="advisor-item advisor-${this._escape(item.type)}${open ? " is-open" : ""}" role="button" tabindex="0" aria-expanded="${open ? "true" : "false"}" aria-label="${this._escape(this._t("advisor.detailsToggle", {}, "Show details"))}" data-advisor-item-key="${this._escape(itemKey)}">
           <div class="advisor-item-head">
             <strong>${this._escape(item.title)}</strong>
             ${item.value ? `<span>${this._escape(item.value)}</span>` : ""}
           </div>
           <div class="advisor-item-text">${this._escape(item.text)}</div>
           ${details}
+          ${explanationHtml}
         </div>
       `;
     }).join("");
@@ -4521,6 +4661,28 @@ class HaSolarDashboardCard extends HTMLElement {
         event.preventDefault();
         event.stopPropagation();
         this._closeChart();
+      });
+    });
+
+    this.shadowRoot.querySelectorAll("[data-advisor-item-key]").forEach((element) => {
+      const toggle = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const key = element.dataset.advisorItemKey;
+        if (!key) return;
+        if (!this._openAdvisorDetails) this._openAdvisorDetails = new Set();
+        if (this._openAdvisorDetails.has(key)) this._openAdvisorDetails.delete(key);
+        else this._openAdvisorDetails.add(key);
+        const open = this._openAdvisorDetails.has(key);
+        element.classList.toggle("is-open", open);
+        element.setAttribute("aria-expanded", open ? "true" : "false");
+        const explanation = element.querySelector(".advisor-explanation");
+        if (explanation) explanation.hidden = !open;
+      };
+      element.addEventListener("click", toggle);
+      element.addEventListener("keydown", (event) => {
+        if (!["Enter", " "].includes(event.key)) return;
+        toggle(event);
       });
     });
   }
@@ -4670,7 +4832,8 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-items-head { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; color:var(--text-muted); font-size:.72rem; line-height:1.2; font-weight:800; text-transform:uppercase; letter-spacing:0; }
         .advisor-items-head strong { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:rgba(255,255,255,.08); color:var(--text-main); font-size:.7rem; line-height:1.1; text-transform:none; }
         .advisor-items { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; min-width:0; }
-        .advisor-item { --item-accent:#93c5fd; display:grid; gap:4px; min-width:0; padding:9px; border-radius:8px; background:rgba(255,255,255,.055); border:1px solid color-mix(in srgb,var(--item-accent) 28%,rgba(255,255,255,.08)); box-shadow:inset 2px 0 0 var(--item-accent); }
+        .advisor-item { --item-accent:#93c5fd; display:grid; gap:4px; min-width:0; padding:9px; border-radius:8px; background:rgba(255,255,255,.055); border:1px solid color-mix(in srgb,var(--item-accent) 28%,rgba(255,255,255,.08)); box-shadow:inset 2px 0 0 var(--item-accent); cursor:pointer; }
+        .advisor-item:focus-visible { outline:2px solid color-mix(in srgb,var(--item-accent) 84%,#fff); outline-offset:2px; }
         .advisor-item.advisor-critical { --item-accent:#f87171; }
         .advisor-item.advisor-warning { --item-accent:#fb923c; }
         .advisor-item.advisor-opportunity { --item-accent:#34d399; }
@@ -4683,6 +4846,12 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-item-text { color:rgba(243,246,255,.86); font-size:.78rem; line-height:1.35; overflow-wrap:anywhere; }
         .advisor-item-details { display:grid; gap:3px; min-width:0; margin-top:2px; }
         .advisor-item-details span { min-width:0; color:rgba(243,246,255,.76); font-size:.72rem; line-height:1.25; overflow-wrap:anywhere; }
+        .advisor-explanation { display:grid; gap:7px; min-width:0; margin-top:7px; padding-top:8px; border-top:1px solid color-mix(in srgb,var(--item-accent) 24%,rgba(255,255,255,.12)); }
+        .advisor-explanation[hidden] { display:none; }
+        .advisor-explanation-section { display:grid; gap:3px; min-width:0; }
+        .advisor-explanation-section strong { color:var(--text-muted); font-size:.68rem; line-height:1.2; text-transform:uppercase; letter-spacing:0; }
+        .advisor-explanation-section span,.advisor-explanation-section code { min-width:0; color:rgba(243,246,255,.78); font-size:.72rem; line-height:1.28; overflow-wrap:anywhere; }
+        .advisor-explanation-section code { font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; border-radius:6px; padding:2px 5px; background:rgba(255,255,255,.06); }
         .chart-backdrop { position:fixed; inset:0; z-index:1000; background:rgba(2,6,18,.58); backdrop-filter:blur(3px); }
         .chart-dialog { --tile-accent:#1f8fff; --tile-glow:transparent; position:fixed; z-index:1001; left:50%; top:50%; width:min(760px,calc(100vw - 28px)); max-height:calc(100vh - 32px); transform:translate(-50%,-50%); overflow:hidden; border-radius:14px; border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.18)); background:linear-gradient(135deg,rgba(15,24,45,.98),rgba(8,14,28,.98)); box-shadow:0 24px 70px rgba(0,0,0,.62),0 0 26px var(--tile-glow); color:var(--text-main); }
         .chart-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px 14px 10px; border-bottom:1px solid rgba(255,255,255,.1); }

@@ -3328,14 +3328,23 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderViewSelector() {
     if (this.config.show_view_selector !== true) return "";
     const activeView = this._currentViewMode();
-    const options = VIEW_MODE_OPTIONS
+    const buttons = VIEW_MODE_OPTIONS
       .map((option) => {
-        const selected = option.key === activeView ? " selected" : "";
-        return `<option value="${this._escape(option.key)}"${selected}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`;
+        const active = option.key === activeView;
+        const label = this._t(option.labelKey, {}, option.label);
+        return `
+          <button
+            class="view-mode-button${active ? " active" : ""}"
+            type="button"
+            data-view-mode="${this._escape(option.key)}"
+            aria-pressed="${active ? "true" : "false"}"
+            title="${this._escape(label)}"
+          >${this._escape(label)}</button>
+        `;
       })
       .join("");
 
-    return `<select class="view-mode-select" aria-label="${this._escape(this._t("aria.viewSelector", {}, "Select dashboard view"))}">${options}</select>`;
+    return `<div class="view-mode-toggle" role="group" aria-label="${this._escape(this._t("aria.viewSelector", {}, "Select dashboard view"))}">${buttons}</div>`;
   }
 
   _renderEnergyRangeSelector() {
@@ -3836,21 +3845,41 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _attachControls() {
-    const viewModeSelect = this.shadowRoot.querySelector(".view-mode-select");
-    if (viewModeSelect) {
-      const handleViewModeSelect = (event) => {
-        event.stopPropagation();
-        const nextViewMode = this._normalizeViewMode(event.target.value);
+    const viewModeButtons = Array.from(this.shadowRoot.querySelectorAll("[data-view-mode]"));
+    if (viewModeButtons.length > 0) {
+      const switchViewMode = (nextViewMode, event) => {
+        event?.preventDefault();
+        event?.stopPropagation();
         if (!nextViewMode || nextViewMode === this._currentViewMode()) return;
         this._selectedViewMode = nextViewMode;
-        viewModeSelect.blur();
         this._renderCardShell(this._layoutState());
+        const activeButton = this.shadowRoot.querySelector(`[data-view-mode="${this._escape(nextViewMode)}"]`);
+        try {
+          activeButton?.focus({ preventScroll: true });
+        } catch (_err) {
+          activeButton?.focus();
+        }
       };
-      ["pointerdown", "mousedown", "click", "touchstart"].forEach((eventName) => {
-        viewModeSelect.addEventListener(eventName, (event) => event.stopPropagation());
+
+      viewModeButtons.forEach((button, index) => {
+        ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
+          button.addEventListener(eventName, (event) => event.stopPropagation());
+        });
+        button.addEventListener("click", (event) => {
+          switchViewMode(this._normalizeViewMode(event.currentTarget.dataset.viewMode), event);
+        });
+        button.addEventListener("keydown", (event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          const nextIndex = event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? viewModeButtons.length - 1
+              : event.key === "ArrowLeft"
+                ? (index - 1 + viewModeButtons.length) % viewModeButtons.length
+                : (index + 1) % viewModeButtons.length;
+          switchViewMode(this._normalizeViewMode(viewModeButtons[nextIndex].dataset.viewMode), event);
+        });
       });
-      viewModeSelect.addEventListener("input", handleViewModeSelect);
-      viewModeSelect.addEventListener("change", handleViewModeSelect);
     }
 
     const select = this.shadowRoot.querySelector(".house-select");
@@ -3987,11 +4016,14 @@ class HaSolarDashboardCard extends HTMLElement {
         ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 80% at 15% 0%, #232b44 0%, #111727 70%); color:var(--text-main); box-shadow:0 18px 45px rgba(0,0,0,.55); padding:16px; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
         .header { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; align-items:center; gap:10px; margin-bottom:12px; }
         .title { min-width:0; overflow-wrap:anywhere; font-size:1.28rem; font-weight:700; line-height:1.2; }
-        .badge,.house-select,.energy-range-select,.view-mode-select { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
+        .badge,.house-select,.energy-range-select,.view-mode-toggle { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
         .badge { display:inline-flex; align-items:center; padding:0 10px; white-space:nowrap; }
-        .house-select,.energy-range-select,.view-mode-select { max-width:170px; padding:0 30px 0 10px; }
+        .house-select,.energy-range-select { max-width:170px; padding:0 30px 0 10px; }
         .energy-range-select { max-width:110px; }
-        .view-mode-select { min-width:150px; max-width:220px; }
+        .view-mode-toggle { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:clamp(224px,24vw,292px); max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
+        .view-mode-button { min-width:0; min-height:28px; border:0; border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.82rem; font-weight:800; line-height:1.1; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .view-mode-button.active { background:linear-gradient(135deg,rgba(31,143,255,.5),rgba(52,211,153,.22)); color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 4px 12px rgba(31,143,255,.22); }
+        .view-mode-button:focus-visible { outline:2px solid rgba(147,197,253,.95); outline-offset:1px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
         .image-overlay-wrap { position:absolute; z-index:1; width:10%; transform:translate(-50%,var(--overlay-translate-y,-50%)); transform-origin:center bottom; pointer-events:none; user-select:none; }
@@ -4086,7 +4118,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .chart-label,.chart-current { fill:var(--text-muted); font-size:12px; }
         .chart-current { fill:var(--tile-accent); text-anchor:end; font-weight:700; }
         .chart-label.end { text-anchor:end; }
-        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select,.view-mode-select{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <ha-card>

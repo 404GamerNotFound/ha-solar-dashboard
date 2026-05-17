@@ -4078,6 +4078,8 @@ class HaSolarDashboardCard extends HTMLElement {
       add(entityId, this._entityLabelForPath?.(`entities.${key}`) || key, isDynamicPower || dynamicStateEntityKeys.has(key), {
         key,
         minActiveWatts: isDynamicPower ? 100 : undefined,
+        staleWarningMinutes: key === "battery_temperature" ? 300 : undefined,
+        staleCriticalMinutes: key === "battery_temperature" ? 600 : undefined,
       });
     });
     Object.entries(this.config.image_overlays || {}).forEach(([key, config]) => {
@@ -4111,12 +4113,14 @@ class HaSolarDashboardCard extends HTMLElement {
         if (["unknown", "unavailable", "offline"].includes(state)) return undefined;
         if (!this._advisorStaleSensorIsActive(candidate)) return undefined;
         const ageMinutes = this._entityAgeMinutes(candidate.entityId);
-        if (!Number.isFinite(ageMinutes) || ageMinutes < warningMinutes) return undefined;
+        const candidateWarningMinutes = this._clampNumber(candidate.staleWarningMinutes, warningMinutes, warningMinutes, 10080);
+        const candidateCriticalMinutes = this._clampNumber(candidate.staleCriticalMinutes, criticalMinutes, candidateWarningMinutes, 20160);
+        if (!Number.isFinite(ageMinutes) || ageMinutes < candidateWarningMinutes) return undefined;
         return {
           ...candidate,
           label: this._entityDisplayName(candidate.entityId, candidate.label),
           ageMinutes,
-          critical: ageMinutes >= criticalMinutes,
+          critical: ageMinutes >= candidateCriticalMinutes,
         };
       })
       .filter(Boolean)
@@ -4126,9 +4130,8 @@ class HaSolarDashboardCard extends HTMLElement {
     const critical = stale.some((item) => item.critical);
     const top = stale[0];
     const duration = this._formatDurationMinutes(top.ageMinutes);
-    const detail = stale.slice(0, 3)
-      .map((item) => `${item.label}: ${this._formatDurationMinutes(item.ageMinutes)}`)
-      .join(", ");
+    const details = stale.slice(0, 4)
+      .map((item) => `${item.label}: ${this._formatDurationMinutes(item.ageMinutes)}`);
     return stale.length === 1
       ? {
         type: critical ? "critical" : "info",
@@ -4143,7 +4146,8 @@ class HaSolarDashboardCard extends HTMLElement {
         priority: critical ? 98 : 90,
         title: this._t("advisor.sensors", {}, "Sensors"),
         text: this._t("advisor.sensorStaleMany", { count: stale.length }, `${stale.length} sensors have not updated recently.`),
-        value: detail,
+        value: duration,
+        details,
         diagnostic: true,
       };
   }
@@ -4389,15 +4393,21 @@ class HaSolarDashboardCard extends HTMLElement {
         <strong>${this._escape(value)}</strong>
       </div>
     `).join("");
-    const itemHtml = items.map((item) => `
-      <div class="advisor-item advisor-${this._escape(item.type)}">
-        <div class="advisor-item-head">
-          <strong>${this._escape(item.title)}</strong>
-          ${item.value ? `<span>${this._escape(item.value)}</span>` : ""}
+    const itemHtml = items.map((item) => {
+      const details = Array.isArray(item.details) && item.details.length > 0
+        ? `<div class="advisor-item-details">${item.details.map((detail) => `<span>${this._escape(detail)}</span>`).join("")}</div>`
+        : "";
+      return `
+        <div class="advisor-item advisor-${this._escape(item.type)}">
+          <div class="advisor-item-head">
+            <strong>${this._escape(item.title)}</strong>
+            ${item.value ? `<span>${this._escape(item.value)}</span>` : ""}
+          </div>
+          <div class="advisor-item-text">${this._escape(item.text)}</div>
+          ${details}
         </div>
-        <div class="advisor-item-text">${this._escape(item.text)}</div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
 
     return `
       <section class="advisor advisor-${this._escape(status.type)}${dashboard ? " advisor-dashboard" : ""}" data-energy-advisor>
@@ -4679,9 +4689,11 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-item.advisor-setup { --item-accent:#93c5fd; }
         .advisor-item.advisor-info { --item-accent:#facc15; }
         .advisor-item-head { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
-        .advisor-item-head strong { color:var(--item-accent); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
-        .advisor-item-head span { flex:0 0 auto; color:var(--text-main); font-size:.74rem; font-weight:800; line-height:1.1; border-radius:999px; padding:3px 6px; background:rgba(255,255,255,.08); }
+        .advisor-item-head strong { min-width:0; color:var(--item-accent); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
+        .advisor-item-head span { flex:0 0 auto; max-width:42%; color:var(--text-main); font-size:.74rem; font-weight:800; line-height:1.1; border-radius:999px; padding:3px 6px; background:rgba(255,255,255,.08); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .advisor-item-text { color:rgba(243,246,255,.86); font-size:.78rem; line-height:1.35; overflow-wrap:anywhere; }
+        .advisor-item-details { display:grid; gap:3px; min-width:0; margin-top:2px; }
+        .advisor-item-details span { min-width:0; color:rgba(243,246,255,.76); font-size:.72rem; line-height:1.25; overflow-wrap:anywhere; }
         .chart-backdrop { position:fixed; inset:0; z-index:1000; background:rgba(2,6,18,.58); backdrop-filter:blur(3px); }
         .chart-dialog { --tile-accent:#1f8fff; --tile-glow:transparent; position:fixed; z-index:1001; left:50%; top:50%; width:min(760px,calc(100vw - 28px)); max-height:calc(100vh - 32px); transform:translate(-50%,-50%); overflow:hidden; border-radius:14px; border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.18)); background:linear-gradient(135deg,rgba(15,24,45,.98),rgba(8,14,28,.98)); box-shadow:0 24px 70px rgba(0,0,0,.62),0 0 26px var(--tile-glow); color:var(--text-main); }
         .chart-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px 14px 10px; border-bottom:1px solid rgba(255,255,255,.1); }

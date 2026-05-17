@@ -3779,8 +3779,9 @@ class HaSolarDashboardCard extends HTMLElement {
 
     const gridWatts = this._flowWattsForKey("import_export_power");
     if (Number.isFinite(gridWatts) && Math.abs(gridWatts) > threshold) {
-      if (gridWatts > 0) addFlow("grid", "inverter_power", gridWatts, "#fb923c");
-      else addFlow("inverter_power", "grid", gridWatts, "#34d399");
+      const gridAnchorKey = this._flowAnchor(variant, "import_export_power") ? "import_export_power" : "grid";
+      if (gridWatts > 0) addFlow(gridAnchorKey, "inverter_power", gridWatts, "#fb923c");
+      else addFlow("inverter_power", gridAnchorKey, gridWatts, "#34d399");
     }
 
     if (flows.length === 0) return "";

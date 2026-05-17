@@ -4102,6 +4102,20 @@ class HaSolarDashboardCard extends HTMLElement {
     return Number.isFinite(watts) && Math.abs(watts) >= candidate.minActiveWatts;
   }
 
+  _advisorStaleSensorIsExpectedStatic(candidate) {
+    if (candidate?.key !== "battery_level") return false;
+    const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", unit: "battery" };
+    const percent = this._batteryPercent(batteryMetric);
+    if (!Number.isFinite(percent)) return false;
+    const minSoc = this._batteryMinSocPercent();
+    const maxSoc = this._batteryMaxSocPercent();
+    return (
+      Number.isFinite(maxSoc) && percent >= maxSoc - 0.5
+    ) || (
+      Number.isFinite(minSoc) && percent <= minSoc + 0.5
+    );
+  }
+
   _advisorStaleSensorItem() {
     const warningMinutes = this._clampNumber(this.config.advisor_stale_sensor_warning_minutes, 30, 1, 10080);
     const criticalMinutes = this._clampNumber(this.config.advisor_stale_sensor_critical_minutes, 120, warningMinutes, 20160);
@@ -4112,6 +4126,7 @@ class HaSolarDashboardCard extends HTMLElement {
         const state = String(entity.state || "").toLowerCase().trim();
         if (["unknown", "unavailable", "offline"].includes(state)) return undefined;
         if (!this._advisorStaleSensorIsActive(candidate)) return undefined;
+        if (this._advisorStaleSensorIsExpectedStatic(candidate)) return undefined;
         const ageMinutes = this._entityAgeMinutes(candidate.entityId);
         const candidateWarningMinutes = this._clampNumber(candidate.staleWarningMinutes, warningMinutes, warningMinutes, 10080);
         const candidateCriticalMinutes = this._clampNumber(candidate.staleCriticalMinutes, criticalMinutes, candidateWarningMinutes, 20160);

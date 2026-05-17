@@ -4232,6 +4232,23 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return normalizeHouse(value);
   }
 
+  _normalizeViewMode(value) {
+    const normalized = String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+    const aliases = {
+      home: "house",
+      haus: "house",
+      house_view: "house",
+      building: "house",
+      advisor_dashboard: "advisor",
+      advisor_view: "advisor",
+      adviser: "advisor",
+      adviser_dashboard: "advisor",
+      energy_advisor: "advisor",
+    };
+    const key = aliases[normalized] || normalized;
+    return VIEW_MODE_OPTIONS.some((option) => option.key === key) ? key : undefined;
+  }
+
   _onInput(path, value, isCheckbox = false) {
     const next = this._cloneConfig(this._config || {});
     const parts = path.split(".");

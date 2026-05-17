@@ -27,6 +27,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Optionale Gas- und Wärmepumpen-Overlays mit eigener Aktivierung, frei definierbarem Label, Entität, Position, Größe und Ausrichtung der Wärmepumpe; Gas kann einen Zählerverbrauch für 30 Minuten, 1 Stunde oder 24 Stunden anzeigen
 - PV, Wechselrichter und Wallbox können Auslastungsbalken anhand konfigurierbarer kW/kWp-Maximalwerte anzeigen
 - Optionale Import-/Export-Box im Bild, standardmäßig unten rechts beim Stromkabel positioniert, plus Netzstatus-Kachel mit Bezug, Einspeisung oder Autarkie; unterstützt einen Vorzeichen-Sensor oder getrennte Bezugs-/Einspeise-Sensoren
+- Optionale Auto-Entitäten für Max-/Ziel-SoC, verbunden/eingesteckt und Laden aktiviert steuern die Advisor-Empfehlungen, damit kein Ladevorschlag erscheint, wenn das Auto schon am Ziel-SoC ist
 - Tooltips pro Wert mit Entität, Rohwert, formatiertem Wert und Aktualisierungszeit
 - Klick auf entity-basierte Boxen und Kacheln öffnet ein 24/48-Stunden-Verlaufsdiagramm aus Home-Assistant-History-Daten
 - Eigenes Advisor Dashboard mit Live-Status, PV-/Netz-/Last-/Batterie-Kennzahlen, eigenen KPI-Werten, Autarkie-/Eigenverbrauchsschätzung, Sensor-Diagnosen und mehreren priorisierten Empfehlungen bei Überschuss, Netzbezug, Batteriestand, Wallbox-Laden, Wärmepumpe, flexiblen Haushaltsverbrauchern und auffälliger PV-/Lastsituation

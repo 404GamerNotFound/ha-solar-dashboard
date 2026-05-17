@@ -42,6 +42,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Optional second EV charger entity, disabled by default and positioned automatically next to the first EV charger
 - Optional EV charger phase badges from separate phase entities (`Auto`, `1`, `2`, or `3`)
 - Optional EV vehicle SoC badges shown next to the EV charger phase badges
+- Optional EV max/target SoC, connected, and charging-enabled entities feed the Advisor Dashboard so surplus charging recommendations respect the vehicle's real charge state
 - Optional remaining EV charge time badge, shown only while the EV charger is actively charging
 - Optional import/export HUD box, positioned near the lower-right power cable by default, plus a grid status tile showing import, export, or self-sufficient operation
 - Hover tooltips on values show the linked entity, raw state, formatted value, and update time
@@ -100,10 +101,16 @@ entities:
   wallbox_power: sensor.wallbox_leistung
   wallbox_phase: sensor.wallbox_phasen
   wallbox_soc: sensor.wallbox_auto_soc
+  wallbox_max_soc: number.wallbox_ziel_soc
+  wallbox_connected: binary_sensor.wallbox_auto_verbunden
+  wallbox_charging_enabled: switch.wallbox_laden_aktiviert
   wallbox_remaining_time: sensor.wallbox_verbleibende_ladezeit
   wallbox2_power: sensor.wallbox_2_leistung
   wallbox2_phase: sensor.wallbox_2_phasen
   wallbox2_soc: sensor.wallbox_2_auto_soc
+  wallbox2_max_soc: number.wallbox_2_ziel_soc
+  wallbox2_connected: binary_sensor.wallbox_2_auto_verbunden
+  wallbox2_charging_enabled: switch.wallbox_2_laden_aktiviert
   wallbox2_remaining_time: sensor.wallbox_2_verbleibende_ladezeit
   pv_total_power: sensor.pv_gesamt_leistung
   house_consumption_power: sensor.hausverbrauch_leistung
@@ -257,10 +264,16 @@ custom_kpis:
 - `entities.wallbox_power` (entity id)
 - `entities.wallbox_phase` (entity id, optional; state can be `Auto`, `1`, `2`, or `3` and is shown as a compact phase badge on the Wallbox HUD and tile)
 - `entities.wallbox_soc` (entity id, optional; vehicle battery SoC shown as a compact `Auto 78%` badge next to the Wallbox phase badge)
+- `entities.wallbox_max_soc` (entity id, optional; vehicle max/target SoC used by the Advisor Dashboard so EV charging is not recommended when the vehicle already reached its target)
+- `entities.wallbox_connected` (entity id, optional; boolean/binary/sensor state used by the Advisor Dashboard to distinguish plugged-in vs. disconnected vehicles)
+- `entities.wallbox_charging_enabled` (entity id, optional; boolean/switch/sensor state used by the Advisor Dashboard to notice when charging is disabled or blocked)
 - `entities.wallbox_remaining_time` (entity id, optional; remaining charge time badge shown next to the Wallbox phase/SoC badges only while `wallbox_power` is charging)
 - `entities.wallbox2_power` (entity id, optional; second EV charger, hidden by default and auto-positioned next to `wallbox_power` unless `positions.wallbox2_power` is set)
 - `entities.wallbox2_phase` (entity id, optional; phase badge for the second EV charger)
 - `entities.wallbox2_soc` (entity id, optional; vehicle battery SoC badge for the second EV charger)
+- `entities.wallbox2_max_soc` (entity id, optional; max/target SoC for the second EV charger)
+- `entities.wallbox2_connected` (entity id, optional; connected/plugged-in state for the second EV charger)
+- `entities.wallbox2_charging_enabled` (entity id, optional; charging-enabled state for the second EV charger)
 - `entities.wallbox2_remaining_time` (entity id, optional; remaining charge time badge for the second EV charger)
 - `entities.import_export_power` (entity id, optional; signed grid power where positive values are shown as `Import` and negative values as `Export`)
 - `entities.import_power` / `entities.export_power` (entity ids, optional; separate positive import and export sensors, used when `entities.import_export_power` is empty; aliases `grid_import_power`, `grid_export_power`, `import_export_import_power`, and `import_export_export_power` are also accepted)

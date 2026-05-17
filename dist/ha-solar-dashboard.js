@@ -57,6 +57,10 @@ const I18N = {
     "advisor.consumption": "Load",
     "advisor.evChargingGrid": "EV charging is active while importing from the grid. Reduce charging power or wait for more PV if this is not intended.",
     "advisor.evChargingPv": "EV charging is currently covered well by PV or stored energy.",
+    "advisor.evEnableCharging": "Charging is currently disabled. Enable charging if you want to use the PV surplus.",
+    "advisor.evPlugIn": "Plug in the vehicle to use PV surplus for charging.",
+    "advisor.evTargetReached": "Vehicle is already at the configured target SoC. Use surplus for another flexible load.",
+    "advisor.evTargetReachedGrid": "Vehicle is at target SoC while the charger is still drawing power. Check the charge limit or stop charging.",
     "advisor.exporting": "Exporting surplus",
     "advisor.grid": "Grid",
     "advisor.headlineExport": "PV surplus is available",
@@ -157,6 +161,9 @@ const I18N = {
     "editor.pvPowerLabel": "Power label",
     "editor.pvTodayEnergyEntity": "Generated today entity",
     "editor.remainingChargeTimeEntity": "Remaining charge time entity",
+    "editor.vehicleChargingEnabledEntity": "Charging enabled entity",
+    "editor.vehicleConnectedEntity": "Vehicle connected entity",
+    "editor.vehicleMaxSocEntity": "Vehicle max/target SoC entity",
     "editor.vehicleSocEntity": "Vehicle SoC entity",
     "editor.sectionBoxes": "Boxes, live/kWh entities, unit, and position",
     "editor.sectionKpis": "Custom KPI tiles",
@@ -289,6 +296,10 @@ const I18N = {
     "advisor.consumption": "Last",
     "advisor.evChargingGrid": "Die Wallbox lädt, während Netzbezug aktiv ist. Reduziere die Ladeleistung oder warte auf mehr PV, falls das nicht gewollt ist.",
     "advisor.evChargingPv": "Die Wallbox wird aktuell gut durch PV oder gespeicherte Energie gedeckt.",
+    "advisor.evEnableCharging": "Das Laden ist aktuell deaktiviert. Aktiviere das Laden, wenn du den PV-Überschuss nutzen möchtest.",
+    "advisor.evPlugIn": "Stecke das Auto ein, um den PV-Überschuss zum Laden zu nutzen.",
+    "advisor.evTargetReached": "Das Auto ist bereits am konfigurierten Ziel-SoC. Nutze den Überschuss für einen anderen flexiblen Verbraucher.",
+    "advisor.evTargetReachedGrid": "Das Auto ist am Ziel-SoC, während die Wallbox weiter Leistung zieht. Prüfe das Ladelimit oder stoppe das Laden.",
     "advisor.exporting": "Einspeisung",
     "advisor.grid": "Netz",
     "advisor.headlineExport": "PV-Überschuss ist verfügbar",
@@ -389,6 +400,9 @@ const I18N = {
     "editor.pvPowerLabel": "Leistungs-Label",
     "editor.pvTodayEnergyEntity": "Heute-erzeugt-Entität",
     "editor.remainingChargeTimeEntity": "Verbleibende Ladezeit-Entität",
+    "editor.vehicleChargingEnabledEntity": "Laden-aktiviert-Entität",
+    "editor.vehicleConnectedEntity": "Auto-verbunden-Entität",
+    "editor.vehicleMaxSocEntity": "Auto-Max-/Ziel-SoC-Entität",
     "editor.vehicleSocEntity": "Auto-SoC-Entität",
     "editor.sectionBoxes": "Boxen, Live-/kWh-Entitäten, Einheit und Position",
     "editor.sectionKpis": "Eigene KPI-Kacheln",
@@ -1395,10 +1409,16 @@ class HaSolarDashboardCard extends HTMLElement {
         wallbox_power: "sensor.wallbox_power",
         wallbox_phase: "",
         wallbox_soc: "",
+        wallbox_max_soc: "",
+        wallbox_connected: "",
+        wallbox_charging_enabled: "",
         wallbox_remaining_time: "",
         wallbox2_power: "",
         wallbox2_phase: "",
         wallbox2_soc: "",
+        wallbox2_max_soc: "",
+        wallbox2_connected: "",
+        wallbox2_charging_enabled: "",
         wallbox2_remaining_time: "",
         pv_total_power: "sensor.pv_total_power",
         pv_total_power_today_energy: "",
@@ -2590,6 +2610,93 @@ class HaSolarDashboardCard extends HTMLElement {
     return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
   }
 
+  _numericPercentFromEntity(entityId) {
+    if (!entityId) return undefined;
+    const rawValue = this._getEntityValue(entityId, undefined);
+    const normalized = String(rawValue ?? "").trim().toLowerCase();
+    if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return undefined;
+    const numericValue = Number(String(rawValue).replace(",", ".").replace("%", ""));
+    if (!Number.isFinite(numericValue)) return undefined;
+    return Math.max(0, Math.min(100, numericValue));
+  }
+
+  _wallboxSocPercent(metric) {
+    return this._numericPercentFromEntity(this._wallboxSocEntityId(metric));
+  }
+
+  _wallboxMaxSocEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_max_soc";
+    if (metric?.key === "wallbox2_power") return "wallbox2_max_soc";
+    return "";
+  }
+
+  _wallboxMaxSocEntityId(metric) {
+    const entityKey = this._wallboxMaxSocEntityKey(metric);
+    if (!entityKey) return "";
+    const aliases = entityKey === "wallbox2_max_soc"
+      ? ["wallbox2_max_soc", "wallbox2_target_soc", "wallbox2_soc_limit", "wallbox2_charge_limit", "wallbox2_vehicle_max_soc", "wallbox2_car_max_soc"]
+      : ["wallbox_max_soc", "wallbox_target_soc", "wallbox_soc_limit", "wallbox_charge_limit", "wallbox_vehicle_max_soc", "wallbox_car_max_soc"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _wallboxMaxSocPercent(metric) {
+    return this._numericPercentFromEntity(this._wallboxMaxSocEntityId(metric));
+  }
+
+  _stateAsBoolean(rawValue) {
+    const normalized = String(rawValue ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return undefined;
+    if (["on", "true", "1", "yes", "ja", "connected", "plugged", "plugged_in", "home", "enabled", "active", "ready", "verbunden", "eingesteckt", "angeschlossen", "freigegeben", "aktiviert"].includes(normalized)) return true;
+    if (["off", "false", "0", "no", "nein", "disconnected", "unplugged", "not_connected", "away", "disabled", "inactive", "nicht_verbunden", "ausgesteckt", "getrennt", "gesperrt", "deaktiviert"].includes(normalized)) return false;
+    return undefined;
+  }
+
+  _wallboxBooleanEntityState(entityId) {
+    if (!entityId) return undefined;
+    const direct = this._stateAsBoolean(this._getEntityValue(entityId, undefined));
+    if (direct !== undefined) return direct;
+    const entity = this._hass?.states?.[entityId];
+    return this._stateAsBoolean(entity?.state);
+  }
+
+  _wallboxConnectedEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_connected";
+    if (metric?.key === "wallbox2_power") return "wallbox2_connected";
+    return "";
+  }
+
+  _wallboxConnectedEntityId(metric) {
+    const entityKey = this._wallboxConnectedEntityKey(metric);
+    if (!entityKey) return "";
+    const aliases = entityKey === "wallbox2_connected"
+      ? ["wallbox2_connected", "wallbox2_plugged_in", "wallbox2_vehicle_connected", "wallbox2_car_connected", "wallbox2_cable_connected"]
+      : ["wallbox_connected", "wallbox_plugged_in", "wallbox_vehicle_connected", "wallbox_car_connected", "wallbox_cable_connected"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _wallboxConnectedState(metric) {
+    return this._wallboxBooleanEntityState(this._wallboxConnectedEntityId(metric));
+  }
+
+  _wallboxChargingEnabledEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_charging_enabled";
+    if (metric?.key === "wallbox2_power") return "wallbox2_charging_enabled";
+    return "";
+  }
+
+  _wallboxChargingEnabledEntityId(metric) {
+    const entityKey = this._wallboxChargingEnabledEntityKey(metric);
+    if (!entityKey) return "";
+    const aliases = entityKey === "wallbox2_charging_enabled"
+      ? ["wallbox2_charging_enabled", "wallbox2_charge_enabled", "wallbox2_charging_allowed", "wallbox2_enable_charging", "wallbox2_charger_enabled"]
+      : ["wallbox_charging_enabled", "wallbox_charge_enabled", "wallbox_charging_allowed", "wallbox_enable_charging", "wallbox_charger_enabled"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _wallboxChargingEnabledState(metric) {
+    return this._wallboxBooleanEntityState(this._wallboxChargingEnabledEntityId(metric));
+  }
+
   _wallboxSocLabel(metric) {
     const entityId = this._wallboxSocEntityId(metric);
     if (!entityId) return "";
@@ -3624,6 +3731,29 @@ class HaSolarDashboardCard extends HTMLElement {
     return Number.isFinite(watts) ? Math.max(0, watts) : undefined;
   }
 
+  _wallboxAdvisorDetails() {
+    return ["wallbox_power", "wallbox2_power"].map((key) => {
+      const metric = TILE_METRICS.find((item) => item.key === key) || { key, label: key, unit: "power" };
+      const entityId = this.config.entities?.[key] || "";
+      const watts = this._positiveWattsForKey(key);
+      const socPercent = this._wallboxSocPercent(metric);
+      const maxSocPercent = this._wallboxMaxSocPercent(metric);
+      return {
+        key,
+        metric,
+        entityId,
+        hasPowerEntity: Boolean(entityId),
+        label: this._metricLabel(metric, this._currentVariant),
+        watts: Number.isFinite(watts) ? watts : 0,
+        socPercent,
+        maxSocPercent,
+        targetReached: Number.isFinite(socPercent) && Number.isFinite(maxSocPercent) && socPercent >= maxSocPercent - 0.5,
+        connected: this._wallboxConnectedState(metric),
+        chargingEnabled: this._wallboxChargingEnabledState(metric),
+      };
+    }).filter((wallbox) => wallbox.hasPowerEntity);
+  }
+
   _advisorSnapshot() {
     const pvTotal = this._positiveWattsForKey("pv_total_power");
     const pvParts = ["pv_roof_power", "pv_shed_power"]
@@ -3643,6 +3773,7 @@ class HaSolarDashboardCard extends HTMLElement {
       .map((key) => this._positiveWattsForKey(key))
       .filter(Number.isFinite)
       .reduce((sum, value) => sum + value, 0);
+    const wallboxes = this._wallboxAdvisorDetails();
     const hasWallbox = ["wallbox_power", "wallbox2_power"].some((key) => Boolean(this.config.entities?.[key]));
     const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", unit: "battery" };
     const batteryPercent = this._batteryPercent(batteryMetric);
@@ -3669,6 +3800,7 @@ class HaSolarDashboardCard extends HTMLElement {
       exportWatts,
       houseWatts,
       wallboxWatts,
+      wallboxes,
       hasWallbox,
       batteryPercent,
       batteryFlow,
@@ -3737,9 +3869,27 @@ class HaSolarDashboardCard extends HTMLElement {
 
     if (Number.isFinite(snapshot.exportWatts) && snapshot.exportWatts > surplusThreshold) {
       const value = this._formatPowerValue(snapshot.exportWatts, this.config.units?.power || "auto", "W");
+      const idleWallboxes = (snapshot.wallboxes || []).filter((wallbox) => wallbox.watts <= surplusThreshold);
+      const wallboxTitle = (wallboxes) => wallboxes.length === 1 ? wallboxes[0].label : this._t("advisor.wallbox", {}, "EV");
       add("opportunity", 88, this._t("advisor.surplus", {}, "Surplus"), this._t("advisor.surplusGeneral", {}, "PV surplus is available. Prioritize flexible loads while export is active."), value);
-      if (snapshot.hasWallbox && snapshot.wallboxWatts <= surplusThreshold) {
-        add("opportunity", 82, this._t("advisor.wallbox", {}, "EV"), this._t("advisor.startEvCharging", {}, "Start or increase EV charging while surplus is available."), value);
+      const chargeableWallboxes = idleWallboxes.filter((wallbox) => !wallbox.targetReached && wallbox.connected !== false && wallbox.chargingEnabled !== false);
+      if (chargeableWallboxes.length > 0) {
+        add("opportunity", 82, wallboxTitle(chargeableWallboxes), this._t("advisor.startEvCharging", {}, "Start or increase EV charging while surplus is available."), value);
+      }
+      const disconnectedWallboxes = idleWallboxes.filter((wallbox) => !wallbox.targetReached && wallbox.connected === false);
+      if (disconnectedWallboxes.length > 0) {
+        add("opportunity", 79, wallboxTitle(disconnectedWallboxes), this._t("advisor.evPlugIn", {}, "Plug in the vehicle to use PV surplus for charging."), value);
+      }
+      const disabledWallboxes = idleWallboxes.filter((wallbox) => !wallbox.targetReached && wallbox.connected !== false && wallbox.chargingEnabled === false);
+      if (disabledWallboxes.length > 0) {
+        add("info", 76, wallboxTitle(disabledWallboxes), this._t("advisor.evEnableCharging", {}, "Charging is currently disabled. Enable charging if you want to use the PV surplus."), value);
+      }
+      const targetReachedWallboxes = idleWallboxes.filter((wallbox) => wallbox.targetReached);
+      if (targetReachedWallboxes.length > 0) {
+        const targetValue = targetReachedWallboxes.length === 1 && Number.isFinite(targetReachedWallboxes[0].maxSocPercent)
+          ? `${Math.round(targetReachedWallboxes[0].socPercent)} / ${Math.round(targetReachedWallboxes[0].maxSocPercent)}%`
+          : value;
+        add("info", 72, wallboxTitle(targetReachedWallboxes), this._t("advisor.evTargetReached", {}, "Vehicle is already at the configured target SoC. Use surplus for another flexible load."), targetValue);
       }
       if (this.config.image_overlays?.heatpump?.enabled === true || this.config.image_overlays?.heatpump?.entity) {
         add("opportunity", 74, this._overlayLabel("heatpump"), this._t("advisor.useHeatPump", {}, "Use heat pump boost or preheat hot water while PV surplus is available."), value);
@@ -3755,8 +3905,17 @@ class HaSolarDashboardCard extends HTMLElement {
     if (Number.isFinite(snapshot.importWatts) && snapshot.importWatts > importThreshold) {
       const value = this._formatPowerValue(snapshot.importWatts, this.config.units?.power || "auto", "W");
       add("warning", 86, this._t("advisor.grid", {}, "Grid"), this._t("advisor.headlineImport", {}, "Grid import is active"), value);
-      if (snapshot.wallboxWatts > importThreshold) {
-        add("warning", 80, this._t("advisor.wallbox", {}, "EV"), this._t("advisor.evChargingGrid", {}, "EV charging is active while importing from the grid. Reduce charging power or wait for more PV if this is not intended."), this._formatPowerValue(snapshot.wallboxWatts, this.config.units?.power || "auto", "W"));
+      const activeWallboxes = (snapshot.wallboxes || []).filter((wallbox) => wallbox.watts > importThreshold);
+      const targetReachedCharging = activeWallboxes.filter((wallbox) => wallbox.targetReached);
+      const gridChargingWallboxes = activeWallboxes.filter((wallbox) => !wallbox.targetReached);
+      if (targetReachedCharging.length > 0) {
+        const targetValue = targetReachedCharging.length === 1 && Number.isFinite(targetReachedCharging[0].maxSocPercent)
+          ? `${Math.round(targetReachedCharging[0].socPercent)} / ${Math.round(targetReachedCharging[0].maxSocPercent)}%`
+          : this._formatPowerValue(targetReachedCharging.reduce((sum, wallbox) => sum + wallbox.watts, 0), this.config.units?.power || "auto", "W");
+        add("warning", 84, targetReachedCharging.length === 1 ? targetReachedCharging[0].label : this._t("advisor.wallbox", {}, "EV"), this._t("advisor.evTargetReachedGrid", {}, "Vehicle is at target SoC while the charger is still drawing power. Check the charge limit or stop charging."), targetValue);
+      }
+      if (gridChargingWallboxes.length > 0) {
+        add("warning", 80, gridChargingWallboxes.length === 1 ? gridChargingWallboxes[0].label : this._t("advisor.wallbox", {}, "EV"), this._t("advisor.evChargingGrid", {}, "EV charging is active while importing from the grid. Reduce charging power or wait for more PV if this is not intended."), this._formatPowerValue(gridChargingWallboxes.reduce((sum, wallbox) => sum + wallbox.watts, 0), this.config.units?.power || "auto", "W"));
       }
       if (Number.isFinite(snapshot.loadWatts) && snapshot.loadWatts > highLoadThreshold) {
         add("info", 58, this._t("advisor.consumption", {}, "Load"), this._t("advisor.highLoad", {}, "Current load is high compared with PV production. Check large consumers if this is unexpected."), this._formatPowerValue(snapshot.loadWatts, this.config.units?.power || "auto", "W"));
@@ -3776,11 +3935,14 @@ class HaSolarDashboardCard extends HTMLElement {
       add("info", 46, this._t("advisor.pv", {}, "PV"), this._t("advisor.lowPv", {}, "PV production is low despite daylight. If the weather is clear, check inverter or PV sensors."), this._formatPowerValue(snapshot.pvWatts, this.config.units?.power || "auto", "W"));
     }
 
+    const pvCoveredWallboxWatts = (snapshot.wallboxes || [])
+      .filter((wallbox) => wallbox.watts > importThreshold && !wallbox.targetReached)
+      .reduce((sum, wallbox) => sum + wallbox.watts, 0);
     if (
-      snapshot.wallboxWatts > importThreshold
+      pvCoveredWallboxWatts > importThreshold
       && (!Number.isFinite(snapshot.importWatts) || snapshot.importWatts <= importThreshold)
     ) {
-      add("success", 42, this._t("advisor.wallbox", {}, "EV"), this._t("advisor.evChargingPv", {}, "EV charging is currently covered well by PV or stored energy."), this._formatPowerValue(snapshot.wallboxWatts, this.config.units?.power || "auto", "W"));
+      add("success", 42, this._t("advisor.wallbox", {}, "EV"), this._t("advisor.evChargingPv", {}, "EV charging is currently covered well by PV or stored energy."), this._formatPowerValue(pvCoveredWallboxWatts, this.config.units?.power || "auto", "W"));
     }
 
     if (items.length === 0) {
@@ -4553,9 +4715,15 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       export_power: this._t("editor.exportPowerEntity", {}, "Export entity"),
       wallbox_phase: this._t("editor.phaseEntity", {}, "Phase entity"),
       wallbox_soc: this._t("editor.vehicleSocEntity", {}, "Vehicle SoC entity"),
+      wallbox_max_soc: this._t("editor.vehicleMaxSocEntity", {}, "Vehicle max/target SoC entity"),
+      wallbox_connected: this._t("editor.vehicleConnectedEntity", {}, "Vehicle connected entity"),
+      wallbox_charging_enabled: this._t("editor.vehicleChargingEnabledEntity", {}, "Charging enabled entity"),
       wallbox_remaining_time: this._t("editor.remainingChargeTimeEntity", {}, "Remaining charge time entity"),
       wallbox2_phase: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.phaseEntity", {}, "Phase entity")}`,
       wallbox2_soc: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.vehicleSocEntity", {}, "Vehicle SoC entity")}`,
+      wallbox2_max_soc: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.vehicleMaxSocEntity", {}, "Vehicle max/target SoC entity")}`,
+      wallbox2_connected: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.vehicleConnectedEntity", {}, "Vehicle connected entity")}`,
+      wallbox2_charging_enabled: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.vehicleChargingEnabledEntity", {}, "Charging enabled entity")}`,
       wallbox2_remaining_time: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.remainingChargeTimeEntity", {}, "Remaining charge time entity")}`,
     };
     if (labels[key]) return labels[key];
@@ -4601,11 +4769,17 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       { path: "entities.inverter_power", ...powerTarget, required: [["inverter", "wechselrichter", "wr"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, ...powerTarget.include], exclude: ["battery", "batterie", "soc", "temperature"], threshold: 56 },
       { path: "entities.wallbox_power", ...powerTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"]], include: [wallboxTerms, ...powerTarget.include], exclude: ["2", "second", "zweite", "two", "phase", "phasen", "soc", "remaining", "time", "zeit", "energy", "kwh"], threshold: 56 },
       { path: "entities.wallbox_phase", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["phase", "phases", "phasen"]], include: [wallboxTerms, { terms: ["phase", "phases", "phasen"], weight: 34 }], exclude: ["power", "leistung", "energy", "kwh"], threshold: 58 },
-      { path: "entities.wallbox_soc", domains: ["sensor"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"]], include: [wallboxTerms, { terms: ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen"], threshold: 58 },
+      { path: "entities.wallbox_soc", domains: ["sensor"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"]], include: [wallboxTerms, { terms: ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen", "max", "target", "ziel", "limit"], threshold: 58 },
+      { path: "entities.wallbox_max_soc", domains: ["sensor", "number", "input_number"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["max", "target", "ziel", "limit", "charge limit", "ladelimit"]], include: [wallboxTerms, { terms: ["max", "target", "ziel", "limit", "charge limit", "ladelimit", "soc"], weight: 34 }], exclude: ["power", "leistung", "phase", "phasen", "remaining", "time"], threshold: 58 },
+      { path: "entities.wallbox_connected", domains: ["binary_sensor", "sensor", "switch"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"]], include: [wallboxTerms, { terms: ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"], weight: 32 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 58 },
+      { path: "entities.wallbox_charging_enabled", domains: ["switch", "binary_sensor", "sensor", "input_boolean"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop"]], include: [wallboxTerms, { terms: ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop", "charging"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 58 },
       { path: "entities.wallbox_remaining_time", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"]], include: [wallboxTerms, { terms: ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"], weight: 30 }], exclude: ["power", "leistung", "phase", "soc"], threshold: 58 },
       { path: "entities.wallbox2_power", ...powerTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 22 }, ...powerTarget.include], exclude: ["phase", "phasen", "soc", "remaining", "time", "zeit", "energy", "kwh"], threshold: 62 },
       { path: "entities.wallbox2_phase", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["phase", "phases", "phasen"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["phase", "phases", "phasen"], weight: 34 }], exclude: ["power", "leistung", "energy", "kwh"], threshold: 64 },
-      { path: "entities.wallbox2_soc", domains: ["sensor"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen"], threshold: 64 },
+      { path: "entities.wallbox2_soc", domains: ["sensor"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen", "max", "target", "ziel", "limit"], threshold: 64 },
+      { path: "entities.wallbox2_max_soc", domains: ["sensor", "number", "input_number"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["max", "target", "ziel", "limit", "charge limit", "ladelimit"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["max", "target", "ziel", "limit", "charge limit", "ladelimit", "soc"], weight: 34 }], exclude: ["power", "leistung", "phase", "phasen", "remaining", "time"], threshold: 64 },
+      { path: "entities.wallbox2_connected", domains: ["binary_sensor", "sensor", "switch"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"], weight: 32 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 64 },
+      { path: "entities.wallbox2_charging_enabled", domains: ["switch", "binary_sensor", "sensor", "input_boolean"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop", "charging"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 64 },
       { path: "entities.wallbox2_remaining_time", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"], weight: 30 }], exclude: ["power", "leistung", "phase", "soc"], threshold: 64 },
       { path: "entities.import_export_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import export", "bezug einspeisung", "net", "saldo", "balance", "signed"]], include: [gridTerms, { terms: ["import export", "bezug einspeisung", "net", "saldo", "balance", "signed"], weight: 28 }, ...powerTarget.include], exclude: ["energy", "kwh", "total"], threshold: 58 },
       { path: "entities.import_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "verbrauch netz", "from grid"]], include: [gridTerms, { terms: ["import", "bezug", "purchase", "verbrauch netz", "from grid"], weight: 32 }], exclude: ["export", "einspeis", "feed", "energy", "kwh"], threshold: 62 },
@@ -4683,7 +4857,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       if (mode === "fill" && hasCurrent && !this._isPlaceholderEntity(suggestion.path, current) && !onePath) return;
       if (onePath && hasCurrent && String(current) === suggestion.entityId) return;
       this._setPath(next, suggestion.path.split("."), suggestion.entityId);
-      if (suggestion.path === "entities.wallbox2_power") this._setPath(next, ["visible_boxes", "wallbox2_power"], true);
+      if (suggestion.path.startsWith("entities.wallbox2_")) this._setPath(next, ["visible_boxes", "wallbox2_power"], true);
       if (suggestion.path === "entities.import_export_power" || suggestion.path === "entities.import_power" || suggestion.path === "entities.export_power") {
         this._setPath(next, ["visible_boxes", "import_export_power"], true);
         next.show_grid_status_tile = true;
@@ -4892,6 +5066,66 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _wallboxMaxSocEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_max_soc";
+    if (metric?.key === "wallbox2_power") return "wallbox2_max_soc";
+    return "";
+  }
+
+  _renderWallboxMaxSocInput(metric) {
+    const entityKey = this._wallboxMaxSocEntityKey(metric);
+    if (!entityKey) return "";
+    const value = this._config.entities?.[entityKey] || "";
+    const placeholder = metric.key === "wallbox2_power"
+      ? "number.wallbox_2_target_soc"
+      : "number.wallbox_target_soc";
+    return `
+      <label>${this._escape(this._t("editor.vehicleMaxSocEntity", {}, "Vehicle max/target SoC entity"))}
+        <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
+      </label>
+    `;
+  }
+
+  _wallboxConnectedEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_connected";
+    if (metric?.key === "wallbox2_power") return "wallbox2_connected";
+    return "";
+  }
+
+  _renderWallboxConnectedInput(metric) {
+    const entityKey = this._wallboxConnectedEntityKey(metric);
+    if (!entityKey) return "";
+    const value = this._config.entities?.[entityKey] || "";
+    const placeholder = metric.key === "wallbox2_power"
+      ? "binary_sensor.wallbox_2_vehicle_connected"
+      : "binary_sensor.wallbox_vehicle_connected";
+    return `
+      <label>${this._escape(this._t("editor.vehicleConnectedEntity", {}, "Vehicle connected entity"))}
+        <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
+      </label>
+    `;
+  }
+
+  _wallboxChargingEnabledEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_charging_enabled";
+    if (metric?.key === "wallbox2_power") return "wallbox2_charging_enabled";
+    return "";
+  }
+
+  _renderWallboxChargingEnabledInput(metric) {
+    const entityKey = this._wallboxChargingEnabledEntityKey(metric);
+    if (!entityKey) return "";
+    const value = this._config.entities?.[entityKey] || "";
+    const placeholder = metric.key === "wallbox2_power"
+      ? "switch.wallbox_2_charging_enabled"
+      : "switch.wallbox_charging_enabled";
+    return `
+      <label>${this._escape(this._t("editor.vehicleChargingEnabledEntity", {}, "Charging enabled entity"))}
+        <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
+      </label>
+    `;
+  }
+
   _wallboxRemainingTimeEntityKey(metric) {
     if (metric?.key === "wallbox_power") return "wallbox_remaining_time";
     if (metric?.key === "wallbox2_power") return "wallbox2_remaining_time";
@@ -5037,6 +5271,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ${this._renderEnergyEntityInputs(metric)}
         ${this._renderWallboxPhaseInput(metric)}
         ${this._renderWallboxSocInput(metric)}
+        ${this._renderWallboxMaxSocInput(metric)}
+        ${this._renderWallboxConnectedInput(metric)}
+        ${this._renderWallboxChargingEnabledInput(metric)}
         ${this._renderWallboxRemainingTimeInput(metric)}
         ${this._renderUnitSelect(metric)}
         ${this._renderBatteryFlowInputs(metric)}

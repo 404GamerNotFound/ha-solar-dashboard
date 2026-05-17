@@ -32,10 +32,16 @@ const ENERGY_RANGE_OPTIONS = [
   { key: "total", labelKey: "range.total", label: "Total" },
 ];
 
+const VIEW_MODE_OPTIONS = [
+  { key: "house", labelKey: "view.house", label: "House" },
+  { key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard" },
+];
+
 const I18N = {
   en: {
     "aria.energyRangeSelector": "Select value range",
     "aria.houseSelector": "Select house",
+    "aria.viewSelector": "Select dashboard view",
     "card.defaultTitle": "Energy Flow",
     "card.defaultTimeLabel": "Live",
     "advisor.action": "Action",
@@ -72,6 +78,7 @@ const I18N = {
     "advisor.unknown": "Unknown",
     "advisor.wallbox": "EV",
     "editor.showEnergyAdvisor": "Show Energy Advisor panel",
+    "editor.showViewSelector": "Show House/Advisor view selector",
     "chart.close": "Close",
     "chart.empty": "No history data found",
     "chart.error": "History could not be loaded",
@@ -160,6 +167,7 @@ const I18N = {
     "editor.timeLabel": "Time Label",
     "editor.title": "Title",
     "editor.unit": "Unit",
+    "editor.viewMode": "Default view",
     "editor.weatherEntity": "Weather Entity",
     "editor.setupWizard": "Setup wizard",
     "editor.setupIntro": "Helps with the first setup by suggesting sensors for PV, battery, inverter, EV charger, grid, consumption, weather, and kWh counters.",
@@ -233,6 +241,8 @@ const I18N = {
     "tooltip.vehicleSoc": "Vehicle SoC",
     "value.remainingChargeTime": "{value} left",
     "value.temperature": "Temp {value}",
+    "view.advisor": "Advisor Dashboard",
+    "view.house": "House",
     "weather.clear": "Clear",
     "weather.clear-night": "Clear",
     "weather.cloudy": "Cloudy",
@@ -256,6 +266,7 @@ const I18N = {
   de: {
     "aria.energyRangeSelector": "Wertebereich auswählen",
     "aria.houseSelector": "Haus auswählen",
+    "aria.viewSelector": "Dashboard-Ansicht auswählen",
     "card.defaultTitle": "Energiefluss",
     "card.defaultTimeLabel": "Live",
     "advisor.action": "Aktion",
@@ -292,6 +303,7 @@ const I18N = {
     "advisor.unknown": "Unbekannt",
     "advisor.wallbox": "Wallbox",
     "editor.showEnergyAdvisor": "Energy-Advisor-Panel anzeigen",
+    "editor.showViewSelector": "Haus-/Advisor-Ansichtsauswahl anzeigen",
     "chart.close": "Schließen",
     "chart.empty": "Keine Verlaufsdaten gefunden",
     "chart.error": "Verlauf konnte nicht geladen werden",
@@ -380,6 +392,7 @@ const I18N = {
     "editor.timeLabel": "Zeitlabel",
     "editor.title": "Titel",
     "editor.unit": "Einheit",
+    "editor.viewMode": "Standardansicht",
     "editor.weatherEntity": "Wetter-Entität",
     "editor.setupWizard": "Einrichtungs-Assistent",
     "editor.setupIntro": "Hilft bei der Ersteinrichtung, indem passende Sensoren für PV, Batterie, Wechselrichter, Wallbox, Netz, Verbrauch, Wetter und kWh-Zähler vorgeschlagen werden.",
@@ -453,6 +466,8 @@ const I18N = {
     "tooltip.vehicleSoc": "Auto SoC",
     "value.remainingChargeTime": "Noch {value}",
     "value.temperature": "Temp {value}",
+    "view.advisor": "Advisor Dashboard",
+    "view.house": "Haus",
     "weather.clear": "Klar",
     "weather.clear-night": "Klar",
     "weather.cloudy": "Bewölkt",
@@ -1274,8 +1289,10 @@ class HaSolarDashboardCard extends HTMLElement {
       title: "Solar Dashboard",
       time_label: "Live",
       house: "single_family_home",
+      view_mode: "house",
       show_title: true,
       show_time_label: true,
+      show_view_selector: true,
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
@@ -1361,6 +1378,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
     const energyRange = this._normalizeEnergyRange(config.energy_range) || "live";
+    const viewMode = this._normalizeViewMode(config.view_mode || config.mode || config.default_view) || "house";
     this._hasCustomTitle = Object.prototype.hasOwnProperty.call(config, "title");
     this._hasCustomTimeLabel = Object.prototype.hasOwnProperty.call(config, "time_label");
 
@@ -1368,8 +1386,10 @@ class HaSolarDashboardCard extends HTMLElement {
       title: "Energy Flow",
       time_label: "Live",
       house,
+      view_mode: viewMode,
       show_title: true,
       show_time_label: true,
+      show_view_selector: true,
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
@@ -1405,6 +1425,7 @@ class HaSolarDashboardCard extends HTMLElement {
       custom_kpis: [],
       ...config,
       house,
+      view_mode: viewMode,
       energy_range: energyRange,
       units: {
         power: "auto",
@@ -1470,6 +1491,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     this._selectedHouse = house;
     this._selectedEnergyRange = this._normalizeEnergyRange(this._selectedEnergyRange || this.config.energy_range) || "live";
+    this._selectedViewMode = this._normalizeViewMode(this._selectedViewMode || this.config.view_mode) || "house";
 
     if (!this.shadowRoot) {
       this.attachShadow({ mode: "open" });
@@ -1527,6 +1549,27 @@ class HaSolarDashboardCard extends HTMLElement {
     if (normalized === "yearly") return "year";
     if (normalized === "all" || normalized === "overall" || normalized === "lifetime") return "total";
     return ENERGY_RANGE_OPTIONS.some((option) => option.key === normalized) ? normalized : undefined;
+  }
+
+  _normalizeViewMode(value) {
+    const normalized = String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+    const aliases = {
+      home: "house",
+      haus: "house",
+      house_view: "house",
+      building: "house",
+      advisor_dashboard: "advisor",
+      advisor_view: "advisor",
+      adviser: "advisor",
+      adviser_dashboard: "advisor",
+      energy_advisor: "advisor",
+    };
+    const key = aliases[normalized] || normalized;
+    return VIEW_MODE_OPTIONS.some((option) => option.key === key) ? key : undefined;
+  }
+
+  _currentViewMode() {
+    return this._normalizeViewMode(this._selectedViewMode || this.config?.view_mode) || "house";
   }
 
   _currentEnergyRange() {
@@ -3204,6 +3247,19 @@ class HaSolarDashboardCard extends HTMLElement {
     return `<select class="house-select" aria-label="${this._escape(this._t("aria.houseSelector"))}">${options}</select>`;
   }
 
+  _renderViewSelector() {
+    if (this.config.show_view_selector !== true) return "";
+    const activeView = this._currentViewMode();
+    const options = VIEW_MODE_OPTIONS
+      .map((option) => {
+        const selected = option.key === activeView ? " selected" : "";
+        return `<option value="${this._escape(option.key)}"${selected}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`;
+      })
+      .join("");
+
+    return `<select class="view-mode-select" aria-label="${this._escape(this._t("aria.viewSelector", {}, "Select dashboard view"))}">${options}</select>`;
+  }
+
   _renderEnergyRangeSelector() {
     if (this.config.show_energy_range_selector !== true) return "";
     const activeRange = this._currentEnergyRange();
@@ -3642,8 +3698,8 @@ class HaSolarDashboardCard extends HTMLElement {
     return Number.isFinite(value) ? formatter(value) : this._t("advisor.unknown", {}, "Unknown");
   }
 
-  _renderEnergyAdvisor() {
-    if (this.config.show_energy_advisor !== true) return "";
+  _renderEnergyAdvisor({ force = false, dashboard = false } = {}) {
+    if (!force && this.config.show_energy_advisor !== true) return "";
     const snapshot = this._advisorSnapshot();
     const items = this._advisorItems(snapshot);
     const status = this._advisorStatus(snapshot, items);
@@ -3681,7 +3737,7 @@ class HaSolarDashboardCard extends HTMLElement {
     `).join("");
 
     return `
-      <section class="advisor advisor-${this._escape(status.type)}" data-energy-advisor>
+      <section class="advisor advisor-${this._escape(status.type)}${dashboard ? " advisor-dashboard" : ""}" data-energy-advisor>
         <div class="advisor-head">
           <div>
             <div class="advisor-label">${this._escape(this._t("advisor.panelTitle", {}, "Energy Advisor"))}</div>
@@ -3702,6 +3758,16 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _attachControls() {
+    const viewModeSelect = this.shadowRoot.querySelector(".view-mode-select");
+    if (viewModeSelect) {
+      viewModeSelect.addEventListener("change", (event) => {
+        const nextViewMode = this._normalizeViewMode(event.target.value);
+        if (!nextViewMode || nextViewMode === this._currentViewMode()) return;
+        this._selectedViewMode = nextViewMode;
+        this._renderCardShell(this._layoutState());
+      });
+    }
+
     const select = this.shadowRoot.querySelector(".house-select");
     if (select) {
       select.addEventListener("change", (event) => {
@@ -3781,20 +3847,22 @@ class HaSolarDashboardCard extends HTMLElement {
     this._lastImageKey = this._imageStateKey();
     this._lastLanguage = this._language();
     this._currentVariant = state.variant;
+    const activeView = this._currentViewMode();
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
     const visibleTileMetrics = this._visibleTileMetrics(state.variant);
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
-    const advisorHtml = this._renderEnergyAdvisor();
+    const advisorHtml = this._renderEnergyAdvisor({ force: activeView === "advisor", dashboard: activeView === "advisor" });
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
       ? `<div class="scene-status" data-accent-key="${STATUS_METRIC.key}" data-status-label style="${this._escape(this._accentStyle(STATUS_METRIC))}">${this._escape(statusLabel)}</div>`
       : "";
     const headerHtml = [
       this.config.show_title !== false ? `<div class="title">${this._escape(this._displayTitle())}</div>` : "",
-      this._renderHouseSelector(state.activeHouse),
-      this._renderEnergyRangeSelector(),
+      this._renderViewSelector(),
+      activeView === "house" ? this._renderHouseSelector(state.activeHouse) : "",
+      activeView === "house" ? this._renderEnergyRangeSelector() : "",
       this.config.show_time_label !== false ? `<div class="badge">${this._escape(this._displayTimeLabel())}</div>` : "",
     ].filter(Boolean).join("");
     const gridHtml = visibleTileMetrics.map((metric) => {
@@ -3834,10 +3902,11 @@ class HaSolarDashboardCard extends HTMLElement {
         ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 80% at 15% 0%, #232b44 0%, #111727 70%); color:var(--text-main); box-shadow:0 18px 45px rgba(0,0,0,.55); padding:16px; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
         .header { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; align-items:center; gap:10px; margin-bottom:12px; }
         .title { min-width:0; overflow-wrap:anywhere; font-size:1.28rem; font-weight:700; line-height:1.2; }
-        .badge,.house-select,.energy-range-select { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
+        .badge,.house-select,.energy-range-select,.view-mode-select { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
         .badge { display:inline-flex; align-items:center; padding:0 10px; white-space:nowrap; }
-        .house-select,.energy-range-select { max-width:140px; padding:0 30px 0 10px; }
+        .house-select,.energy-range-select,.view-mode-select { max-width:170px; padding:0 30px 0 10px; }
         .energy-range-select { max-width:110px; }
+        .view-mode-select { max-width:190px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
         .image-overlay-wrap { position:absolute; z-index:1; width:10%; transform:translate(-50%,var(--overlay-translate-y,-50%)); transform-origin:center bottom; pointer-events:none; user-select:none; }
@@ -3886,6 +3955,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
         .tile { --tile-accent:var(--text-main); --tile-glow:transparent; --tile-columns:1; --tile-mobile-columns:1; position:relative; grid-column:span var(--tile-columns); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.08)); border-radius:8px; padding:10px; min-width:0; cursor:pointer; box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 20px var(--tile-glow); }
         .advisor { --advisor-accent:#93c5fd; display:grid; gap:10px; margin-top:12px; padding:12px; border-radius:8px; border:1px solid color-mix(in srgb,var(--advisor-accent) 36%,rgba(255,255,255,.1)); background:linear-gradient(135deg,rgba(15,23,42,.76),rgba(8,13,28,.68)); box-shadow:inset 3px 0 0 var(--advisor-accent),0 10px 24px rgba(0,0,0,.18); }
+        .advisor-dashboard { margin-top:0; min-height:320px; align-content:start; }
         .advisor-warning { --advisor-accent:#fb923c; }
         .advisor-opportunity { --advisor-accent:#34d399; }
         .advisor-success { --advisor-accent:#34d399; }
@@ -3931,14 +4001,18 @@ class HaSolarDashboardCard extends HTMLElement {
         .chart-label,.chart-current { fill:var(--text-muted); font-size:12px; }
         .chart-current { fill:var(--tile-accent); text-anchor:end; font-weight:700; }
         .chart-label.end { text-anchor:end; }
-        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select,.view-mode-select{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
-        <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
-        ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
-        ${advisorHtml}
+        ${activeView === "advisor"
+          ? advisorHtml
+          : `
+            <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
+            ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>` : ""}
+            ${advisorHtml}
+          `}
       </ha-card>
       ${this._renderChartOverlay()}
     `;
@@ -4079,7 +4153,8 @@ class HaSolarDashboardCard extends HTMLElement {
       const statusLabel = this._statusLabel();
       if (statusElement.textContent !== statusLabel) statusElement.textContent = statusLabel;
     }
-    const nextAdvisorHtml = this._renderEnergyAdvisor();
+    const activeView = this._currentViewMode();
+    const nextAdvisorHtml = this._renderEnergyAdvisor({ force: activeView === "advisor", dashboard: activeView === "advisor" });
     const advisorElement = this.shadowRoot.querySelector("[data-energy-advisor]");
     if (advisorElement && nextAdvisorHtml) {
       advisorElement.outerHTML = nextAdvisorHtml.trim();
@@ -4994,6 +5069,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const houseOptions = Object.entries(HOUSE_VARIANTS)
       .map(([key, value]) => `<option value="${this._escape(key)}"${key === house ? " selected" : ""}>${this._escape(this._houseLabel(key, value))}</option>`)
       .join("");
+    const viewMode = this._normalizeViewMode(this._config.view_mode) || "house";
+    const viewModeOptions = VIEW_MODE_OPTIONS
+      .map((option) => `<option value="${this._escape(option.key)}"${option.key === viewMode ? " selected" : ""}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`)
+      .join("");
     const entityOptions = this._entityOptions()
       .map((entityId) => `<option value="${this._escape(entityId)}"></option>`)
       .join("");
@@ -5051,6 +5130,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ${this._renderSetupWizard()}
         <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
         <label>${this._escape(this._t("editor.timeLabel"))} <input data-path="time_label" value="${this._escape(this._config.time_label || "")}" /></label>
+        <label>${this._escape(this._t("editor.viewMode", {}, "Default view"))} <select data-path="view_mode">${viewModeOptions}</select></label>
         <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
         <label>${this._escape(this._t("editor.customImage"))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
         <label>${this._escape(this._t("editor.customDayImage"))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
@@ -5059,6 +5139,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         </label>
         <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
         <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLiveLabel"))}</label>
+        <label><input type="checkbox" data-path="show_view_selector" ${this._config.show_view_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showViewSelector", {}, "Show House/Advisor view selector"))}</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
         <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>

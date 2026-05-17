@@ -2022,11 +2022,9 @@ class HaSolarDashboardCard extends HTMLElement {
   _statusLabel() {
     const updatedAt = this._formatRelativeTime(this._latestEntityUpdate());
     const weather = this.config.show_weather_status ? this._formatWeatherStatus() : "";
-    const importExport = this._formatImportExportStatus();
     return [
       updatedAt ? this._t("status.lastUpdated", { time: updatedAt }) : "",
       weather,
-      importExport,
     ].filter(Boolean).join(" / ");
   }
 

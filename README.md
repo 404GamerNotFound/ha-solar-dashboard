@@ -84,7 +84,6 @@ The wizard uses entity ids, friendly names, units, `device_class`, and `state_cl
 ```yaml
 type: custom:ha-solar-dashboard-card
 title: Solar Dashboard
-time_label: Live
 house: single_family_home
 view_mode: house
 show_view_selector: true
@@ -228,11 +227,9 @@ custom_kpis:
 ## Card options
 
 - `title` (string, default: `Energy Flow`)
-- `time_label` (string, default: `Live`)
 - `house` (string, default: `single_family_home`; options: `single_family_home`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, `city_villa_pitched_roof`; legacy German values are still accepted as aliases)
 - `view_mode` (string, default: `house`; options: `house`, `advisor`; controls whether the card opens with the house visualization or the Advisor Dashboard)
 - `show_title` (boolean, default: `true`; shows/hides the title)
-- `show_time_label` (boolean, default: `true`; shows/hides the live label)
 - `show_view_selector` (boolean, default: `true`; shows/hides the House View / Advisor Dashboard selector in the card header)
 - `show_house_selector` (boolean, default: `true`)
 - `show_energy_range_selector` (boolean, default: `false`; shows the `Live` / `1h` / `24h` / `1 month` / `1 year` / `Total` selector in the header when enabled)

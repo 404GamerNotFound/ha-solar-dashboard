@@ -43,7 +43,6 @@ const I18N = {
     "aria.houseSelector": "Select house",
     "aria.viewSelector": "Select dashboard view",
     "card.defaultTitle": "Energy Flow",
-    "card.defaultTimeLabel": "Live",
     "advisor.action": "Action",
     "advisor.autarky": "Autarky",
     "advisor.batteryIdle": "Battery is not charging while surplus is exported. Check battery limits or charge mode.",
@@ -189,13 +188,11 @@ const I18N = {
     "editor.showEnergyRangeSelector": "Show Live/1h/24h/month/year/total selector",
     "editor.showHouseSelector": "Show house selector",
     "editor.showGridStatusTile": "Show grid status tile",
-    "editor.showLiveLabel": "Show live label",
     "editor.showMetricTiles": "Show metric boxes below image",
     "editor.showPowerFlows": "Show animated power flows",
     "editor.showStatusLabel": "Show image status label",
     "editor.showTitle": "Show title",
     "editor.showWeatherStatus": "Show current weather in status label",
-    "editor.timeLabel": "Time Label",
     "editor.title": "Title",
     "editor.unit": "Unit",
     "editor.viewMode": "Default view",
@@ -299,7 +296,6 @@ const I18N = {
     "aria.houseSelector": "Haus auswählen",
     "aria.viewSelector": "Dashboard-Ansicht auswählen",
     "card.defaultTitle": "Energiefluss",
-    "card.defaultTimeLabel": "Live",
     "advisor.action": "Aktion",
     "advisor.autarky": "Autarkie",
     "advisor.batteryIdle": "Die Batterie lädt nicht, obwohl Überschuss eingespeist wird. Prüfe Batterielimits oder den Lademodus.",
@@ -445,13 +441,11 @@ const I18N = {
     "editor.showEnergyRangeSelector": "Live-/1h-/24h-/Monat-/Jahr-/Gesamt-Auswahl anzeigen",
     "editor.showHouseSelector": "Hausauswahl anzeigen",
     "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
-    "editor.showLiveLabel": "Live-Label anzeigen",
     "editor.showMetricTiles": "Messwertboxen unter dem Bild anzeigen",
     "editor.showPowerFlows": "Animierte Stromflüsse anzeigen",
     "editor.showStatusLabel": "Statuslabel im Bild anzeigen",
     "editor.showTitle": "Titel anzeigen",
     "editor.showWeatherStatus": "Aktuelles Wetter im Statuslabel anzeigen",
-    "editor.timeLabel": "Zeitlabel",
     "editor.title": "Titel",
     "editor.unit": "Einheit",
     "editor.viewMode": "Standardansicht",
@@ -554,7 +548,6 @@ const I18N = {
     "aria.energyRangeSelector": "Seleccionar rango de valores",
     "aria.houseSelector": "Seleccionar casa",
     "card.defaultTitle": "Flujo de energía",
-    "card.defaultTimeLabel": "En vivo",
     "chart.close": "Cerrar",
     "chart.empty": "No se encontraron datos históricos",
     "chart.error": "No se pudo cargar el historial",
@@ -624,13 +617,11 @@ const I18N = {
     "editor.showEnergyRangeSelector": "Mostrar selector en vivo/1h/24h/mes/año/total",
     "editor.showHouseSelector": "Mostrar selector de casa",
     "editor.showGridStatusTile": "Mostrar mosaico de red",
-    "editor.showLiveLabel": "Mostrar etiqueta en vivo",
     "editor.showMetricTiles": "Mostrar cajas de métricas bajo la imagen",
     "editor.showPowerFlows": "Mostrar flujos de energía animados",
     "editor.showStatusLabel": "Mostrar etiqueta de estado en la imagen",
     "editor.showTitle": "Mostrar título",
     "editor.showWeatherStatus": "Mostrar clima actual en la etiqueta de estado",
-    "editor.timeLabel": "Etiqueta de tiempo",
     "editor.title": "Título",
     "editor.unit": "Unidad",
     "editor.weatherEntity": "Entidad meteorológica",
@@ -711,7 +702,6 @@ const I18N = {
     "aria.energyRangeSelector": "Sélectionner la période de valeur",
     "aria.houseSelector": "Sélectionner une maison",
     "card.defaultTitle": "Flux d'énergie",
-    "card.defaultTimeLabel": "En direct",
     "chart.close": "Fermer",
     "chart.empty": "Aucune donnée historique trouvée",
     "chart.error": "Impossible de charger l'historique",
@@ -781,13 +771,11 @@ const I18N = {
     "editor.showEnergyRangeSelector": "Afficher le sélecteur direct/1h/24h/mois/an/total",
     "editor.showHouseSelector": "Afficher le sélecteur de maison",
     "editor.showGridStatusTile": "Afficher la tuile réseau",
-    "editor.showLiveLabel": "Afficher le libellé en direct",
     "editor.showMetricTiles": "Afficher les boîtes de mesure sous l'image",
     "editor.showPowerFlows": "Afficher les flux d'énergie animés",
     "editor.showStatusLabel": "Afficher le libellé d'état dans l'image",
     "editor.showTitle": "Afficher le titre",
     "editor.showWeatherStatus": "Afficher la météo actuelle dans le libellé d'état",
-    "editor.timeLabel": "Libellé de temps",
     "editor.title": "Titre",
     "editor.unit": "Unité",
     "editor.weatherEntity": "Entité météo",
@@ -868,7 +856,6 @@ const I18N = {
     "aria.energyRangeSelector": "Wybierz zakres wartości",
     "aria.houseSelector": "Wybierz dom",
     "card.defaultTitle": "Przepływ energii",
-    "card.defaultTimeLabel": "Na żywo",
     "chart.close": "Zamknij",
     "chart.empty": "Nie znaleziono danych historii",
     "chart.error": "Nie udało się wczytać historii",
@@ -938,13 +925,11 @@ const I18N = {
     "editor.showEnergyRangeSelector": "Pokaż wybór na żywo/1h/24h/miesiąc/rok/łącznie",
     "editor.showHouseSelector": "Pokaż wybór domu",
     "editor.showGridStatusTile": "Pokaż kafelek sieci",
-    "editor.showLiveLabel": "Pokaż etykietę na żywo",
     "editor.showMetricTiles": "Pokaż pola metryk pod obrazem",
     "editor.showPowerFlows": "Pokaż animowane przepływy energii",
     "editor.showStatusLabel": "Pokaż etykietę statusu na obrazie",
     "editor.showTitle": "Pokaż tytuł",
     "editor.showWeatherStatus": "Pokaż aktualną pogodę w etykiecie statusu",
-    "editor.timeLabel": "Etykieta czasu",
     "editor.title": "Tytuł",
     "editor.unit": "Jednostka",
     "editor.weatherEntity": "Encja pogody",
@@ -1377,11 +1362,9 @@ class HaSolarDashboardCard extends HTMLElement {
     return {
       type: `custom:${CARD_TYPE}`,
       title: "Solar Dashboard",
-      time_label: "Live",
       house: "single_family_home",
       view_mode: "house",
       show_title: true,
-      show_time_label: true,
       show_view_selector: true,
       show_house_selector: true,
       show_energy_range_selector: false,
@@ -1486,15 +1469,12 @@ class HaSolarDashboardCard extends HTMLElement {
     const energyRange = this._normalizeEnergyRange(config.energy_range) || "live";
     const viewMode = this._normalizeViewMode(config.view_mode || config.mode || config.default_view) || "house";
     this._hasCustomTitle = Object.prototype.hasOwnProperty.call(config, "title");
-    this._hasCustomTimeLabel = Object.prototype.hasOwnProperty.call(config, "time_label");
 
     this.config = {
       title: "Energy Flow",
-      time_label: "Live",
       house,
       view_mode: viewMode,
       show_title: true,
-      show_time_label: true,
       show_view_selector: true,
       show_house_selector: true,
       show_energy_range_selector: false,
@@ -1641,10 +1621,6 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _displayTitle() {
     return this._hasCustomTitle ? this.config.title : this._t("card.defaultTitle", {}, this.config.title);
-  }
-
-  _displayTimeLabel() {
-    return this._hasCustomTimeLabel ? this.config.time_label : this._t("card.defaultTimeLabel", {}, this.config.time_label);
   }
 
   _houseLabel(key, variant = HOUSE_VARIANTS[key]) {
@@ -4581,10 +4557,9 @@ class HaSolarDashboardCard extends HTMLElement {
       : "";
     const headerHtml = [
       this.config.show_title !== false ? `<div class="title">${this._escape(this._displayTitle())}</div>` : "",
+      activeView === "house" ? this._renderEnergyRangeSelector() : "",
       this._renderViewSelector(),
       activeView === "house" ? this._renderHouseSelector(state.activeHouse) : "",
-      activeView === "house" ? this._renderEnergyRangeSelector() : "",
-      this.config.show_time_label !== false ? `<div class="badge">${this._escape(this._displayTimeLabel())}</div>` : "",
     ].filter(Boolean).join("");
     const gridHtml = visibleTileMetrics.map((metric) => {
       const tooltip = this._metricTooltip(metric, state.variant);
@@ -4623,8 +4598,7 @@ class HaSolarDashboardCard extends HTMLElement {
         ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 80% at 15% 0%, #232b44 0%, #111727 70%); color:var(--text-main); box-shadow:0 18px 45px rgba(0,0,0,.55); padding:16px; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
         .header { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; align-items:center; gap:10px; margin-bottom:12px; }
         .title { min-width:0; overflow-wrap:anywhere; font-size:1.28rem; font-weight:700; line-height:1.2; }
-        .badge,.house-select,.energy-range-select,.view-mode-toggle { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
-        .badge { display:inline-flex; align-items:center; padding:0 10px; white-space:nowrap; }
+        .house-select,.energy-range-select,.view-mode-toggle { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
         .house-select,.energy-range-select { max-width:170px; padding:0 30px 0 10px; }
         .energy-range-select { max-width:110px; }
         .view-mode-toggle { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:clamp(224px,24vw,292px); max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
@@ -4731,7 +4705,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .chart-label,.chart-current { fill:var(--text-muted); font-size:12px; }
         .chart-current { fill:var(--tile-accent); text-anchor:end; font-weight:700; }
         .chart-label.end { text-anchor:end; }
-        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .badge,.house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <ha-card>
@@ -5968,7 +5942,6 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
         ${this._renderSetupWizard()}
         <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
-        <label>${this._escape(this._t("editor.timeLabel"))} <input data-path="time_label" value="${this._escape(this._config.time_label || "")}" /></label>
         <label>${this._escape(this._t("editor.viewMode", {}, "Default view"))} <select data-path="view_mode">${viewModeOptions}</select></label>
         <label>${this._escape(this._t("editor.advisorMaxSuggestions", {}, "Advisor suggestions"))} (${this._escape(Number(this._config.advisor_max_suggestions ?? 8).toFixed(0))})
           <input type="range" min="1" max="12" step="1" data-path="advisor_max_suggestions" value="${this._escape(this._config.advisor_max_suggestions ?? 8)}" />
@@ -5980,7 +5953,6 @@ class HaSolarDashboardCardEditor extends HTMLElement {
           <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />
         </label>
         <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
-        <label><input type="checkbox" data-path="show_time_label" ${this._config.show_time_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLiveLabel"))}</label>
         <label><input type="checkbox" data-path="show_view_selector" ${this._config.show_view_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showViewSelector", {}, "Show House/Advisor view selector"))}</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
         <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>

@@ -1218,6 +1218,18 @@ const STATIC_METRIC_COLORS = {
   green: "#34d399",
 };
 
+const MINUTE_MS = 60 * 1000;
+const MAX_HISTORY_CACHE_ENTRIES = 48;
+const MAX_COUNTER_CACHE_ENTRIES = 72;
+
+function numericState(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  const normalized = String(value ?? "").trim().replace(/,/g, ".");
+  if (!normalized || ["unknown", "unavailable", "offline", "none", "null"].includes(normalized.toLowerCase())) return undefined;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : undefined;
+}
+
 function adjacentWallboxPosition(basePosition = {}) {
   const baseLeft = Number(basePosition.left);
   const baseTop = Number(basePosition.top);
@@ -1279,6 +1291,18 @@ function normalizeHouse(value) {
 }
 
 class HaSolarDashboardCard extends HTMLElement {
+  connectedCallback() {
+    this._isCardConnected = true;
+    if (this.config && this.shadowRoot) this._updateReadings();
+  }
+
+  disconnectedCallback() {
+    this._isCardConnected = false;
+    this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
+    this._energyRangeLoading?.clear();
+    this._overlayConsumptionLoading?.clear();
+  }
+
   static getConfigElement() {
     return document.createElement(CARD_EDITOR_TYPE);
   }
@@ -1375,6 +1399,10 @@ class HaSolarDashboardCard extends HTMLElement {
 
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
+
+    this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
+    this._energyRangeLoading?.clear();
+    this._overlayConsumptionLoading?.clear();
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
     const energyRange = this._normalizeEnergyRange(config.energy_range) || "live";
@@ -1504,6 +1532,8 @@ class HaSolarDashboardCard extends HTMLElement {
     const previousLanguage = this._lastLanguage || this._language();
     const previousImageKey = this._lastImageKey || this._imageStateKey();
     this._hass = hass;
+    if (!this.config || !this.shadowRoot) return;
+
     const nextLanguage = this._language();
     const nextImageKey = this._imageStateKey();
     if (this.shadowRoot && (previousImageKey !== nextImageKey || previousLanguage !== nextLanguage)) {
@@ -1924,7 +1954,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _valueAsWatts(value, unit) {
-    const numericValue = Number(value);
+    const numericValue = numericState(value);
     if (!Number.isFinite(numericValue)) return undefined;
     const normalizedUnit = this._normalizeUnit(unit);
     if (normalizedUnit === "kw") return numericValue * 1000;
@@ -1933,7 +1963,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _valueAsKwh(value, unit) {
-    const numericValue = Number(value);
+    const numericValue = numericState(value);
     if (!Number.isFinite(numericValue)) return undefined;
     const normalizedUnit = this._normalizeUnit(unit);
     if (normalizedUnit === "wh") return numericValue / 1000;
@@ -1961,8 +1991,39 @@ class HaSolarDashboardCard extends HTMLElement {
     return undefined;
   }
 
+  _cacheBucketMsForMinutes(minutes) {
+    if (!Number.isFinite(minutes) || minutes <= 60) return MINUTE_MS;
+    if (minutes <= 24 * 60) return 5 * MINUTE_MS;
+    if (minutes <= 31 * 24 * 60) return 30 * MINUTE_MS;
+    return 6 * 60 * MINUTE_MS;
+  }
+
+  _cacheBucket(bucketMs = MINUTE_MS) {
+    return Math.floor(Date.now() / bucketMs);
+  }
+
+  _setCacheEntry(cache, key, value, maxEntries) {
+    if (!cache) return;
+    if (cache.has(key)) cache.delete(key);
+    cache.set(key, value);
+    while (cache.size > maxEntries) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey === undefined) break;
+      cache.delete(oldestKey);
+    }
+  }
+
+  _isActiveRequest(token) {
+    return token === (this._asyncRequestToken || 0);
+  }
+
+  _updateReadingsIfReady() {
+    if (!this.config || !this.shadowRoot || !this._isCardConnected) return;
+    this._updateReadings();
+  }
+
   _energyRangeCacheKey(entityId, range) {
-    const bucket = Math.floor(Date.now() / 60000);
+    const bucket = this._cacheBucket(this._cacheBucketMsForMinutes(this._energyRangeMinutes(range)));
     return `${entityId}|${range}|${bucket}`;
   }
 
@@ -1983,6 +2044,10 @@ class HaSolarDashboardCard extends HTMLElement {
 
     const minutes = this._energyRangeMinutes(range);
     if (!Number.isFinite(minutes)) return undefined;
+    if (this._hass?.states && !this._getEntity(source.entityId)) {
+      return { error: true, amount: undefined, unit: "kWh", entityId: source.entityId, mode: "counter" };
+    }
+
     const key = this._energyRangeCacheKey(source.entityId, range);
     const cached = this._energyRangeCache?.get(key);
     if (cached) return cached;
@@ -1992,17 +2057,21 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _requestEnergyRangeConsumption(entityId, minutes, key) {
     if (!this._hass?.callApi || this._energyRangeLoading?.has(key)) return;
+    const requestToken = this._asyncRequestToken || 0;
     this._energyRangeLoading.add(key);
     this._loadCounterConsumption(entityId, minutes, "kWh")
       .then((info) => {
-        this._energyRangeCache.set(key, { ...info, entityId, mode: "counter" });
-        this._energyRangeLoading.delete(key);
-        this._updateReadings();
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._energyRangeCache, key, { ...info, entityId, mode: "counter" }, MAX_COUNTER_CACHE_ENTRIES);
       })
       .catch(() => {
-        this._energyRangeCache.set(key, { error: true, amount: undefined, unit: this._getEntityUnit(entityId) || "kWh", entityId, mode: "counter" });
-        this._energyRangeLoading.delete(key);
-        this._updateReadings();
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._energyRangeCache, key, { error: true, amount: undefined, unit: this._getEntityUnit(entityId) || "kWh", entityId, mode: "counter" }, MAX_COUNTER_CACHE_ENTRIES);
+      })
+      .finally(() => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._energyRangeLoading?.delete(key);
+        this._updateReadingsIfReady();
       });
   }
 
@@ -2060,13 +2129,13 @@ class HaSolarDashboardCard extends HTMLElement {
       if (metric.overlay === "smoke") return this._overlayGasConsumptionInfo()?.amount;
       const entityId = this.config.image_overlays?.heatpump?.entity;
       const value = this._getEntityValue(entityId, undefined);
-      const number = Number(value);
+      const number = numericState(value);
       return Number.isFinite(number) ? number : undefined;
     }
     if (metric.customKpi) {
       const kpi = metric.customKpi;
       const rawValue = kpi.entity ? this._getEntityValue(kpi.entity, undefined) : kpi.value;
-      const number = Number(rawValue);
+      const number = numericState(rawValue);
       return Number.isFinite(number) ? number : undefined;
     }
     if ((metric.sourceKey || metric.key) === "import_export_power") {
@@ -2083,7 +2152,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const entityUnit = this._getEntityUnit(entityId);
     if (this._isMetricEnergyMode(metric)) return this._valueAsKwh(value, entityUnit);
     if (metric.unit === "power") return this._valueAsWatts(value, entityUnit);
-    const number = Number(value);
+    const number = numericState(value);
     return Number.isFinite(number) ? number : undefined;
   }
 
@@ -2219,7 +2288,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _overlayConsumptionCacheKey(entityId, minutes) {
-    const bucket = Math.floor(Date.now() / 60000);
+    const bucket = this._cacheBucket(this._cacheBucketMsForMinutes(minutes));
     return `${entityId}|${minutes}|${bucket}`;
   }
 
@@ -2227,6 +2296,10 @@ class HaSolarDashboardCard extends HTMLElement {
     const config = this.config.image_overlays?.smoke || {};
     const entityId = config.entity;
     if (!entityId) return undefined;
+    if (this._hass?.states && !this._getEntity(entityId)) {
+      return { error: true, amount: undefined, unit: "m³" };
+    }
+
     const minutes = this._overlayPeriodMinutes("smoke");
     const key = this._overlayConsumptionCacheKey(entityId, minutes);
     const cached = this._overlayConsumptionCache?.get(key);
@@ -2237,17 +2310,21 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _requestOverlayGasConsumption(entityId, minutes, key) {
     if (!this._hass?.callApi || this._overlayConsumptionLoading?.has(key)) return;
+    const requestToken = this._asyncRequestToken || 0;
     this._overlayConsumptionLoading.add(key);
     this._loadCounterConsumption(entityId, minutes)
       .then((info) => {
-        this._overlayConsumptionCache.set(key, info);
-        this._overlayConsumptionLoading.delete(key);
-        this._updateReadings();
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._overlayConsumptionCache, key, info, MAX_COUNTER_CACHE_ENTRIES);
       })
       .catch(() => {
-        this._overlayConsumptionCache.set(key, { error: true, amount: undefined, unit: this._getEntityUnit(entityId) || "m³" });
-        this._overlayConsumptionLoading.delete(key);
-        this._updateReadings();
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._overlayConsumptionCache, key, { error: true, amount: undefined, unit: this._getEntityUnit(entityId) || "m³" }, MAX_COUNTER_CACHE_ENTRIES);
+      })
+      .finally(() => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._overlayConsumptionLoading?.delete(key);
+        this._updateReadingsIfReady();
       });
   }
 
@@ -2262,13 +2339,13 @@ class HaSolarDashboardCard extends HTMLElement {
     const history = await this._hass.callApi("GET", `history/period/${start.toISOString()}?${query}`);
     const states = (Array.isArray(history?.[0]) ? history[0] : [])
       .map((entry) => ({
-        value: Number(entry?.state ?? entry?.s),
+        value: numericState(entry?.state ?? entry?.s),
         unit: entry?.attributes?.unit_of_measurement || this._getEntityUnit(entityId) || defaultUnit,
         time: Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || ""),
       }))
       .filter((entry) => Number.isFinite(entry.value) && Number.isFinite(entry.time))
       .sort((a, b) => a.time - b.time);
-    const currentValue = Number(this._getEntityValue(entityId, undefined));
+    const currentValue = numericState(this._getEntityValue(entityId, undefined));
     const latestState = states.length > 0 ? states[states.length - 1] : undefined;
     const endValue = Number.isFinite(currentValue) ? currentValue : latestState?.value;
     const startValue = states[0]?.value;
@@ -2726,7 +2803,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _historyCacheKey(entityId, hours) {
-    const bucket = Math.floor(Date.now() / 60000);
+    const bucket = this._cacheBucket(MINUTE_MS);
     return `${entityId}|${hours}|${bucket}`;
   }
 
@@ -2735,6 +2812,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (!metric) return;
     const entityId = this._metricEntityId(metric);
     if (!entityId) return;
+    const requestToken = this._asyncRequestToken || 0;
 
     this._chartHours = [24, 48].includes(Number(hours)) ? Number(hours) : 24;
     this._activeChart = {
@@ -2748,7 +2826,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     try {
       const points = await this._loadHistoryPoints(metric, entityId, this._chartHours);
-      if (!this._activeChart || this._activeChart.metricKey !== metricKey || this._activeChart.hours !== this._chartHours) return;
+      if (!this._isActiveRequest(requestToken) || !this._activeChart || this._activeChart.metricKey !== metricKey || this._activeChart.hours !== this._chartHours) return;
       this._activeChart = {
         ...this._activeChart,
         loading: false,
@@ -2756,7 +2834,7 @@ class HaSolarDashboardCard extends HTMLElement {
         points,
       };
     } catch (_err) {
-      if (!this._activeChart || this._activeChart.metricKey !== metricKey) return;
+      if (!this._isActiveRequest(requestToken) || !this._activeChart || this._activeChart.metricKey !== metricKey) return;
       this._activeChart = {
         ...this._activeChart,
         loading: false,
@@ -2765,7 +2843,7 @@ class HaSolarDashboardCard extends HTMLElement {
       };
     }
 
-    this._renderCardShell(this._layoutState());
+    if (this._isActiveRequest(requestToken) && this.shadowRoot) this._renderCardShell(this._layoutState());
   }
 
   _closeChart() {
@@ -2794,7 +2872,7 @@ class HaSolarDashboardCard extends HTMLElement {
       .filter(Boolean)
       .sort((a, b) => a.time - b.time);
 
-    this._historyCache.set(cacheKey, points);
+    this._setCacheEntry(this._historyCache, cacheKey, points, MAX_HISTORY_CACHE_ENTRIES);
     return points;
   }
 
@@ -2808,7 +2886,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ? this._valueAsKwh(rawValue, entityUnit)
       : metric.unit === "power" || (metric.overlay === "heatpump" && this._isPowerUnit(entityUnit))
       ? this._valueAsWatts(rawValue, entityUnit)
-      : Number(rawValue);
+      : numericState(rawValue);
     if (!Number.isFinite(numericValue)) return undefined;
     const rawTime = entry.last_changed || entry.last_updated || entry.lu;
     const time = Date.parse(rawTime || "");
@@ -3140,8 +3218,8 @@ class HaSolarDashboardCard extends HTMLElement {
     const files = this._weatherImageFiles(variant, this._isDaylight())
       .map((file) => this._imagePath(variant, file));
     const urls = [...new Set(files.flatMap((file) => [
-      this._remoteImageUrl(file),
       this._localImageUrl(file),
+      this._remoteImageUrl(file),
     ]).filter(Boolean))];
     const [primaryUrl, ...fallbackUrls] = urls;
     return {

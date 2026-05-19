@@ -5714,7 +5714,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .temp-badge:empty { display:none; }
         .time-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:96px; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .time-badge:empty { display:none; }
-        .phase-action-badge { display:inline-flex; align-items:center; flex:1 1 100%; min-width:0; max-width:100%; border-radius:999px; padding:2px 6px; background:rgba(168,85,247,.14); color:#d8b4fe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(216,180,254,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .phase-action-badge { display:block; flex:1 1 100%; min-width:0; width:fit-content; max-width:100%; border-radius:8px; padding:3px 7px; background:rgba(168,85,247,.14); color:#d8b4fe; font-size:.62rem; line-height:1.16; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(216,180,254,.2); white-space:normal; overflow-wrap:anywhere; text-overflow:clip; }
         .phase-action-badge:empty { display:none; }
         .pv-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:100%; border-radius:999px; padding:2px 5px; background:rgba(255,194,51,.14); color:#fde68a; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(253,230,138,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .pv-badge:empty { display:none; }

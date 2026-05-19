@@ -63,8 +63,12 @@ const I18N = {
     "advisor.configurePvTotal": "Add PV total power or roof/shed PV sensors to improve production analysis.",
     "advisor.consumption": "Load",
     "advisor.detailEntities": "Entities",
+    "advisor.detailEntityValue": "{entity} currently reports {value} for {label}. {impact}",
+    "advisor.detailIntro": "The Advisor shows this as {priority} for {window}, because {reason}",
     "advisor.detailSignals": "Decision signals",
+    "advisor.detailSources": "Data sources",
     "advisor.detailValues": "Values",
+    "advisor.detailValueOnly": "{label} is currently {value}. {impact}",
     "advisor.detailWhy": "Why this appears",
     "advisor.detailsToggle": "Show details",
     "advisor.dismissToday": "Hide today",
@@ -133,6 +137,17 @@ const I18N = {
     "advisor.reasonSurplus": "PV surplus is above the configured surplus threshold of {threshold}.",
     "advisor.reasonWeather": "Weather is included to separate low PV from expected conditions.",
     "advisor.reasonPrice": "The configured electricity price sensor is included in the decision context.",
+    "advisor.impactAutarky": "That shows how independently the house is currently being supplied.",
+    "advisor.impactBattery": "That value describes the current battery reserve and influences whether flexible loads are sensible right now.",
+    "advisor.impactConsumer": "That value shows whether this consumer is active and how strongly it affects the energy balance.",
+    "advisor.impactGrid": "That value decides whether the situation is treated as grid import, neutral, or PV surplus.",
+    "advisor.impactLoad": "That value describes the current household load and helps classify whether consumption is unusually high.",
+    "advisor.impactPv": "That value describes the current PV production and helps estimate how much energy is available.",
+    "advisor.impactSelfConsumption": "That shows how much PV energy is being used locally instead of being exported.",
+    "advisor.impactSensor": "That value is used as a diagnostic signal for sensor freshness and plausibility.",
+    "advisor.impactSurplus": "That value shows how much power is currently available for flexible loads before it is exported.",
+    "advisor.impactTemperature": "That value is used to detect possible battery stress or operating limits.",
+    "advisor.impactWallbox": "That value describes the charger state and determines whether charging should start, stop, or wait.",
     "editor.showViewSelector": "Show House/Advisor view selector",
     "chart.close": "Close",
     "chart.empty": "No history data found",
@@ -376,8 +391,12 @@ const I18N = {
     "advisor.configurePvTotal": "Füge PV-Gesamtleistung oder Dach-/Schuppen-PV-Sensoren hinzu, um die Erzeugungsanalyse zu verbessern.",
     "advisor.consumption": "Last",
     "advisor.detailEntities": "Entitäten",
+    "advisor.detailEntityValue": "{entity} meldet für {label} aktuell {value}. {impact}",
+    "advisor.detailIntro": "Der Advisor zeigt diesen Hinweis mit Priorität {priority} im Zeitfenster {window}, weil {reason}",
     "advisor.detailSignals": "Entscheidungssignale",
+    "advisor.detailSources": "Datenquellen",
     "advisor.detailValues": "Werte",
+    "advisor.detailValueOnly": "{label} liegt aktuell bei {value}. {impact}",
     "advisor.detailWhy": "Warum dieser Hinweis erscheint",
     "advisor.detailsToggle": "Details anzeigen",
     "advisor.dismissToday": "Heute ausblenden",
@@ -446,6 +465,17 @@ const I18N = {
     "advisor.reasonSurplus": "Der PV-Überschuss liegt über der konfigurierten Überschussschwelle von {threshold}.",
     "advisor.reasonWeather": "Das Wetter wird berücksichtigt, um niedrige PV-Leistung einzuordnen.",
     "advisor.reasonPrice": "Der konfigurierte Strompreis-Sensor fließt als Entscheidungskontext ein.",
+    "advisor.impactAutarky": "Damit erkennt der Advisor, wie unabhängig das Haus gerade versorgt wird.",
+    "advisor.impactBattery": "Dieser Wert beschreibt die aktuelle Batteriereserve und beeinflusst, ob flexible Verbraucher gerade sinnvoll sind.",
+    "advisor.impactConsumer": "Dieser Wert zeigt, ob dieser Verbraucher aktiv ist und wie stark er die Energiebilanz beeinflusst.",
+    "advisor.impactGrid": "Dieser Wert entscheidet, ob die Situation als Netzbezug, neutral oder PV-Überschuss bewertet wird.",
+    "advisor.impactLoad": "Dieser Wert beschreibt die aktuelle Hauslast und hilft einzuschätzen, ob der Verbrauch auffällig hoch ist.",
+    "advisor.impactPv": "Dieser Wert beschreibt die aktuelle PV-Erzeugung und hilft einzuschätzen, wie viel Energie verfügbar ist.",
+    "advisor.impactSelfConsumption": "Damit erkennt der Advisor, wie viel PV-Energie direkt im Haus genutzt statt eingespeist wird.",
+    "advisor.impactSensor": "Dieser Wert dient als Diagnosesignal für Aktualität und Plausibilität der Sensoren.",
+    "advisor.impactSurplus": "Dieser Wert zeigt, wie viel Leistung gerade für flexible Verbraucher verfügbar ist, bevor sie eingespeist wird.",
+    "advisor.impactTemperature": "Dieser Wert hilft, mögliche Batteriestress- oder Betriebsgrenzen zu erkennen.",
+    "advisor.impactWallbox": "Dieser Wert beschreibt den Zustand der Wallbox und beeinflusst, ob Laden starten, stoppen oder warten sollte.",
     "editor.showViewSelector": "Haus-/Advisor-Ansichtsauswahl anzeigen",
     "chart.close": "Schließen",
     "chart.empty": "Keine Verlaufsdaten gefunden",
@@ -5180,6 +5210,119 @@ class HaSolarDashboardCard extends HTMLElement {
       .filter(Boolean);
   }
 
+  _advisorParseDetailEntry(entry) {
+    const text = String(entry ?? "").trim();
+    const separator = text.indexOf(":");
+    if (separator < 0) return { label: text, value: "" };
+    return {
+      label: text.slice(0, separator).trim(),
+      value: text.slice(separator + 1).trim(),
+    };
+  }
+
+  _advisorNormalizeLabel(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/ä/g, "ae")
+      .replace(/ö/g, "oe")
+      .replace(/ü/g, "ue")
+      .replace(/ß/g, "ss")
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  _advisorDetailCategory(label, entityId = "") {
+    const text = this._advisorNormalizeLabel(`${label} ${entityId}`);
+    if (/(einspeis|export|surplus|feed)/.test(text)) return "surplus";
+    if (/(netzbezug|bezug|import|grid import)/.test(text)) return "import";
+    if (/(netz|grid)/.test(text)) return "grid";
+    if (/(pv|solar|photovoltaik)/.test(text)) return "pv";
+    if (/(batter|akku|speicher|soc)/.test(text)) return "battery";
+    if (/(temperatur|temperature|temp)/.test(text)) return "temperature";
+    if (/(eigenverbrauch|self use|self consumption)/.test(text)) return "selfConsumption";
+    if (/(autark|autarky)/.test(text)) return "autarky";
+    if (/(wallbox|charger|ladepunkt|auto|vehicle|ev)/.test(text)) return "wallbox";
+    if (/(last|load|hausverbrauch|verbrauch)/.test(text)) return "load";
+    if (/(sensor|unavailable|stale|offline)/.test(text)) return "sensor";
+    if (/(strompreis|electricity price|price|tarif|tariff)/.test(text)) return "price";
+    return "consumer";
+  }
+
+  _advisorImpactForLabel(label, item = {}) {
+    const category = this._advisorDetailCategory(label);
+    const text = this._advisorNormalizeLabel(`${item.title || ""} ${item.text || ""}`);
+    if (category === "pv") return this._t("advisor.impactPv", {}, "That value describes the current PV production and helps estimate how much energy is available.");
+    if (category === "surplus") return this._t("advisor.impactSurplus", {}, "That value shows how much power is currently available for flexible loads before it is exported.");
+    if (category === "import" || category === "grid") return this._t("advisor.impactGrid", {}, "That value decides whether the situation is treated as grid import, neutral, or PV surplus.");
+    if (category === "battery") return this._t("advisor.impactBattery", {}, "That value describes the current battery reserve and influences whether flexible loads are sensible right now.");
+    if (category === "temperature") return this._t("advisor.impactTemperature", {}, "That value is used to detect possible battery stress or operating limits.");
+    if (category === "wallbox") return this._t("advisor.impactWallbox", {}, "That value describes the charger state and determines whether charging should start, stop, or wait.");
+    if (category === "load") return this._t("advisor.impactLoad", {}, "That value describes the current household load and helps classify whether consumption is unusually high.");
+    if (category === "selfConsumption") return this._t("advisor.impactSelfConsumption", {}, "That shows how much PV energy is being used locally instead of being exported.");
+    if (category === "autarky") return this._t("advisor.impactAutarky", {}, "That shows how independently the house is currently being supplied.");
+    if (category === "sensor") return this._t("advisor.impactSensor", {}, "That value is used as a diagnostic signal for sensor freshness and plausibility.");
+    if (text.includes("verbraucher") || text.includes("consumer") || category === "consumer") return this._t("advisor.impactConsumer", {}, "That value shows whether this consumer is active and how strongly it affects the energy balance.");
+    return this._t("advisor.impactSensor", {}, "That value is used as a diagnostic signal for sensor freshness and plausibility.");
+  }
+
+  _advisorEntityForLabel(label, entities = []) {
+    const normalizedLabel = this._advisorNormalizeLabel(label);
+    const category = this._advisorDetailCategory(label);
+    const parsed = entities
+      .map((entry) => this._advisorParseDetailEntry(entry))
+      .filter((entry) => entry.label && entry.value);
+    const scoreEntity = (entry) => {
+      const normalizedEntityLabel = this._advisorNormalizeLabel(entry.label);
+      const normalizedEntityId = this._advisorNormalizeLabel(entry.value);
+      if (!normalizedEntityLabel && !normalizedEntityId) return 0;
+      if (normalizedEntityLabel === normalizedLabel) return 100;
+      if (normalizedEntityLabel.includes(normalizedLabel) || normalizedLabel.includes(normalizedEntityLabel)) return 86;
+      const entityCategory = this._advisorDetailCategory(entry.label, entry.value);
+      if (category === "surplus" && /(export|einspeis|feed)/.test(`${normalizedEntityLabel} ${normalizedEntityId}`)) return 78;
+      if (category === "import" && /(import|bezug)/.test(`${normalizedEntityLabel} ${normalizedEntityId}`)) return 78;
+      if (category !== "consumer" && category === entityCategory) return 66;
+      return 0;
+    };
+    return parsed
+      .map((entry) => ({ entry, score: scoreEntity(entry) }))
+      .filter((candidate) => candidate.score > 0)
+      .sort((a, b) => b.score - a.score)[0]?.entry?.value || "";
+  }
+
+  _advisorExplanationEntries(values = [], signals = []) {
+    const ignoredValues = new Set(["", "—", "unknown", "unbekannt"]);
+    const entries = [...values, ...signals]
+      .map((entry) => this._advisorParseDetailEntry(entry))
+      .filter((entry) => entry.label && entry.value && !ignoredValues.has(this._advisorNormalizeLabel(entry.value)));
+    const seen = new Set();
+    return entries.filter((entry) => {
+      const key = `${this._advisorNormalizeLabel(entry.label)}:${this._advisorNormalizeLabel(entry.value)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  _advisorExplanationParagraphs(item, values = [], signals = [], entities = []) {
+    const priority = this._advisorTypeLabel(item.type);
+    const window = this._advisorWindowLabel(item.window);
+    const reason = item.reason || item.text;
+    const paragraphs = [
+      this._t("advisor.detailIntro", { priority, window, reason }, `The Advisor shows this as ${priority} for ${window}, because ${reason}`),
+    ];
+    this._advisorExplanationEntries(values, signals).slice(0, 10).forEach((entry) => {
+      const entityId = this._advisorEntityForLabel(entry.label, entities);
+      const impact = this._advisorImpactForLabel(entry.label, item);
+      paragraphs.push(entityId
+        ? this._t("advisor.detailEntityValue", { entity: entityId, label: entry.label, value: entry.value, impact }, `${entityId} currently reports ${entry.value} for ${entry.label}. ${impact}`)
+        : this._t("advisor.detailValueOnly", { label: entry.label, value: entry.value, impact }, `${entry.label} is currently ${entry.value}. ${impact}`));
+    });
+    return [...new Set(paragraphs)];
+  }
+
   _advisorItemKey(item, index) {
     return [item.type, item.priority, item.title, item.text, item.value, index]
       .map((part) => String(part ?? "").replace(/[^\w-]+/g, "_"))
@@ -5300,11 +5443,15 @@ class HaSolarDashboardCard extends HTMLElement {
       : this._advisorSignalDetails(snapshot, signalTopics);
 
     const dedupe = (list) => [...new Set(list)];
+    const dedupedValues = dedupe(values);
+    const dedupedSignals = dedupe(signals);
+    const dedupedEntities = dedupe(entities);
     return {
       why: item.reason || item.text,
-      signals: dedupe(signals),
-      values: dedupe(values),
-      entities: dedupe(entities),
+      paragraphs: this._advisorExplanationParagraphs(item, dedupedValues, dedupedSignals, dedupedEntities),
+      signals: dedupedSignals,
+      values: dedupedValues,
+      entities: dedupedEntities,
     };
   }
 
@@ -5364,25 +5511,13 @@ class HaSolarDashboardCard extends HTMLElement {
         <div class="advisor-explanation" ${open ? "" : "hidden"}>
           <div class="advisor-explanation-section">
             <strong>${this._escape(this._t("advisor.detailWhy", {}, "Why this appears"))}</strong>
-            <span>${this._escape(explanation.why)}</span>
+            ${(explanation.paragraphs?.length ? explanation.paragraphs : [explanation.why]).map((paragraph) => `<p>${this._escape(paragraph)}</p>`).join("")}
           </div>
-          ${explanation.signals.length > 0 ? `
-            <div class="advisor-explanation-section">
-              <strong>${this._escape(this._t("advisor.detailSignals", {}, "Decision signals"))}</strong>
-              ${explanation.signals.map((signal) => `<span>${this._escape(signal)}</span>`).join("")}
-            </div>
-          ` : ""}
-          ${explanation.values.length > 0 ? `
-            <div class="advisor-explanation-section">
-              <strong>${this._escape(this._t("advisor.detailValues", {}, "Values"))}</strong>
-              ${explanation.values.map((value) => `<span>${this._escape(value)}</span>`).join("")}
-            </div>
-          ` : ""}
           ${explanation.entities.length > 0 ? `
-            <div class="advisor-explanation-section">
-              <strong>${this._escape(this._t("advisor.detailEntities", {}, "Entities"))}</strong>
-              ${explanation.entities.map((entity) => `<code>${this._escape(entity)}</code>`).join("")}
-            </div>
+            <details class="advisor-explanation-sources">
+              <summary>${this._escape(this._t("advisor.detailSources", {}, "Data sources"))}</summary>
+              <div>${explanation.entities.map((entity) => `<code>${this._escape(entity)}</code>`).join("")}</div>
+            </details>
           ` : ""}
         </div>
       `;
@@ -5774,8 +5909,13 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-explanation[hidden] { display:none; }
         .advisor-explanation-section { display:grid; gap:3px; min-width:0; }
         .advisor-explanation-section strong { color:var(--text-muted); font-size:.68rem; line-height:1.2; text-transform:uppercase; letter-spacing:0; }
+        .advisor-explanation-section p { margin:0; min-width:0; color:rgba(243,246,255,.8); font-size:.76rem; line-height:1.35; overflow-wrap:anywhere; }
         .advisor-explanation-section span,.advisor-explanation-section code { min-width:0; color:rgba(243,246,255,.78); font-size:.72rem; line-height:1.28; overflow-wrap:anywhere; }
         .advisor-explanation-section code { font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; border-radius:6px; padding:2px 5px; background:rgba(255,255,255,.06); }
+        .advisor-explanation-sources { display:grid; gap:5px; min-width:0; margin-top:2px; }
+        .advisor-explanation-sources summary { color:var(--text-muted); font-size:.68rem; line-height:1.2; font-weight:800; text-transform:uppercase; letter-spacing:0; cursor:pointer; }
+        .advisor-explanation-sources div { display:grid; gap:3px; min-width:0; }
+        .advisor-explanation-sources code { min-width:0; color:rgba(243,246,255,.78); font-size:.72rem; line-height:1.28; overflow-wrap:anywhere; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; border-radius:6px; padding:2px 5px; background:rgba(255,255,255,.06); }
         .chart-backdrop { position:fixed; inset:0; z-index:1000; background:rgba(2,6,18,.58); backdrop-filter:blur(3px); }
         .chart-dialog { --tile-accent:#1f8fff; --tile-glow:transparent; position:fixed; z-index:1001; left:50%; top:50%; width:min(760px,calc(100vw - 28px)); max-height:calc(100vh - 32px); transform:translate(-50%,-50%); overflow:hidden; border-radius:14px; border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.18)); background:linear-gradient(135deg,rgba(15,24,45,.98),rgba(8,14,28,.98)); box-shadow:0 24px 70px rgba(0,0,0,.62),0 0 26px var(--tile-glow); color:var(--text-main); }
         .chart-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px 14px 10px; border-bottom:1px solid rgba(255,255,255,.1); }

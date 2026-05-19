@@ -45,6 +45,7 @@ const I18N = {
     "card.defaultTitle": "Energy Flow",
     "advisor.action": "Action",
     "advisor.autarky": "Autarky",
+    "advisor.actionHiddenToday": "Hidden for today",
     "advisor.batteryIdle": "Battery is not charging while surplus is exported. Check battery limits or charge mode.",
     "advisor.batteryHighSocLong": "House battery has been between 90 and 100% for more than 120 minutes. Batteries should not stay that full for too long.",
     "advisor.batteryCyclesHigh": "House battery has completed several full cycles today. Frequent cycling can age the battery faster.",
@@ -62,13 +63,16 @@ const I18N = {
     "advisor.configurePvTotal": "Add PV total power or roof/shed PV sensors to improve production analysis.",
     "advisor.consumption": "Load",
     "advisor.detailEntities": "Entities",
+    "advisor.detailSignals": "Decision signals",
     "advisor.detailValues": "Values",
     "advisor.detailWhy": "Why this appears",
     "advisor.detailsToggle": "Show details",
+    "advisor.dismissToday": "Hide today",
     "advisor.evChargingGrid": "EV charging is active while importing from the grid. Reduce charging power or wait for more PV if this is not intended.",
     "advisor.evChargingPv": "EV charging is currently covered well by PV or stored energy.",
     "advisor.evEnableCharging": "Charging is currently disabled. Enable charging if you want to use the PV surplus.",
     "advisor.evPlugIn": "Plug in the vehicle to use PV surplus for charging.",
+    "advisor.evPhaseChangeScheduled": "{action} in {duration} if the PV situation does not change.",
     "advisor.evSocAbove80Long": "Vehicle SoC is above 80% for more than 120 minutes. This can stress the battery if it stays there too long.",
     "advisor.evSocAbove90Long": "Vehicle SoC is above 90% for more than 60 minutes. Stop charging or lower the target SoC if the car will stay parked.",
     "advisor.evTargetReached": "Vehicle is already at the configured target SoC. Use surplus for another flexible load.",
@@ -79,11 +83,19 @@ const I18N = {
     "advisor.gridImportFullBattery": "Grid import is high although the house battery is full. Check discharge limits, backup reserve, or battery mode.",
     "advisor.headlineExport": "PV surplus is available",
     "advisor.headlineImport": "Grid import is active",
+    "advisor.headlineInfo": "Information available",
     "advisor.headlineNeutral": "Energy flow is balanced",
     "advisor.headlineSetup": "More sensors unlock better advice",
     "advisor.headlineWarning": "Energy setup needs attention",
     "advisor.highLoad": "Current load is high compared with PV production. Check large consumers if this is unexpected.",
     "advisor.importing": "Importing",
+    "advisor.priorityCritical": "Critical",
+    "advisor.priorityInfo": "Info",
+    "advisor.priorityOpportunity": "Chance",
+    "advisor.prioritySetup": "Setup",
+    "advisor.prioritySuccess": "OK",
+    "advisor.priorityWarning": "Warning",
+    "advisor.electricityPrice": "Electricity price",
     "advisor.lowPv": "PV production is low despite daylight. If the weather is clear, check inverter or PV sensors.",
     "advisor.noAdvice": "No urgent action right now.",
     "advisor.appliances": "Appliances",
@@ -108,6 +120,19 @@ const I18N = {
     "advisor.unknown": "Unknown",
     "advisor.useHeatPump": "Use heat pump boost or preheat hot water while PV surplus is available.",
     "advisor.wallbox": "EV",
+    "advisor.weather": "Weather",
+    "advisor.windowAnytime": "Anytime",
+    "advisor.windowNext2h": "Next 2h",
+    "advisor.windowNow": "Now",
+    "advisor.reasonBattery": "Battery SoC {soc} is part of this recommendation.",
+    "advisor.reasonEvSurplus": "PV surplus is above the configured EV threshold of {threshold}.",
+    "advisor.reasonGridImport": "Grid import is above the configured import threshold of {threshold}.",
+    "advisor.reasonLargeConsumer": "The available PV surplus can cover the configured consumer limit.",
+    "advisor.reasonPhaseChange": "EVCC reports a planned phase change inside the next window.",
+    "advisor.reasonSensor": "A configured entity is stale, unavailable, or inconsistent.",
+    "advisor.reasonSurplus": "PV surplus is above the configured surplus threshold of {threshold}.",
+    "advisor.reasonWeather": "Weather is included to separate low PV from expected conditions.",
+    "advisor.reasonPrice": "The configured electricity price sensor is included in the decision context.",
     "editor.showViewSelector": "Show House/Advisor view selector",
     "chart.close": "Close",
     "chart.empty": "No history data found",
@@ -138,6 +163,10 @@ const I18N = {
     "editor.houseType": "House Type",
     "editor.hudBoxOpacity": "HUD box opacity",
     "editor.hudBoxScale": "HUD box scale",
+    "editor.advisorEvSurplusThreshold": "EV surplus threshold (W)",
+    "editor.electricityPriceEntity": "Electricity price entity",
+    "editor.gridVoltageCriticalThreshold": "Critical grid voltage (V)",
+    "editor.gridVoltageWarningThreshold": "High grid voltage (V)",
     "editor.importExportEntity": "Import/Export Entity",
     "editor.importExportSignedEntity": "Signed import/export entity (+/-)",
     "editor.importPowerEntity": "Import entity",
@@ -156,6 +185,7 @@ const I18N = {
     "editor.kpiStaticValue": "Static value",
     "editor.consumerEnergyEntity": "kWh counter entity",
     "editor.consumerLabel": "Device name",
+    "editor.consumerAddCustom": "Add custom large consumer",
     "editor.consumerPowerEntity": "Power entity",
     "editor.consumerShow": "Show {label} tile",
     "editor.labelHideDesktop": "Hide on desktop",
@@ -181,7 +211,9 @@ const I18N = {
     "editor.period1h": "1 hour",
     "editor.period24h": "24 hours",
     "editor.period30m": "30 minutes",
+    "editor.phaseActionEntity": "Upcoming phase action entity",
     "editor.phaseEntity": "Phase entity",
+    "editor.phaseRemainingEntity": "Phase action remaining seconds entity",
     "editor.pvForecastTodayEntity": "Forecast today entity",
     "editor.pvLabels": "PV labels",
     "editor.pvPeakTodayEntity": "Peak today entity",
@@ -199,6 +231,7 @@ const I18N = {
     "editor.showBox": "Show {label}",
     "editor.showEnergyRangeSelector": "Show Live/1h/24h/month/year/total selector",
     "editor.showHouseSelector": "Show house selector",
+    "editor.showLargeConsumers": "Show large consumers in house view",
     "editor.showGridStatusTile": "Show grid status tile",
     "editor.showMetricTiles": "Show metric boxes below image",
     "editor.showPowerFlows": "Show animated power flows",
@@ -207,6 +240,7 @@ const I18N = {
     "editor.showWeatherStatus": "Show current weather in status label",
     "editor.title": "Title",
     "editor.unit": "Unit",
+    "editor.voltageEntity": "Voltage entity",
     "editor.viewMode": "Default view",
     "editor.weatherEntity": "Weather Entity",
     "editor.setupWizard": "Setup wizard",
@@ -229,6 +263,7 @@ const I18N = {
     "flow.charge": "Incoming",
     "flow.discharge": "Outgoing",
     "consumer.custom": "Custom",
+    "consumer.customLarge": "Custom large consumer",
     "consumer.dhw_heatpump": "Domestic hot water heat pump",
     "consumer.dishwasher": "Dishwasher",
     "consumer.dryer": "Dryer",
@@ -279,6 +314,7 @@ const I18N = {
     "tooltip.load": "Utilization",
     "tooltip.max": "Maximum",
     "tooltip.phases": "Phases",
+    "tooltip.phaseChange": "Upcoming phase change",
     "tooltip.raw": "Raw value",
     "tooltip.remainingChargeTime": "Remaining charge time",
     "tooltip.status": "Status",
@@ -286,8 +322,11 @@ const I18N = {
     "tooltip.updated": "Updated",
     "tooltip.value": "Value",
     "tooltip.vehicleSoc": "Vehicle SoC",
+    "tooltip.voltage": "Voltage",
     "value.remainingChargeTime": "{value} left",
+    "value.phaseChangeIn": "{action} in {duration}",
     "value.temperature": "Temp {value}",
+    "value.soon": "soon",
     "view.advisor": "Advisor Dashboard",
     "view.house": "House View",
     "weather.clear": "Clear",
@@ -306,6 +345,8 @@ const I18N = {
     "weather.windy": "Windy",
     "weather.windy-variant": "Windy/cloudy",
     "warning.batteryLow": "Battery low",
+    "warning.gridVoltageCritical": "Grid voltage much too high",
+    "warning.gridVoltageHigh": "High grid voltage",
     "warning.sensorMissing": "Entity not found",
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor unavailable",
@@ -317,6 +358,7 @@ const I18N = {
     "card.defaultTitle": "Energiefluss",
     "advisor.action": "Aktion",
     "advisor.autarky": "Autarkie",
+    "advisor.actionHiddenToday": "Heute ausgeblendet",
     "advisor.batteryIdle": "Die Batterie lädt nicht, obwohl Überschuss eingespeist wird. Prüfe Batterielimits oder den Lademodus.",
     "advisor.batteryHighSocLong": "Die Hausbatterie ist seit über 120 Minuten zwischen 90 und 100%. Batterien sollten nicht zu lange so voll bleiben.",
     "advisor.batteryCyclesHigh": "Die Hausbatterie hat heute mehrere Vollzyklen abgeschlossen. Häufige Zyklen können die Batterie schneller altern lassen.",
@@ -334,13 +376,16 @@ const I18N = {
     "advisor.configurePvTotal": "Füge PV-Gesamtleistung oder Dach-/Schuppen-PV-Sensoren hinzu, um die Erzeugungsanalyse zu verbessern.",
     "advisor.consumption": "Last",
     "advisor.detailEntities": "Entitäten",
+    "advisor.detailSignals": "Entscheidungssignale",
     "advisor.detailValues": "Werte",
     "advisor.detailWhy": "Warum dieser Hinweis erscheint",
     "advisor.detailsToggle": "Details anzeigen",
+    "advisor.dismissToday": "Heute ausblenden",
     "advisor.evChargingGrid": "Die Wallbox lädt, während Netzbezug aktiv ist. Reduziere die Ladeleistung oder warte auf mehr PV, falls das nicht gewollt ist.",
     "advisor.evChargingPv": "Die Wallbox wird aktuell gut durch PV oder gespeicherte Energie gedeckt.",
     "advisor.evEnableCharging": "Das Laden ist aktuell deaktiviert. Aktiviere das Laden, wenn du den PV-Überschuss nutzen möchtest.",
     "advisor.evPlugIn": "Stecke das Auto ein, um den PV-Überschuss zum Laden zu nutzen.",
+    "advisor.evPhaseChangeScheduled": "{action} in {duration}, wenn sich an der PV-Situation nichts ändert.",
     "advisor.evSocAbove80Long": "Das Auto ist seit über 120 Minuten über 80% SoC. Das kann der Batterie schaden, wenn es länger so bleibt.",
     "advisor.evSocAbove90Long": "Das Auto ist seit über 60 Minuten über 90% SoC. Stoppe das Laden oder senke das Ziel-SoC, wenn es länger steht.",
     "advisor.evTargetReached": "Das Auto ist bereits am konfigurierten Ziel-SoC. Nutze den Überschuss für einen anderen flexiblen Verbraucher.",
@@ -351,11 +396,19 @@ const I18N = {
     "advisor.gridImportFullBattery": "Der Netzbezug ist hoch, obwohl die Hausbatterie voll ist. Prüfe Entladelimit, Backup-Reserve oder Batteriemodus.",
     "advisor.headlineExport": "PV-Überschuss ist verfügbar",
     "advisor.headlineImport": "Netzbezug ist aktiv",
+    "advisor.headlineInfo": "Informationen verfügbar",
     "advisor.headlineNeutral": "Der Energiefluss ist ausgeglichen",
     "advisor.headlineSetup": "Mehr Sensoren schalten bessere Hinweise frei",
     "advisor.headlineWarning": "Die Energiekonfiguration braucht Aufmerksamkeit",
     "advisor.highLoad": "Die aktuelle Last ist im Vergleich zur PV-Erzeugung hoch. Prüfe große Verbraucher, falls das unerwartet ist.",
     "advisor.importing": "Netzbezug",
+    "advisor.priorityCritical": "Kritisch",
+    "advisor.priorityInfo": "Info",
+    "advisor.priorityOpportunity": "Chance",
+    "advisor.prioritySetup": "Setup",
+    "advisor.prioritySuccess": "OK",
+    "advisor.priorityWarning": "Warnung",
+    "advisor.electricityPrice": "Strompreis",
     "advisor.lowPv": "Die PV-Produktion ist trotz Tageslicht niedrig. Wenn das Wetter klar ist, prüfe Wechselrichter oder PV-Sensoren.",
     "advisor.noAdvice": "Aktuell besteht kein dringender Handlungsbedarf.",
     "advisor.appliances": "Haushalt",
@@ -380,6 +433,19 @@ const I18N = {
     "advisor.unknown": "Unbekannt",
     "advisor.useHeatPump": "Nutze Wärmepumpen-Boost oder Warmwasser-Vorheizen, solange PV-Überschuss verfügbar ist.",
     "advisor.wallbox": "Wallbox",
+    "advisor.weather": "Wetter",
+    "advisor.windowAnytime": "Jederzeit",
+    "advisor.windowNext2h": "Nächste 2h",
+    "advisor.windowNow": "Jetzt",
+    "advisor.reasonBattery": "Der Batterie-SoC {soc} fließt in diese Empfehlung ein.",
+    "advisor.reasonEvSurplus": "Der PV-Überschuss liegt über der konfigurierten Wallbox-Schwelle von {threshold}.",
+    "advisor.reasonGridImport": "Der Netzbezug liegt über der konfigurierten Bezugsschwelle von {threshold}.",
+    "advisor.reasonLargeConsumer": "Der verfügbare PV-Überschuss deckt das konfigurierte Verbraucherlimit.",
+    "advisor.reasonPhaseChange": "EVCC meldet eine geplante Phasenänderung im nächsten Zeitfenster.",
+    "advisor.reasonSensor": "Eine konfigurierte Entität ist veraltet, nicht verfügbar oder widersprüchlich.",
+    "advisor.reasonSurplus": "Der PV-Überschuss liegt über der konfigurierten Überschussschwelle von {threshold}.",
+    "advisor.reasonWeather": "Das Wetter wird berücksichtigt, um niedrige PV-Leistung einzuordnen.",
+    "advisor.reasonPrice": "Der konfigurierte Strompreis-Sensor fließt als Entscheidungskontext ein.",
     "editor.showViewSelector": "Haus-/Advisor-Ansichtsauswahl anzeigen",
     "chart.close": "Schließen",
     "chart.empty": "Keine Verlaufsdaten gefunden",
@@ -410,6 +476,10 @@ const I18N = {
     "editor.houseType": "Haustyp",
     "editor.hudBoxOpacity": "HUD-Box-Deckkraft",
     "editor.hudBoxScale": "HUD-Box-Skalierung",
+    "editor.advisorEvSurplusThreshold": "Wallbox-Überschussschwelle (W)",
+    "editor.electricityPriceEntity": "Strompreis-Entität",
+    "editor.gridVoltageCriticalThreshold": "Kritische Netzspannung (V)",
+    "editor.gridVoltageWarningThreshold": "Hohe Netzspannung (V)",
     "editor.importExportEntity": "Import-/Export-Entität",
     "editor.importExportSignedEntity": "Import-/Export-Entität mit Vorzeichen (+/-)",
     "editor.importPowerEntity": "Bezugs-Entität",
@@ -428,6 +498,7 @@ const I18N = {
     "editor.kpiStaticValue": "Fester Wert",
     "editor.consumerEnergyEntity": "kWh-Zähler-Entität",
     "editor.consumerLabel": "Gerätename",
+    "editor.consumerAddCustom": "Eigenen großen Verbraucher hinzufügen",
     "editor.consumerPowerEntity": "Leistungs-Entität",
     "editor.consumerShow": "{label}-Kachel anzeigen",
     "editor.labelHideDesktop": "Auf PC ausblenden",
@@ -453,7 +524,9 @@ const I18N = {
     "editor.period1h": "1 Stunde",
     "editor.period24h": "24 Stunden",
     "editor.period30m": "30 Minuten",
+    "editor.phaseActionEntity": "Entität für bevorstehende Phasen-Aktion",
     "editor.phaseEntity": "Phasen-Entität",
+    "editor.phaseRemainingEntity": "Entität für verbleibende Sekunden bis Phasen-Aktion",
     "editor.pvForecastTodayEntity": "Prognose-heute-Entität",
     "editor.pvLabels": "PV-Labels",
     "editor.pvPeakTodayEntity": "Peak-heute-Entität",
@@ -471,6 +544,7 @@ const I18N = {
     "editor.showBox": "{label} anzeigen",
     "editor.showEnergyRangeSelector": "Live-/1h-/24h-/Monat-/Jahr-/Gesamt-Auswahl anzeigen",
     "editor.showHouseSelector": "Hausauswahl anzeigen",
+    "editor.showLargeConsumers": "Große Verbraucher in der Hausansicht anzeigen",
     "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
     "editor.showMetricTiles": "Messwertboxen unter dem Bild anzeigen",
     "editor.showPowerFlows": "Animierte Stromflüsse anzeigen",
@@ -479,6 +553,7 @@ const I18N = {
     "editor.showWeatherStatus": "Aktuelles Wetter im Statuslabel anzeigen",
     "editor.title": "Titel",
     "editor.unit": "Einheit",
+    "editor.voltageEntity": "Spannungs-Entität",
     "editor.viewMode": "Standardansicht",
     "editor.weatherEntity": "Wetter-Entität",
     "editor.setupWizard": "Einrichtungs-Assistent",
@@ -501,6 +576,7 @@ const I18N = {
     "flow.charge": "Eingehend",
     "flow.discharge": "Ausgehend",
     "consumer.custom": "Eigene",
+    "consumer.customLarge": "Eigener großer Verbraucher",
     "consumer.dhw_heatpump": "Brauchwasserwärmepumpe",
     "consumer.dishwasher": "Spülmaschine",
     "consumer.dryer": "Trockner",
@@ -551,6 +627,7 @@ const I18N = {
     "tooltip.load": "Auslastung",
     "tooltip.max": "Maximum",
     "tooltip.phases": "Phasen",
+    "tooltip.phaseChange": "Bevorstehende Phasenänderung",
     "tooltip.raw": "Rohwert",
     "tooltip.remainingChargeTime": "Verbleibende Ladezeit",
     "tooltip.status": "Status",
@@ -558,8 +635,11 @@ const I18N = {
     "tooltip.updated": "Aktualisiert",
     "tooltip.value": "Wert",
     "tooltip.vehicleSoc": "Auto SoC",
+    "tooltip.voltage": "Spannung",
     "value.remainingChargeTime": "Noch {value}",
+    "value.phaseChangeIn": "{action} in {duration}",
     "value.temperature": "Temp {value}",
+    "value.soon": "bald",
     "view.advisor": "Advisor Dashboard",
     "view.house": "Hausansicht",
     "weather.clear": "Klar",
@@ -578,6 +658,8 @@ const I18N = {
     "weather.windy": "Windig",
     "weather.windy-variant": "Windig/bewölkt",
     "warning.batteryLow": "Batterie niedrig",
+    "warning.gridVoltageCritical": "Viel zu hohe Spannung im Stromnetz",
+    "warning.gridVoltageHigh": "Hohe Spannung im Stromnetz",
     "warning.sensorMissing": "Entität nicht gefunden",
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor nicht verfügbar",
@@ -1237,8 +1319,11 @@ const LARGE_CONSUMER_DEFINITIONS = [
   { id: "space_heater", labelKey: "consumer.space_heater", label: "Fan heater", color: "#fb923c", maxPowerKw: 2.0 },
   { id: "dryer", labelKey: "consumer.dryer", label: "Dryer", color: "#facc15", maxPowerKw: 2.8 },
   { id: "dhw_heatpump", labelKey: "consumer.dhw_heatpump", label: "Domestic hot water heat pump", color: "#60a5fa", maxPowerKw: 0.8 },
-  { id: "custom_1", labelKey: "consumer.custom", label: "Custom", color: "#a78bfa", maxPowerKw: "" },
 ];
+
+const LEGACY_LARGE_CONSUMER_DEFINITIONS = new Map([
+  ["custom_1", { id: "custom_1", labelKey: "consumer.custom", label: "Custom", color: "#a78bfa", maxPowerKw: "", custom: true }],
+]);
 
 const OVERLAY_TILE_METRICS = [
   { key: "overlay_smoke", label: "Gas", labelKey: "overlay.smoke", color: "yellow", unit: "overlay", overlay: "smoke", tileOrder: 7 },
@@ -1359,11 +1444,13 @@ function normalizeLargeConsumerConfig(raw, index, definition) {
     defaultLabel: definition?.label || `Consumer ${index + 1}`,
     label: String(source.label || source.name || "").trim(),
     power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
+    voltage_entity: String(source.voltage_entity || source.voltageEntity || source.voltage || "").trim(),
     energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.energy || source.counter || source.meter || "").trim(),
     max_power_kw: maxPowerKw,
     position: clampConfigNumber(source.position ?? source.order ?? 200 + index, 200 + index, 0, 999),
     columns: Math.round(clampConfigNumber(source.columns ?? source.span ?? 1, 1, 1, 6)),
     color: safeConfigColor(source.color, definition?.color || "#1f8fff"),
+    custom: source.custom === true || definition?.custom === true || !definition,
     visible: source.enabled === false ? false : source.visible !== false,
   };
 }
@@ -1389,7 +1476,7 @@ function normalizeLargeConsumers(consumers) {
   const extraConsumers = rawList
     .map((item, index) => ({ item, id: normalizeConfigId(item?.id || item?.key || item?.type, `consumer_${index + 1}`) }))
     .filter(({ item, id }) => item && typeof item === "object" && !definitionIds.has(id))
-    .map(({ item }, index) => normalizeLargeConsumerConfig(item, LARGE_CONSUMER_DEFINITIONS.length + index));
+    .map(({ item, id }, index) => normalizeLargeConsumerConfig(item, LARGE_CONSUMER_DEFINITIONS.length + index, LEGACY_LARGE_CONSUMER_DEFINITIONS.get(id)));
   return [...defaultConsumers, ...extraConsumers];
 }
 
@@ -1485,6 +1572,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
+      show_large_consumers: true,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -1493,12 +1581,15 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_scale: 1,
       battery_low_threshold: 20,
       grid_neutral_threshold: 25,
+      grid_voltage_warning_threshold: 245,
+      grid_voltage_critical_threshold: 253,
       advisor_surplus_threshold: 250,
       advisor_import_threshold: 250,
       advisor_high_load_threshold: 3000,
+      advisor_ev_surplus_threshold: 1500,
       advisor_max_suggestions: 8,
       advisor_stale_sensor_warning_minutes: 30,
-      advisor_stale_sensor_critical_minutes: 120,
+      advisor_stale_sensor_critical_minutes: 1440,
       chart_hours: 24,
       max_power_kw: {
         pv_roof_power: 10,
@@ -1544,32 +1635,46 @@ class HaSolarDashboardCard extends HTMLElement {
         battery_min_soc: "",
         battery_max_soc: "",
         battery_flow_power: "",
+        battery_flow_power_voltage: "",
         battery_charge_power: "",
         battery_discharge_power: "",
         battery_temperature: "",
         battery_cycles_today: "",
         inverter_power: "sensor.wechselrichter_power",
+        inverter_power_voltage: "",
         wallbox_power: "sensor.wallbox_power",
+        wallbox_power_voltage: "",
         wallbox_phase: "",
+        wallbox_phase_action: "",
+        wallbox_phase_remaining: "",
         wallbox_soc: "",
         wallbox_max_soc: "",
         wallbox_connected: "",
         wallbox_charging_enabled: "",
         wallbox_remaining_time: "",
         wallbox2_power: "",
+        wallbox2_power_voltage: "",
         wallbox2_phase: "",
+        wallbox2_phase_action: "",
+        wallbox2_phase_remaining: "",
         wallbox2_soc: "",
         wallbox2_max_soc: "",
         wallbox2_connected: "",
         wallbox2_charging_enabled: "",
         wallbox2_remaining_time: "",
+        electricity_price: "",
         pv_total_power: "sensor.pv_total_power",
+        pv_total_power_voltage: "",
         pv_total_power_today_energy: "",
         pv_total_power_forecast_today: "",
         pv_total_power_peak_today: "",
         import_export_power: "sensor.grid_power",
+        import_export_power_voltage: "",
         import_power: "",
         export_power: "",
+        pv_roof_power_voltage: "",
+        pv_shed_power_voltage: "",
+        house_consumption_power_voltage: "",
       },
     };
   }
@@ -1596,6 +1701,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
+      show_large_consumers: true,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -1604,12 +1710,15 @@ class HaSolarDashboardCard extends HTMLElement {
       hud_box_scale: 1,
       battery_low_threshold: 20,
       grid_neutral_threshold: 25,
+      grid_voltage_warning_threshold: 245,
+      grid_voltage_critical_threshold: 253,
       advisor_surplus_threshold: 250,
       advisor_import_threshold: 250,
       advisor_high_load_threshold: 3000,
+      advisor_ev_surplus_threshold: 1500,
       advisor_max_suggestions: 8,
       advisor_stale_sensor_warning_minutes: 30,
-      advisor_stale_sensor_critical_minutes: 120,
+      advisor_stale_sensor_critical_minutes: 1440,
       chart_hours: 24,
       daylight_entity: "sun.sun",
       weather_entity: "",
@@ -1686,12 +1795,15 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.power_decimals = this._clampNumber(this.config.power_decimals, 2, 0, 3);
     this.config.battery_low_threshold = this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
     this.config.grid_neutral_threshold = this._clampNumber(this.config.grid_neutral_threshold, 25, 0, 1000000);
+    this.config.grid_voltage_warning_threshold = this._clampNumber(this.config.grid_voltage_warning_threshold, 245, 0, 1000);
+    this.config.grid_voltage_critical_threshold = this._clampNumber(this.config.grid_voltage_critical_threshold, 253, this.config.grid_voltage_warning_threshold, 1000);
     this.config.advisor_surplus_threshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
     this.config.advisor_import_threshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
     this.config.advisor_high_load_threshold = this._clampNumber(this.config.advisor_high_load_threshold, 3000, 0, 1000000);
+    this.config.advisor_ev_surplus_threshold = this._clampNumber(this.config.advisor_ev_surplus_threshold, 1500, 0, 1000000);
     this.config.advisor_max_suggestions = Math.round(this._clampNumber(this.config.advisor_max_suggestions, 8, 1, 12));
     this.config.advisor_stale_sensor_warning_minutes = this._clampNumber(this.config.advisor_stale_sensor_warning_minutes, 30, 1, 10080);
-    this.config.advisor_stale_sensor_critical_minutes = this._clampNumber(this.config.advisor_stale_sensor_critical_minutes, 120, this.config.advisor_stale_sensor_warning_minutes, 20160);
+    this.config.advisor_stale_sensor_critical_minutes = this._clampNumber(this.config.advisor_stale_sensor_critical_minutes, 1440, Math.max(1440, this.config.advisor_stale_sensor_warning_minutes), 20160);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
     this._chartHours = this._chartHours || this.config.chart_hours;
     this._historyCache = this._historyCache || new Map();
@@ -2033,6 +2145,123 @@ class HaSolarDashboardCard extends HTMLElement {
     return metricOrConsumer?.largeConsumer?.energy_entity || metricOrConsumer?.energy_entity || "";
   }
 
+  _largeConsumerVoltageEntityId(metricOrConsumer) {
+    return metricOrConsumer?.largeConsumer?.voltage_entity || metricOrConsumer?.voltage_entity || "";
+  }
+
+  _metricVoltageEntityKey(metric) {
+    if (!metric || metric.unit !== "power") return "";
+    if (metric.largeConsumer) return "";
+    return `${metric.sourceKey || metric.key}_voltage`;
+  }
+
+  _metricVoltageEntityId(metric) {
+    if (!metric || metric.unit !== "power") return "";
+    if (metric.largeConsumer) return this._largeConsumerVoltageEntityId(metric);
+    const key = metric.sourceKey || metric.key;
+    const aliases = [
+      `${key}_voltage`,
+      `${key}_volt`,
+      `${key}_volts`,
+    ];
+    if (key === "import_export_power") aliases.push("grid_voltage", "voltage", "netzspannung");
+    if (key === "house_consumption_power") aliases.push("house_voltage", "home_voltage");
+    return aliases.map((alias) => this.config.entities?.[alias]).find(Boolean) || "";
+  }
+
+  _metricVoltageLabel(metric) {
+    const entityId = this._metricVoltageEntityId(metric);
+    if (!entityId) return "";
+    const rawValue = this._getEntityValue(entityId, undefined);
+    const label = this._formatVoltageValue(rawValue, this._getEntityUnit(entityId) || "V");
+    return label === "—" ? "" : label;
+  }
+
+  _voltageSensorEntries() {
+    const variant = this._currentVariant || this._layoutState().variant;
+    const batteryVoltageEntityId = this._batteryVoltageEntityId();
+    const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", label: "Battery", unit: "battery" };
+    const metrics = [
+      ...this._visibleMetrics(variant),
+      ...this._largeConsumerMetrics(),
+      ...(this._hasGridPowerSource() ? [STATUS_METRIC] : []),
+    ];
+    const seen = new Set();
+    const entries = metrics
+      .map((metric) => {
+        const entityId = this._metricVoltageEntityId(metric);
+        if (!entityId || seen.has(entityId)) return undefined;
+        seen.add(entityId);
+        const entity = this._getEntity(entityId);
+        const volts = this._valueAsVolts(entity?.state, entity?.attributes?.unit_of_measurement || "V");
+        if (!Number.isFinite(volts)) return undefined;
+        return {
+          metric,
+          entityId,
+          volts,
+          label: this._metricLabel(metric, variant),
+          value: this._formatVoltageValue(entity.state, entity.attributes?.unit_of_measurement || "V"),
+        };
+      })
+      .filter(Boolean);
+    if (batteryVoltageEntityId && !seen.has(batteryVoltageEntityId)) {
+      const entity = this._getEntity(batteryVoltageEntityId);
+      const volts = this._valueAsVolts(entity?.state, entity?.attributes?.unit_of_measurement || "V");
+      if (Number.isFinite(volts)) {
+        return [
+          ...entries,
+          {
+            metric: batteryMetric,
+            entityId: batteryVoltageEntityId,
+            volts,
+            label: this._metricLabel(batteryMetric, variant),
+            value: this._formatVoltageValue(entity.state, entity.attributes?.unit_of_measurement || "V"),
+          },
+        ];
+      }
+    }
+    return entries;
+  }
+
+  _gridVoltageAlert() {
+    const entries = this._voltageSensorEntries();
+    const highest = entries.sort((a, b) => b.volts - a.volts)[0];
+    if (!highest) return undefined;
+    const warningThreshold = this._clampNumber(this.config.grid_voltage_warning_threshold, 245, 0, 1000);
+    const criticalThreshold = this._clampNumber(this.config.grid_voltage_critical_threshold, 253, warningThreshold, 1000);
+    if (highest.volts >= criticalThreshold) {
+      return {
+        ...highest,
+        type: "critical",
+        label: this._t("warning.gridVoltageCritical", {}, "Grid voltage much too high"),
+      };
+    }
+    if (highest.volts >= warningThreshold) {
+      return {
+        ...highest,
+        type: "warning",
+        label: this._t("warning.gridVoltageHigh", {}, "High grid voltage"),
+      };
+    }
+    return undefined;
+  }
+
+  _renderVoltageMetaRow(metric, { placement = "footer" } = {}) {
+    if (!metric || metric.unit !== "power") return "";
+    const key = metric.largeConsumer
+      ? `large_consumers.${metric.largeConsumer.id || metric.key}.voltage`
+      : this._metricVoltageEntityKey(metric);
+    if (!this._showLabelIn(key, placement)) return "";
+    const label = this._metricVoltageLabel(metric);
+    if (!this._metricVoltageEntityId(metric)) return "";
+    const tooltip = `${this._t("tooltip.voltage", {}, "Voltage")}: ${label}`;
+    return `
+      <div class="meta-row voltage-meta-row">
+        <span class="voltage-badge${this._labelVisibilityClass(key, placement)}" data-voltage="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      </div>
+    `;
+  }
+
   _largeConsumerPowerWatts(metricOrConsumer) {
     const entityId = this._largeConsumerPowerEntityId(metricOrConsumer);
     if (!entityId) return undefined;
@@ -2089,7 +2318,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _latestEntityUpdate() {
     const largeConsumerEntities = (this.config.large_consumers || [])
-      .flatMap((consumer) => [consumer.power_entity, consumer.energy_entity])
+      .flatMap((consumer) => [consumer.power_entity, consumer.voltage_entity, consumer.energy_entity])
       .filter(Boolean);
     const timestamps = [
       ...Object.values(this.config.entities || {}),
@@ -2262,6 +2491,24 @@ class HaSolarDashboardCard extends HTMLElement {
     if (normalizedUnit === "kw") return numericValue * 1000;
     if (normalizedUnit === "mw") return numericValue * 1000000;
     return numericValue;
+  }
+
+  _valueAsVolts(value, unit) {
+    const numericValue = numericState(value);
+    if (!Number.isFinite(numericValue)) return undefined;
+    const normalizedUnit = this._normalizeUnit(unit);
+    if (normalizedUnit === "kv") return numericValue * 1000;
+    if (normalizedUnit === "mv") return numericValue / 1000;
+    return numericValue;
+  }
+
+  _formatVoltageValue(rawValue, entityUnit = "V") {
+    const value = this._formatValue(rawValue);
+    if (value === "—") return value;
+    const volts = this._valueAsVolts(rawValue, entityUnit);
+    if (!Number.isFinite(volts)) return entityUnit ? `${value} ${entityUnit}` : String(value);
+    const decimals = Math.abs(volts) >= 100 || Number.isInteger(volts) ? 0 : 1;
+    return `${volts.toFixed(decimals)} V`;
   }
 
   _valueAsKwh(value, unit) {
@@ -2767,7 +3014,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const directionLabel = this._batteryFlowDirectionLabel(info.direction);
     const label = `${directionLabel}: ${value}`;
     return `
-      <div class="battery-flow ${info.direction}${showLabel ? " with-label" : ""}${this._labelVisibilityClass("battery_flow_power")}" data-battery-flow title="${this._escape(label)}" aria-label="${this._escape(label)}">
+      <div class="battery-flow ${info.direction}${showLabel ? " with-label" : ""}${this._labelVisibilityClass("battery_flow_power", placement)}" data-battery-flow title="${this._escape(label)}" aria-label="${this._escape(label)}">
         ${showLabel ? `<span class="battery-flow-label" data-battery-flow-label>${this._escape(directionLabel)}</span>` : ""}
         <span class="battery-flow-arrow">${this._escape(arrow)}</span>
         <span data-battery-flow-value>${this._escape(value)}</span>
@@ -2797,6 +3044,29 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "°C");
   }
 
+  _batteryVoltageEntityId() {
+    const aliases = ["battery_flow_power_voltage", "battery_voltage", "battery_level_voltage"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _batteryVoltageLabel() {
+    const entityId = this._batteryVoltageEntityId();
+    if (!entityId) return "";
+    const label = this._formatVoltageValue(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "V");
+    return label === "—" ? "" : label;
+  }
+
+  _renderBatteryVoltage(metric, { placement = "footer" } = {}) {
+    if (metric.key !== "battery_level" || !this._batteryVoltageEntityId()) return "";
+    const key = "battery_flow_power_voltage";
+    if (!this._showLabelIn(key, placement)) return "";
+    const label = this._batteryVoltageLabel();
+    const tooltip = `${this._t("tooltip.voltage", {}, "Voltage")}: ${label}`;
+    return `
+      <span class="voltage-badge${this._labelVisibilityClass(key, placement)}" data-battery-voltage title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+    `;
+  }
+
   _batteryTemperatureCelsius() {
     const entityId = this._batteryTemperatureEntityId();
     if (!entityId) return undefined;
@@ -2813,7 +3083,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const label = this._batteryTemperatureLabel();
     const tooltip = `${this._t("tooltip.temperature", {}, "Temperature")}: ${label}`;
     return `
-      <span class="temp-badge${this._labelVisibilityClass("battery_temperature")}" data-battery-temperature title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="temp-badge${this._labelVisibilityClass("battery_temperature", placement)}" data-battery-temperature title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
@@ -2821,6 +3091,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const metaHtml = [
       this._renderBatteryFlow(metric, { showLabel: showFlowLabel, placement }),
       this._renderBatteryTemperature(metric, { placement }),
+      this._renderBatteryVoltage(metric, { placement }),
     ].filter(Boolean).join("");
     return metaHtml ? `<div class="meta-row">${metaHtml}</div>` : "";
   }
@@ -2868,7 +3139,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const text = this._pvLabelText(metric, label);
     const tooltip = text || this._t(label.labelKey, {}, label.suffix);
     return `
-      <span class="pv-badge${this._labelVisibilityClass(key)}" data-pv-label="${this._escape(key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${text ? "" : "display:none"}">${this._escape(text)}</span>
+      <span class="pv-badge${this._labelVisibilityClass(key, placement)}" data-pv-label="${this._escape(key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${text ? "" : "display:none"}">${this._escape(text)}</span>
     `;
   }
 
@@ -2917,7 +3188,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const label = this._wallboxPhaseLabel(metric);
     const tooltip = `${this._t("tooltip.phases", {}, "Phases")}: ${label}`;
     return `
-      <span class="phase-badge${this._labelVisibilityClass(entityKey)}" data-phase="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="phase-badge${this._labelVisibilityClass(entityKey, placement)}" data-phase="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
@@ -3044,7 +3315,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const label = this._wallboxSocLabel(metric);
     const tooltip = `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${label}`;
     return `
-      <span class="soc-badge${this._labelVisibilityClass(entityKey)}" data-vehicle-soc="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="soc-badge${this._labelVisibilityClass(entityKey, placement)}" data-vehicle-soc="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
@@ -3071,6 +3342,87 @@ class HaSolarDashboardCard extends HTMLElement {
     if (hours <= 0) return `${restMinutes}min`;
     if (restMinutes <= 0) return `${hours}h`;
     return `${hours}h ${restMinutes}m`;
+  }
+
+  _formatDurationSeconds(seconds) {
+    if (!Number.isFinite(seconds) || seconds <= 0) return "";
+    const rounded = Math.max(1, Math.round(seconds));
+    if (rounded < 60) return `${rounded}s`;
+    const minutes = Math.floor(rounded / 60);
+    const restSeconds = rounded % 60;
+    if (minutes < 60) return restSeconds > 0 ? `${minutes}min ${restSeconds}s` : `${minutes}min`;
+    const hours = Math.floor(minutes / 60);
+    const restMinutes = minutes % 60;
+    if (restMinutes <= 0) return `${hours}h`;
+    return `${hours}h ${restMinutes}m`;
+  }
+
+  _wallboxPhaseActionEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_phase_action";
+    if (metric?.key === "wallbox2_power") return "wallbox2_phase_action";
+    return "";
+  }
+
+  _wallboxPhaseRemainingEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_phase_remaining";
+    if (metric?.key === "wallbox2_power") return "wallbox2_phase_remaining";
+    return "";
+  }
+
+  _wallboxPhaseActionEntityId(metric) {
+    const entityKey = this._wallboxPhaseActionEntityKey(metric);
+    if (!entityKey) return "";
+    const aliases = entityKey === "wallbox2_phase_action"
+      ? ["wallbox2_phase_action", "wallbox2_phase_action_value", "wallbox2_power_phase_action"]
+      : ["wallbox_phase_action", "wallbox_phase_action_value", "wallbox_power_phase_action"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _wallboxPhaseRemainingEntityId(metric) {
+    const entityKey = this._wallboxPhaseRemainingEntityKey(metric);
+    if (!entityKey) return "";
+    const aliases = entityKey === "wallbox2_phase_remaining"
+      ? ["wallbox2_phase_remaining", "wallbox2_phase_remaining_seconds", "wallbox2_power_phase_remaining"]
+      : ["wallbox_phase_remaining", "wallbox_phase_remaining_seconds", "wallbox_power_phase_remaining"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
+  _wallboxPhaseActionText(metric) {
+    const entityId = this._wallboxPhaseActionEntityId(metric);
+    if (!entityId) return "";
+    const raw = String(this._getEntityValue(entityId, "") ?? "").trim();
+    const normalized = raw.toLowerCase();
+    if (!normalized || ["unknown", "unavailable", "none", "null", "offline", "-keine-", "keine", "no action"].includes(normalized)) return "";
+    return raw;
+  }
+
+  _wallboxPhaseRemainingSeconds(metric) {
+    const entityId = this._wallboxPhaseRemainingEntityId(metric);
+    if (!entityId) return undefined;
+    const rawValue = this._getEntityValue(entityId, undefined);
+    const value = numericState(rawValue);
+    if (!Number.isFinite(value)) return undefined;
+    const unit = String(this._getEntityUnit(entityId) || "").trim().toLowerCase();
+    if (unit.includes("h") || unit.includes("std") || unit.includes("hour") || unit.includes("stunde")) return value * 3600;
+    if (unit.includes("min") || unit === "m") return value * 60;
+    return value;
+  }
+
+  _wallboxPhaseActionInfo(metric) {
+    const action = this._wallboxPhaseActionText(metric);
+    if (!action) return undefined;
+    const seconds = this._wallboxPhaseRemainingSeconds(metric);
+    const duration = Number.isFinite(seconds) ? this._formatDurationSeconds(seconds) : "";
+    return {
+      action,
+      seconds,
+      duration,
+      actionEntityId: this._wallboxPhaseActionEntityId(metric),
+      remainingEntityId: this._wallboxPhaseRemainingEntityId(metric),
+      label: duration
+        ? this._t("value.phaseChangeIn", { action, duration }, `${action} in ${duration}`)
+        : action,
+    };
   }
 
   _formatRemainingChargeTimeValue(rawValue, entityUnit = "") {
@@ -3129,7 +3481,16 @@ class HaSolarDashboardCard extends HTMLElement {
     const label = this._wallboxRemainingTimeLabel(metric);
     const tooltip = `${this._t("tooltip.remainingChargeTime", {}, "Remaining charge time")}: ${label}`;
     return `
-      <span class="time-badge${this._labelVisibilityClass(entityKey)}" data-remaining-charge-time="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="time-badge${this._labelVisibilityClass(entityKey, placement)}" data-remaining-charge-time="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+    `;
+  }
+
+  _renderWallboxPhaseAction(metric, { placement = "footer" } = {}) {
+    if (placement !== "footer" || !this._wallboxPhaseActionEntityId(metric)) return "";
+    const info = this._wallboxPhaseActionInfo(metric);
+    const tooltip = info?.label ? `${this._t("tooltip.phaseChange", {}, "Upcoming phase change")}: ${info.label}` : "";
+    return `
+      <span class="phase-action-badge" data-phase-action="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${info?.label ? "" : "display:none"}">${this._escape(info?.label || "")}</span>
     `;
   }
 
@@ -3138,6 +3499,7 @@ class HaSolarDashboardCard extends HTMLElement {
       this._renderWallboxPhase(metric, { placement }),
       this._renderWallboxSoc(metric, { placement }),
       this._renderWallboxRemainingTime(metric, { placement }),
+      this._renderWallboxPhaseAction(metric, { placement }),
     ].filter(Boolean).join("");
     return metaHtml ? `<div class="meta-row">${metaHtml}</div>` : "";
   }
@@ -3229,9 +3591,14 @@ class HaSolarDashboardCard extends HTMLElement {
       metric.key === "battery_level" && this._batteryTemperatureLabel()
         ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${this._batteryTemperatureLabel()}`
         : "",
+      metric.key === "battery_level" && this._batteryVoltageLabel()
+        ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${this._batteryVoltageLabel()}`
+        : "",
       this._wallboxPhaseLabel(metric) ? `${this._t("tooltip.phases", {}, "Phases")}: ${this._wallboxPhaseLabel(metric)}` : "",
       this._wallboxSocLabel(metric) ? `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${this._wallboxSocLabel(metric)}` : "",
       this._wallboxRemainingTimeLabel(metric) ? `${this._t("tooltip.remainingChargeTime", {}, "Remaining charge time")}: ${this._wallboxRemainingTimeLabel(metric)}` : "",
+      this._wallboxPhaseActionInfo(metric)?.label ? `${this._t("tooltip.phaseChange", {}, "Upcoming phase change")}: ${this._wallboxPhaseActionInfo(metric).label}` : "",
+      this._metricVoltageLabel(metric) ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${this._metricVoltageLabel(metric)}` : "",
       updatedAt ? `${this._t("tooltip.updated")}: ${updatedAt}` : "",
       warning ? `${this._t("tooltip.status")}: ${warning.label}` : "",
     ].filter(Boolean).join("\n");
@@ -3540,10 +3907,10 @@ class HaSolarDashboardCard extends HTMLElement {
     };
   }
 
-  _labelVisibilityClass(key) {
+  _labelVisibilityClass(key, placement = "image") {
     const visibility = this._labelVisibility(key);
     return [
-      visibility.hideMobile ? " hide-mobile" : "",
+      placement === "footer" ? "" : visibility.hideMobile ? " hide-mobile" : "",
       visibility.hideDesktop ? " hide-desktop" : "",
     ].join("");
   }
@@ -3866,7 +4233,7 @@ class HaSolarDashboardCard extends HTMLElement {
       const reading = this._formatOverlayReading(key);
       const visibilityKey = `overlay_${key}`;
       const readingHtml = this.config.image_overlays?.[key]?.entity && this._labelVisibility(visibilityKey).image
-        ? `<div class="overlay-reading${this._labelVisibilityClass(visibilityKey)}"><span class="overlay-reading-label" data-overlay-label="${this._escape(key)}">${this._escape(label)}</span><span class="overlay-reading-value" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</span></div>`
+        ? `<div class="overlay-reading${this._labelVisibilityClass(visibilityKey, "image")}"><span class="overlay-reading-label" data-overlay-label="${this._escape(key)}">${this._escape(label)}</span><span class="overlay-reading-value" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</span></div>`
         : "";
       return `
         <div class="image-overlay-wrap image-overlay-wrap-${this._escape(key)}" style="${this._escape(style)}">
@@ -3895,6 +4262,7 @@ class HaSolarDashboardCard extends HTMLElement {
         ${this._renderPvMetaRow(metric, { placement: "image" })}
         ${this._renderBatteryMetaRow(metric, { showFlowLabel: false, placement: "image" })}
         ${this._renderWallboxPhaseRow(metric, { placement: "image" })}
+        ${this._renderVoltageMetaRow(metric, { placement: "image" })}
         ${this._renderMetricMeter(metric)}
       </div>
     `;
@@ -4089,6 +4457,7 @@ class HaSolarDashboardCard extends HTMLElement {
         hasPowerEntity: Boolean(entityId),
         label: this._metricLabel(metric, this._currentVariant),
         watts: Number.isFinite(watts) ? watts : 0,
+        phaseAction: this._wallboxPhaseActionInfo(metric),
         socPercent,
         maxSocPercent,
         socAbove80Minutes,
@@ -4173,6 +4542,9 @@ class HaSolarDashboardCard extends HTMLElement {
     const autarkyPercent = Number.isFinite(loadWatts) && loadWatts > 0 && Number.isFinite(importWatts)
       ? this._clampNumber(((loadWatts - importWatts) / loadWatts) * 100, 0, 0, 100)
       : undefined;
+    const electricityPriceEntityId = this.config.entities?.electricity_price || "";
+    const electricityPrice = electricityPriceEntityId ? numericState(this._getEntityValue(electricityPriceEntityId, undefined)) : undefined;
+    const weatherState = this._weatherState();
 
     return {
       pvWatts,
@@ -4201,6 +4573,10 @@ class HaSolarDashboardCard extends HTMLElement {
       loadWatts,
       selfConsumptionPercent,
       autarkyPercent,
+      electricityPrice,
+      electricityPriceUnit: electricityPriceEntityId ? this._getEntityUnit(electricityPriceEntityId) : "",
+      electricityPriceEntityId,
+      weatherState,
       hasPv: Number.isFinite(pvWatts),
       hasGrid: Number.isFinite(gridWatts),
       hasLoad: Number.isFinite(loadWatts),
@@ -4315,7 +4691,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _advisorStaleSensorItem() {
     const warningMinutes = this._clampNumber(this.config.advisor_stale_sensor_warning_minutes, 30, 1, 10080);
-    const criticalMinutes = this._clampNumber(this.config.advisor_stale_sensor_critical_minutes, 120, warningMinutes, 20160);
+    const criticalMinutes = this._clampNumber(this.config.advisor_stale_sensor_critical_minutes, 1440, Math.max(1440, warningMinutes), 20160);
     const stale = this._advisorSensorCandidates()
       .map((candidate) => {
         const entity = this._getEntity(candidate.entityId);
@@ -4326,7 +4702,7 @@ class HaSolarDashboardCard extends HTMLElement {
         if (this._advisorStaleSensorIsExpectedStatic(candidate)) return undefined;
         const ageMinutes = this._entityAgeMinutes(candidate.entityId);
         const candidateWarningMinutes = this._clampNumber(candidate.staleWarningMinutes, warningMinutes, warningMinutes, 10080);
-        const candidateCriticalMinutes = this._clampNumber(candidate.staleCriticalMinutes, criticalMinutes, candidateWarningMinutes, 20160);
+        const candidateCriticalMinutes = Math.max(criticalMinutes, this._clampNumber(candidate.staleCriticalMinutes, criticalMinutes, candidateWarningMinutes, 20160));
         if (!Number.isFinite(ageMinutes) || ageMinutes < candidateWarningMinutes) return undefined;
         return {
           ...candidate,
@@ -4346,22 +4722,151 @@ class HaSolarDashboardCard extends HTMLElement {
       .map((item) => `${item.label}: ${this._formatDurationMinutes(item.ageMinutes)}`);
     return stale.length === 1
       ? {
+        id: `sensor-stale:${top.entityId}`,
         type: critical ? "critical" : "info",
         priority: critical ? 98 : 90,
         title: this._t("advisor.sensors", {}, "Sensors"),
         text: this._t("advisor.sensorStaleOne", { name: top.label, duration }, `${top.label} has not updated for ${duration}.`),
         value: duration,
+        reason: this._t("advisor.reasonSensor", {}, "A configured entity is stale, unavailable, or inconsistent."),
         diagnostic: true,
       }
       : {
+        id: `sensor-stale:${stale.map((item) => item.entityId).join("|")}`,
         type: critical ? "critical" : "info",
         priority: critical ? 98 : 90,
         title: this._t("advisor.sensors", {}, "Sensors"),
         text: this._t("advisor.sensorStaleMany", { count: stale.length }, `${stale.length} sensors have not updated recently.`),
         value: duration,
+        reason: this._t("advisor.reasonSensor", {}, "A configured entity is stale, unavailable, or inconsistent."),
         details,
         diagnostic: true,
       };
+  }
+
+  _advisorTypeRank(type) {
+    const ranks = {
+      critical: 4,
+      warning: 3,
+      info: 2,
+      setup: 2,
+      opportunity: 1,
+      success: 0,
+    };
+    return ranks[type] ?? 2;
+  }
+
+  _sortAdvisorItems(items) {
+    return [...items].sort((a, b) => (
+      this._advisorTypeRank(b.type) - this._advisorTypeRank(a.type)
+    ) || ((b.priority ?? 0) - (a.priority ?? 0)));
+  }
+
+  _advisorTypeLabel(type) {
+    const labels = {
+      critical: this._t("advisor.priorityCritical", {}, "Critical"),
+      warning: this._t("advisor.priorityWarning", {}, "Warning"),
+      info: this._t("advisor.priorityInfo", {}, "Info"),
+      setup: this._t("advisor.prioritySetup", {}, "Setup"),
+      opportunity: this._t("advisor.priorityOpportunity", {}, "Chance"),
+      success: this._t("advisor.prioritySuccess", {}, "OK"),
+    };
+    return labels[type] || labels.info;
+  }
+
+  _advisorWindowLabel(windowKey) {
+    const labels = {
+      now: this._t("advisor.windowNow", {}, "Now"),
+      next_2h: this._t("advisor.windowNext2h", {}, "Next 2h"),
+      anytime: this._t("advisor.windowAnytime", {}, "Anytime"),
+    };
+    return labels[windowKey] || labels.now;
+  }
+
+  _advisorDismissStorageKey() {
+    const dashboardKey = String(this.config.title || this.config.house || CARD_TYPE).replace(/[^\w-]+/g, "_").slice(0, 80);
+    return `${CARD_TYPE}:advisor-dismissed:${dashboardKey}`;
+  }
+
+  _advisorTodayKey() {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${now.getFullYear()}-${month}-${day}`;
+  }
+
+  _advisorDismissKey(item) {
+    if (item.id) return String(item.id);
+    return [item.type, item.title, item.text]
+      .map((part) => String(part ?? "").replace(/[^\w-]+/g, "_"))
+      .join("__")
+      .slice(0, 180);
+  }
+
+  _advisorDismissedMap() {
+    try {
+      const parsed = JSON.parse(window.localStorage?.getItem(this._advisorDismissStorageKey()) || "{}");
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  _isAdvisorItemDismissed(item) {
+    const dismissed = this._advisorDismissedMap();
+    return dismissed[this._advisorDismissKey(item)] === this._advisorTodayKey();
+  }
+
+  _dismissAdvisorItem(key) {
+    if (!key) return;
+    try {
+      const today = this._advisorTodayKey();
+      const dismissed = this._advisorDismissedMap();
+      Object.keys(dismissed).forEach((entryKey) => {
+        if (dismissed[entryKey] !== today) delete dismissed[entryKey];
+      });
+      dismissed[key] = today;
+      window.localStorage?.setItem(this._advisorDismissStorageKey(), JSON.stringify(dismissed));
+    } catch (_err) {
+      // localStorage can be blocked in strict browser contexts; the Advisor still works without dismissals.
+    }
+    this._renderCardShell(this._layoutState());
+  }
+
+  _formatAdvisorPrice(snapshot) {
+    if (!Number.isFinite(snapshot.electricityPrice)) return "";
+    const unit = snapshot.electricityPriceUnit || "";
+    return `${snapshot.electricityPrice.toLocaleString(this._language(), { maximumFractionDigits: 4 })}${unit ? ` ${unit}` : ""}`;
+  }
+
+  _advisorSignalDetails(snapshot, topics = []) {
+    const powerFormatter = (value) => this._formatPowerValue(value, this.config.units?.power || "auto", "W");
+    const topicSet = new Set(topics);
+    const includeAll = topicSet.size === 0;
+    const details = [];
+    const add = (topic, label, value) => {
+      if (!includeAll && !topicSet.has(topic)) return;
+      if (value === undefined || value === null || value === "") return;
+      details.push(`${label}: ${value}`);
+    };
+    add("pv", this._t("advisor.pv", {}, "PV"), Number.isFinite(snapshot.pvWatts) ? powerFormatter(snapshot.pvWatts) : "");
+    add("surplus", this._t("advisor.exporting", {}, "Exporting surplus"), Number.isFinite(snapshot.exportWatts) ? powerFormatter(snapshot.exportWatts) : "");
+    add("grid", this._t("advisor.importing", {}, "Importing"), Number.isFinite(snapshot.importWatts) ? powerFormatter(snapshot.importWatts) : "");
+    add("battery", this._t("advisor.batteryStatus", {}, "Battery"), Number.isFinite(snapshot.batteryPercent) ? `${Math.round(snapshot.batteryPercent)}%` : "");
+    add("weather", this._t("advisor.weather", {}, "Weather"), snapshot.weatherState ? this._t(`weather.${snapshot.weatherState}`, {}, snapshot.weatherState) : "");
+    add("price", this._t("advisor.electricityPrice", {}, "Electricity price"), this._formatAdvisorPrice(snapshot));
+    if (topicSet.has("wallbox")) {
+      (snapshot.wallboxes || []).forEach((wallbox) => {
+        const wallboxValue = [
+          Number.isFinite(wallbox.watts) ? powerFormatter(wallbox.watts) : "",
+          Number.isFinite(wallbox.socPercent) ? `${Math.round(wallbox.socPercent)}%` : "",
+          wallbox.connected === false ? this._t("advisor.evPlugIn", {}, "Plug in the vehicle to use PV surplus for charging.") : "",
+          wallbox.chargingEnabled === false ? this._t("advisor.evEnableCharging", {}, "Charging is currently disabled. Enable charging if you want to use the PV surplus.") : "",
+        ].filter(Boolean).join(" / ");
+        if (wallboxValue) details.push(`${wallbox.label}: ${wallboxValue}`);
+      });
+    }
+    return [...new Set(details)];
   }
 
   _advisorSuggestionLimit() {
@@ -4371,17 +4876,28 @@ class HaSolarDashboardCard extends HTMLElement {
   _advisorItems(snapshot = this._advisorSnapshot(), { maxItems = this._advisorSuggestionLimit() } = {}) {
     const items = [...this._advisorWarnings()];
     const add = (type, priority, title, text, value = "", extra = {}) => {
-      items.push({ type, priority, title, text, value, ...extra });
+      items.push({ type, priority, title, text, value, window: "now", signals: [], ...extra });
     };
     const itemLimit = Math.round(this._clampNumber(maxItems, this._advisorSuggestionLimit(), 1, 12));
     const surplusThreshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
     const importThreshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
     const highLoadThreshold = this._clampNumber(this.config.advisor_high_load_threshold, 3000, 0, 1000000);
+    const evSurplusThreshold = this._clampNumber(this.config.advisor_ev_surplus_threshold, 1500, 0, 1000000);
     const lowBatteryThreshold = Number.isFinite(snapshot.batteryReserveThreshold)
       ? snapshot.batteryReserveThreshold
       : this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
     const fullBatteryThreshold = Number.isFinite(snapshot.batteryFullThreshold) ? snapshot.batteryFullThreshold : 92;
     const deepBatteryThreshold = Math.min(10, lowBatteryThreshold);
+    const voltageAlert = this._gridVoltageAlert();
+    if (voltageAlert) {
+      add(voltageAlert.type, voltageAlert.type === "critical" ? 99 : 94, this._t("advisor.grid", {}, "Grid"), voltageAlert.label, voltageAlert.value, {
+        id: `voltage:${voltageAlert.entityId}`,
+        diagnostic: true,
+        reason: this._t("advisor.reasonSensor", {}, "A configured entity is stale, unavailable, or inconsistent."),
+        signals: this._advisorSignalDetails(snapshot, ["grid", "pv", "battery", "price"]),
+        details: [`${voltageAlert.label}: ${voltageAlert.value}`, `${voltageAlert.metric ? this._metricLabel(voltageAlert.metric, this._currentVariant) : voltageAlert.entityId}: ${voltageAlert.entityId}`],
+      });
+    }
     const staleSensorItem = this._advisorStaleSensorItem();
     if (staleSensorItem) items.push(staleSensorItem);
 
@@ -4396,7 +4912,11 @@ class HaSolarDashboardCard extends HTMLElement {
     }
 
     if (items.some((item) => item.type === "warning")) {
-      add("warning", 95, this._t("advisor.status", {}, "Status"), this._t("advisor.checkSensors", {}, "Check unavailable or missing sensors so the energy balance stays reliable."));
+      add("warning", 95, this._t("advisor.status", {}, "Status"), this._t("advisor.checkSensors", {}, "Check unavailable or missing sensors so the energy balance stays reliable."), "", {
+        id: "advisor:sensor-check",
+        reason: this._t("advisor.reasonSensor", {}, "A configured entity is stale, unavailable, or inconsistent."),
+        signals: this._advisorSignalDetails(snapshot, ["pv", "grid", "battery"]),
+      });
     }
 
     if (
@@ -4406,7 +4926,11 @@ class HaSolarDashboardCard extends HTMLElement {
       && snapshot.gridSplitPower.exportWatts > surplusThreshold
     ) {
       const value = `${this._formatPowerValue(snapshot.gridSplitPower.importWatts, this.config.units?.power || "auto", "W")} / ${this._formatPowerValue(snapshot.gridSplitPower.exportWatts, this.config.units?.power || "auto", "W")}`;
-      add("critical", 96, this._t("advisor.grid", {}, "Grid"), this._t("advisor.gridImportExportSimultaneous", {}, "Import and export sensors report power at the same time. Check whether the split grid sensors are mapped correctly."), value);
+      add("critical", 96, this._t("advisor.grid", {}, "Grid"), this._t("advisor.gridImportExportSimultaneous", {}, "Import and export sensors report power at the same time. Check whether the split grid sensors are mapped correctly."), value, {
+        id: "grid:import-export-simultaneous",
+        reason: this._t("advisor.reasonSensor", {}, "A configured entity is stale, unavailable, or inconsistent."),
+        signals: this._advisorSignalDetails(snapshot, ["grid", "pv"]),
+      });
     }
 
     if (Number.isFinite(snapshot.batteryTemperatureCelsius)) {
@@ -4441,6 +4965,24 @@ class HaSolarDashboardCard extends HTMLElement {
       }
     });
 
+    (snapshot.wallboxes || []).forEach((wallbox) => {
+      const phaseAction = wallbox.phaseAction;
+      if (!phaseAction?.action) return;
+      const value = phaseAction.duration ? `${phaseAction.action} / ${phaseAction.duration}` : phaseAction.action;
+      const duration = phaseAction.duration || this._t("value.soon", {}, "soon");
+      const nextWindowSeconds = 2 * 60 * 60;
+      add("info", 83, wallbox.label, this._t("advisor.evPhaseChangeScheduled", { action: phaseAction.action, duration }, `${phaseAction.action} in ${duration} if the PV situation does not change.`), value, {
+        id: `wallbox:phase:${wallbox.key}:${phaseAction.action}`,
+        window: Number.isFinite(phaseAction.seconds) && phaseAction.seconds <= nextWindowSeconds ? "next_2h" : "now",
+        reason: this._t("advisor.reasonPhaseChange", {}, "EVCC reports a planned phase change inside the next window."),
+        signals: this._advisorSignalDetails(snapshot, ["pv", "surplus", "grid", "wallbox", "weather"]),
+        details: [
+          phaseAction.actionEntityId ? `${this._t("editor.phaseActionEntity", {}, "Upcoming phase action entity")}: ${phaseAction.actionEntityId}` : "",
+          phaseAction.remainingEntityId ? `${this._t("editor.phaseRemainingEntity", {}, "Phase action remaining seconds entity")}: ${phaseAction.remainingEntityId}` : "",
+        ].filter(Boolean),
+      });
+    });
+
     if (Number.isFinite(snapshot.batteryHighSocMinutes) && snapshot.batteryHighSocMinutes >= 120) {
       const value = `${Math.round(snapshot.batteryPercent)}% - ${this._formatDurationMinutes(snapshot.batteryHighSocMinutes)}`;
       add("info", 87, this._t("advisor.batteryStatus", {}, "Battery"), this._t("advisor.batteryHighSocLong", {}, "House battery has been between 90 and 100% for more than 120 minutes. Batteries should not stay that full for too long."), value);
@@ -4450,7 +4992,11 @@ class HaSolarDashboardCard extends HTMLElement {
       const value = this._formatPowerValue(snapshot.exportWatts, this.config.units?.power || "auto", "W");
       const idleWallboxes = (snapshot.wallboxes || []).filter((wallbox) => wallbox.watts <= surplusThreshold);
       const wallboxTitle = (wallboxes) => wallboxes.length === 1 ? wallboxes[0].label : this._t("advisor.wallbox", {}, "EV");
-      add("opportunity", 88, this._t("advisor.surplus", {}, "Surplus"), this._t("advisor.surplusGeneral", {}, "PV surplus is available. Prioritize flexible loads while export is active."), value);
+      add("opportunity", 88, this._t("advisor.surplus", {}, "Surplus"), this._t("advisor.surplusGeneral", {}, "PV surplus is available. Prioritize flexible loads while export is active."), value, {
+        id: "surplus:general",
+        reason: this._t("advisor.reasonSurplus", { threshold: this._formatPowerValue(surplusThreshold, this.config.units?.power || "auto", "W") }, "PV surplus is above the configured surplus threshold."),
+        signals: this._advisorSignalDetails(snapshot, ["pv", "surplus", "battery", "weather", "price"]),
+      });
       const largeConsumerCandidates = (snapshot.largeConsumers || [])
         .filter((consumer) => !consumer.active && consumer.powerEntityId)
         .filter((consumer) => Number.isFinite(consumer.maxPowerWatts)
@@ -4459,23 +5005,38 @@ class HaSolarDashboardCard extends HTMLElement {
       if (largeConsumerCandidates.length > 0) {
         const names = largeConsumerCandidates.slice(0, 3).map((consumer) => consumer.label).join(", ");
         add("opportunity", 78, this._t("consumer.sectionTitle", {}, "Additional Large Consumers"), this._t("advisor.largeConsumerSurplus", { names }, `PV surplus can cover ${names}. Start a ready large consumer while export is active.`), value, {
+          id: `large-consumer:surplus:${names}`,
+          reason: this._t("advisor.reasonLargeConsumer", {}, "The available PV surplus can cover the configured consumer limit."),
+          signals: this._advisorSignalDetails(snapshot, ["pv", "surplus", "battery", "weather", "price"]),
           details: largeConsumerCandidates.slice(0, 4).map((consumer) => [
             consumer.label,
             Number.isFinite(consumer.maxPowerWatts) ? this._formatPowerValue(consumer.maxPowerWatts, this.config.units?.power || "auto", "W") : "",
           ].filter(Boolean).join(": ")),
         });
       }
-      const chargeableWallboxes = idleWallboxes.filter((wallbox) => !wallbox.targetReached && wallbox.connected !== false && wallbox.chargingEnabled !== false);
+      const chargeableWallboxes = idleWallboxes.filter((wallbox) => !wallbox.targetReached && wallbox.connected !== false && wallbox.chargingEnabled !== false && snapshot.exportWatts >= evSurplusThreshold);
       if (chargeableWallboxes.length > 0) {
-        add("opportunity", 82, wallboxTitle(chargeableWallboxes), this._t("advisor.startEvCharging", {}, "Start or increase EV charging while surplus is available."), value);
+        add("opportunity", 82, wallboxTitle(chargeableWallboxes), this._t("advisor.startEvCharging", {}, "Start or increase EV charging while surplus is available."), value, {
+          id: `wallbox:start:${chargeableWallboxes.map((wallbox) => wallbox.key).join("-")}`,
+          reason: this._t("advisor.reasonEvSurplus", { threshold: this._formatPowerValue(evSurplusThreshold, this.config.units?.power || "auto", "W") }, "PV surplus is above the configured EV threshold."),
+          signals: this._advisorSignalDetails(snapshot, ["pv", "surplus", "battery", "wallbox", "weather", "price"]),
+        });
       }
-      const disconnectedWallboxes = idleWallboxes.filter((wallbox) => !wallbox.targetReached && wallbox.connected === false);
+      const disconnectedWallboxes = idleWallboxes.filter((wallbox) => !wallbox.targetReached && wallbox.connected === false && snapshot.exportWatts >= evSurplusThreshold);
       if (disconnectedWallboxes.length > 0) {
-        add("opportunity", 79, wallboxTitle(disconnectedWallboxes), this._t("advisor.evPlugIn", {}, "Plug in the vehicle to use PV surplus for charging."), value);
+        add("opportunity", 79, wallboxTitle(disconnectedWallboxes), this._t("advisor.evPlugIn", {}, "Plug in the vehicle to use PV surplus for charging."), value, {
+          id: `wallbox:plugin:${disconnectedWallboxes.map((wallbox) => wallbox.key).join("-")}`,
+          reason: this._t("advisor.reasonEvSurplus", { threshold: this._formatPowerValue(evSurplusThreshold, this.config.units?.power || "auto", "W") }, "PV surplus is above the configured EV threshold."),
+          signals: this._advisorSignalDetails(snapshot, ["pv", "surplus", "battery", "wallbox", "weather", "price"]),
+        });
       }
-      const disabledWallboxes = idleWallboxes.filter((wallbox) => !wallbox.targetReached && wallbox.connected !== false && wallbox.chargingEnabled === false);
+      const disabledWallboxes = idleWallboxes.filter((wallbox) => !wallbox.targetReached && wallbox.connected !== false && wallbox.chargingEnabled === false && snapshot.exportWatts >= evSurplusThreshold);
       if (disabledWallboxes.length > 0) {
-        add("info", 76, wallboxTitle(disabledWallboxes), this._t("advisor.evEnableCharging", {}, "Charging is currently disabled. Enable charging if you want to use the PV surplus."), value);
+        add("info", 76, wallboxTitle(disabledWallboxes), this._t("advisor.evEnableCharging", {}, "Charging is currently disabled. Enable charging if you want to use the PV surplus."), value, {
+          id: `wallbox:enable:${disabledWallboxes.map((wallbox) => wallbox.key).join("-")}`,
+          reason: this._t("advisor.reasonEvSurplus", { threshold: this._formatPowerValue(evSurplusThreshold, this.config.units?.power || "auto", "W") }, "PV surplus is above the configured EV threshold."),
+          signals: this._advisorSignalDetails(snapshot, ["pv", "surplus", "battery", "wallbox", "weather", "price"]),
+        });
       }
       const targetReachedWallboxes = idleWallboxes.filter((wallbox) => wallbox.targetReached);
       if (targetReachedWallboxes.length > 0) {
@@ -4502,7 +5063,11 @@ class HaSolarDashboardCard extends HTMLElement {
 
     if (Number.isFinite(snapshot.importWatts) && snapshot.importWatts > importThreshold) {
       const value = this._formatPowerValue(snapshot.importWatts, this.config.units?.power || "auto", "W");
-      add("warning", 86, this._t("advisor.grid", {}, "Grid"), this._t("advisor.headlineImport", {}, "Grid import is active"), value);
+      add("warning", 86, this._t("advisor.grid", {}, "Grid"), this._t("advisor.headlineImport", {}, "Grid import is active"), value, {
+        id: "grid:import-active",
+        reason: this._t("advisor.reasonGridImport", { threshold: this._formatPowerValue(importThreshold, this.config.units?.power || "auto", "W") }, "Grid import is above the configured import threshold."),
+        signals: this._advisorSignalDetails(snapshot, ["grid", "pv", "battery", "price"]),
+      });
       if (Number.isFinite(snapshot.batteryPercent) && snapshot.batteryPercent >= fullBatteryThreshold - 0.5) {
         const batteryValue = `${value} / ${Math.round(snapshot.batteryPercent)}%`;
         add(snapshot.importWatts > highLoadThreshold ? "critical" : "warning", snapshot.importWatts > highLoadThreshold ? 91 : 85, this._t("advisor.grid", {}, "Grid"), this._t("advisor.gridImportFullBattery", {}, "Grid import is high although the house battery is full. Check discharge limits, backup reserve, or battery mode."), batteryValue);
@@ -4571,16 +5136,19 @@ class HaSolarDashboardCard extends HTMLElement {
       add("success", 41, this._t("consumer.sectionTitle", {}, "Additional Large Consumers"), this._t("advisor.largeConsumerCovered", {}, "Large consumers are running without relevant grid import."), this._formatPowerValue(pvCoveredLargeConsumerWatts, this.config.units?.power || "auto", "W"));
     }
 
-    if (items.length === 0) {
+    let visibleItems = items.filter((item) => !this._isAdvisorItemDismissed(item));
+    if (visibleItems.length === 0) {
       add("success", 10, this._t("advisor.status", {}, "Status"), this._t("advisor.noAdvice", {}, "No urgent action right now."));
+      visibleItems = items.filter((item) => !this._isAdvisorItemDismissed(item));
     }
 
-    return items.sort((a, b) => b.priority - a.priority).slice(0, itemLimit);
+    return this._sortAdvisorItems(visibleItems).slice(0, itemLimit);
   }
 
   _advisorStatus(snapshot = this._advisorSnapshot(), items = this._advisorItems(snapshot)) {
-    const hasDiagnosticWarning = items.some((item) => item.diagnostic === true);
+    const hasDiagnosticWarning = items.some((item) => item.diagnostic === true && ["critical", "warning"].includes(item.type));
     const hasCritical = items.some((item) => item.type === "critical");
+    const hasInfo = items.some((item) => item.type === "info");
     const hasSetup = items.some((item) => item.type === "setup");
     const surplusThreshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
     const importThreshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
@@ -4593,6 +5161,7 @@ class HaSolarDashboardCard extends HTMLElement {
       return { type: "warning", label: this._t("advisor.headlineImport", {}, "Grid import is active") };
     }
     if (hasSetup) return { type: "setup", label: this._t("advisor.headlineSetup", {}, "More sensors unlock better advice") };
+    if (hasInfo) return { type: "info", label: this._t("advisor.headlineInfo", {}, "Information available") };
     return { type: "success", label: this._t("advisor.headlineNeutral", {}, "Energy flow is balanced") };
   }
 
@@ -4668,6 +5237,7 @@ class HaSolarDashboardCard extends HTMLElement {
           Number.isFinite(wallbox.maxSocPercent) ? `/ ${Math.round(wallbox.maxSocPercent)}%` : "",
           wallbox.connected === false ? "nicht verbunden" : "",
           wallbox.chargingEnabled === false ? "Laden deaktiviert" : "",
+          wallbox.phaseAction?.label || "",
         ].filter(Boolean).join(" "));
       });
     }
@@ -4704,6 +5274,8 @@ class HaSolarDashboardCard extends HTMLElement {
         addEntity(wallbox.label, wallbox.entityId);
         addEntity(`${wallbox.label} SoC`, wallbox.socEntityId);
         addEntity(`${wallbox.label} Max SoC`, wallbox.maxSocEntityId);
+        addEntity(`${wallbox.label} ${this._t("editor.phaseActionEntity", {}, "Upcoming phase action entity")}`, wallbox.phaseAction?.actionEntityId);
+        addEntity(`${wallbox.label} ${this._t("editor.phaseRemainingEntity", {}, "Phase action remaining seconds entity")}`, wallbox.phaseAction?.remainingEntityId);
       });
     }
     if (isLargeConsumer || isLoad || isPv) {
@@ -4714,10 +5286,23 @@ class HaSolarDashboardCard extends HTMLElement {
     }
     if (isLoad) addEntity(this._t("advisor.consumption", {}, "Load"), this.config.entities?.house_consumption_power);
     if (isSensors && Array.isArray(item.details)) item.details.forEach((detail) => addValue(this._t("advisor.sensors", {}, "Sensors"), detail));
+    if (snapshot.electricityPriceEntityId) addEntity(this._t("advisor.electricityPrice", {}, "Electricity price"), snapshot.electricityPriceEntityId);
+    const signalTopics = [
+      isPv ? ["pv", "surplus", "weather"] : [],
+      isGrid ? ["grid", "surplus"] : [],
+      isBattery ? ["battery"] : [],
+      isWallbox ? ["wallbox"] : [],
+      isLoad || isLargeConsumer ? ["pv", "surplus"] : [],
+      snapshot.electricityPriceEntityId ? ["price"] : [],
+    ].flat();
+    const signals = Array.isArray(item.signals) && item.signals.length > 0
+      ? item.signals
+      : this._advisorSignalDetails(snapshot, signalTopics);
 
     const dedupe = (list) => [...new Set(list)];
     return {
-      why: item.text,
+      why: item.reason || item.text,
+      signals: dedupe(signals),
       values: dedupe(values),
       entities: dedupe(entities),
     };
@@ -4762,17 +5347,31 @@ class HaSolarDashboardCard extends HTMLElement {
     `).join("");
     const itemHtml = items.map((item, index) => {
       const itemKey = this._advisorItemKey(item, index);
+      const dismissKey = this._advisorDismissKey(item);
       const open = this._openAdvisorDetails?.has(itemKey);
       const explanation = this._advisorItemDetails(item, snapshot);
       const details = Array.isArray(item.details) && item.details.length > 0
         ? `<div class="advisor-item-details">${item.details.map((detail) => `<span>${this._escape(detail)}</span>`).join("")}</div>`
         : "";
+      const metaHtml = `
+        <div class="advisor-item-meta">
+          <span>${this._escape(this._advisorTypeLabel(item.type))}</span>
+          <span>${this._escape(this._advisorWindowLabel(item.window))}</span>
+          <button type="button" data-advisor-dismiss-key="${this._escape(dismissKey)}">${this._escape(this._t("advisor.dismissToday", {}, "Hide today"))}</button>
+        </div>
+      `;
       const explanationHtml = `
         <div class="advisor-explanation" ${open ? "" : "hidden"}>
           <div class="advisor-explanation-section">
             <strong>${this._escape(this._t("advisor.detailWhy", {}, "Why this appears"))}</strong>
             <span>${this._escape(explanation.why)}</span>
           </div>
+          ${explanation.signals.length > 0 ? `
+            <div class="advisor-explanation-section">
+              <strong>${this._escape(this._t("advisor.detailSignals", {}, "Decision signals"))}</strong>
+              ${explanation.signals.map((signal) => `<span>${this._escape(signal)}</span>`).join("")}
+            </div>
+          ` : ""}
           ${explanation.values.length > 0 ? `
             <div class="advisor-explanation-section">
               <strong>${this._escape(this._t("advisor.detailValues", {}, "Values"))}</strong>
@@ -4794,6 +5393,7 @@ class HaSolarDashboardCard extends HTMLElement {
             ${item.value ? `<span>${this._escape(item.value)}</span>` : ""}
           </div>
           <div class="advisor-item-text">${this._escape(item.text)}</div>
+          ${metaHtml}
           ${details}
           ${explanationHtml}
         </div>
@@ -4928,6 +5528,15 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _attachAdvisorControls() {
+    this.shadowRoot.querySelectorAll("[data-advisor-dismiss-key]").forEach((button) => {
+      if (button.dataset.advisorDismissBound === "true") return;
+      button.dataset.advisorDismissBound = "true";
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._dismissAdvisorItem(button.dataset.advisorDismissKey);
+      });
+    });
     this.shadowRoot.querySelectorAll("[data-advisor-item-key]").forEach((element) => {
       if (element.dataset.advisorBound === "true") return;
       element.dataset.advisorBound = "true";
@@ -4968,6 +5577,21 @@ class HaSolarDashboardCard extends HTMLElement {
     image.style.display = "none";
   }
 
+  _renderGridVoltageAlert() {
+    const alert = this._gridVoltageAlert();
+    if (!alert) return "";
+    const value = alert.value ? ` ${alert.value}` : "";
+    const sourceLabel = alert.metric ? this._metricLabel(alert.metric, this._currentVariant) : "";
+    const source = sourceLabel && alert.entityId ? `${sourceLabel}: ${alert.entityId}` : alert.entityId || "";
+    const text = `${alert.label}${value}`;
+    return `
+      <div class="voltage-alert voltage-alert-${this._escape(alert.type)}" data-grid-voltage-alert title="${this._escape(source)}" aria-label="${this._escape(text)}">
+        <strong>${this._escape(alert.label)}</strong>
+        <span>${this._escape(alert.value || "")}</span>
+      </div>
+    `;
+  }
+
   _renderCardShell(state) {
     this._lastImageKey = this._imageStateKey();
     this._lastLanguage = this._language();
@@ -4980,6 +5604,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
     const advisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
+    const voltageAlertHtml = this._renderGridVoltageAlert();
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
       ? `<div class="scene-status" data-accent-key="${STATUS_METRIC.key}" data-status-label style="${this._escape(this._accentStyle(STATUS_METRIC))}">${this._escape(statusLabel)}</div>`
@@ -4993,25 +5618,31 @@ class HaSolarDashboardCard extends HTMLElement {
     const renderTile = (metric) => {
       const tooltip = this._metricTooltip(metric, state.variant);
       const warning = this._metricWarning(metric);
-      const visibilityClass = metric.overlay ? this._labelVisibilityClass(metric.key) : "";
+      const visibilityClass = metric.overlay ? this._labelVisibilityClass(metric.key, "footer") : "";
       const valueHtml = metric.key === "battery_level"
         ? `
           <div class="tile-value-row">
             <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
           </div>
           ${this._renderBatteryMetaRow(metric, { placement: "footer" })}
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
         `
         : this._wallboxPhaseEntityKey(metric)
         ? `
           <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
           ${this._renderWallboxPhaseRow(metric, { placement: "footer" })}
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
         `
         : this._isPvMetric(metric)
         ? `
           <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
           ${this._renderPvMetaRow(metric, { placement: "footer" })}
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
         `
-        : `<div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>`;
+        : `
+          <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
+        `;
       return `
         <div class="tile${this._metricStateClass(metric)}${visibilityClass}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
           <div class="name" data-label="${metric.key}">${this._escape(this._metricLabel(metric, state.variant))}</div>
@@ -5022,7 +5653,7 @@ class HaSolarDashboardCard extends HTMLElement {
     };
     const gridHtml = visibleTileMetrics.map(renderTile).join("");
     const largeConsumerHtml = largeConsumerMetrics.map(renderTile).join("");
-    const largeConsumerSectionHtml = largeConsumerMetrics.length > 0
+    const largeConsumerSectionHtml = this.config.show_large_consumers !== false && largeConsumerMetrics.length > 0
       ? `
         <section class="tile-section large-consumer-section">
           <div class="tile-section-title">${this._escape(this._t("consumer.sectionTitle", {}, "Additional Large Consumers"))}</div>
@@ -5083,10 +5714,19 @@ class HaSolarDashboardCard extends HTMLElement {
         .temp-badge:empty { display:none; }
         .time-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:96px; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .time-badge:empty { display:none; }
+        .phase-action-badge { display:inline-flex; align-items:center; flex:1 1 100%; min-width:0; max-width:100%; border-radius:999px; padding:2px 6px; background:rgba(168,85,247,.14); color:#d8b4fe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(216,180,254,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .phase-action-badge:empty { display:none; }
         .pv-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:100%; border-radius:999px; padding:2px 5px; background:rgba(255,194,51,.14); color:#fde68a; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(253,230,138,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .pv-badge:empty { display:none; }
+        .voltage-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:86px; border-radius:999px; padding:2px 5px; background:rgba(250,204,21,.14); color:#fde047; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(250,204,21,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .voltage-badge:empty { display:none; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
         .metric[data-warning]:not([data-warning=""])::after,.tile[data-warning]:not([data-warning=""])::after { content:"!"; position:absolute; top:5px; right:6px; width:16px; height:16px; display:grid; place-items:center; border-radius:999px; background:#f87171; color:#1b1020; font-size:.66rem; font-weight:900; line-height:1; box-shadow:0 0 14px rgba(248,113,113,.42); }
+        .voltage-alert { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; margin:0 0 12px; padding:9px 11px; border-radius:8px; border:1px solid color-mix(in srgb,var(--voltage-alert-color) 54%,rgba(255,255,255,.14)); background:color-mix(in srgb,var(--voltage-alert-color) 16%,rgba(8,16,38,.82)); color:var(--voltage-alert-color); box-shadow:inset 3px 0 0 var(--voltage-alert-color),0 8px 20px rgba(0,0,0,.2); }
+        .voltage-alert-warning { --voltage-alert-color:#facc15; }
+        .voltage-alert-critical { --voltage-alert-color:#f87171; }
+        .voltage-alert strong { min-width:0; font-size:.86rem; line-height:1.2; overflow-wrap:anywhere; }
+        .voltage-alert span { flex:0 0 auto; font-size:.82rem; line-height:1.1; font-weight:900; border-radius:999px; padding:4px 7px; background:rgba(255,255,255,.1); }
         .scene-status { --tile-accent:rgba(243,246,255,.86); --tile-glow:transparent; position:absolute; z-index:3; right:10px; bottom:10px; max-width:calc(100% - 20px); background:rgba(8,16,38,.62); border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.14)); border-radius:8px; color:rgba(243,246,255,.86); font-size:.72rem; line-height:1.25; padding:5px 8px; backdrop-filter:blur(4px); box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 18px var(--tile-glow); pointer-events:none; overflow-wrap:anywhere; }
         .scene-status:empty { display:none; }
         .grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
@@ -5097,6 +5737,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-dashboard { margin-top:0; min-height:320px; align-content:start; }
         .advisor-critical { --advisor-accent:#f87171; }
         .advisor-warning { --advisor-accent:#fb923c; }
+        .advisor-info { --advisor-accent:#60a5fa; }
         .advisor-opportunity { --advisor-accent:#34d399; }
         .advisor-success { --advisor-accent:#34d399; }
         .advisor-setup { --advisor-accent:#93c5fd; }
@@ -5118,11 +5759,15 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-item.advisor-opportunity { --item-accent:#34d399; }
         .advisor-item.advisor-success { --item-accent:#34d399; }
         .advisor-item.advisor-setup { --item-accent:#93c5fd; }
-        .advisor-item.advisor-info { --item-accent:#facc15; }
+        .advisor-item.advisor-info { --item-accent:#60a5fa; }
         .advisor-item-head { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
         .advisor-item-head strong { min-width:0; color:var(--item-accent); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
         .advisor-item-head span { flex:0 0 auto; max-width:42%; color:var(--text-main); font-size:.74rem; font-weight:800; line-height:1.1; border-radius:999px; padding:3px 6px; background:rgba(255,255,255,.08); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .advisor-item-text { color:rgba(243,246,255,.86); font-size:.78rem; line-height:1.35; overflow-wrap:anywhere; }
+        .advisor-item-meta { display:flex; flex-wrap:wrap; align-items:center; gap:5px; min-width:0; }
+        .advisor-item-meta span,.advisor-item-meta button { min-width:0; border:0; border-radius:999px; padding:3px 7px; background:color-mix(in srgb,var(--item-accent) 14%,rgba(255,255,255,.08)); color:var(--item-accent); font:inherit; font-size:.68rem; line-height:1.15; font-weight:800; overflow-wrap:anywhere; }
+        .advisor-item-meta button { cursor:pointer; color:rgba(243,246,255,.8); background:rgba(255,255,255,.08); }
+        .advisor-item-meta button:focus-visible { outline:2px solid color-mix(in srgb,var(--item-accent) 84%,#fff); outline-offset:2px; }
         .advisor-item-details { display:grid; gap:3px; min-width:0; margin-top:2px; }
         .advisor-item-details span { min-width:0; color:rgba(243,246,255,.76); font-size:.72rem; line-height:1.25; overflow-wrap:anywhere; }
         .advisor-explanation { display:grid; gap:7px; min-width:0; margin-top:7px; padding-top:8px; border-top:1px solid color-mix(in srgb,var(--item-accent) 24%,rgba(255,255,255,.12)); }
@@ -5158,6 +5803,7 @@ class HaSolarDashboardCard extends HTMLElement {
       </style>
       <ha-card>
         ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
+        ${voltageAlertHtml}
         ${activeView === "advisor"
           ? advisorHtml
           : `
@@ -5235,6 +5881,23 @@ class HaSolarDashboardCard extends HTMLElement {
         element.setAttribute("title", remainingTimeTitle);
         element.setAttribute("aria-label", remainingTimeTitle);
       });
+      const phaseAction = this._wallboxPhaseActionInfo(metric);
+      const phaseActionLabel = phaseAction?.label || "";
+      const phaseActionTitle = phaseActionLabel ? `${this._t("tooltip.phaseChange", {}, "Upcoming phase change")}: ${phaseActionLabel}` : "";
+      this.shadowRoot.querySelectorAll(`[data-phase-action="${metric.key}"]`).forEach((element) => {
+        if (element.textContent !== phaseActionLabel) element.textContent = phaseActionLabel;
+        element.style.display = phaseActionLabel ? "inline-flex" : "none";
+        element.setAttribute("title", phaseActionTitle);
+        element.setAttribute("aria-label", phaseActionTitle);
+      });
+      const voltageLabel = this._metricVoltageLabel(metric);
+      const voltageTitle = voltageLabel ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${voltageLabel}` : "";
+      this.shadowRoot.querySelectorAll(`[data-voltage="${metric.key}"]`).forEach((element) => {
+        if (element.textContent !== voltageLabel) element.textContent = voltageLabel;
+        element.style.display = voltageLabel ? "inline-flex" : "none";
+        element.setAttribute("title", voltageTitle);
+        element.setAttribute("aria-label", voltageTitle);
+      });
       if (this._isPvMetric(metric)) {
         PV_LABELS.forEach((label) => {
           const key = this._pvLabelKey(metric, label);
@@ -5255,6 +5918,14 @@ class HaSolarDashboardCard extends HTMLElement {
           element.style.display = temperatureLabel ? "inline-flex" : "none";
           element.setAttribute("title", temperatureTitle);
           element.setAttribute("aria-label", temperatureTitle);
+        });
+        const batteryVoltageLabel = this._batteryVoltageLabel();
+        const batteryVoltageTitle = batteryVoltageLabel ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${batteryVoltageLabel}` : "";
+        this.shadowRoot.querySelectorAll("[data-battery-voltage]").forEach((element) => {
+          if (element.textContent !== batteryVoltageLabel) element.textContent = batteryVoltageLabel;
+          element.style.display = batteryVoltageLabel ? "inline-flex" : "none";
+          element.setAttribute("title", batteryVoltageTitle);
+          element.setAttribute("aria-label", batteryVoltageTitle);
         });
         const flowInfo = this._batteryFlowInfo();
         const flowValue = this._formatBatteryFlowValue(flowInfo);
@@ -5305,6 +5976,18 @@ class HaSolarDashboardCard extends HTMLElement {
     if (statusElement) {
       const statusLabel = this._statusLabel();
       if (statusElement.textContent !== statusLabel) statusElement.textContent = statusLabel;
+    }
+    const nextVoltageAlertHtml = this._renderGridVoltageAlert();
+    const voltageAlertElement = this.shadowRoot.querySelector("[data-grid-voltage-alert]");
+    if (voltageAlertElement && nextVoltageAlertHtml) {
+      const trimmed = nextVoltageAlertHtml.trim();
+      if (voltageAlertElement.outerHTML !== trimmed) voltageAlertElement.outerHTML = trimmed;
+    } else if (voltageAlertElement && !nextVoltageAlertHtml) {
+      voltageAlertElement.remove();
+    } else if (!voltageAlertElement && nextVoltageAlertHtml) {
+      const anchor = this.shadowRoot.querySelector(".scene,[data-energy-advisor]");
+      if (anchor) anchor.insertAdjacentHTML("beforebegin", nextVoltageAlertHtml);
+      else this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextVoltageAlertHtml);
     }
     const activeView = this._currentViewMode();
     const nextAdvisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
@@ -5414,7 +6097,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     delete next.show_energy_advisor;
     const parts = path.split(".");
     const lastPart = parts[parts.length - 1];
-    const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals", "advisor_max_suggestions"]);
+    const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals", "advisor_max_suggestions", "advisor_ev_surplus_threshold", "grid_voltage_warning_threshold", "grid_voltage_critical_threshold"]);
     const numericProps = new Set(["left", "top", "width", "position", "columns"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
@@ -5473,6 +6156,42 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const next = this._cloneConfig(this._config || {});
     next.custom_kpis = Array.isArray(next.custom_kpis) ? next.custom_kpis : [];
     next.custom_kpis.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _addLargeConsumer() {
+    const next = this._cloneConfig(this._config || {});
+    next.large_consumers = normalizeLargeConsumers(next.large_consumers || []);
+    const index = next.large_consumers.length;
+    next.large_consumers.push({
+      id: `custom_${Date.now()}`,
+      type: "custom",
+      labelKey: "consumer.customLarge",
+      defaultLabel: "Custom large consumer",
+      label: "",
+      power_entity: "",
+      voltage_entity: "",
+      energy_entity: "",
+      max_power_kw: "",
+      position: 200 + index,
+      columns: 1,
+      color: "#a78bfa",
+      custom: true,
+      visible: true,
+    });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeLargeConsumer(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.large_consumers = normalizeLargeConsumers(next.large_consumers || []);
+    const consumer = next.large_consumers[index];
+    if (!consumer?.custom) return;
+    next.large_consumers.splice(index, 1);
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -5552,9 +6271,14 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const key = path.split(".").pop();
     const metric = TILE_METRICS.find((item) => item.key === key);
     if (metric) return this._metricLabel(metric);
+    const voltageMetricKey = key?.replace(/_voltage$/, "");
+    const voltageMetric = TILE_METRICS.find((item) => item.key === voltageMetricKey);
+    if (voltageMetric) return `${this._metricLabel(voltageMetric)} ${this._t("tooltip.voltage", {}, "Voltage")}`;
     const labels = {
       weather_entity: this._t("editor.weatherEntity", {}, "Weather Entity"),
+      electricity_price: this._t("editor.electricityPriceEntity", {}, "Electricity price entity"),
       battery_flow_power: this._t("editor.batteryFlowEntity", {}, "Battery flow entity (+/-)"),
+      battery_flow_power_voltage: `${this._t("advisor.batteryStatus", {}, "Battery")} ${this._t("tooltip.voltage", {}, "Voltage")}`,
       battery_charge_power: this._t("editor.batteryChargeEntity", {}, "Battery charge entity"),
       battery_discharge_power: this._t("editor.batteryDischargeEntity", {}, "Battery discharge entity"),
       battery_min_soc: this._t("editor.batteryMinSocEntity", {}, "Battery min SoC entity"),
@@ -5564,12 +6288,16 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       import_power: this._t("editor.importPowerEntity", {}, "Import entity"),
       export_power: this._t("editor.exportPowerEntity", {}, "Export entity"),
       wallbox_phase: this._t("editor.phaseEntity", {}, "Phase entity"),
+      wallbox_phase_action: this._t("editor.phaseActionEntity", {}, "Upcoming phase action entity"),
+      wallbox_phase_remaining: this._t("editor.phaseRemainingEntity", {}, "Phase action remaining seconds entity"),
       wallbox_soc: this._t("editor.vehicleSocEntity", {}, "Vehicle SoC entity"),
       wallbox_max_soc: this._t("editor.vehicleMaxSocEntity", {}, "Vehicle max/target SoC entity"),
       wallbox_connected: this._t("editor.vehicleConnectedEntity", {}, "Vehicle connected entity"),
       wallbox_charging_enabled: this._t("editor.vehicleChargingEnabledEntity", {}, "Charging enabled entity"),
       wallbox_remaining_time: this._t("editor.remainingChargeTimeEntity", {}, "Remaining charge time entity"),
       wallbox2_phase: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.phaseEntity", {}, "Phase entity")}`,
+      wallbox2_phase_action: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.phaseActionEntity", {}, "Upcoming phase action entity")}`,
+      wallbox2_phase_remaining: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.phaseRemainingEntity", {}, "Phase action remaining seconds entity")}`,
       wallbox2_soc: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.vehicleSocEntity", {}, "Vehicle SoC entity")}`,
       wallbox2_max_soc: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.vehicleMaxSocEntity", {}, "Vehicle max/target SoC entity")}`,
       wallbox2_connected: `${this._t("metrics.wallbox2_power", {}, "EV Charger 2")} ${this._t("editor.vehicleConnectedEntity", {}, "Vehicle connected entity")}`,
@@ -5598,6 +6326,13 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       units: ["wh", "kwh", "mwh"],
       include: [{ terms: ["energy", "energie", "kwh", "yield", "ertrag", "total", "gesamt"], weight: 16 }],
     };
+    const voltageTarget = {
+      domains: ["sensor"],
+      deviceClasses: ["voltage"],
+      units: ["v"],
+      include: [{ terms: ["voltage", "volt", "spannung"], weight: 28 }],
+      exclude: ["power", "leistung", "energy", "kwh", "soc", "temperature", "temperatur"],
+    };
     const pvTerms = { terms: ["pv", "solar", "photovoltaic", "photovoltaik"], weight: 36 };
     const gridTerms = { terms: ["grid", "netz", "meter", "utility", "power meter", "smart meter"], weight: 28 };
     const wallboxTerms = { terms: ["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], weight: 34 };
@@ -5605,9 +6340,13 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
     return [
       { path: "weather_entity", domains: ["weather"], include: [{ terms: ["weather", "wetter", "home", "haus"], weight: 14 }], threshold: 35 },
+      { path: "entities.electricity_price", domains: ["sensor"], include: [{ terms: ["electricity price", "strompreis", "price", "tariff", "tarif", "tibber", "awattar"], weight: 34 }], exclude: ["power", "leistung", "energy", "kwh total"], threshold: 42 },
       { path: "entities.pv_roof_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["roof", "dach", "rooftop"]], include: [pvTerms, { terms: ["roof", "dach", "rooftop"], weight: 24 }, ...powerTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", "forecast", "prognose"], threshold: 60 },
+      { path: "entities.pv_roof_power_voltage", ...voltageTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["roof", "dach", "rooftop"]], include: [pvTerms, { terms: ["roof", "dach", "rooftop"], weight: 24 }, ...voltageTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", ...voltageTarget.exclude], threshold: 62 },
       { path: "entities.pv_shed_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["shed", "garage", "carport", "schuppen", "balkon", "balcony"]], include: [pvTerms, { terms: ["shed", "garage", "carport", "schuppen", "balkon", "balcony"], weight: 28 }, ...powerTarget.include], exclude: ["roof", "dach", "total", "gesamt", "forecast", "prognose"], threshold: 62 },
+      { path: "entities.pv_shed_power_voltage", ...voltageTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["shed", "garage", "carport", "schuppen", "balkon", "balcony"]], include: [pvTerms, { terms: ["shed", "garage", "carport", "schuppen", "balkon", "balcony"], weight: 28 }, ...voltageTarget.include], exclude: ["roof", "dach", "total", "gesamt", ...voltageTarget.exclude], threshold: 64 },
       { path: "entities.pv_total_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["total", "gesamt", "sum", "summe", "all", "anlage"]], block: ["forecast", "prognose", "today", "heute", "daily"], include: [pvTerms, { terms: ["total", "gesamt", "sum", "summe", "all", "anlage"], weight: 28 }, ...powerTarget.include], exclude: ["forecast", "prognose", "today", "heute", "daily"], threshold: 60 },
+      { path: "entities.pv_total_power_voltage", ...voltageTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["total", "gesamt", "sum", "summe", "all", "anlage"]], include: [pvTerms, { terms: ["total", "gesamt", "sum", "summe", "all", "anlage"], weight: 28 }, ...voltageTarget.include], exclude: ["forecast", "prognose", "today", "heute", "daily", ...voltageTarget.exclude], threshold: 62 },
       { path: "entities.pv_roof_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"]], include: [pvTerms, ...powerTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", "forecast", "prognose", "today", "heute", "daily"], threshold: 70 },
       { path: "entities.pv_total_power_today_energy", ...energyTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["today", "heute", "daily", "day", "tag"]], include: [pvTerms, { terms: ["today", "heute", "daily", "day", "tag"], weight: 30 }, ...energyTarget.include], exclude: ["forecast", "prognose"], threshold: 62 },
       { path: "energy_entities.pv_total_power.entity", ...energyTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"]], block: ["power", "leistung", "today", "heute", "daily", "day", "tag", "forecast", "prognose"], include: [pvTerms, { terms: ["total", "gesamt", "lifetime", "counter", "zaehler"], weight: 22 }, ...energyTarget.include], exclude: ["today", "heute", "daily", "forecast", "prognose"], threshold: 58 },
@@ -5615,29 +6354,39 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       { path: "entities.battery_min_soc", domains: ["sensor", "number", "input_number"], units: ["%"], required: [["battery", "batterie", "speicher", "akku"], ["min", "minimum", "reserve", "backup", "untergrenze", "reserve"]], include: [batteryTerms, { terms: ["min", "minimum", "reserve", "backup", "untergrenze", "soc"], weight: 34 }], exclude: ["power", "leistung", "temp", "temperature", "fluss", "flow", "max", "maximum", "target", "ziel"], threshold: 58 },
       { path: "entities.battery_max_soc", domains: ["sensor", "number", "input_number"], units: ["%"], required: [["battery", "batterie", "speicher", "akku"], ["max", "maximum", "target", "ziel", "limit", "obergrenze"]], include: [batteryTerms, { terms: ["max", "maximum", "target", "ziel", "limit", "obergrenze", "soc"], weight: 34 }], exclude: ["power", "leistung", "temp", "temperature", "fluss", "flow", "min", "minimum", "reserve", "backup"], threshold: 58 },
       { path: "entities.battery_flow_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"]], include: [batteryTerms, { terms: ["power", "leistung", "flow", "fluss", "charge discharge", "laden entladen"], weight: 26 }], exclude: ["soc", "level", "stand", "temperature", "temperatur", "temp"], threshold: 58 },
+      { path: "entities.battery_flow_power_voltage", ...voltageTarget, required: [["battery", "batterie", "speicher", "akku"]], include: [batteryTerms, ...voltageTarget.include], threshold: 58 },
       { path: "entities.battery_charge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["charge", "charging", "laden", "ladeleistung"]], include: [batteryTerms, { terms: ["charge", "charging", "laden", "ladeleistung"], weight: 30 }], exclude: ["discharge", "entladen", "entlade", "soc", "temperature", "temperatur"], threshold: 62 },
       { path: "entities.battery_discharge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["discharge", "discharging", "entladen", "entladeleistung"]], include: [batteryTerms, { terms: ["discharge", "discharging", "entladen", "entladeleistung"], weight: 30 }], exclude: ["charge", "charging", "laden", "ladeleistung", "soc", "temperature", "temperatur"], threshold: 62 },
       { path: "entities.battery_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c"], required: [["battery", "batterie", "speicher", "akku"], ["temperature", "temperatur", "temp"]], include: [batteryTerms, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["power", "leistung", "soc"], threshold: 58 },
       { path: "entities.battery_cycles_today", domains: ["sensor"], required: [["battery", "batterie", "speicher", "akku"], ["cycle", "cycles", "zyklen", "vollzyklen"], ["today", "heute", "daily", "tag"]], include: [batteryTerms, { terms: ["cycle", "cycles", "zyklen", "vollzyklen", "today", "heute", "daily", "tag"], weight: 34 }], exclude: ["power", "leistung", "soc", "temperature", "temperatur"], threshold: 58 },
       { path: "entities.inverter_power", ...powerTarget, required: [["inverter", "wechselrichter", "wr"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, ...powerTarget.include], exclude: ["battery", "batterie", "soc", "temperature"], threshold: 56 },
+      { path: "entities.inverter_power_voltage", ...voltageTarget, required: [["inverter", "wechselrichter", "wr"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, ...voltageTarget.include], exclude: ["battery", "batterie", ...voltageTarget.exclude], threshold: 58 },
       { path: "entities.wallbox_power", ...powerTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"]], include: [wallboxTerms, ...powerTarget.include], exclude: ["2", "second", "zweite", "two", "phase", "phasen", "soc", "remaining", "time", "zeit", "energy", "kwh"], threshold: 56 },
+      { path: "entities.wallbox_power_voltage", ...voltageTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"]], include: [wallboxTerms, ...voltageTarget.include], exclude: ["2", "second", "zweite", "two", "phase", "phasen", "soc", "remaining", "time", "zeit", ...voltageTarget.exclude], threshold: 58 },
       { path: "entities.wallbox_phase", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["phase", "phases", "phasen"]], include: [wallboxTerms, { terms: ["phase", "phases", "phasen"], weight: 34 }], exclude: ["power", "leistung", "energy", "kwh"], threshold: 58 },
+      { path: "entities.wallbox_phase_action", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["phase", "phases", "phasen"], ["action", "activity", "aktivität", "aktion"]], include: [wallboxTerms, { terms: ["phase action", "phase activity", "phasen aktivität", "phasen aktion", "action value"], weight: 40 }], exclude: ["remaining", "verbleibend", "seconds", "sekunden", "time", "zeit", "power", "leistung", "energy", "kwh"], threshold: 58 },
+      { path: "entities.wallbox_phase_remaining", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["phase", "phases", "phasen"], ["remaining", "verbleibend", "seconds", "sekunden", "time", "zeit"]], include: [wallboxTerms, { terms: ["phase remaining", "phasen verbleibend", "remaining", "verbleibend", "seconds", "sekunden"], weight: 40 }], exclude: ["action", "activity", "aktivität", "aktion", "power", "leistung", "energy", "kwh"], threshold: 58 },
       { path: "entities.wallbox_soc", domains: ["sensor"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"]], include: [wallboxTerms, { terms: ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen", "max", "target", "ziel", "limit"], threshold: 58 },
       { path: "entities.wallbox_max_soc", domains: ["sensor", "number", "input_number"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["max", "target", "ziel", "limit", "charge limit", "ladelimit"]], include: [wallboxTerms, { terms: ["max", "target", "ziel", "limit", "charge limit", "ladelimit", "soc"], weight: 34 }], exclude: ["power", "leistung", "phase", "phasen", "remaining", "time"], threshold: 58 },
       { path: "entities.wallbox_connected", domains: ["binary_sensor", "sensor", "switch"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"]], include: [wallboxTerms, { terms: ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"], weight: 32 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 58 },
       { path: "entities.wallbox_charging_enabled", domains: ["switch", "binary_sensor", "sensor", "input_boolean"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop"]], include: [wallboxTerms, { terms: ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop", "charging"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 58 },
       { path: "entities.wallbox_remaining_time", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"]], include: [wallboxTerms, { terms: ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"], weight: 30 }], exclude: ["power", "leistung", "phase", "soc"], threshold: 58 },
       { path: "entities.wallbox2_power", ...powerTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 22 }, ...powerTarget.include], exclude: ["phase", "phasen", "soc", "remaining", "time", "zeit", "energy", "kwh"], threshold: 62 },
+      { path: "entities.wallbox2_power_voltage", ...voltageTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 22 }, ...voltageTarget.include], exclude: ["phase", "phasen", "soc", "remaining", "time", "zeit", ...voltageTarget.exclude], threshold: 64 },
       { path: "entities.wallbox2_phase", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["phase", "phases", "phasen"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["phase", "phases", "phasen"], weight: 34 }], exclude: ["power", "leistung", "energy", "kwh"], threshold: 64 },
+      { path: "entities.wallbox2_phase_action", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["phase", "phases", "phasen"], ["action", "activity", "aktivität", "aktion"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["phase action", "phase activity", "phasen aktivität", "phasen aktion", "action value"], weight: 40 }], exclude: ["remaining", "verbleibend", "seconds", "sekunden", "time", "zeit", "power", "leistung", "energy", "kwh"], threshold: 64 },
+      { path: "entities.wallbox2_phase_remaining", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["phase", "phases", "phasen"], ["remaining", "verbleibend", "seconds", "sekunden", "time", "zeit"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["phase remaining", "phasen verbleibend", "remaining", "verbleibend", "seconds", "sekunden"], weight: 40 }], exclude: ["action", "activity", "aktivität", "aktion", "power", "leistung", "energy", "kwh"], threshold: 64 },
       { path: "entities.wallbox2_soc", domains: ["sensor"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["soc", "vehicle", "car", "auto", "ev", "fahrzeug"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen", "max", "target", "ziel", "limit"], threshold: 64 },
       { path: "entities.wallbox2_max_soc", domains: ["sensor", "number", "input_number"], units: ["%"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["max", "target", "ziel", "limit", "charge limit", "ladelimit"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["max", "target", "ziel", "limit", "charge limit", "ladelimit", "soc"], weight: 34 }], exclude: ["power", "leistung", "phase", "phasen", "remaining", "time"], threshold: 64 },
       { path: "entities.wallbox2_connected", domains: ["binary_sensor", "sensor", "switch"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"], weight: 32 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 64 },
       { path: "entities.wallbox2_charging_enabled", domains: ["switch", "binary_sensor", "sensor", "input_boolean"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop", "charging"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 64 },
       { path: "entities.wallbox2_remaining_time", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"], weight: 30 }], exclude: ["power", "leistung", "phase", "soc"], threshold: 64 },
       { path: "entities.import_export_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import export", "bezug einspeisung", "net", "saldo", "balance", "signed"]], include: [gridTerms, { terms: ["import export", "bezug einspeisung", "net", "saldo", "balance", "signed"], weight: 28 }, ...powerTarget.include], exclude: ["energy", "kwh", "total"], threshold: 58 },
+      { path: "entities.import_export_power_voltage", ...voltageTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"]], include: [gridTerms, ...voltageTarget.include], threshold: 58 },
       { path: "entities.import_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "verbrauch netz", "from grid"]], include: [gridTerms, { terms: ["import", "bezug", "purchase", "verbrauch netz", "from grid"], weight: 32 }], exclude: ["export", "einspeis", "feed", "energy", "kwh"], threshold: 62 },
       { path: "entities.export_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["export", "einspeis", "feed", "feedin", "to grid"]], include: [gridTerms, { terms: ["export", "einspeis", "feed", "feedin", "to grid"], weight: 32 }], exclude: ["import", "bezug", "purchase", "energy", "kwh"], threshold: 62 },
       { path: "entities.house_consumption_power", ...powerTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...powerTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 56 },
+      { path: "entities.house_consumption_power_voltage", ...voltageTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...voltageTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox", ...voltageTarget.exclude], threshold: 58 },
       { path: "energy_entities.house_consumption_power.entity", ...energyTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], block: ["power", "leistung"], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 32 }, ...energyTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 58 },
     ];
   }
@@ -5841,6 +6590,23 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
   }
 
+  _metricVoltageEntityKey(metric) {
+    if (!metric || metric.unit !== "power") return "";
+    return `${metric.sourceKey || metric.key}_voltage`;
+  }
+
+  _renderVoltageEntityInput(metric) {
+    const key = this._metricVoltageEntityKey(metric);
+    if (!key) return "";
+    const selected = this._config?.entities?.[key] || "";
+    return `
+      <label>${this._escape(this._t("editor.voltageEntity", {}, "Voltage entity"))}
+        <input data-path="entities.${key}" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(key)}" value="${this._escape(selected)}" autocomplete="off" />
+      </label>
+      ${this._renderLabelVisibilityOptions(key)}
+    `;
+  }
+
   _isPvMetric(metric) {
     return ["pv_roof_power", "pv_shed_power", "pv_total_power"].includes(metric?.key);
   }
@@ -5895,6 +6661,23 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <input data-path="entities.${entityKey}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
       </label>
       ${this._renderLabelVisibilityOptions(entityKey)}
+    `;
+  }
+
+  _renderWallboxPhaseActionInput(metric) {
+    const actionKey = this._wallboxPhaseActionEntityKey(metric);
+    const remainingKey = this._wallboxPhaseRemainingEntityKey(metric);
+    if (!actionKey || !remainingKey) return "";
+    const actionValue = this._config.entities?.[actionKey] || "";
+    const remainingValue = this._config.entities?.[remainingKey] || "";
+    const base = metric.key === "wallbox2_power" ? "wallbox_2" : "wallbox";
+    return `
+      <label>${this._escape(this._t("editor.phaseActionEntity", {}, "Upcoming phase action entity"))}
+        <input data-path="entities.${actionKey}" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(base)}_phase_action_value" value="${this._escape(actionValue)}" autocomplete="off" />
+      </label>
+      <label>${this._escape(this._t("editor.phaseRemainingEntity", {}, "Phase action remaining seconds entity"))}
+        <input data-path="entities.${remainingKey}" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(base)}_phase_remaining" value="${this._escape(remainingValue)}" autocomplete="off" />
+      </label>
     `;
   }
 
@@ -6058,6 +6841,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <input data-path="entities.battery_flow_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_power" value="${this._escape(this._config.entities?.battery_flow_power || "")}" autocomplete="off" />
       </label>
       ${this._renderLabelVisibilityOptions("battery_flow_power")}
+      <label>${this._escape(this._t("editor.voltageEntity", {}, "Voltage entity"))}
+        <input data-path="entities.battery_flow_power_voltage" list="ha-solar-dashboard-entities" placeholder="sensor.battery_voltage" value="${this._escape(this._config.entities?.battery_flow_power_voltage || "")}" autocomplete="off" />
+      </label>
+      ${this._renderLabelVisibilityOptions("battery_flow_power_voltage")}
       <label>${this._escape(this._t("editor.batteryChargeEntity"))}
         <input data-path="entities.battery_charge_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_charge_power" value="${this._escape(this._config.entities?.battery_charge_power || "")}" autocomplete="off" />
       </label>
@@ -6129,9 +6916,11 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ${this._renderLabelInput(metric)}
         ${this._renderImportExportLabelInputs(metric)}
         ${this._renderEntityInput(metric)}
+        ${this._renderVoltageEntityInput(metric)}
         ${this._renderPvLabelInputs(metric)}
         ${this._renderEnergyEntityInputs(metric)}
         ${this._renderWallboxPhaseInput(metric)}
+        ${this._renderWallboxPhaseActionInput(metric)}
         ${this._renderWallboxSocInput(metric)}
         ${this._renderWallboxMaxSocInput(metric)}
         ${this._renderWallboxConnectedInput(metric)}
@@ -6291,6 +7080,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const label = this._largeConsumerLabel(consumer, index);
     const labelValue = consumer?.label || "";
     const powerEntity = consumer?.power_entity || "";
+    const voltageEntity = consumer?.voltage_entity || "";
     const energyEntity = consumer?.energy_entity || "";
     const maxPowerKw = consumer?.max_power_kw ?? "";
     const position = Number.isFinite(Number(consumer?.position)) ? Number(consumer.position) : 200 + index;
@@ -6303,6 +7093,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <div class="box-field consumer-field">
         <div class="kpi-head">
           <strong>${this._escape(label)}</strong>
+          ${consumer?.custom ? `<button type="button" data-action="remove-large-consumer" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>` : ""}
         </div>
         <label class="inline"><input type="checkbox" data-path="large_consumers.${index}.visible" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.consumerShow", { label }, `Show ${label} tile`))}</label>
         <label>${this._escape(this._t("editor.consumerLabel", {}, "Device name"))}
@@ -6310,6 +7101,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         </label>
         <label>${this._escape(this._t("editor.consumerPowerEntity", {}, "Power entity"))}
           <input data-path="large_consumers.${index}.power_entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(placeholderBase)}_power" value="${this._escape(powerEntity)}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.voltageEntity", {}, "Voltage entity"))}
+          <input data-path="large_consumers.${index}.voltage_entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(placeholderBase)}_voltage" value="${this._escape(voltageEntity)}" autocomplete="off" />
         </label>
         <label>${this._escape(this._t("editor.consumerEnergyEntity", {}, "kWh counter entity"))}
           <input data-path="large_consumers.${index}.energy_entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(placeholderBase)}_energy" value="${this._escape(energyEntity)}" autocomplete="off" />
@@ -6454,17 +7248,24 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>${this._escape(this._t("editor.advisorMaxSuggestions", {}, "Advisor suggestions"))} (${this._escape(Number(this._config.advisor_max_suggestions ?? 8).toFixed(0))})
           <input type="range" min="1" max="12" step="1" data-path="advisor_max_suggestions" value="${this._escape(this._config.advisor_max_suggestions ?? 8)}" />
         </label>
+        <label>${this._escape(this._t("editor.advisorEvSurplusThreshold", {}, "EV surplus threshold (W)"))}
+          <input type="number" min="0" max="1000000" step="50" data-path="advisor_ev_surplus_threshold" value="${this._escape(this._config.advisor_ev_surplus_threshold ?? 1500)}" />
+        </label>
         <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
         <label>${this._escape(this._t("editor.customImage"))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
         <label>${this._escape(this._t("editor.customDayImage"))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
         <label>${this._escape(this._t("editor.weatherEntity"))}
           <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />
         </label>
+        <label>${this._escape(this._t("editor.electricityPriceEntity", {}, "Electricity price entity"))}
+          <input data-path="entities.electricity_price" list="ha-solar-dashboard-entities" placeholder="sensor.electricity_price" value="${this._escape(this._config.entities?.electricity_price || "")}" autocomplete="off" />
+        </label>
         <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
         <label><input type="checkbox" data-path="show_view_selector" ${this._config.show_view_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showViewSelector", {}, "Show House/Advisor view selector"))}</label>
         <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
         <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
         <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+        <label><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
         <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
         <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
         <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
@@ -6484,6 +7285,12 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <label>${this._escape(this._t("editor.powerDecimals"))} (${this._escape(Number(this._config.power_decimals ?? 2).toFixed(0))})
           <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
         </label>
+        <label>${this._escape(this._t("editor.gridVoltageWarningThreshold", {}, "High grid voltage (V)"))}
+          <input type="number" min="0" max="1000" step="1" data-path="grid_voltage_warning_threshold" value="${this._escape(this._config.grid_voltage_warning_threshold ?? 245)}" />
+        </label>
+        <label>${this._escape(this._t("editor.gridVoltageCriticalThreshold", {}, "Critical grid voltage (V)"))}
+          <input type="number" min="0" max="1000" step="1" data-path="grid_voltage_critical_threshold" value="${this._escape(this._config.grid_voltage_critical_threshold ?? 253)}" />
+        </label>
         <div class="section-title">${this._escape(this._t("editor.sectionBoxes"))}</div>
         <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
         <div class="section-title">${this._escape(this._t("editor.sectionOverlays"))}</div>
@@ -6493,6 +7300,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         <button type="button" data-action="add-kpi">${this._escape(this._t("editor.kpiAdd"))}</button>
         <div class="section-title">${this._escape(this._t("editor.sectionLargeConsumers", {}, "Additional large consumers"))}</div>
         <div class="grid">${largeConsumerFields}</div>
+        <button type="button" data-action="add-large-consumer">${this._escape(this._t("editor.consumerAddCustom", {}, "Add custom large consumer"))}</button>
       </div>
     `;
 
@@ -6511,6 +7319,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         const target = event.currentTarget;
         if (target.dataset.action === "add-kpi") this._addCustomKpi();
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
+        if (target.dataset.action === "add-large-consumer") this._addLargeConsumer();
+        if (target.dataset.action === "remove-large-consumer") this._removeLargeConsumer(Number(target.dataset.index));
         if (target.dataset.action === "auto-detect") this._applyAutoDetection(target.dataset.mode || "fill");
         if (target.dataset.action === "apply-suggestion") this._applyAutoDetection("replace", target.dataset.path || "");
       });

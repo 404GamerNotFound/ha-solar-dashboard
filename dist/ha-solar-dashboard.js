@@ -6649,6 +6649,18 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return "";
   }
 
+  _wallboxPhaseActionEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_phase_action";
+    if (metric?.key === "wallbox2_power") return "wallbox2_phase_action";
+    return "";
+  }
+
+  _wallboxPhaseRemainingEntityKey(metric) {
+    if (metric?.key === "wallbox_power") return "wallbox_phase_remaining";
+    if (metric?.key === "wallbox2_power") return "wallbox2_phase_remaining";
+    return "";
+  }
+
   _renderWallboxPhaseInput(metric) {
     const entityKey = this._wallboxPhaseEntityKey(metric);
     if (!entityKey) return "";

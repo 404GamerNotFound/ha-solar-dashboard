@@ -2224,7 +2224,7 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._pvRoofStringEntries().some((entry) => !entry.base && (entry.powerEntityId || entry.energyEntityId));
   }
 
-  _pvRoofStringPowerWatts(entry) {
+  _pvRoofStringEntryPowerWatts(entry) {
     if (!entry?.powerEntityId) return undefined;
     const watts = this._valueAsWatts(this._getEntityValue(entry.powerEntityId, undefined), this._getEntityUnit(entry.powerEntityId));
     return Number.isFinite(watts) ? Math.max(0, watts) : undefined;
@@ -2234,7 +2234,7 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._pvRoofStringEntries()
       .filter((entry) => entry.powerEntityId || !entry.base)
       .map((entry) => {
-        const watts = this._pvRoofStringPowerWatts(entry);
+        const watts = this._pvRoofStringEntryPowerWatts(entry);
         return {
           ...entry,
           amount: watts,
@@ -4844,7 +4844,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (!this._hasAdditionalPvRoofStrings()) return [];
     return this._pvRoofStringEntries()
       .map((entry, index) => {
-        const watts = this._pvRoofStringPowerWatts(entry);
+        const watts = this._pvRoofStringEntryPowerWatts(entry);
         return {
           id: entry.id || `string_${index + 1}`,
           label: entry.label || `String ${index + 1}`,
@@ -7026,6 +7026,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   }
 
   _renderEntityInput(metric) {
+    if (metric.key === "pv_roof_power") return "";
     if (metric.key === "import_export_power") {
       return `
         <label>${this._escape(this._t("editor.importExportSignedEntity", {}, "Signed import/export entity (+/-)"))}
@@ -7122,6 +7123,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _renderEnergyEntityInputs(metric) {
     if (metric.unit !== "power") return "";
+    if (metric.key === "pv_roof_power") return "";
     const config = this._energyEntityConfig(metric);
     const counterValue = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
 
@@ -7205,6 +7207,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     if (metric?.key !== "pv_roof_power") return "";
     const strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
     this._config.pv_roof_strings = strings;
+    const baseEnergyConfig = this._energyEntityConfig(metric);
+    const baseEnergyEntity = baseEnergyConfig.entity || baseEnergyConfig.counter || baseEnergyConfig.kwh_entity || baseEnergyConfig.kwh || baseEnergyConfig.meter || "";
+    const baseMaxPowerKw = this._maxPowerKwValue(metric);
+    const basePowerEntity = this._config?.entities?.pv_roof_power || "";
     const selectedDisplay = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
     const displayOptions = [
       ["sum", this._t("editor.pvRoofStringDisplaySum", {}, "Sum strings")],
@@ -7213,6 +7219,22 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     ].map(([value, label]) => (
       `<option value="${this._escape(value)}"${value === selectedDisplay ? " selected" : ""}>${this._escape(label)}</option>`
     )).join("");
+    const baseStringField = `
+      <div class="box-field pv-string-field">
+        <div class="kpi-head">
+          <strong>String 1</strong>
+        </div>
+        <label>${this._escape(this._t("editor.pvRoofStringPowerEntity", {}, "String power entity"))}
+          <input data-path="entities.pv_roof_power" list="ha-solar-dashboard-entities" placeholder="sensor.pv_roof_power" value="${this._escape(basePowerEntity)}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.pvRoofStringEnergyEntity", {}, "String kWh counter entity"))}
+          <input data-path="energy_entities.pv_roof_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.pv_roof_power_energy_total" value="${this._escape(baseEnergyEntity)}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.maxPowerKw"))}
+          <input type="number" min="0" step="0.1" data-path="max_power_kw.pv_roof_power" placeholder="5.0" value="${this._escape(baseMaxPowerKw)}" />
+        </label>
+      </div>
+    `;
     const stringFields = strings.map((string, index) => {
       const label = string.label || `String ${index + 2}`;
       const powerEntity = string.power_entity || "";
@@ -7247,6 +7269,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
           <label>${this._escape(this._t("editor.pvRoofStringDisplay", {}, "Roof PV string display"))}
             <select data-path="pv_roof_string_display">${displayOptions}</select>
           </label>
+          ${baseStringField}
           ${stringFields}
           <button type="button" data-action="add-pv-roof-string">${this._escape(this._t("editor.pvRoofStringAdd", {}, "Add string"))}</button>
         </div>
@@ -7449,6 +7472,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _renderMaxPowerInput(metric) {
     if (metric.unit !== "power") return "";
+    if (metric.key === "pv_roof_power") return "";
     const value = this._maxPowerKwValue(metric);
     return `
       <label>${this._escape(this._t("editor.maxPowerKw"))}

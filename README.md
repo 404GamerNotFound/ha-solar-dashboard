@@ -52,6 +52,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Dedicated Advisor Dashboard with live status, PV/grid/load/battery KPIs, custom KPI values, autarky/self-consumption estimates, sensor diagnostics, and multiple prioritized recommendations for surplus, grid import, battery state, EV charging, heat pump use, flexible appliances, and unusual PV/load situations
 - Warning states highlight unavailable/offline sensors and low battery levels
 - Configurable KPI tiles below the image, including custom labels, entities or static values, units, color, sort position, and tile width
+- Optional "Additional Large Consumers" tiles for washing machine, dishwasher, fan heater, dryer, domestic hot water heat pump, and one custom device; their power and kWh counter entities feed extra Advisor recommendations
 - Custom standard and daylight images
 - Free X/Y positioning for every overlay box
 - Localized card and editor labels based on the Home Assistant language (`en`, `de`, `es`, `fr`, `pl`)
@@ -222,6 +223,20 @@ custom_kpis:
     position: 102
     columns: 2
     color: "#1f8fff"
+large_consumers:
+  - id: washing_machine
+    power_entity: sensor.washing_machine_power
+    energy_entity: sensor.washing_machine_energy
+    max_power_kw: 2.2
+    columns: 1
+    color: "#34d399"
+  - id: custom_1
+    label: Dehumidifier
+    power_entity: sensor.dehumidifier_power
+    energy_entity: sensor.dehumidifier_energy
+    max_power_kw: 0.6
+    columns: 1
+    color: "#a78bfa"
 ```
 
 ## Card options
@@ -313,6 +328,14 @@ custom_kpis:
 - `custom_kpis[].columns` (number, default: `1`, range: `1`-`6`; controls tile width on desktop, capped to `2` on mobile)
 - `custom_kpis[].color` (CSS color, default: `#1f8fff`)
 - `kpis[]` (legacy-friendly alias for `custom_kpis[]`)
+- `large_consumers[]` (array, optional; configures the separate "Additional Large Consumers" tile section below the normal/KPI tiles and enables dedicated Advisor tips)
+- `large_consumers[].id` (string; built-in slots include `washing_machine`, `dishwasher`, `space_heater`, `dryer`, `dhw_heatpump`, and `custom_1`)
+- `large_consumers[].label` (string, optional; display name, especially useful for `custom_1`)
+- `large_consumers[].power_entity` (entity id, optional; live power sensor used for the tile, stale-sensor checks, active-load warnings, and surplus/covering logic)
+- `large_consumers[].energy_entity` (entity id, optional; kWh counter used when the card is switched from `Live` to a time range)
+- `large_consumers[].max_power_kw` (number/string, optional; expected maximum power used for the tile utilization bar and to decide whether current surplus is enough)
+- `large_consumers[].visible` (boolean, default: `true`; hides that consumer tile and excludes it from Advisor logic when `false`)
+- `large_consumers[].position`, `large_consumers[].columns`, `large_consumers[].color` follow the same behavior as custom KPI tile positioning, width, and color.
 
 The card automatically follows the active Home Assistant language for built-in UI labels, status text, weather labels, and editor labels. Supported languages are English, German, Spanish, French, and Polish. Configuration keys, entity keys, and image file names remain English for compatibility and maintainability.
 

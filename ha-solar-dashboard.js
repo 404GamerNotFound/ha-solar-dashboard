@@ -233,6 +233,15 @@ const I18N = {
     "editor.pvLabels": "PV labels",
     "editor.pvPeakTodayEntity": "Peak today entity",
     "editor.pvPowerLabel": "Power label",
+    "editor.pvRoofStringAdd": "Add string",
+    "editor.pvRoofStringDisplay": "Roof PV string display",
+    "editor.pvRoofStringDisplayDominant": "Highest string large, others small",
+    "editor.pvRoofStringDisplaySum": "Sum strings",
+    "editor.pvRoofStringDisplayValues": "Show string values",
+    "editor.pvRoofStringEnergyEntity": "String kWh counter entity",
+    "editor.pvRoofStringLabel": "String name",
+    "editor.pvRoofStringPowerEntity": "String power entity",
+    "editor.pvRoofStrings": "Roof PV strings",
     "editor.pvTodayEnergyEntity": "Generated today entity",
     "editor.remainingChargeTimeEntity": "Remaining charge time entity",
     "editor.vehicleChargingEnabledEntity": "Charging enabled entity",
@@ -240,6 +249,9 @@ const I18N = {
     "editor.vehicleMaxSocEntity": "Vehicle max/target SoC entity",
     "editor.vehicleSocEntity": "Vehicle SoC entity",
     "editor.sectionBoxes": "Boxes, live/kWh entities, unit, and position",
+    "editor.sectionAdvisor": "Advisor and prices",
+    "editor.sectionAppearance": "Display and limits",
+    "editor.sectionGeneral": "General settings",
     "editor.sectionKpis": "Custom KPI tiles",
     "editor.sectionLargeConsumers": "Additional large consumers",
     "editor.sectionOverlays": "Image overlays",
@@ -256,6 +268,9 @@ const I18N = {
     "editor.title": "Title",
     "editor.unit": "Unit",
     "editor.voltageEntity": "Voltage entity",
+    "editor.voltageEntityL1": "Voltage L1 entity",
+    "editor.voltageEntityL2": "Voltage L2 entity",
+    "editor.voltageEntityL3": "Voltage L3 entity",
     "editor.viewMode": "Default view",
     "editor.weatherEntity": "Weather Entity",
     "editor.setupWizard": "Setup wizard",
@@ -561,6 +576,15 @@ const I18N = {
     "editor.pvLabels": "PV-Labels",
     "editor.pvPeakTodayEntity": "Peak-heute-Entität",
     "editor.pvPowerLabel": "Leistungs-Label",
+    "editor.pvRoofStringAdd": "String hinzufügen",
+    "editor.pvRoofStringDisplay": "Anzeige PV-Dach-Strings",
+    "editor.pvRoofStringDisplayDominant": "Stärksten String groß, andere klein",
+    "editor.pvRoofStringDisplaySum": "Strings aufaddiert",
+    "editor.pvRoofStringDisplayValues": "String-Werte anzeigen",
+    "editor.pvRoofStringEnergyEntity": "String-kWh-Zähler-Entität",
+    "editor.pvRoofStringLabel": "String-Name",
+    "editor.pvRoofStringPowerEntity": "String-Leistungs-Entität",
+    "editor.pvRoofStrings": "PV-Dach-Strings",
     "editor.pvTodayEnergyEntity": "Heute-erzeugt-Entität",
     "editor.remainingChargeTimeEntity": "Verbleibende Ladezeit-Entität",
     "editor.vehicleChargingEnabledEntity": "Laden-aktiviert-Entität",
@@ -568,6 +592,9 @@ const I18N = {
     "editor.vehicleMaxSocEntity": "Auto-Max-/Ziel-SoC-Entität",
     "editor.vehicleSocEntity": "Auto-SoC-Entität",
     "editor.sectionBoxes": "Boxen, Live-/kWh-Entitäten, Einheit und Position",
+    "editor.sectionAdvisor": "Advisor und Preise",
+    "editor.sectionAppearance": "Anzeige und Grenzwerte",
+    "editor.sectionGeneral": "Allgemeine Einstellungen",
     "editor.sectionKpis": "Eigene KPI-Kacheln",
     "editor.sectionLargeConsumers": "Weitere große Verbraucher",
     "editor.sectionOverlays": "Bild-Overlays",
@@ -584,6 +611,9 @@ const I18N = {
     "editor.title": "Titel",
     "editor.unit": "Einheit",
     "editor.voltageEntity": "Spannungs-Entität",
+    "editor.voltageEntityL1": "Spannungs-Entität L1",
+    "editor.voltageEntityL2": "Spannungs-Entität L2",
+    "editor.voltageEntityL3": "Spannungs-Entität L3",
     "editor.viewMode": "Standardansicht",
     "editor.weatherEntity": "Wetter-Entität",
     "editor.setupWizard": "Einrichtungs-Assistent",
@@ -1510,6 +1540,62 @@ function normalizeLargeConsumers(consumers) {
   return [...defaultConsumers, ...extraConsumers];
 }
 
+function normalizePvRoofStringDisplay(value) {
+  const normalized = String(value || "sum").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const aliases = {
+    add: "sum",
+    added: "sum",
+    summed: "sum",
+    total: "sum",
+    zusammen: "sum",
+    summe: "sum",
+    liste: "values",
+    list: "values",
+    split: "values",
+    separate: "values",
+    values_inline: "values",
+    highest: "dominant",
+    max: "dominant",
+    dominant_value: "dominant",
+    high_low: "dominant",
+    strongest: "dominant",
+    staerkster: "dominant",
+    stärkster: "dominant",
+  };
+  const key = aliases[normalized] || normalized;
+  return ["sum", "values", "dominant"].includes(key) ? key : "sum";
+}
+
+function normalizePvRoofStringConfig(raw, index) {
+  const source = raw && typeof raw === "object" ? raw : { power_entity: raw };
+  const id = normalizeConfigId(source.id || source.key || source.name || source.label, `string_${index + 2}`);
+  const maxPowerSource = source.max_power_kw ?? source.maxPowerKw ?? source.max_power ?? source.maxPower ?? "";
+  const maxPowerKw = maxPowerSource === "" || maxPowerSource === undefined || maxPowerSource === null
+    ? ""
+    : clampConfigNumber(maxPowerSource, "", 0, 1000);
+  return {
+    id,
+    label: String(source.label || source.name || `String ${index + 2}`).trim(),
+    power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
+    energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.kwh || source.energy || source.counter || source.meter || "").trim(),
+    max_power_kw: maxPowerKw,
+    visible: source.enabled === false ? false : source.visible !== false,
+  };
+}
+
+function normalizePvRoofStrings(strings) {
+  const rawList = Array.isArray(strings)
+    ? strings
+    : strings && typeof strings === "object"
+      ? Object.entries(strings).map(([id, value]) => (
+        value && typeof value === "object" ? { id, ...value } : { id, power_entity: value }
+      ))
+      : [];
+  return rawList
+    .map((item, index) => normalizePvRoofStringConfig(item, index))
+    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.label);
+}
+
 function adjacentWallboxPosition(basePosition = {}) {
   const baseLeft = Number(basePosition.left);
   const baseTop = Number(basePosition.top);
@@ -1607,6 +1693,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_status_label: true,
       show_weather_status: false,
       show_grid_status_tile: true,
+      pv_roof_string_display: "sum",
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       battery_low_threshold: 20,
@@ -1639,6 +1726,7 @@ class HaSolarDashboardCard extends HTMLElement {
       tile_color_rules: DEFAULT_TILE_COLOR_RULES,
       custom_kpis: [],
       large_consumers: normalizeLargeConsumers([]),
+      pv_roof_strings: [],
       image_overlays: {
         smoke: { enabled: false, entity: "", period: "1h" },
         heatpump: { enabled: false, entity: "" },
@@ -1672,6 +1760,9 @@ class HaSolarDashboardCard extends HTMLElement {
         battery_cycles_today: "",
         inverter_power: "sensor.wechselrichter_power",
         inverter_power_voltage: "",
+        inverter_power_voltage_l1: "",
+        inverter_power_voltage_l2: "",
+        inverter_power_voltage_l3: "",
         wallbox_power: "sensor.wallbox_power",
         wallbox_power_voltage: "",
         wallbox_phase: "",
@@ -1753,6 +1844,7 @@ class HaSolarDashboardCard extends HTMLElement {
       daylight_entity: "sun.sun",
       weather_entity: "",
       dynamic_tile_colors: true,
+      pv_roof_string_display: "sum",
       power_display_mode: "auto_kw",
       power_decimals: 2,
       energy_range: energyRange,
@@ -1768,6 +1860,7 @@ class HaSolarDashboardCard extends HTMLElement {
       tile_color_rules: {},
       custom_kpis: [],
       large_consumers: [],
+      pv_roof_strings: [],
       ...config,
       house,
       view_mode: viewMode,
@@ -1817,6 +1910,8 @@ class HaSolarDashboardCard extends HTMLElement {
       },
       custom_kpis: this._normalizeCustomKpis(config.custom_kpis || config.kpis || []),
       large_consumers: normalizeLargeConsumers(config.large_consumers || config.large_consumers_config || []),
+      pv_roof_strings: normalizePvRoofStrings(config.pv_roof_strings || config.pv_roof_string_config || []),
+      pv_roof_string_display: normalizePvRoofStringDisplay(config.pv_roof_string_display || config.pv_roof_display || "sum"),
     };
     delete this.config.show_energy_advisor;
 
@@ -1834,6 +1929,8 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.advisor_max_suggestions = Math.round(this._clampNumber(this.config.advisor_max_suggestions, 8, 1, 12));
     this.config.advisor_stale_sensor_warning_minutes = this._clampNumber(this.config.advisor_stale_sensor_warning_minutes, 30, 1, 10080);
     this.config.advisor_stale_sensor_critical_minutes = this._clampNumber(this.config.advisor_stale_sensor_critical_minutes, 1440, Math.max(1440, this.config.advisor_stale_sensor_warning_minutes), 20160);
+    this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
+    this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
     this._chartHours = this._chartHours || this.config.chart_hours;
     this._historyCache = this._historyCache || new Map();
@@ -2082,11 +2179,162 @@ class HaSolarDashboardCard extends HTMLElement {
     return this.config.units?.[metric.unit];
   }
 
+  _isPvRoofMetric(metric) {
+    return (metric?.sourceKey || metric?.key) === "pv_roof_power";
+  }
+
+  _pvRoofStringDisplayMode() {
+    return normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
+  }
+
+  _pvRoofBaseEnergyEntityId() {
+    const config = this._energyEntityConfig("pv_roof_power");
+    return String(config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "").trim();
+  }
+
+  _pvRoofStringEntries() {
+    const baseMaxPower = this._parsePowerLimitWatts(this.config.max_power_kw?.pv_roof_power, "kw")
+      || this._parsePowerLimitWatts(this.config.max_power_w?.pv_roof_power, "w")
+      || this._parsePowerLimitWatts(this.config.max_power?.pv_roof_power, "kw");
+    const baseEntry = {
+      id: "string_1",
+      label: "String 1",
+      powerEntityId: this.config.entities?.pv_roof_power || "",
+      energyEntityId: this._pvRoofBaseEnergyEntityId(),
+      maxPowerWatts: baseMaxPower,
+      base: true,
+      visible: true,
+    };
+    const extraEntries = normalizePvRoofStrings(this.config.pv_roof_strings || [])
+      .filter((string) => string.visible !== false)
+      .map((string, index) => ({
+        id: string.id || `string_${index + 2}`,
+        label: string.label || `String ${index + 2}`,
+        powerEntityId: string.power_entity || "",
+        energyEntityId: string.energy_entity || "",
+        maxPowerWatts: this._parsePowerLimitWatts(string.max_power_kw, "kw"),
+        base: false,
+        visible: true,
+      }))
+      .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.maxPowerWatts);
+    return [baseEntry, ...extraEntries];
+  }
+
+  _hasAdditionalPvRoofStrings() {
+    return this._pvRoofStringEntries().some((entry) => !entry.base && (entry.powerEntityId || entry.energyEntityId));
+  }
+
+  _pvRoofStringPowerWatts(entry) {
+    if (!entry?.powerEntityId) return undefined;
+    const watts = this._valueAsWatts(this._getEntityValue(entry.powerEntityId, undefined), this._getEntityUnit(entry.powerEntityId));
+    return Number.isFinite(watts) ? Math.max(0, watts) : undefined;
+  }
+
+  _pvRoofStringPowerParts() {
+    return this._pvRoofStringEntries()
+      .filter((entry) => entry.powerEntityId || !entry.base)
+      .map((entry) => {
+        const watts = this._pvRoofStringPowerWatts(entry);
+        return {
+          ...entry,
+          amount: watts,
+          formatted: Number.isFinite(watts) ? this._formatPowerValue(watts, this.config.units?.power || "auto", "W") : "—",
+        };
+      })
+      .filter((part) => part.powerEntityId || !part.base);
+  }
+
+  _pvRoofStringPowerWatts() {
+    if (!this._hasAdditionalPvRoofStrings()) return undefined;
+    const values = this._pvRoofStringPowerParts()
+      .map((part) => part.amount)
+      .filter(Number.isFinite);
+    if (values.length === 0) return undefined;
+    return values.reduce((sum, value) => sum + value, 0);
+  }
+
+  _pvRoofStringMaxPowerWatts() {
+    if (!this._hasAdditionalPvRoofStrings()) return undefined;
+    const maxValues = this._pvRoofStringEntries()
+      .map((entry) => entry.maxPowerWatts)
+      .filter((value) => Number.isFinite(value) && value > 0);
+    if (maxValues.length === 0) return undefined;
+    return maxValues.reduce((sum, value) => sum + value, 0);
+  }
+
+  _pvRoofStringEnergyParts() {
+    const range = this._currentEnergyRange();
+    if (range === "live") return [];
+    return this._pvRoofStringEntries()
+      .filter((entry) => entry.energyEntityId || !entry.base)
+      .map((entry) => {
+        const info = entry.energyEntityId
+          ? this._energyRangeConsumptionInfoForSource({
+            entityId: entry.energyEntityId,
+            mode: range === "total" ? "direct" : "counter",
+            range,
+          })
+          : undefined;
+        return {
+          ...entry,
+          amount: info?.amount,
+          loading: info?.loading,
+          error: info?.error,
+          formatted: info?.loading
+            ? "…"
+            : Number.isFinite(info?.amount)
+              ? this._formatEnergyValue(info.amount, "kWh", "kWh")
+              : "—",
+        };
+      })
+      .filter((part) => part.energyEntityId || !part.base);
+  }
+
+  _pvRoofStringReadingParts(metric) {
+    if (!this._isPvRoofMetric(metric) || !this._hasAdditionalPvRoofStrings()) return [];
+    return this._currentEnergyRange() === "live"
+      ? this._pvRoofStringPowerParts()
+      : this._pvRoofStringEnergyParts();
+  }
+
+  _formatPvRoofStringReading(metric) {
+    const parts = this._pvRoofStringReadingParts(metric);
+    if (parts.length === 0) return "";
+    if (parts.some((part) => part.loading)) return "…";
+    const values = parts.map((part) => part.amount).filter(Number.isFinite);
+    if (this._pvRoofStringDisplayMode() !== "sum") {
+      return parts.map((part) => part.formatted).join(" / ");
+    }
+    if (values.length === 0) return "—";
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return this._currentEnergyRange() === "live"
+      ? this._formatPowerValue(total, this.config.units?.power || "auto", "W")
+      : this._formatEnergyValue(total, "kWh", "kWh");
+  }
+
+  _renderMetricValueHtml(metric) {
+    const parts = this._pvRoofStringReadingParts(metric);
+    const mode = this._pvRoofStringDisplayMode();
+    if (parts.length === 0 || mode === "sum") return this._escape(this._formatReading(metric));
+    const orderedParts = mode === "dominant"
+      ? [...parts].sort((a, b) => (Number.isFinite(b.amount) ? b.amount : -Infinity) - (Number.isFinite(a.amount) ? a.amount : -Infinity))
+      : parts;
+    const valueHtml = orderedParts.map((part, index) => {
+      const className = mode === "dominant" && index > 0 ? "value-part value-secondary" : "value-part";
+      return `<span class="${className}" title="${this._escape(part.label || "")}">${this._escape(part.formatted)}</span>`;
+    }).join(`<span class="value-separator">/</span>`);
+    return `<span class="value-combo value-combo-${this._escape(mode)}">${valueHtml}</span>`;
+  }
+
   _formatReading(metric) {
     if (metric.gridStatus) return this._formatGridStatusReading();
     if (metric.overlay) return this._formatOverlayReading(metric.overlay);
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
     if (metric.key === "import_export_power") return this._formatGridValueReading();
+    if (this._isPvRoofMetric(metric)) {
+      const stringReading = this._formatPvRoofStringReading(metric);
+      if (stringReading) return stringReading;
+    }
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
       return this._formatEnergyRangeReading(metric);
     }
@@ -2185,26 +2433,81 @@ class HaSolarDashboardCard extends HTMLElement {
     return `${metric.sourceKey || metric.key}_voltage`;
   }
 
-  _metricVoltageEntityId(metric) {
-    if (!metric || metric.unit !== "power") return "";
-    if (metric.largeConsumer) return this._largeConsumerVoltageEntityId(metric);
+  _metricVoltagePhaseDefinitions(metric) {
+    const key = metric?.sourceKey || metric?.key;
+    if (key !== "inverter_power") return [];
+    return [
+      { key: "inverter_power_voltage_l1", phase: "L1" },
+      { key: "inverter_power_voltage_l2", phase: "L2" },
+      { key: "inverter_power_voltage_l3", phase: "L3" },
+    ];
+  }
+
+  _metricVoltageEntityDefinitions(metric) {
+    if (!metric || metric.unit !== "power") return [];
+    if (metric.largeConsumer) {
+      return [{
+        key: `large_consumers.${metric.largeConsumer.id || metric.key}.voltage`,
+        entityId: this._largeConsumerVoltageEntityId(metric),
+        phase: "",
+      }];
+    }
     const key = metric.sourceKey || metric.key;
+    const baseKey = this._metricVoltageEntityKey(metric);
     const aliases = [
-      `${key}_voltage`,
+      baseKey,
       `${key}_volt`,
       `${key}_volts`,
     ];
     if (key === "import_export_power") aliases.push("grid_voltage", "voltage", "netzspannung");
     if (key === "house_consumption_power") aliases.push("house_voltage", "home_voltage");
-    return aliases.map((alias) => this.config.entities?.[alias]).find(Boolean) || "";
+    return [
+      {
+        key: baseKey,
+        entityId: aliases.map((alias) => this.config.entities?.[alias]).find(Boolean) || "",
+        phase: "",
+      },
+      ...this._metricVoltagePhaseDefinitions(metric).map((definition) => ({
+        ...definition,
+        entityId: this.config.entities?.[definition.key] || "",
+      })),
+    ];
+  }
+
+  _metricVoltageEntityId(metric) {
+    return this._metricVoltageEntityDefinitions(metric).map((definition) => definition.entityId).find(Boolean) || "";
+  }
+
+  _metricVoltageEntries(metric, variant = this._currentVariant || this._layoutState().variant) {
+    if (!metric || metric.unit !== "power") return [];
+    const baseLabel = this._metricLabel(metric, variant);
+    const seen = new Set();
+    const entries = [];
+    this._metricVoltageEntityDefinitions(metric).forEach((definition) => {
+      if (!definition.entityId || seen.has(definition.entityId)) return;
+      seen.add(definition.entityId);
+      const entity = this._getEntity(definition.entityId);
+      const value = this._formatVoltageValue(entity?.state, entity?.attributes?.unit_of_measurement || "V");
+      if (value === "—") return;
+      const volts = this._valueAsVolts(entity?.state, entity?.attributes?.unit_of_measurement || "V");
+      entries.push({
+        ...definition,
+        metric,
+        entityId: definition.entityId,
+        volts,
+        label: definition.phase ? `${baseLabel} ${definition.phase}` : baseLabel,
+        value,
+        displayValue: definition.phase ? `${definition.phase} ${value}` : value,
+      });
+    });
+    return entries;
   }
 
   _metricVoltageLabel(metric) {
-    const entityId = this._metricVoltageEntityId(metric);
-    if (!entityId) return "";
-    const rawValue = this._getEntityValue(entityId, undefined);
-    const label = this._formatVoltageValue(rawValue, this._getEntityUnit(entityId) || "V");
-    return label === "—" ? "" : label;
+    return this._metricVoltageEntries(metric)
+      .map((entry) => entry.displayValue)
+      .filter(Boolean)
+      .join(" / ");
   }
 
   _voltageSensorEntries() {
@@ -2218,20 +2521,11 @@ class HaSolarDashboardCard extends HTMLElement {
     ];
     const seen = new Set();
     const entries = metrics
-      .map((metric) => {
-        const entityId = this._metricVoltageEntityId(metric);
-        if (!entityId || seen.has(entityId)) return undefined;
-        seen.add(entityId);
-        const entity = this._getEntity(entityId);
-        const volts = this._valueAsVolts(entity?.state, entity?.attributes?.unit_of_measurement || "V");
-        if (!Number.isFinite(volts)) return undefined;
-        return {
-          metric,
-          entityId,
-          volts,
-          label: this._metricLabel(metric, variant),
-          value: this._formatVoltageValue(entity.state, entity.attributes?.unit_of_measurement || "V"),
-        };
+      .flatMap((metric) => this._metricVoltageEntries(metric, variant))
+      .map((entry) => {
+        if (!entry.entityId || seen.has(entry.entityId) || !Number.isFinite(entry.volts)) return undefined;
+        seen.add(entry.entityId);
+        return entry;
       })
       .filter(Boolean);
     if (batteryVoltageEntityId && !seen.has(batteryVoltageEntityId)) {
@@ -2278,16 +2572,16 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _renderVoltageMetaRow(metric, { placement = "footer" } = {}) {
     if (!metric || metric.unit !== "power") return "";
-    const key = metric.largeConsumer
-      ? `large_consumers.${metric.largeConsumer.id || metric.key}.voltage`
-      : this._metricVoltageEntityKey(metric);
-    if (!this._showLabelIn(key, placement)) return "";
-    const label = this._metricVoltageLabel(metric);
-    if (!this._metricVoltageEntityId(metric)) return "";
-    const tooltip = `${this._t("tooltip.voltage", {}, "Voltage")}: ${label}`;
+    const entries = this._metricVoltageEntries(metric)
+      .filter((entry) => this._showLabelIn(entry.key, placement));
+    if (entries.length === 0) return "";
+    const badges = entries.map((entry) => {
+      const tooltip = `${this._t("tooltip.voltage", {}, "Voltage")}: ${entry.label} ${entry.value}`;
+      return `<span class="voltage-badge${this._labelVisibilityClass(entry.key, placement)}" data-voltage="${this._escape(metric.key)}" data-voltage-key="${this._escape(entry.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}">${this._escape(entry.displayValue)}</span>`;
+    }).join("");
     return `
       <div class="meta-row voltage-meta-row">
-        <span class="voltage-badge${this._labelVisibilityClass(key, placement)}" data-voltage="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+        ${badges}
       </div>
     `;
   }
@@ -2350,9 +2644,13 @@ class HaSolarDashboardCard extends HTMLElement {
     const largeConsumerEntities = (this.config.large_consumers || [])
       .flatMap((consumer) => [consumer.power_entity, consumer.voltage_entity, consumer.energy_entity])
       .filter(Boolean);
+    const pvRoofStringEntities = normalizePvRoofStrings(this.config.pv_roof_strings || [])
+      .flatMap((string) => [string.power_entity, string.energy_entity])
+      .filter(Boolean);
     const timestamps = [
       ...Object.values(this.config.entities || {}),
       ...largeConsumerEntities,
+      ...pvRoofStringEntities,
     ]
       .map((entityId) => Date.parse(this._getEntityLastUpdated(entityId) || ""))
       .filter(Number.isFinite);
@@ -2606,9 +2904,8 @@ class HaSolarDashboardCard extends HTMLElement {
     return `${entityId}|${range}|${bucket}`;
   }
 
-  _energyRangeConsumptionInfo(metric) {
-    const range = this._currentEnergyRange();
-    const source = this._metricEnergySource(metric, range);
+  _energyRangeConsumptionInfoForSource(source) {
+    const range = this._normalizeEnergyRange(source?.range) || this._currentEnergyRange();
     if (!source?.entityId) return undefined;
     if (source.mode === "direct" || range === "total") {
       const value = this._getEntityValue(source.entityId, undefined);
@@ -2632,6 +2929,11 @@ class HaSolarDashboardCard extends HTMLElement {
     if (cached) return cached;
     this._requestEnergyRangeConsumption(source.entityId, minutes, key);
     return { loading: true, amount: undefined, unit: this._getEntityUnit(source.entityId) || "kWh", entityId: source.entityId, mode: "counter" };
+  }
+
+  _energyRangeConsumptionInfo(metric) {
+    const range = this._currentEnergyRange();
+    return this._energyRangeConsumptionInfoForSource(this._metricEnergySource(metric, range));
   }
 
   _requestEnergyRangeConsumption(entityId, minutes, key) {
@@ -2728,6 +3030,17 @@ class HaSolarDashboardCard extends HTMLElement {
       const flowInfo = this._gridFlowInfo();
       return Number.isFinite(flowInfo?.watts) ? flowInfo.watts : undefined;
     }
+    if (this._isPvRoofMetric(metric)) {
+      if (this._currentEnergyRange() !== "live") {
+        const values = this._pvRoofStringEnergyParts()
+          .map((part) => part.amount)
+          .filter(Number.isFinite);
+        if (values.length > 0) return values.reduce((sum, value) => sum + value, 0);
+      } else {
+        const watts = this._pvRoofStringPowerWatts();
+        if (Number.isFinite(watts)) return watts;
+      }
+    }
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
       const info = this._energyRangeConsumptionInfo(metric);
       return Number.isFinite(info?.amount) ? info.amount : undefined;
@@ -2810,6 +3123,10 @@ class HaSolarDashboardCard extends HTMLElement {
   _maxPowerWatts(metric) {
     if (!metric || metric.unit !== "power") return undefined;
     if (metric.largeConsumer) return this._parsePowerLimitWatts(metric.largeConsumer.max_power_kw, "kw");
+    if (this._isPvRoofMetric(metric)) {
+      const stringMaxPower = this._pvRoofStringMaxPowerWatts();
+      if (Number.isFinite(stringMaxPower)) return stringMaxPower;
+    }
     const key = metric.key;
     const fromKw = this.config.max_power_kw?.[key];
     if (fromKw !== undefined && fromKw !== "") return this._parsePowerLimitWatts(fromKw, "kw");
@@ -4287,7 +4604,7 @@ class HaSolarDashboardCard extends HTMLElement {
       <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
         <div class="label" data-label="${metric.key}">${this._escape(this._metricLabel(metric, variant))}</div>
         <div class="value-row">
-          <div class="value" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          <div class="value" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
         </div>
         ${this._renderPvMetaRow(metric, { placement: "image" })}
         ${this._renderBatteryMetaRow(metric, { showFlowLabel: false, placement: "image" })}
@@ -4341,6 +4658,10 @@ class HaSolarDashboardCard extends HTMLElement {
     if (key === "import_export_power") {
       const flowInfo = this._gridFlowInfo();
       return Number.isFinite(flowInfo?.watts) ? flowInfo.watts : undefined;
+    }
+    if (key === "pv_roof_power") {
+      const stringWatts = this._pvRoofStringPowerWatts();
+      if (Number.isFinite(stringWatts)) return stringWatts;
     }
     const entityId = this.config.entities?.[key];
     if (!entityId) return undefined;
@@ -4519,6 +4840,24 @@ class HaSolarDashboardCard extends HTMLElement {
       .filter((consumer) => consumer.configured);
   }
 
+  _pvRoofStringAdvisorDetails() {
+    if (!this._hasAdditionalPvRoofStrings()) return [];
+    return this._pvRoofStringEntries()
+      .map((entry, index) => {
+        const watts = this._pvRoofStringPowerWatts(entry);
+        return {
+          id: entry.id || `string_${index + 1}`,
+          label: entry.label || `String ${index + 1}`,
+          powerEntityId: entry.powerEntityId || "",
+          energyEntityId: entry.energyEntityId || "",
+          watts: Number.isFinite(watts) ? watts : undefined,
+          maxPowerWatts: entry.maxPowerWatts,
+          configured: Boolean(entry.powerEntityId || entry.energyEntityId),
+        };
+      })
+      .filter((entry) => entry.configured);
+  }
+
   _advisorSnapshot() {
     const pvTotal = this._positiveWattsForKey("pv_total_power");
     const pvParts = ["pv_roof_power", "pv_shed_power"]
@@ -4543,6 +4882,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const hasWallbox = ["wallbox_power", "wallbox2_power"].some((key) => Boolean(this.config.entities?.[key]));
     const largeConsumers = this._largeConsumerAdvisorDetails();
     const largeConsumerWatts = largeConsumers.reduce((sum, consumer) => sum + (Number.isFinite(consumer.watts) ? consumer.watts : 0), 0);
+    const pvRoofStrings = this._pvRoofStringAdvisorDetails();
     const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", unit: "battery" };
     const batteryPercent = this._batteryPercent(batteryMetric);
     const batterySocEntityId = this._batterySocEntityId();
@@ -4588,6 +4928,7 @@ class HaSolarDashboardCard extends HTMLElement {
       hasWallbox,
       largeConsumers,
       largeConsumerWatts,
+      pvRoofStrings,
       batteryPercent,
       batterySocEntityId,
       batteryMinSocPercent,
@@ -4685,6 +5026,13 @@ class HaSolarDashboardCard extends HTMLElement {
       if (consumer?.visible === false) return;
       add(consumer.power_entity, this._largeConsumerLabel(consumer, index), true, {
         key: `large_consumers.${consumer.id || index}`,
+        minActiveWatts: 100,
+      });
+    });
+    this._pvRoofStringEntries().forEach((entry, index) => {
+      if (entry.base || !entry.powerEntityId) return;
+      add(entry.powerEntityId, entry.label || `String ${index + 1}`, true, {
+        key: `pv_roof_strings.${entry.id || index}`,
         minActiveWatts: 100,
       });
     });
@@ -5355,6 +5703,14 @@ class HaSolarDashboardCard extends HTMLElement {
     const isSensors = title.includes("sensor") || text.includes("sensor");
 
     addValue(this._t("advisor.pv", {}, "PV"), this._advisorMetricValue(snapshot.pvWatts, powerFormatter));
+    if (isPv && Array.isArray(snapshot.pvRoofStrings) && snapshot.pvRoofStrings.length > 0) {
+      snapshot.pvRoofStrings.forEach((string) => {
+        addValue(string.label, [
+          Number.isFinite(string.watts) ? powerFormatter(string.watts) : "",
+          Number.isFinite(string.maxPowerWatts) ? `${this._t("tooltip.max", {}, "Maximum")} ${powerFormatter(string.maxPowerWatts)}` : "",
+        ].filter(Boolean).join(" / "));
+      });
+    }
     if (isPv || isGrid || isLoad) {
       addValue(this._t("advisor.exporting", {}, "Exporting surplus"), this._advisorMetricValue(snapshot.exportWatts, powerFormatter));
       addValue(this._t("advisor.importing", {}, "Importing"), this._advisorMetricValue(snapshot.importWatts, powerFormatter));
@@ -5398,6 +5754,10 @@ class HaSolarDashboardCard extends HTMLElement {
 
     if (isPv) {
       addEntity(this._t("advisor.pv", {}, "PV"), this.config.entities?.pv_total_power || this.config.entities?.pv_roof_power || this.config.entities?.pv_shed_power);
+      (snapshot.pvRoofStrings || []).forEach((string) => {
+        addEntity(`${string.label} ${this._t("editor.pvRoofStringPowerEntity", {}, "String power entity")}`, string.powerEntityId);
+        addEntity(`${string.label} ${this._t("editor.pvRoofStringEnergyEntity", {}, "String kWh counter entity")}`, string.energyEntityId);
+      });
     }
     if (isGrid || isPv) {
       addEntity(this._t("advisor.grid", {}, "Grid"), this._gridPrimaryEntityId());
@@ -5757,25 +6117,25 @@ class HaSolarDashboardCard extends HTMLElement {
       const valueHtml = metric.key === "battery_level"
         ? `
           <div class="tile-value-row">
-            <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+            <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
           </div>
           ${this._renderBatteryMetaRow(metric, { placement: "footer" })}
           ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
         `
         : this._wallboxPhaseEntityKey(metric)
         ? `
-          <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
           ${this._renderWallboxPhaseRow(metric, { placement: "footer" })}
           ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
         `
         : this._isPvMetric(metric)
         ? `
-          <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
           ${this._renderPvMetaRow(metric, { placement: "footer" })}
           ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
         `
         : `
-          <div class="num" data-value="${metric.key}">${this._escape(this._formatReading(metric))}</div>
+          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
           ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
         `;
       return `
@@ -5831,6 +6191,10 @@ class HaSolarDashboardCard extends HTMLElement {
         .metric .value-row { display:flex; align-items:center; gap:5px; min-width:0; max-width:100%; }
         .tile .tile-value-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; max-width:100%; margin-top:2px; }
         .metric .value,.tile .num { color:var(--tile-accent); font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
+        .value-combo { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 4px; min-width:0; max-width:100%; line-height:1.15; }
+        .value-combo .value-part { min-width:0; overflow-wrap:anywhere; }
+        .value-combo .value-secondary { font-size:.72em; opacity:.74; font-weight:700; }
+        .value-combo .value-separator { color:rgba(243,246,255,.55); font-size:.72em; }
         .metric-meter { width:100%; height:5px; margin-top:6px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
         .metric-meter span { display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,color-mix(in srgb,var(--tile-accent) 64%,#fff),var(--tile-accent)); box-shadow:0 0 10px color-mix(in srgb,var(--tile-accent) 62%,transparent); transition:width .28s ease; }
         .battery-flow { display:inline-flex; align-items:center; gap:3px; flex:0 1 auto; min-width:0; max-width:62px; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); overflow:hidden; white-space:nowrap; }
@@ -5969,13 +6333,13 @@ class HaSolarDashboardCard extends HTMLElement {
     ];
 
     liveMetrics.forEach((metric) => {
-      const reading = this._formatReading(metric);
+      const readingHtml = this._renderMetricValueHtml(metric);
       const label = this._metricLabel(metric, variant);
       this.shadowRoot.querySelectorAll(`[data-label="${metric.key}"]`).forEach((element) => {
         if (element.textContent !== label) element.textContent = label;
       });
       this.shadowRoot.querySelectorAll(`[data-value="${metric.key}"]`).forEach((element) => {
-        if (element.textContent !== reading) element.textContent = reading;
+        if (element.innerHTML !== readingHtml) element.innerHTML = readingHtml;
       });
       const accent = this._metricAccent(metric);
       this.shadowRoot.querySelectorAll(`[data-accent-key="${metric.key}"]`).forEach((element) => {
@@ -6030,9 +6394,11 @@ class HaSolarDashboardCard extends HTMLElement {
         element.setAttribute("title", phaseActionTitle);
         element.setAttribute("aria-label", phaseActionTitle);
       });
-      const voltageLabel = this._metricVoltageLabel(metric);
-      const voltageTitle = voltageLabel ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${voltageLabel}` : "";
+      const voltageEntries = new Map(this._metricVoltageEntries(metric, variant).map((entry) => [entry.key, entry]));
       this.shadowRoot.querySelectorAll(`[data-voltage="${metric.key}"]`).forEach((element) => {
+        const entry = voltageEntries.get(element.dataset.voltageKey || this._metricVoltageEntityKey(metric));
+        const voltageLabel = entry?.displayValue || "";
+        const voltageTitle = entry ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${entry.label} ${entry.value}` : "";
         if (element.textContent !== voltageLabel) element.textContent = voltageLabel;
         element.style.display = voltageLabel ? "inline-flex" : "none";
         element.setAttribute("title", voltageTitle);
@@ -6164,6 +6530,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       image_overlays: {},
       custom_kpis: [],
       large_consumers: [],
+      pv_roof_strings: [],
+      pv_roof_string_display: "sum",
       ...config,
       image_overlays: {
         smoke: {
@@ -6183,6 +6551,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ? [...(((config || {}).custom_kpis || (config || {}).kpis))]
         : [],
       large_consumers: normalizeLargeConsumers((config || {}).large_consumers || (config || {}).large_consumers_config || []),
+      pv_roof_strings: normalizePvRoofStrings((config || {}).pv_roof_strings || (config || {}).pv_roof_string_config || []),
+      pv_roof_string_display: normalizePvRoofStringDisplay((config || {}).pv_roof_string_display || (config || {}).pv_roof_display || "sum"),
     };
     delete this._config.show_energy_advisor;
     this._render();
@@ -6296,6 +6666,32 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     const next = this._cloneConfig(this._config || {});
     next.custom_kpis = Array.isArray(next.custom_kpis) ? next.custom_kpis : [];
     next.custom_kpis.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _addPvRoofString() {
+    const next = this._cloneConfig(this._config || {});
+    next.pv_roof_strings = normalizePvRoofStrings(next.pv_roof_strings || []);
+    const index = next.pv_roof_strings.length;
+    next.pv_roof_strings.push({
+      id: `string_${Date.now()}`,
+      label: `String ${index + 2}`,
+      power_entity: "",
+      energy_entity: "",
+      max_power_kw: "",
+      visible: true,
+    });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removePvRoofString(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.pv_roof_strings = normalizePvRoofStrings(next.pv_roof_strings || []);
+    next.pv_roof_strings.splice(index, 1);
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -6419,6 +6815,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       electricity_price: this._t("editor.electricityPriceEntity", {}, "Electricity price entity"),
       battery_flow_power: this._t("editor.batteryFlowEntity", {}, "Battery flow entity (+/-)"),
       battery_flow_power_voltage: `${this._t("advisor.batteryStatus", {}, "Battery")} ${this._t("tooltip.voltage", {}, "Voltage")}`,
+      inverter_power_voltage_l1: `${this._t("metrics.inverter_power", {}, "Inverter")} ${this._t("tooltip.voltage", {}, "Voltage")} L1`,
+      inverter_power_voltage_l2: `${this._t("metrics.inverter_power", {}, "Inverter")} ${this._t("tooltip.voltage", {}, "Voltage")} L2`,
+      inverter_power_voltage_l3: `${this._t("metrics.inverter_power", {}, "Inverter")} ${this._t("tooltip.voltage", {}, "Voltage")} L3`,
       battery_charge_power: this._t("editor.batteryChargeEntity", {}, "Battery charge entity"),
       battery_discharge_power: this._t("editor.batteryDischargeEntity", {}, "Battery discharge entity"),
       battery_min_soc: this._t("editor.batteryMinSocEntity", {}, "Battery min SoC entity"),
@@ -6500,6 +6899,9 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       { path: "entities.battery_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c"], required: [["battery", "batterie", "speicher", "akku"], ["temperature", "temperatur", "temp"]], include: [batteryTerms, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["power", "leistung", "soc"], threshold: 58 },
       { path: "entities.battery_cycles_today", domains: ["sensor"], required: [["battery", "batterie", "speicher", "akku"], ["cycle", "cycles", "zyklen", "vollzyklen"], ["today", "heute", "daily", "tag"]], include: [batteryTerms, { terms: ["cycle", "cycles", "zyklen", "vollzyklen", "today", "heute", "daily", "tag"], weight: 34 }], exclude: ["power", "leistung", "soc", "temperature", "temperatur"], threshold: 58 },
       { path: "entities.inverter_power", ...powerTarget, required: [["inverter", "wechselrichter", "wr"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, ...powerTarget.include], exclude: ["battery", "batterie", "soc", "temperature"], threshold: 56 },
+      { path: "entities.inverter_power_voltage_l1", ...voltageTarget, required: [["inverter", "wechselrichter", "wr"], ["l1", "phase 1", "phase l1", "spannung l1", "u1"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, { terms: ["l1", "phase 1", "phase l1", "spannung l1", "u1"], weight: 34 }, ...voltageTarget.include], exclude: ["battery", "batterie", "l2", "l3", ...voltageTarget.exclude], threshold: 62 },
+      { path: "entities.inverter_power_voltage_l2", ...voltageTarget, required: [["inverter", "wechselrichter", "wr"], ["l2", "phase 2", "phase l2", "spannung l2", "u2"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, { terms: ["l2", "phase 2", "phase l2", "spannung l2", "u2"], weight: 34 }, ...voltageTarget.include], exclude: ["battery", "batterie", "l1", "l3", ...voltageTarget.exclude], threshold: 62 },
+      { path: "entities.inverter_power_voltage_l3", ...voltageTarget, required: [["inverter", "wechselrichter", "wr"], ["l3", "phase 3", "phase l3", "spannung l3", "u3"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, { terms: ["l3", "phase 3", "phase l3", "spannung l3", "u3"], weight: 34 }, ...voltageTarget.include], exclude: ["battery", "batterie", "l1", "l2", ...voltageTarget.exclude], threshold: 62 },
       { path: "entities.inverter_power_voltage", ...voltageTarget, required: [["inverter", "wechselrichter", "wr"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, ...voltageTarget.include], exclude: ["battery", "batterie", ...voltageTarget.exclude], threshold: 58 },
       { path: "entities.wallbox_power", ...powerTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"]], include: [wallboxTerms, ...powerTarget.include], exclude: ["2", "second", "zweite", "two", "phase", "phasen", "soc", "remaining", "time", "zeit", "energy", "kwh"], threshold: 56 },
       { path: "entities.wallbox_power_voltage", ...voltageTarget, required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"]], include: [wallboxTerms, ...voltageTarget.include], exclude: ["2", "second", "zweite", "two", "phase", "phasen", "soc", "remaining", "time", "zeit", ...voltageTarget.exclude], threshold: 58 },
@@ -6735,15 +7137,31 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     return `${metric.sourceKey || metric.key}_voltage`;
   }
 
+  _metricVoltagePhaseFields(metric) {
+    if ((metric?.sourceKey || metric?.key) !== "inverter_power") return [];
+    return [
+      ["inverter_power_voltage_l1", "editor.voltageEntityL1", "Voltage L1 entity"],
+      ["inverter_power_voltage_l2", "editor.voltageEntityL2", "Voltage L2 entity"],
+      ["inverter_power_voltage_l3", "editor.voltageEntityL3", "Voltage L3 entity"],
+    ];
+  }
+
   _renderVoltageEntityInput(metric) {
     const key = this._metricVoltageEntityKey(metric);
     if (!key) return "";
     const selected = this._config?.entities?.[key] || "";
+    const phaseFields = this._metricVoltagePhaseFields(metric).map(([phaseKey, labelKey, fallback]) => `
+      <label>${this._escape(this._t(labelKey, {}, fallback))}
+        <input data-path="entities.${phaseKey}" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(phaseKey)}" value="${this._escape(this._config?.entities?.[phaseKey] || "")}" autocomplete="off" />
+      </label>
+      ${this._renderLabelVisibilityOptions(phaseKey)}
+    `).join("");
     return `
       <label>${this._escape(this._t("editor.voltageEntity", {}, "Voltage entity"))}
         <input data-path="entities.${key}" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(key)}" value="${this._escape(selected)}" autocomplete="off" />
       </label>
       ${this._renderLabelVisibilityOptions(key)}
+      ${phaseFields}
     `;
   }
 
@@ -6779,6 +7197,59 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       <details class="pv-labels" open>
         <summary>${this._escape(this._t("editor.pvLabels", {}, "PV labels"))}</summary>
         <div class="details-grid">${fieldHtml}</div>
+      </details>
+    `;
+  }
+
+  _renderPvRoofStringInputs(metric) {
+    if (metric?.key !== "pv_roof_power") return "";
+    const strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
+    this._config.pv_roof_strings = strings;
+    const selectedDisplay = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
+    const displayOptions = [
+      ["sum", this._t("editor.pvRoofStringDisplaySum", {}, "Sum strings")],
+      ["values", this._t("editor.pvRoofStringDisplayValues", {}, "Show string values")],
+      ["dominant", this._t("editor.pvRoofStringDisplayDominant", {}, "Highest string large, others small")],
+    ].map(([value, label]) => (
+      `<option value="${this._escape(value)}"${value === selectedDisplay ? " selected" : ""}>${this._escape(label)}</option>`
+    )).join("");
+    const stringFields = strings.map((string, index) => {
+      const label = string.label || `String ${index + 2}`;
+      const powerEntity = string.power_entity || "";
+      const energyEntity = string.energy_entity || "";
+      const maxPowerKw = string.max_power_kw ?? "";
+      return `
+        <div class="box-field pv-string-field">
+          <div class="kpi-head">
+            <strong>${this._escape(label)}</strong>
+            <button type="button" data-action="remove-pv-roof-string" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
+          </div>
+          <label>${this._escape(this._t("editor.pvRoofStringLabel", {}, "String name"))}
+            <input data-path="pv_roof_strings.${index}.label" placeholder="String ${this._escape(index + 2)}" value="${this._escape(label)}" />
+          </label>
+          <label>${this._escape(this._t("editor.pvRoofStringPowerEntity", {}, "String power entity"))}
+            <input data-path="pv_roof_strings.${index}.power_entity" list="ha-solar-dashboard-entities" placeholder="sensor.pv_roof_string_${this._escape(index + 2)}_power" value="${this._escape(powerEntity)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.pvRoofStringEnergyEntity", {}, "String kWh counter entity"))}
+            <input data-path="pv_roof_strings.${index}.energy_entity" list="ha-solar-dashboard-entities" placeholder="sensor.pv_roof_string_${this._escape(index + 2)}_energy_total" value="${this._escape(energyEntity)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.maxPowerKw"))}
+            <input type="number" min="0" step="0.1" data-path="pv_roof_strings.${index}.max_power_kw" placeholder="5.0" value="${this._escape(maxPowerKw)}" />
+          </label>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <details class="pv-labels" open>
+        <summary>${this._escape(this._t("editor.pvRoofStrings", {}, "Roof PV strings"))}</summary>
+        <div class="details-grid">
+          <label>${this._escape(this._t("editor.pvRoofStringDisplay", {}, "Roof PV string display"))}
+            <select data-path="pv_roof_string_display">${displayOptions}</select>
+          </label>
+          ${stringFields}
+          <button type="button" data-action="add-pv-roof-string">${this._escape(this._t("editor.pvRoofStringAdd", {}, "Add string"))}</button>
+        </div>
       </details>
     `;
   }
@@ -7070,6 +7541,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         ${this._renderEntityInput(metric)}
         ${this._renderVoltageEntityInput(metric)}
         ${this._renderPvLabelInputs(metric)}
+        ${this._renderPvRoofStringInputs(metric)}
         ${this._renderEnergyEntityInputs(metric)}
         ${this._renderWallboxPhaseInput(metric)}
         ${this._renderWallboxPhaseActionInput(metric)}
@@ -7342,10 +7814,95 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       .join("");
     const customKpis = Array.isArray(this._config.custom_kpis) ? this._config.custom_kpis : [];
     const customKpiFields = customKpis.map((kpi, index) => this._renderCustomKpiField(kpi, index)).join("");
+    this._config.pv_roof_string_display = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
+    this._config.pv_roof_strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
     const largeConsumers = normalizeLargeConsumers(this._config.large_consumers || []);
     this._config.large_consumers = largeConsumers;
     const largeConsumerFields = largeConsumers.map((consumer, index) => this._renderLargeConsumerField(consumer, index)).join("");
     const overlayFields = IMAGE_OVERLAY_KEYS.map((key) => this._renderOverlayField(key)).join("");
+    const sectionState = this._editorSectionState || new Map();
+    const sectionOpen = (key, defaultOpen = false) => sectionState.has(key) ? sectionState.get(key) : defaultOpen;
+    const renderEditorSection = (key, title, content, defaultOpen = false) => `
+      <details class="editor-section" data-editor-section="${this._escape(key)}"${sectionOpen(key, defaultOpen) ? " open" : ""}>
+        <summary><span>${this._escape(title)}</span></summary>
+        <div class="section-body">${content}</div>
+      </details>
+    `;
+    const generalSettingsHtml = `
+      <section class="editor-panel editor-general">
+        <div class="editor-panel-title">${this._escape(this._t("editor.sectionGeneral", {}, "General settings"))}</div>
+        <div class="settings-grid">
+          <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
+          <label>${this._escape(this._t("editor.viewMode", {}, "Default view"))} <select data-path="view_mode">${viewModeOptions}</select></label>
+          <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
+          <label>${this._escape(this._t("editor.customImage"))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
+          <label>${this._escape(this._t("editor.customDayImage"))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
+          <label>${this._escape(this._t("editor.weatherEntity"))}
+            <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />
+          </label>
+        </div>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_view_selector" ${this._config.show_view_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showViewSelector", {}, "Show House/Advisor view selector"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> ${this._escape(this._t("editor.showWeatherStatus"))}</label>
+        </div>
+      </section>
+    `;
+    const advisorSettingsHtml = `
+      <div class="details-grid">
+        <label>${this._escape(this._t("editor.advisorMaxSuggestions", {}, "Advisor suggestions"))} (${this._escape(Number(this._config.advisor_max_suggestions ?? 8).toFixed(0))})
+          <input type="range" min="1" max="12" step="1" data-path="advisor_max_suggestions" value="${this._escape(this._config.advisor_max_suggestions ?? 8)}" />
+        </label>
+        <label>${this._escape(this._t("editor.advisorEvSurplusThreshold", {}, "EV surplus threshold (W)"))}
+          <input type="number" min="0" max="1000000" step="50" data-path="advisor_ev_surplus_threshold" value="${this._escape(this._config.advisor_ev_surplus_threshold ?? 1500)}" />
+        </label>
+        <label>${this._escape(this._t("editor.electricityPriceEntity", {}, "Electricity price entity"))}
+          <input data-path="entities.electricity_price" list="ha-solar-dashboard-entities" placeholder="sensor.electricity_price" value="${this._escape(this._config.entities?.electricity_price || "")}" autocomplete="off" />
+        </label>
+      </div>
+    `;
+    const appearanceSettingsHtml = `
+      <div class="details-grid">
+        <label>${this._escape(this._t("editor.hudBoxOpacity"))} (${this._escape((Number(this._config.hud_box_opacity ?? 0.65)).toFixed(2))})
+          <input type="range" min="0" max="1" step="0.05" data-path="hud_box_opacity" value="${this._escape(this._config.hud_box_opacity ?? 0.65)}" />
+        </label>
+        <label>${this._escape(this._t("editor.hudBoxScale"))} (${this._escape((Number(this._config.hud_box_scale ?? 1)).toFixed(2))})
+          <input type="range" min="0.6" max="1.8" step="0.05" data-path="hud_box_scale" value="${this._escape(this._config.hud_box_scale ?? 1)}" />
+        </label>
+        <label>${this._escape(this._t("editor.powerDisplayMode"))}
+          <select data-path="power_display_mode">
+            <option value="raw"${this._config.power_display_mode === "raw" ? " selected" : ""}>${this._escape(this._t("editor.rawMode"))}</option>
+            <option value="auto_kw"${(this._config.power_display_mode || "auto_kw") === "auto_kw" ? " selected" : ""}>${this._escape(this._t("editor.autoWKw"))}</option>
+          </select>
+        </label>
+        <label>${this._escape(this._t("editor.powerDecimals"))} (${this._escape(Number(this._config.power_decimals ?? 2).toFixed(0))})
+          <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
+        </label>
+        <label>${this._escape(this._t("editor.gridVoltageWarningThreshold", {}, "High grid voltage (V)"))}
+          <input type="number" min="0" max="1000" step="1" data-path="grid_voltage_warning_threshold" value="${this._escape(this._config.grid_voltage_warning_threshold ?? 245)}" />
+        </label>
+        <label>${this._escape(this._t("editor.gridVoltageCriticalThreshold", {}, "Critical grid voltage (V)"))}
+          <input type="number" min="0" max="1000" step="1" data-path="grid_voltage_critical_threshold" value="${this._escape(this._config.grid_voltage_critical_threshold ?? 253)}" />
+        </label>
+      </div>
+    `;
+    const boxSettingsHtml = `<div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>`;
+    const overlaySettingsHtml = `<div class="grid">${overlayFields}</div>`;
+    const kpiSettingsHtml = `
+      <div class="grid">${customKpiFields}</div>
+      <div class="action-row"><button type="button" data-action="add-kpi">${this._escape(this._t("editor.kpiAdd"))}</button></div>
+    `;
+    const largeConsumerSettingsHtml = `
+      <div class="grid">${largeConsumerFields}</div>
+      <div class="action-row"><button type="button" data-action="add-large-consumer">${this._escape(this._t("editor.consumerAddCustom", {}, "Add custom large consumer"))}</button></div>
+    `;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -7358,6 +7915,17 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         button:hover:not(:disabled){border-color:var(--primary-color,#1f8fff)}
         .grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0}
         .section-title{font-size:13px;font-weight:700;margin-top:4px;color:var(--primary-text-color,#e5e7eb)}
+        .editor-panel,.editor-section{padding:10px;border:1px solid var(--divider-color,#4b5563);border-radius:8px;background:var(--card-background-color,rgba(17,24,39,.72));min-width:0}
+        .editor-panel{display:grid;gap:10px}
+        .editor-panel-title{font-size:14px;font-weight:800;color:var(--primary-text-color,#f3f4f6)}
+        .editor-section summary{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;font-weight:800;list-style:none}
+        .editor-section summary::-webkit-details-marker{display:none}
+        .editor-section summary::after{content:"▾";font-size:12px;color:var(--secondary-text-color,#9ca3af);transition:transform .18s ease}
+        .editor-section:not([open]) summary::after{transform:rotate(-90deg)}
+        .editor-section[open] summary{margin-bottom:8px}
+        .section-body{display:grid;gap:8px;min-width:0}
+        .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
+        .action-row{display:flex;justify-content:flex-start;min-width:0}
         .box-field{display:grid;gap:8px;min-width:0;box-sizing:border-box;padding:10px;border:1px solid var(--divider-color,#4b5563);border-radius:8px;background:var(--card-background-color,rgba(17,24,39,.72))}
         .checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
         details{display:grid;gap:8px;min-width:0}
@@ -7389,70 +7957,19 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         .wizard-suggestion code,.wizard-current code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;overflow-wrap:anywhere;white-space:normal;color:var(--secondary-text-color,#cbd5e1)}
         .wizard-current{display:grid;gap:2px;color:var(--secondary-text-color,#9ca3af);font-size:12px;min-width:0}
         .wizard-suggestion-side{display:grid;justify-items:end;gap:6px;font-size:12px;color:var(--secondary-text-color,#9ca3af);white-space:nowrap}
-        @media (max-width:700px){.checkbox-grid{grid-template-columns:minmax(0,1fr)}}
+        @media (max-width:700px){.checkbox-grid,.settings-grid{grid-template-columns:minmax(0,1fr)}}
         @media (max-width:700px){.wizard-suggestion{grid-template-columns:minmax(0,1fr)}.wizard-suggestion-side{justify-items:start;white-space:normal}}
       </style>
       <div class="editor">
         <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
         ${this._renderSetupWizard()}
-        <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
-        <label>${this._escape(this._t("editor.viewMode", {}, "Default view"))} <select data-path="view_mode">${viewModeOptions}</select></label>
-        <label>${this._escape(this._t("editor.advisorMaxSuggestions", {}, "Advisor suggestions"))} (${this._escape(Number(this._config.advisor_max_suggestions ?? 8).toFixed(0))})
-          <input type="range" min="1" max="12" step="1" data-path="advisor_max_suggestions" value="${this._escape(this._config.advisor_max_suggestions ?? 8)}" />
-        </label>
-        <label>${this._escape(this._t("editor.advisorEvSurplusThreshold", {}, "EV surplus threshold (W)"))}
-          <input type="number" min="0" max="1000000" step="50" data-path="advisor_ev_surplus_threshold" value="${this._escape(this._config.advisor_ev_surplus_threshold ?? 1500)}" />
-        </label>
-        <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
-        <label>${this._escape(this._t("editor.customImage"))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
-        <label>${this._escape(this._t("editor.customDayImage"))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
-        <label>${this._escape(this._t("editor.weatherEntity"))}
-          <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />
-        </label>
-        <label>${this._escape(this._t("editor.electricityPriceEntity", {}, "Electricity price entity"))}
-          <input data-path="entities.electricity_price" list="ha-solar-dashboard-entities" placeholder="sensor.electricity_price" value="${this._escape(this._config.entities?.electricity_price || "")}" autocomplete="off" />
-        </label>
-        <label><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
-        <label><input type="checkbox" data-path="show_view_selector" ${this._config.show_view_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showViewSelector", {}, "Show House/Advisor view selector"))}</label>
-        <label><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
-        <label><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
-        <label><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
-        <label><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
-        <label><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
-        <label><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
-        <label><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
-        <label><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> ${this._escape(this._t("editor.showWeatherStatus"))}</label>
-        <label>${this._escape(this._t("editor.hudBoxOpacity"))} (${this._escape((Number(this._config.hud_box_opacity ?? 0.65)).toFixed(2))})
-          <input type="range" min="0" max="1" step="0.05" data-path="hud_box_opacity" value="${this._escape(this._config.hud_box_opacity ?? 0.65)}" />
-        </label>
-        <label>${this._escape(this._t("editor.hudBoxScale"))} (${this._escape((Number(this._config.hud_box_scale ?? 1)).toFixed(2))})
-          <input type="range" min="0.6" max="1.8" step="0.05" data-path="hud_box_scale" value="${this._escape(this._config.hud_box_scale ?? 1)}" />
-        </label>
-        <label>${this._escape(this._t("editor.powerDisplayMode"))}
-          <select data-path="power_display_mode">
-            <option value="raw"${this._config.power_display_mode === "raw" ? " selected" : ""}>${this._escape(this._t("editor.rawMode"))}</option>
-            <option value="auto_kw"${(this._config.power_display_mode || "auto_kw") === "auto_kw" ? " selected" : ""}>${this._escape(this._t("editor.autoWKw"))}</option>
-          </select>
-        </label>
-        <label>${this._escape(this._t("editor.powerDecimals"))} (${this._escape(Number(this._config.power_decimals ?? 2).toFixed(0))})
-          <input type="range" min="0" max="3" step="1" data-path="power_decimals" value="${this._escape(this._config.power_decimals ?? 2)}" />
-        </label>
-        <label>${this._escape(this._t("editor.gridVoltageWarningThreshold", {}, "High grid voltage (V)"))}
-          <input type="number" min="0" max="1000" step="1" data-path="grid_voltage_warning_threshold" value="${this._escape(this._config.grid_voltage_warning_threshold ?? 245)}" />
-        </label>
-        <label>${this._escape(this._t("editor.gridVoltageCriticalThreshold", {}, "Critical grid voltage (V)"))}
-          <input type="number" min="0" max="1000" step="1" data-path="grid_voltage_critical_threshold" value="${this._escape(this._config.grid_voltage_critical_threshold ?? 253)}" />
-        </label>
-        <div class="section-title">${this._escape(this._t("editor.sectionBoxes"))}</div>
-        <div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>
-        <div class="section-title">${this._escape(this._t("editor.sectionOverlays"))}</div>
-        <div class="grid">${overlayFields}</div>
-        <div class="section-title">${this._escape(this._t("editor.sectionKpis"))}</div>
-        <div class="grid">${customKpiFields}</div>
-        <button type="button" data-action="add-kpi">${this._escape(this._t("editor.kpiAdd"))}</button>
-        <div class="section-title">${this._escape(this._t("editor.sectionLargeConsumers", {}, "Additional large consumers"))}</div>
-        <div class="grid">${largeConsumerFields}</div>
-        <button type="button" data-action="add-large-consumer">${this._escape(this._t("editor.consumerAddCustom", {}, "Add custom large consumer"))}</button>
+        ${generalSettingsHtml}
+        ${renderEditorSection("advisor", this._t("editor.sectionAdvisor", {}, "Advisor and prices"), advisorSettingsHtml)}
+        ${renderEditorSection("appearance", this._t("editor.sectionAppearance", {}, "Display and limits"), appearanceSettingsHtml)}
+        ${renderEditorSection("boxes", this._t("editor.sectionBoxes", {}, "Boxes, live/kWh entities, unit, and position"), boxSettingsHtml)}
+        ${renderEditorSection("overlays", this._t("editor.sectionOverlays", {}, "Image overlays"), overlaySettingsHtml)}
+        ${renderEditorSection("kpis", this._t("editor.sectionKpis", {}, "Custom KPI tiles"), kpiSettingsHtml)}
+        ${renderEditorSection("large-consumers", this._t("editor.sectionLargeConsumers", {}, "Additional large consumers"), largeConsumerSettingsHtml)}
       </div>
     `;
 
@@ -7471,6 +7988,8 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         const target = event.currentTarget;
         if (target.dataset.action === "add-kpi") this._addCustomKpi();
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
+        if (target.dataset.action === "add-pv-roof-string") this._addPvRoofString();
+        if (target.dataset.action === "remove-pv-roof-string") this._removePvRoofString(Number(target.dataset.index));
         if (target.dataset.action === "add-large-consumer") this._addLargeConsumer();
         if (target.dataset.action === "remove-large-consumer") this._removeLargeConsumer(Number(target.dataset.index));
         if (target.dataset.action === "auto-detect") this._applyAutoDetection(target.dataset.mode || "fill");
@@ -7483,6 +8002,14 @@ class HaSolarDashboardCardEditor extends HTMLElement {
         this._setupWizardOpen = event.currentTarget.open;
       });
     }
+    this.shadowRoot.querySelectorAll("details[data-editor-section]").forEach((details) => {
+      details.addEventListener("toggle", (event) => {
+        const key = event.currentTarget.dataset.editorSection;
+        if (!key) return;
+        this._editorSectionState = this._editorSectionState || new Map();
+        this._editorSectionState.set(key, event.currentTarget.open);
+      });
+    });
     this.shadowRoot.querySelectorAll("details[data-label-options]").forEach((details) => {
       details.addEventListener("toggle", (event) => {
         const key = event.currentTarget.dataset.labelOptions;

@@ -58,6 +58,7 @@ function buildEntry() {
   let bundled = cardSource;
   bundled = inlineModuleImport(bundled, "modules/advisor.js");
   bundled = inlineModuleImport(bundled, "modules/formatters.js");
+  bundled = inlineModuleImport(bundled, "modules/pv-strings.js");
 
   bundled = bundled
     .replace("const I18N = {};", bundledI18nSource())

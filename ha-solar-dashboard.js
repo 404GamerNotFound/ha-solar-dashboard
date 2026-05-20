@@ -253,6 +253,219 @@ function formatRemainingChargeTimeValue(rawValue, entityUnit = "") {
   return raw;
 }
 
+function normalizePvConfigId(value, fallback) {
+  const id = String(value || fallback || "").trim().replace(/[^\w-]+/g, "_");
+  return id || String(fallback || "item").replace(/[^\w-]+/g, "_");
+}
+
+function clampPvConfigNumber(value, fallback, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+}
+
+function parsePowerLimitWatts(rawValue, defaultUnit = "kw") {
+  if (rawValue === undefined || rawValue === null || rawValue === "") return undefined;
+  if (typeof rawValue === "number") {
+    if (!Number.isFinite(rawValue) || rawValue <= 0) return undefined;
+    return defaultUnit === "w" ? rawValue : rawValue * 1000;
+  }
+
+  const normalized = String(rawValue).trim().toLowerCase().replace(",", ".");
+  const match = normalized.match(/^(-?\d+(?:\.\d+)?)\s*(kwp|kw|w)?$/);
+  if (!match) return undefined;
+  const number = Number(match[1]);
+  if (!Number.isFinite(number) || number <= 0) return undefined;
+  const unit = match[2] || defaultUnit;
+  return unit === "w" ? number : number * 1000;
+}
+
+function normalizePvRoofStringDisplay(value) {
+  const normalized = String(value || "sum").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const aliases = {
+    add: "sum",
+    added: "sum",
+    summed: "sum",
+    total: "sum",
+    zusammen: "sum",
+    summe: "sum",
+    liste: "values",
+    list: "values",
+    split: "values",
+    separate: "values",
+    values_inline: "values",
+    highest: "dominant",
+    max: "dominant",
+    dominant_value: "dominant",
+    high_low: "dominant",
+    strongest: "dominant",
+    staerkster: "dominant",
+    stärkster: "dominant",
+  };
+  const key = aliases[normalized] || normalized;
+  return ["sum", "values", "dominant"].includes(key) ? key : "sum";
+}
+
+function normalizePvRoofStringConfig(raw, index) {
+  const source = raw && typeof raw === "object" ? raw : { power_entity: raw };
+  const id = normalizePvConfigId(source.id || source.key || source.name || source.label, `string_${index + 2}`);
+  const maxPowerSource = source.max_power_kw ?? source.maxPowerKw ?? source.max_power ?? source.maxPower ?? "";
+  const maxPowerKw = maxPowerSource === "" || maxPowerSource === undefined || maxPowerSource === null
+    ? ""
+    : clampPvConfigNumber(maxPowerSource, "", 0, 1000);
+  return {
+    id,
+    label: String(source.label || source.name || `String ${index + 2}`).trim(),
+    power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
+    energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.kwh || source.energy || source.counter || source.meter || "").trim(),
+    max_power_kw: maxPowerKw,
+    visible: source.enabled === false ? false : source.visible !== false,
+  };
+}
+
+function normalizePvRoofStrings(strings) {
+  const rawList = Array.isArray(strings)
+    ? strings
+    : strings && typeof strings === "object"
+      ? Object.entries(strings).map(([id, value]) => (
+        value && typeof value === "object" ? { id, ...value } : { id, power_entity: value }
+      ))
+      : [];
+  return rawList
+    .map((item, index) => normalizePvRoofStringConfig(item, index))
+    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.label);
+}
+
+function pvRoofBaseEnergyEntityId(config = {}) {
+  return String(config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "").trim();
+}
+
+function buildPvRoofStringEntries({
+  strings = [],
+  powerEntityId = "",
+  energyEntityId = "",
+  maxPowerKw,
+  maxPowerW,
+  maxPower,
+} = {}) {
+  const baseMaxPower = parsePowerLimitWatts(maxPowerKw, "kw")
+    || parsePowerLimitWatts(maxPowerW, "w")
+    || parsePowerLimitWatts(maxPower, "kw");
+  const baseEntry = {
+    id: "string_1",
+    label: "String 1",
+    powerEntityId: powerEntityId || "",
+    energyEntityId: energyEntityId || "",
+    maxPowerWatts: baseMaxPower,
+    base: true,
+    visible: true,
+  };
+  const extraEntries = normalizePvRoofStrings(strings)
+    .filter((string) => string.visible !== false)
+    .map((string, index) => ({
+      id: string.id || `string_${index + 2}`,
+      label: string.label || `String ${index + 2}`,
+      powerEntityId: string.power_entity || "",
+      energyEntityId: string.energy_entity || "",
+      maxPowerWatts: parsePowerLimitWatts(string.max_power_kw, "kw"),
+      base: false,
+      visible: true,
+    }))
+    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.maxPowerWatts);
+  return [baseEntry, ...extraEntries];
+}
+
+function hasAdditionalPvRoofStrings(entries = []) {
+  return entries.some((entry) => !entry.base && (entry.powerEntityId || entry.energyEntityId));
+}
+
+function pvRoofStringPowerParts(entries = [], { unit = "auto", readPowerWatts, formatPowerValue } = {}) {
+  return entries
+    .filter((entry) => entry.powerEntityId || !entry.base)
+    .map((entry) => {
+      const watts = typeof readPowerWatts === "function" ? readPowerWatts(entry) : undefined;
+      return {
+        ...entry,
+        amount: watts,
+        formatted: Number.isFinite(watts) && typeof formatPowerValue === "function" ? formatPowerValue(watts, unit, "W") : "—",
+      };
+    })
+    .filter((part) => part.powerEntityId || !part.base);
+}
+
+function pvRoofStringTotalPowerWatts(parts = []) {
+  const values = parts.map((part) => part.amount).filter(Number.isFinite);
+  if (values.length === 0) return undefined;
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
+function pvRoofStringMaxPowerWatts(entries = []) {
+  const maxValues = entries
+    .map((entry) => entry.maxPowerWatts)
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (maxValues.length === 0) return undefined;
+  return maxValues.reduce((sum, value) => sum + value, 0);
+}
+
+function pvRoofStringEnergyParts(entries = [], { range = "live", readEnergyInfo, formatEnergyValue } = {}) {
+  if (range === "live") return [];
+  return entries
+    .filter((entry) => entry.energyEntityId || !entry.base)
+    .map((entry) => {
+      const info = entry.energyEntityId && typeof readEnergyInfo === "function"
+        ? readEnergyInfo(entry, range)
+        : undefined;
+      return {
+        ...entry,
+        amount: info?.amount,
+        loading: info?.loading,
+        error: info?.error,
+        formatted: info?.loading
+          ? "…"
+          : Number.isFinite(info?.amount) && typeof formatEnergyValue === "function"
+            ? formatEnergyValue(info.amount, "kWh", "kWh")
+            : "—",
+      };
+    })
+    .filter((part) => part.energyEntityId || !part.base);
+}
+
+function formatPvRoofStringReading({
+  parts = [],
+  mode = "sum",
+  range = "live",
+  unit = "auto",
+  formatPowerValue,
+  formatEnergyValue,
+} = {}) {
+  if (parts.length === 0) return "";
+  if (parts.some((part) => part.loading)) return "…";
+  const values = parts.map((part) => part.amount).filter(Number.isFinite);
+  if (normalizePvRoofStringDisplay(mode) !== "sum") return parts.map((part) => part.formatted).join(" / ");
+  if (values.length === 0) return "—";
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return range === "live"
+    ? formatPowerValue(total, unit, "W")
+    : formatEnergyValue(total, "kWh", "kWh");
+}
+
+function pvRoofStringAdvisorDetails(entries = [], { readPowerWatts } = {}) {
+  return entries
+    .map((entry, index) => {
+      const watts = typeof readPowerWatts === "function" ? readPowerWatts(entry) : undefined;
+      return {
+        id: entry.id || `string_${index + 1}`,
+        label: entry.label || `String ${index + 1}`,
+        powerEntityId: entry.powerEntityId || "",
+        energyEntityId: entry.energyEntityId || "",
+        watts: Number.isFinite(watts) ? watts : undefined,
+        maxPowerWatts: entry.maxPowerWatts,
+        configured: Boolean(entry.powerEntityId || entry.energyEntityId),
+      };
+    })
+    .filter((entry) => entry.configured);
+}
+
 const CARD_TYPE = "ha-solar-dashboard-card";
 const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
 const REPOSITORY_IMAGE_BASE =
@@ -2416,62 +2629,6 @@ function normalizeLargeConsumers(consumers) {
   return [...defaultConsumers, ...extraConsumers];
 }
 
-function normalizePvRoofStringDisplay(value) {
-  const normalized = String(value || "sum").trim().toLowerCase().replace(/[\s-]+/g, "_");
-  const aliases = {
-    add: "sum",
-    added: "sum",
-    summed: "sum",
-    total: "sum",
-    zusammen: "sum",
-    summe: "sum",
-    liste: "values",
-    list: "values",
-    split: "values",
-    separate: "values",
-    values_inline: "values",
-    highest: "dominant",
-    max: "dominant",
-    dominant_value: "dominant",
-    high_low: "dominant",
-    strongest: "dominant",
-    staerkster: "dominant",
-    stärkster: "dominant",
-  };
-  const key = aliases[normalized] || normalized;
-  return ["sum", "values", "dominant"].includes(key) ? key : "sum";
-}
-
-function normalizePvRoofStringConfig(raw, index) {
-  const source = raw && typeof raw === "object" ? raw : { power_entity: raw };
-  const id = normalizeConfigId(source.id || source.key || source.name || source.label, `string_${index + 2}`);
-  const maxPowerSource = source.max_power_kw ?? source.maxPowerKw ?? source.max_power ?? source.maxPower ?? "";
-  const maxPowerKw = maxPowerSource === "" || maxPowerSource === undefined || maxPowerSource === null
-    ? ""
-    : clampConfigNumber(maxPowerSource, "", 0, 1000);
-  return {
-    id,
-    label: String(source.label || source.name || `String ${index + 2}`).trim(),
-    power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
-    energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.kwh || source.energy || source.counter || source.meter || "").trim(),
-    max_power_kw: maxPowerKw,
-    visible: source.enabled === false ? false : source.visible !== false,
-  };
-}
-
-function normalizePvRoofStrings(strings) {
-  const rawList = Array.isArray(strings)
-    ? strings
-    : strings && typeof strings === "object"
-      ? Object.entries(strings).map(([id, value]) => (
-        value && typeof value === "object" ? { id, ...value } : { id, power_entity: value }
-      ))
-      : [];
-  return rawList
-    .map((item, index) => normalizePvRoofStringConfig(item, index))
-    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.label);
-}
-
 function adjacentWallboxPosition(basePosition = {}) {
   const baseLeft = Number(basePosition.left);
   const baseTop = Number(basePosition.top);
@@ -3062,39 +3219,22 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _pvRoofBaseEnergyEntityId() {
     const config = this._energyEntityConfig("pv_roof_power");
-    return String(config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "").trim();
+    return pvRoofBaseEnergyEntityId(config);
   }
 
   _pvRoofStringEntries() {
-    const baseMaxPower = this._parsePowerLimitWatts(this.config.max_power_kw?.pv_roof_power, "kw")
-      || this._parsePowerLimitWatts(this.config.max_power_w?.pv_roof_power, "w")
-      || this._parsePowerLimitWatts(this.config.max_power?.pv_roof_power, "kw");
-    const baseEntry = {
-      id: "string_1",
-      label: "String 1",
+    return buildPvRoofStringEntries({
+      strings: this.config.pv_roof_strings || [],
       powerEntityId: this.config.entities?.pv_roof_power || "",
       energyEntityId: this._pvRoofBaseEnergyEntityId(),
-      maxPowerWatts: baseMaxPower,
-      base: true,
-      visible: true,
-    };
-    const extraEntries = normalizePvRoofStrings(this.config.pv_roof_strings || [])
-      .filter((string) => string.visible !== false)
-      .map((string, index) => ({
-        id: string.id || `string_${index + 2}`,
-        label: string.label || `String ${index + 2}`,
-        powerEntityId: string.power_entity || "",
-        energyEntityId: string.energy_entity || "",
-        maxPowerWatts: this._parsePowerLimitWatts(string.max_power_kw, "kw"),
-        base: false,
-        visible: true,
-      }))
-      .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.maxPowerWatts);
-    return [baseEntry, ...extraEntries];
+      maxPowerKw: this.config.max_power_kw?.pv_roof_power,
+      maxPowerW: this.config.max_power_w?.pv_roof_power,
+      maxPower: this.config.max_power?.pv_roof_power,
+    });
   }
 
   _hasAdditionalPvRoofStrings() {
-    return this._pvRoofStringEntries().some((entry) => !entry.base && (entry.powerEntityId || entry.energyEntityId));
+    return hasAdditionalPvRoofStrings(this._pvRoofStringEntries());
   }
 
   _pvRoofStringEntryPowerWatts(entry) {
@@ -3109,63 +3249,34 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _pvRoofStringPowerParts(metric) {
     const unit = this._pvRoofPowerUnit(metric);
-    return this._pvRoofStringEntries()
-      .filter((entry) => entry.powerEntityId || !entry.base)
-      .map((entry) => {
-        const watts = this._pvRoofStringEntryPowerWatts(entry);
-        return {
-          ...entry,
-          amount: watts,
-          formatted: Number.isFinite(watts) ? this._formatPowerValue(watts, unit, "W") : "—",
-        };
-      })
-      .filter((part) => part.powerEntityId || !part.base);
+    return pvRoofStringPowerParts(this._pvRoofStringEntries(), {
+      unit,
+      readPowerWatts: (entry) => this._pvRoofStringEntryPowerWatts(entry),
+      formatPowerValue: (value, targetUnit, entityUnit) => this._formatPowerValue(value, targetUnit, entityUnit),
+    });
   }
 
   _pvRoofStringPowerWatts() {
     if (!this._hasAdditionalPvRoofStrings()) return undefined;
-    const values = this._pvRoofStringPowerParts()
-      .map((part) => part.amount)
-      .filter(Number.isFinite);
-    if (values.length === 0) return undefined;
-    return values.reduce((sum, value) => sum + value, 0);
+    return pvRoofStringTotalPowerWatts(this._pvRoofStringPowerParts());
   }
 
   _pvRoofStringMaxPowerWatts() {
     if (!this._hasAdditionalPvRoofStrings()) return undefined;
-    const maxValues = this._pvRoofStringEntries()
-      .map((entry) => entry.maxPowerWatts)
-      .filter((value) => Number.isFinite(value) && value > 0);
-    if (maxValues.length === 0) return undefined;
-    return maxValues.reduce((sum, value) => sum + value, 0);
+    return pvRoofStringMaxPowerWatts(this._pvRoofStringEntries());
   }
 
   _pvRoofStringEnergyParts() {
     const range = this._currentEnergyRange();
-    if (range === "live") return [];
-    return this._pvRoofStringEntries()
-      .filter((entry) => entry.energyEntityId || !entry.base)
-      .map((entry) => {
-        const info = entry.energyEntityId
-          ? this._energyRangeConsumptionInfoForSource({
-            entityId: entry.energyEntityId,
-            mode: range === "total" ? "direct" : "counter",
-            range,
-          })
-          : undefined;
-        return {
-          ...entry,
-          amount: info?.amount,
-          loading: info?.loading,
-          error: info?.error,
-          formatted: info?.loading
-            ? "…"
-            : Number.isFinite(info?.amount)
-              ? this._formatEnergyValue(info.amount, "kWh", "kWh")
-              : "—",
-        };
-      })
-      .filter((part) => part.energyEntityId || !part.base);
+    return pvRoofStringEnergyParts(this._pvRoofStringEntries(), {
+      range,
+      readEnergyInfo: (entry, selectedRange) => this._energyRangeConsumptionInfoForSource({
+        entityId: entry.energyEntityId,
+        mode: selectedRange === "total" ? "direct" : "counter",
+        range: selectedRange,
+      }),
+      formatEnergyValue: (value, entityUnit, targetUnit) => this._formatEnergyValue(value, entityUnit, targetUnit),
+    });
   }
 
   _pvRoofStringReadingParts(metric) {
@@ -3177,17 +3288,14 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _formatPvRoofStringReading(metric) {
     const parts = this._pvRoofStringReadingParts(metric);
-    if (parts.length === 0) return "";
-    if (parts.some((part) => part.loading)) return "…";
-    const values = parts.map((part) => part.amount).filter(Number.isFinite);
-    if (this._pvRoofStringDisplayMode() !== "sum") {
-      return parts.map((part) => part.formatted).join(" / ");
-    }
-    if (values.length === 0) return "—";
-    const total = values.reduce((sum, value) => sum + value, 0);
-    return this._currentEnergyRange() === "live"
-      ? this._formatPowerValue(total, this._pvRoofPowerUnit(metric), "W")
-      : this._formatEnergyValue(total, "kWh", "kWh");
+    return formatPvRoofStringReading({
+      parts,
+      mode: this._pvRoofStringDisplayMode(),
+      range: this._currentEnergyRange(),
+      unit: this._pvRoofPowerUnit(metric),
+      formatPowerValue: (value, unit, entityUnit) => this._formatPowerValue(value, unit, entityUnit),
+      formatEnergyValue: (value, entityUnit, targetUnit) => this._formatEnergyValue(value, entityUnit, targetUnit),
+    });
   }
 
   _renderMetricValueHtml(metric) {
@@ -3918,19 +4026,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _parsePowerLimitWatts(rawValue, defaultUnit = "kw") {
-    if (rawValue === undefined || rawValue === null || rawValue === "") return undefined;
-    if (typeof rawValue === "number") {
-      if (!Number.isFinite(rawValue) || rawValue <= 0) return undefined;
-      return defaultUnit === "w" ? rawValue : rawValue * 1000;
-    }
-
-    const normalized = String(rawValue).trim().toLowerCase().replace(",", ".");
-    const match = normalized.match(/^(-?\d+(?:\.\d+)?)\s*(kwp|kw|w)?$/);
-    if (!match) return undefined;
-    const number = Number(match[1]);
-    if (!Number.isFinite(number) || number <= 0) return undefined;
-    const unit = match[2] || defaultUnit;
-    return unit === "w" ? number : number * 1000;
+    return parsePowerLimitWatts(rawValue, defaultUnit);
   }
 
   _maxPowerWatts(metric) {
@@ -5611,20 +5707,9 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _pvRoofStringAdvisorDetails() {
     if (!this._hasAdditionalPvRoofStrings()) return [];
-    return this._pvRoofStringEntries()
-      .map((entry, index) => {
-        const watts = this._pvRoofStringEntryPowerWatts(entry);
-        return {
-          id: entry.id || `string_${index + 1}`,
-          label: entry.label || `String ${index + 1}`,
-          powerEntityId: entry.powerEntityId || "",
-          energyEntityId: entry.energyEntityId || "",
-          watts: Number.isFinite(watts) ? watts : undefined,
-          maxPowerWatts: entry.maxPowerWatts,
-          configured: Boolean(entry.powerEntityId || entry.energyEntityId),
-        };
-      })
-      .filter((entry) => entry.configured);
+    return pvRoofStringAdvisorDetails(this._pvRoofStringEntries(), {
+      readPowerWatts: (entry) => this._pvRoofStringEntryPowerWatts(entry),
+    });
   }
 
   _advisorSnapshot() {

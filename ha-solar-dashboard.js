@@ -599,6 +599,80 @@ function formatImportExportStatus(status = {}) {
   return `${status.label}: ${status.value}`;
 }
 
+const HTML_RAW = Symbol("htmlRaw");
+const VOID_ELEMENTS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function rawHtml(value) {
+  return { [HTML_RAW]: true, value: String(value ?? "") };
+}
+
+function classNames(...values) {
+  return values.flat(Infinity)
+    .flatMap((value) => {
+      if (!value) return [];
+      if (typeof value === "string") return [value];
+      if (Array.isArray(value)) return classNames(...value).split(" ").filter(Boolean);
+      if (typeof value === "object") return Object.entries(value)
+        .filter(([, enabled]) => Boolean(enabled))
+        .map(([name]) => name);
+      return [String(value)];
+    })
+    .filter(Boolean)
+    .join(" ");
+}
+
+function kebabCase(value) {
+  return String(value).replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
+function styleMap(styles = {}) {
+  if (typeof styles === "string") return styles;
+  return Object.entries(styles)
+    .filter(([, value]) => value !== undefined && value !== null && value !== false && value !== "")
+    .map(([name, value]) => `${kebabCase(name)}:${value}`)
+    .join(";");
+}
+
+function htmlAttributes(attrs = {}) {
+  return Object.entries(attrs)
+    .flatMap(([name, value]) => {
+      if (value === undefined || value === null || value === false) return [];
+      if (value === true) return [escapeHtml(name)];
+      const attrValue = name === "class"
+        ? classNames(value)
+        : name === "style" && typeof value === "object"
+          ? styleMap(value)
+          : value;
+      if (attrValue === "") return [];
+      return [`${escapeHtml(name)}="${escapeHtml(attrValue)}"`];
+    })
+    .join(" ");
+}
+
+function childToHtml(child) {
+  if (child === undefined || child === null || child === false) return "";
+  if (Array.isArray(child)) return child.map(childToHtml).join("");
+  if (child && typeof child === "object" && child[HTML_RAW]) return child.value;
+  return escapeHtml(child);
+}
+
+function htmlTag(name, attrs = {}, children = []) {
+  const attrText = htmlAttributes(attrs);
+  const tagName = String(name).toLowerCase();
+  const openTag = attrText ? `<${tagName} ${attrText}>` : `<${tagName}>`;
+  if (VOID_ELEMENTS.has(tagName)) return openTag;
+  return `${openTag}${childToHtml(children)}</${tagName}>`;
+}
+
 const CARD_TYPE = "ha-solar-dashboard-card";
 const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
 const REPOSITORY_IMAGE_BASE =
@@ -3437,10 +3511,10 @@ class HaSolarDashboardCard extends HTMLElement {
       ? [...parts].sort((a, b) => (Number.isFinite(b.amount) ? b.amount : -Infinity) - (Number.isFinite(a.amount) ? a.amount : -Infinity))
       : parts;
     const valueHtml = orderedParts.map((part, index) => {
-      const className = mode === "dominant" && index > 0 ? "value-part value-secondary" : "value-part";
-      return `<span class="${className}" title="${this._escape(part.label || "")}">${this._escape(part.formatted)}</span>`;
-    }).join(`<span class="value-separator">/</span>`);
-    return `<span class="value-combo value-combo-${this._escape(mode)}">${valueHtml}</span>`;
+      const className = classNames("value-part", { "value-secondary": mode === "dominant" && index > 0 });
+      return htmlTag("span", { class: className, title: part.label || "" }, part.formatted);
+    }).join(htmlTag("span", { class: "value-separator" }, "/"));
+    return htmlTag("span", { class: ["value-combo", `value-combo-${mode}`] }, rawHtml(valueHtml));
   }
 
   _formatReading(metric) {
@@ -4166,7 +4240,12 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderMetricMeter(metric) {
     const percent = this._meterPercent(metric);
     if (percent === undefined) return "";
-    return `<div class="metric-meter" data-meter="${this._escape(metric.key)}" title="${this._escape(this._meterTooltip(metric))}" aria-hidden="true"><span style="width:${percent.toFixed(0)}%"></span></div>`;
+    return htmlTag("div", {
+      class: "metric-meter",
+      "data-meter": metric.key,
+      title: this._meterTooltip(metric),
+      "aria-hidden": "true",
+    }, rawHtml(htmlTag("span", { style: { width: `${percent.toFixed(0)}%` } })));
   }
 
   _entityFlowValue(entityId) {
@@ -5431,25 +5510,17 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _escape(value) {
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+    return escapeHtml(value);
   }
 
   _renderHouseSelector(activeHouse) {
     if (!this.config.show_house_selector) return "";
 
     const options = Object.entries(HOUSE_VARIANTS)
-      .map(([key, variant]) => {
-        const selected = key === activeHouse ? " selected" : "";
-        return `<option value="${key}"${selected}>${this._escape(this._houseLabel(key, variant))}</option>`;
-      })
+      .map(([key, variant]) => htmlTag("option", { value: key, selected: key === activeHouse }, this._houseLabel(key, variant)))
       .join("");
 
-    return `<select class="house-select" aria-label="${this._escape(this._t("aria.houseSelector"))}">${options}</select>`;
+    return htmlTag("select", { class: "house-select", "aria-label": this._t("aria.houseSelector") }, rawHtml(options));
   }
 
   _renderViewSelector() {
@@ -5459,32 +5530,31 @@ class HaSolarDashboardCard extends HTMLElement {
       .map((option) => {
         const active = option.key === activeView;
         const label = this._t(option.labelKey, {}, option.label);
-        return `
-          <button
-            class="view-mode-button${active ? " active" : ""}"
-            type="button"
-            data-view-mode="${this._escape(option.key)}"
-            aria-pressed="${active ? "true" : "false"}"
-            title="${this._escape(label)}"
-          >${this._escape(label)}</button>
-        `;
+        return htmlTag("button", {
+          class: classNames("view-mode-button", { active }),
+          type: "button",
+          "data-view-mode": option.key,
+          "aria-pressed": active ? "true" : "false",
+          title: label,
+        }, label);
       })
       .join("");
 
-    return `<div class="view-mode-toggle" role="group" aria-label="${this._escape(this._t("aria.viewSelector", {}, "Select dashboard view"))}">${buttons}</div>`;
+    return htmlTag("div", {
+      class: "view-mode-toggle",
+      role: "group",
+      "aria-label": this._t("aria.viewSelector", {}, "Select dashboard view"),
+    }, rawHtml(buttons));
   }
 
   _renderEnergyRangeSelector() {
     if (this.config.show_energy_range_selector !== true) return "";
     const activeRange = this._currentEnergyRange();
     const options = ENERGY_RANGE_OPTIONS
-      .map((option) => {
-        const selected = option.key === activeRange ? " selected" : "";
-        return `<option value="${option.key}"${selected}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`;
-      })
+      .map((option) => htmlTag("option", { value: option.key, selected: option.key === activeRange }, this._t(option.labelKey, {}, option.label)))
       .join("");
 
-    return `<select class="energy-range-select" aria-label="${this._escape(this._t("aria.energyRangeSelector"))}">${options}</select>`;
+    return htmlTag("select", { class: "energy-range-select", "aria-label": this._t("aria.energyRangeSelector") }, rawHtml(options));
   }
 
   _overlayDefault(activeHouse, key) {
@@ -5561,20 +5631,29 @@ class HaSolarDashboardCard extends HTMLElement {
     const top = this._toPercent(position.top, 50);
     const tooltip = this._metricTooltip(metric, variant);
     const warning = this._metricWarning(metric);
+    const labelHtml = htmlTag("div", { class: "label", "data-label": metric.key }, this._metricLabel(metric, variant));
+    const valueHtml = htmlTag("div", { class: "value", "data-value": metric.key }, rawHtml(this._renderMetricValueHtml(metric)));
+    const bodyHtml = [
+      labelHtml,
+      htmlTag("div", { class: "value-row" }, rawHtml(valueHtml)),
+      this._renderPvMetaRow(metric, { placement: "image" }),
+      this._renderBatteryMetaRow(metric, { showFlowLabel: false, placement: "image" }),
+      this._renderWallboxPhaseRow(metric, { placement: "image" }),
+      this._renderVoltageMetaRow(metric, { placement: "image" }),
+      this._renderMetricMeter(metric),
+    ].join("");
 
-    return `
-      <div class="metric${this._metricStateClass(metric)}" data-accent-key="${metric.key}" data-metric="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="left: ${left}%; top: ${top}%; ${this._escape(this._accentStyle(metric))}">
-        <div class="label" data-label="${metric.key}">${this._escape(this._metricLabel(metric, variant))}</div>
-        <div class="value-row">
-          <div class="value" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
-        </div>
-        ${this._renderPvMetaRow(metric, { placement: "image" })}
-        ${this._renderBatteryMetaRow(metric, { showFlowLabel: false, placement: "image" })}
-        ${this._renderWallboxPhaseRow(metric, { placement: "image" })}
-        ${this._renderVoltageMetaRow(metric, { placement: "image" })}
-        ${this._renderMetricMeter(metric)}
-      </div>
-    `;
+    return htmlTag("div", {
+      class: `metric${this._metricStateClass(metric)}`,
+      "data-accent-key": metric.key,
+      "data-metric": metric.key,
+      "data-tooltip-key": metric.key,
+      "data-chart-key": this._metricEntityId(metric) ? metric.key : "",
+      "data-warning": warning?.label || "",
+      title: tooltip,
+      "aria-label": tooltip,
+      style: `${styleMap({ left: `${left}%`, top: `${top}%` })};${this._accentStyle(metric)}`,
+    }, rawHtml(bodyHtml));
   }
 
   _flowMetric(key) {
@@ -7015,12 +7094,15 @@ class HaSolarDashboardCard extends HTMLElement {
     const sourceLabel = alert.metric ? this._metricLabel(alert.metric, this._currentVariant) : "";
     const source = sourceLabel && alert.entityId ? `${sourceLabel}: ${alert.entityId}` : alert.entityId || "";
     const text = `${alert.label}${value}`;
-    return `
-      <div class="voltage-alert voltage-alert-${this._escape(alert.type)}" data-grid-voltage-alert title="${this._escape(source)}" aria-label="${this._escape(text)}">
-        <strong>${this._escape(alert.label)}</strong>
-        <span>${this._escape(alert.value || "")}</span>
-      </div>
-    `;
+    return htmlTag("div", {
+      class: ["voltage-alert", `voltage-alert-${alert.type}`],
+      "data-grid-voltage-alert": true,
+      title: source,
+      "aria-label": text,
+    }, [
+      rawHtml(htmlTag("strong", {}, alert.label)),
+      rawHtml(htmlTag("span", {}, alert.value || "")),
+    ]);
   }
 
   _renderCardShell(state) {
@@ -8066,17 +8148,24 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   _renderLabelVisibilityOptions(key) {
     const visibility = this._labelVisibility(key);
     const isOpen = this._openLabelOptions?.has(key);
-    return `
-      <details class="label-options" data-label-options="${this._escape(key)}"${isOpen ? " open" : ""}>
-        <summary>${this._escape(this._t("editor.labelOptions", {}, "Label display"))}</summary>
-        <div class="checkbox-grid">
-          <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.image" ${visibility.image ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show label in image"))}</label>
-          <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.footer" ${visibility.footer ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowFooter", {}, "Show label in footer KPIs"))}</label>
-          <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.hide_mobile" ${visibility.hideMobile ? "checked" : ""}/> ${this._escape(this._t("editor.labelHideMobile", {}, "Hide on phones"))}</label>
-          <label class="inline"><input type="checkbox" data-path="label_visibility.${key}.hide_desktop" ${visibility.hideDesktop ? "checked" : ""}/> ${this._escape(this._t("editor.labelHideDesktop", {}, "Hide on desktop"))}</label>
-        </div>
-      </details>
-    `;
+    const checkbox = (path, checked, label) => htmlTag("label", { class: "inline" }, [
+      rawHtml(htmlTag("input", { type: "checkbox", "data-path": path, checked })),
+      ` ${label}`,
+    ]);
+    const checkboxGrid = htmlTag("div", { class: "checkbox-grid" }, rawHtml([
+      checkbox(`label_visibility.${key}.image`, visibility.image, this._t("editor.labelShowImage", {}, "Show label in image")),
+      checkbox(`label_visibility.${key}.footer`, visibility.footer, this._t("editor.labelShowFooter", {}, "Show label in footer KPIs")),
+      checkbox(`label_visibility.${key}.hide_mobile`, visibility.hideMobile, this._t("editor.labelHideMobile", {}, "Hide on phones")),
+      checkbox(`label_visibility.${key}.hide_desktop`, visibility.hideDesktop, this._t("editor.labelHideDesktop", {}, "Hide on desktop")),
+    ].join("")));
+    return htmlTag("details", {
+      class: "label-options",
+      "data-label-options": key,
+      open: isOpen,
+    }, [
+      rawHtml(htmlTag("summary", {}, this._t("editor.labelOptions", {}, "Label display"))),
+      rawHtml(checkboxGrid),
+    ]);
   }
 
   _energyEntityConfig(metric) {

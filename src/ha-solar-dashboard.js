@@ -37,6 +37,20 @@ import {
   pvRoofStringPowerParts,
   pvRoofStringTotalPowerWatts,
 } from "../modules/pv-strings.js";
+import {
+  formatGridStatusReading,
+  formatGridValueReading,
+  formatImportExportStatus,
+  gridExportEntityId,
+  gridImportEntityId,
+  gridPrimaryEntityId,
+  gridSignedEntityId,
+  gridSignedFlowInfo,
+  gridSplitFlowInfo,
+  gridSplitPowerDetails,
+  gridStatusFromFlowInfo,
+  hasGridPowerSource,
+} from "../modules/grid-flow.js";
 
 const CARD_TYPE = "ha-solar-dashboard-card";
 const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
@@ -1019,25 +1033,23 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _gridSignedEntityId() {
-    return this.config.entities?.import_export_power || "";
+    return gridSignedEntityId(this.config);
   }
 
   _gridImportEntityId() {
-    const aliases = ["import_power", "grid_import_power", "import_export_import_power"];
-    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+    return gridImportEntityId(this.config);
   }
 
   _gridExportEntityId() {
-    const aliases = ["export_power", "grid_export_power", "import_export_export_power"];
-    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+    return gridExportEntityId(this.config);
   }
 
   _hasGridPowerSource() {
-    return Boolean(this._gridSignedEntityId() || this._gridImportEntityId() || this._gridExportEntityId());
+    return hasGridPowerSource(this.config);
   }
 
   _gridPrimaryEntityId() {
-    return this._gridSignedEntityId() || this._gridImportEntityId() || this._gridExportEntityId();
+    return gridPrimaryEntityId(this.config);
   }
 
   _metricEntityId(metric) {
@@ -1519,59 +1531,42 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _gridSignedFlowInfo() {
     const entityId = this._gridSignedEntityId();
-    if (!entityId) return undefined;
-    const rawValue = this._getEntityValue(entityId, undefined);
-    const value = this._formatValue(rawValue);
-    if (value === "—") {
-      const warning = this._metricWarning(GRID_STATUS_METRIC);
-      return { kind: "unavailable", label: warning?.label || this._t("warning.sensorUnavailable"), value: "—" };
-    }
-
-    const entityUnit = this._getEntityUnit(entityId);
-    const watts = this._valueAsWatts(rawValue, entityUnit);
-    const unit = this.config.units?.import_export_power || "auto";
-    if (!Number.isFinite(watts)) {
-      const formattedValue = this._isEnergyUnit(entityUnit)
-        ? this._formatEnergyValue(rawValue, entityUnit, unit === "auto" ? "kWh" : unit)
-        : this._formatPowerValue(rawValue, unit, entityUnit);
-      return { kind: "unknown", label: String(value), value: formattedValue };
-    }
-    return { kind: "flow", watts, unit };
+    return gridSignedFlowInfo({
+      entityId,
+      rawValue: this._getEntityValue(entityId, undefined),
+      entityUnit: this._getEntityUnit(entityId),
+      unit: this.config.units?.import_export_power || "auto",
+      unavailableLabel: this._metricWarning(GRID_STATUS_METRIC)?.label || this._t("warning.sensorUnavailable"),
+      formatValue: (value) => this._formatValue(value),
+      valueAsWatts: (value, unit) => this._valueAsWatts(value, unit),
+      isEnergyUnit: (unit) => this._isEnergyUnit(unit),
+      formatEnergyValue: (value, entityUnit, targetUnit) => this._formatEnergyValue(value, entityUnit, targetUnit),
+      formatPowerValue: (value, unit, entityUnit) => this._formatPowerValue(value, unit, entityUnit),
+    });
   }
 
   _gridSplitFlowInfo() {
     const importEntityId = this._gridImportEntityId();
     const exportEntityId = this._gridExportEntityId();
-    if (!importEntityId && !exportEntityId) return undefined;
-
-    const importValue = this._entityFlowValue(importEntityId);
-    const exportValue = this._entityFlowValue(exportEntityId);
-    if (!importValue && !exportValue) {
-      const warning = this._metricWarning(GRID_STATUS_METRIC);
-      return { kind: "unavailable", label: warning?.label || this._t("warning.sensorUnavailable"), value: "—" };
-    }
-
-    const importWatts = Math.abs(importValue?.kind === "energy" ? importValue.amount * 1000 : importValue?.amount || 0);
-    const exportWatts = Math.abs(exportValue?.kind === "energy" ? exportValue.amount * 1000 : exportValue?.amount || 0);
-    return {
-      kind: "flow",
-      watts: importWatts - exportWatts,
+    return gridSplitFlowInfo({
+      importEntityId,
+      exportEntityId,
+      importValue: this._entityFlowValue(importEntityId),
+      exportValue: this._entityFlowValue(exportEntityId),
       unit: this.config.units?.import_export_power || this.config.units?.power || "auto",
-    };
+      unavailableLabel: this._metricWarning(GRID_STATUS_METRIC)?.label || this._t("warning.sensorUnavailable"),
+    });
   }
 
   _gridSplitPowerDetails() {
     const importEntityId = this._gridImportEntityId();
     const exportEntityId = this._gridExportEntityId();
-    if (!importEntityId || !exportEntityId) return undefined;
-    const importValue = this._entityFlowValue(importEntityId);
-    const exportValue = this._entityFlowValue(exportEntityId);
-    return {
+    return gridSplitPowerDetails({
       importEntityId,
       exportEntityId,
-      importWatts: Math.abs(importValue?.kind === "energy" ? importValue.amount * 1000 : importValue?.amount || 0),
-      exportWatts: Math.abs(exportValue?.kind === "energy" ? exportValue.amount * 1000 : exportValue?.amount || 0),
-    };
+      importValue: this._entityFlowValue(importEntityId),
+      exportValue: this._entityFlowValue(exportEntityId),
+    });
   }
 
   _gridFlowInfo() {
@@ -1579,19 +1574,11 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _gridStatusFromFlowInfo(info) {
-    if (!info) return { kind: "none", label: "", value: "" };
-    if (info.kind !== "flow") return info;
-    const watts = info.watts;
-    const unit = info.unit || "auto";
-    const magnitude = Math.abs(watts);
-    if (magnitude <= this._gridNeutralThreshold()) {
-      return { kind: "neutral", label: this._gridStatusLabel("neutral"), value: this._formatPowerValue(0, unit, "W") };
-    }
-
-    const directionKind = watts < 0 ? "export" : "import";
-    const direction = this._gridStatusLabel(directionKind);
-    const formattedValue = this._formatPowerValue(magnitude, unit, "W");
-    return { kind: directionKind, label: direction, value: formattedValue };
+    return gridStatusFromFlowInfo(info, {
+      neutralThreshold: this._gridNeutralThreshold(),
+      labelForKind: (kind) => this._gridStatusLabel(kind),
+      formatPowerValue: (value, unit, entityUnit) => this._formatPowerValue(value, unit, entityUnit),
+    });
   }
 
   _gridStatusInfo() {
@@ -1599,24 +1586,15 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _formatGridStatusReading() {
-    const status = this._gridStatusInfo();
-    if (!status.label) return "—";
-    if (status.kind === "neutral") return status.label;
-    if (status.value && status.value !== "—") return `${status.label} ${status.value}`;
-    return status.label;
+    return formatGridStatusReading(this._gridStatusInfo());
   }
 
   _formatGridValueReading() {
-    const status = this._gridStatusInfo();
-    if (!status.label) return "—";
-    return status.value || "—";
+    return formatGridValueReading(this._gridStatusInfo());
   }
 
   _formatImportExportStatus() {
-    const status = this._gridStatusInfo();
-    if (!status.label || status.kind === "unavailable") return "";
-    if (status.kind === "neutral") return status.label;
-    return `${status.label}: ${status.value}`;
+    return formatImportExportStatus(this._gridStatusInfo());
   }
 
   _statusLabel() {

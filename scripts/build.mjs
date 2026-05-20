@@ -59,6 +59,7 @@ function buildEntry() {
   bundled = inlineModuleImport(bundled, "modules/advisor.js");
   bundled = inlineModuleImport(bundled, "modules/formatters.js");
   bundled = inlineModuleImport(bundled, "modules/pv-strings.js");
+  bundled = inlineModuleImport(bundled, "modules/grid-flow.js");
 
   bundled = bundled
     .replace("const I18N = {};", bundledI18nSource())

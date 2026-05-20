@@ -118,6 +118,18 @@ function validateDistPackage() {
     }
   }
 
+  const sourceStyleFiles = listFiles("styles").filter((file) => file.endsWith(".css")).sort();
+  const distStyleFiles = listFiles("dist/styles").filter((file) => file.endsWith(".css")).sort();
+  if (sourceStyleFiles.length === 0) fail("styles must contain at least one CSS file");
+  if (sourceStyleFiles.join(",") !== distStyleFiles.join(",")) {
+    fail(`dist/styles must contain the same CSS files as styles, found: ${distStyleFiles.join(", ")}`);
+  }
+  for (const file of sourceStyleFiles) {
+    if (hash(`styles/${file}`) !== hash(`dist/styles/${file}`)) {
+      fail(`dist/styles/${file} must match styles/${file}`);
+    }
+  }
+
   const source = readText("ha-solar-dashboard.js");
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");

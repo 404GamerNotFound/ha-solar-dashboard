@@ -146,6 +146,7 @@ function validatePackage() {
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");
   if (rootSource.includes('from "./modules/') || rootSource.includes("import {")) fail("ha-solar-dashboard.js must be a bundled entry without static module imports");
+  if (rootSource.includes("import.meta")) fail("ha-solar-dashboard.js must not rely on import.meta so it can survive legacy resource loading");
   if (rootSource.includes('assetUrl("styles/')) fail("ha-solar-dashboard.js must inline critical CSS for direct HACS loads");
   if (!rootSource.includes('"de": {')) fail("ha-solar-dashboard.js must inline translation dictionaries for direct HACS loads");
 

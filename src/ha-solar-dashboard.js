@@ -51,8 +51,19 @@ const SUPPORTED_LANGUAGES = ["en", "de", "es", "fr", "pl"];
 const I18N = {};
 const I18N_LOADS = new Map();
 
+function scriptAssetBaseUrl() {
+  const currentScriptUrl = globalThis.document?.currentScript?.src;
+  if (currentScriptUrl) return currentScriptUrl;
+  const scripts = Array.from(globalThis.document?.querySelectorAll?.("script[src]") || []);
+  const script = scripts
+    .map((element) => element.src || element.getAttribute?.("src") || "")
+    .reverse()
+    .find((src) => /ha-solar-dashboard(?:\.js|\/)/.test(src));
+  return script || globalThis.location?.href || "http://localhost/";
+}
+
 function assetUrl(path) {
-  return new URL(path, import.meta.url).href;
+  return new URL(path, scriptAssetBaseUrl()).href;
 }
 
 function translationUrl(language) {
@@ -3315,7 +3326,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _localImageUrl(file) {
     try {
-      return new URL(`images/${file}`, import.meta.url).href;
+      return assetUrl(`images/${file}`);
     } catch (_err) {
       return "";
     }
@@ -3462,12 +3473,12 @@ class HaSolarDashboardCard extends HTMLElement {
     const file = `${key}.png`;
     const urls = [this._remoteImageUrl(file)];
     try {
-      urls.push(new URL(file, import.meta.url).href);
+      urls.push(assetUrl(file));
     } catch (_err) {
       // no local root fallback
     }
     try {
-      urls.push(new URL(`images/${file}`, import.meta.url).href);
+      urls.push(assetUrl(`images/${file}`));
     } catch (_err) {
       // no local images fallback
     }

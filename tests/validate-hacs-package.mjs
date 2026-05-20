@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,10 +17,6 @@ function readText(path) {
 
 function assertExists(path) {
   if (!existsSync(join(root, path))) fail(`${path} is missing`);
-}
-
-function hash(path) {
-  return createHash("sha256").update(readFileSync(join(root, path))).digest("hex");
 }
 
 function listFiles(path) {
@@ -87,77 +82,72 @@ function validateReadme() {
   }
 }
 
-function validateDistPackage() {
+function validatePackage() {
   assertExists("src/ha-solar-dashboard.js");
   assertExists("ha-solar-dashboard.js");
-  assertExists("dist/ha-solar-dashboard.js");
 
-  const rootCard = hash("ha-solar-dashboard.js");
-  const distCard = hash("dist/ha-solar-dashboard.js");
-  if (rootCard !== distCard) fail("dist/ha-solar-dashboard.js must match the root HACS entry file");
-
-  const distJsFiles = listFiles("dist").filter((file) => file.endsWith(".js"));
-  if (!distJsFiles.includes(`${repoName}.js`)) fail(`dist must contain ${repoName}.js`);
-  if (distJsFiles.length !== 1) fail(`dist must contain exactly one JavaScript entry file, found: ${distJsFiles.join(", ")}`);
+  const distFiles = listFilesRecursive("dist");
+  if (distFiles.length > 0) {
+    fail(`dist must not contain duplicated package files; found: ${distFiles.join(", ")}`);
+  }
 
   try {
-    execFileSync("node", [join(root, "scripts/build-dist.mjs"), "--check"], { stdio: "pipe" });
+    execFileSync("node", [join(root, "scripts/build.mjs"), "--check"], { stdio: "pipe" });
   } catch (error) {
-    fail(`ha-solar-dashboard.js and dist/ha-solar-dashboard.js must be generated from source:\n${error.stderr?.toString() || error.message}`);
+    fail(`ha-solar-dashboard.js must be generated from source:\n${error.stderr?.toString() || error.message}`);
   }
 
   const sourceI18nFiles = listFiles("i18n").filter((file) => file.endsWith(".json")).sort();
-  const distI18nFiles = listFiles("dist/i18n").filter((file) => file.endsWith(".json")).sort();
   if (sourceI18nFiles.length === 0) fail("i18n must contain at least one translation JSON file");
-  if (sourceI18nFiles.join(",") !== distI18nFiles.join(",")) {
-    fail(`dist/i18n must contain the same JSON files as i18n, found: ${distI18nFiles.join(", ")}`);
-  }
+  const translations = new Map();
   for (const file of sourceI18nFiles) {
     try {
-      JSON.parse(readText(`i18n/${file}`));
-      JSON.parse(readText(`dist/i18n/${file}`));
+      const sourceTranslation = JSON.parse(readText(`i18n/${file}`));
+      translations.set(file, sourceTranslation);
     } catch (error) {
-      fail(`i18n/${file} or dist/i18n/${file} is not valid JSON: ${error.message}`);
+      fail(`i18n/${file} is not valid JSON: ${error.message}`);
       continue;
     }
-    if (hash(`i18n/${file}`) !== hash(`dist/i18n/${file}`)) {
-      fail(`dist/i18n/${file} must match i18n/${file}`);
+  }
+  const defaultTranslation = translations.get("en.json");
+  const defaultKeys = Object.keys(defaultTranslation || {}).sort();
+  if (defaultKeys.length === 0) fail("i18n/en.json must contain translation keys");
+  const placeholders = (value) => [...String(value).matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().join(",");
+  for (const [file, translation] of translations) {
+    const keys = Object.keys(translation).sort();
+    const missing = defaultKeys.filter((key) => !Object.prototype.hasOwnProperty.call(translation, key));
+    const extra = keys.filter((key) => !Object.prototype.hasOwnProperty.call(defaultTranslation || {}, key));
+    const empty = keys.filter((key) => String(translation[key]).trim() === "");
+    if (missing.length > 0) fail(`${file} is missing translation keys: ${missing.join(", ")}`);
+    if (extra.length > 0) fail(`${file} has unknown translation keys: ${extra.join(", ")}`);
+    if (empty.length > 0) fail(`${file} has empty translation values: ${empty.join(", ")}`);
+    for (const key of defaultKeys) {
+      if (placeholders(defaultTranslation[key]) !== placeholders(translation[key])) {
+        fail(`${file} translation placeholders differ for ${key}`);
+      }
     }
   }
 
   const sourceStyleFiles = listFiles("styles").filter((file) => file.endsWith(".css")).sort();
-  const distStyleFiles = listFiles("dist/styles").filter((file) => file.endsWith(".css")).sort();
   if (sourceStyleFiles.length === 0) fail("styles must contain at least one CSS file");
-  if (sourceStyleFiles.join(",") !== distStyleFiles.join(",")) {
-    fail(`dist/styles must contain the same CSS files as styles, found: ${distStyleFiles.join(", ")}`);
-  }
-  for (const file of sourceStyleFiles) {
-    if (hash(`styles/${file}`) !== hash(`dist/styles/${file}`)) {
-      fail(`dist/styles/${file} must match styles/${file}`);
-    }
-  }
 
   const sourceModuleFiles = listFiles("modules").filter((file) => file.endsWith(".js")).sort();
-  const distModuleFiles = listFiles("dist/modules").filter((file) => file.endsWith(".js")).sort();
   if (sourceModuleFiles.length === 0) fail("modules must contain at least one JavaScript module");
-  if (sourceModuleFiles.join(",") !== distModuleFiles.join(",")) {
-    fail(`dist/modules must contain the same JavaScript files as modules, found: ${distModuleFiles.join(", ")}`);
-  }
-  for (const file of sourceModuleFiles) {
-    if (hash(`modules/${file}`) !== hash(`dist/modules/${file}`)) {
-      fail(`dist/modules/${file} must match modules/${file}`);
-    }
-  }
 
   const source = readText("src/ha-solar-dashboard.js");
   const rootSource = readText("ha-solar-dashboard.js");
-  const distSource = readText("dist/ha-solar-dashboard.js");
+  const literalTranslationKeys = [...source.matchAll(/_t\(\s*["']([^"'`]+)["']/g)]
+    .map((match) => match[1])
+    .filter((key) => !key.includes("${"));
+  const missingLiteralTranslationKeys = [...new Set(literalTranslationKeys.filter((key) => !Object.prototype.hasOwnProperty.call(defaultTranslation || {}, key)))].sort();
+  if (missingLiteralTranslationKeys.length > 0) {
+    fail(`i18n/en.json is missing literal translation keys used by the card: ${missingLiteralTranslationKeys.join(", ")}`);
+  }
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");
   if (rootSource.includes('from "./modules/') || rootSource.includes("import {")) fail("ha-solar-dashboard.js must be a bundled entry without static module imports");
   if (rootSource.includes('assetUrl("styles/')) fail("ha-solar-dashboard.js must inline critical CSS for direct HACS loads");
-  if (distSource.includes('from "./modules/')) fail("dist/ha-solar-dashboard.js must not depend on external JavaScript modules");
-  if (distSource.includes('assetUrl("styles/')) fail("dist/ha-solar-dashboard.js must inline critical CSS for HACS release assets");
+  if (!rootSource.includes('"de": {')) fail("ha-solar-dashboard.js must inline translation dictionaries for direct HACS loads");
 
   const configuredImages = [...source.matchAll(/\b(?:file|dayFile):\s*"([^"]+)"/g)].map((match) => match[1]);
   const fallbackImages = [...source.matchAll(/fallbackFiles:\s*\[([^\]]*)\]/g)]
@@ -165,7 +155,6 @@ function validateDistPackage() {
   const imageFiles = [...new Set([...configuredImages, ...fallbackImages])];
   for (const imageFile of imageFiles) {
     if (!hasImageFile("images", imageFile)) fail(`source image is missing: images/**/${imageFile}`);
-    if (!hasImageFile("dist/images", imageFile)) fail(`HACS dist image is missing: dist/images/**/${imageFile}`);
   }
 
   const sourceImageBasenames = listFilesRecursive("images")
@@ -175,22 +164,13 @@ function validateDistPackage() {
   if (duplicateSourceNames.length > 0) {
     fail(`source image filenames must be unique for release asset compatibility: ${[...new Set(duplicateSourceNames)].join(", ")}`);
   }
-
-  const distImageBasenames = listFilesRecursive("dist/images")
-    .filter((file) => file.endsWith(".png"))
-    .map((file) => basename(file));
-  const duplicateReleaseNames = distImageBasenames.filter((file, index) => distImageBasenames.indexOf(file) !== index);
-  if (duplicateReleaseNames.length > 0) {
-    fail(`dist image filenames must be unique for flattened release assets: ${[...new Set(duplicateReleaseNames)].join(", ")}`);
-  }
 }
 
 function validateJavaScript() {
   const moduleFiles = [
     ...listFiles("modules").filter((file) => file.endsWith(".js")).map((file) => `modules/${file}`),
-    ...listFiles("dist/modules").filter((file) => file.endsWith(".js")).map((file) => `dist/modules/${file}`),
   ];
-  for (const file of ["src/ha-solar-dashboard.js", "ha-solar-dashboard.js", "dist/ha-solar-dashboard.js", ...moduleFiles]) {
+  for (const file of ["src/ha-solar-dashboard.js", "ha-solar-dashboard.js", ...moduleFiles]) {
     try {
       execFileSync("node", ["--check", join(root, file)], { stdio: "pipe" });
     } catch (error) {
@@ -201,7 +181,7 @@ function validateJavaScript() {
 
 validateJson();
 validateReadme();
-validateDistPackage();
+validatePackage();
 validateJavaScript();
 
 if (failures.length > 0) {

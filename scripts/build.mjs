@@ -31,7 +31,15 @@ function styleTagFromFile(path) {
   return `      <style>\n${indented}\n      </style>`;
 }
 
-function buildDistEntry() {
+function bundledI18nSource() {
+  const dictionaries = {};
+  for (const language of ["en", "de", "es", "fr", "pl"]) {
+    dictionaries[language] = JSON.parse(readText(`i18n/${language}.json`));
+  }
+  return `const I18N = ${JSON.stringify(dictionaries, null, 2)};`;
+}
+
+function buildEntry() {
   const cardSource = readText("src/ha-solar-dashboard.js");
   const advisorModule = stripModuleExports(readText("modules/advisor.js")).trim();
   let bundled = cardSource.replace(
@@ -39,10 +47,11 @@ function buildDistEntry() {
     `${advisorModule}\n\n`,
   );
   if (bundled === cardSource) {
-    throw new Error("Could not inline modules/advisor.js import into dist entry");
+    throw new Error("Could not inline modules/advisor.js import into HACS entry");
   }
 
   bundled = bundled
+    .replace("const I18N = {};", bundledI18nSource())
     .replace(
       '      <link rel="stylesheet" href="${this._escape(assetUrl("styles/card.css"))}" />',
       styleTagFromFile("styles/card.css"),
@@ -53,29 +62,25 @@ function buildDistEntry() {
     );
 
   if (bundled.includes('from "./modules/advisor.js"')) {
-    throw new Error("Dist entry still contains a static advisor module import");
+    throw new Error("HACS entry still contains a static advisor module import");
   }
   if (bundled.includes('assetUrl("styles/')) {
-    throw new Error("Dist entry still depends on external CSS files");
+    throw new Error("HACS entry still depends on external CSS files");
   }
   return bundled;
 }
 
-const distEntry = buildDistEntry();
-const rootEntryPath = "ha-solar-dashboard.js";
-const distPath = "dist/ha-solar-dashboard.js";
-const entryPaths = [rootEntryPath, distPath];
+const entry = buildEntry();
+const entryPath = "ha-solar-dashboard.js";
 
 if (checkOnly) {
-  for (const entryPath of entryPaths) {
-    if (!existsSync(join(root, entryPath))) {
-      throw new Error(`${entryPath} is missing`);
-    }
-    const current = readText(entryPath);
-    if (current !== distEntry) {
-      throw new Error(`${entryPath} is not up to date; run npm run build`);
-    }
+  if (!existsSync(join(root, entryPath))) {
+    throw new Error(`${entryPath} is missing`);
+  }
+  const current = readText(entryPath);
+  if (current !== entry) {
+    throw new Error(`${entryPath} is not up to date; run npm run build`);
   }
 } else {
-  entryPaths.forEach((entryPath) => writeText(entryPath, distEntry));
+  writeText(entryPath, entry);
 }

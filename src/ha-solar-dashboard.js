@@ -92,19 +92,28 @@ function ensureTranslations(language, callback) {
 }
 
 function languageFromHass(hass) {
-  const rawLanguage = hass?.locale?.language
-    || hass?.language
-    || hass?.selectedLanguage
-    || globalThis.navigator?.language
-    || DEFAULT_LANGUAGE;
-  const language = String(rawLanguage).toLowerCase().split(/[-_]/)[0];
-  return SUPPORTED_LANGUAGES.includes(language) ? language : DEFAULT_LANGUAGE;
+  const candidates = [
+    hass?.locale?.language,
+    hass?.locale?.languageCode,
+    hass?.language,
+    hass?.selectedLanguage,
+    globalThis.document?.documentElement?.lang,
+    globalThis.localStorage?.getItem?.("selectedLanguage"),
+    globalThis.localStorage?.getItem?.("language"),
+    ...(Array.isArray(globalThis.navigator?.languages) ? globalThis.navigator.languages : []),
+    globalThis.navigator?.language,
+  ];
+  for (const candidate of candidates) {
+    const language = String(candidate || "").toLowerCase().split(/[-_]/)[0];
+    if (SUPPORTED_LANGUAGES.includes(language)) return language;
+  }
+  return DEFAULT_LANGUAGE;
 }
 
 function translate(language, key, replacements = {}, fallback = "") {
   const dictionary = I18N[language] || {};
   const fallbackDictionary = I18N[DEFAULT_LANGUAGE] || {};
-  const template = dictionary[key] ?? fallbackDictionary[key] ?? fallback ?? key;
+  const template = dictionary[key] ?? fallbackDictionary[key] ?? (fallback !== "" ? fallback : key);
   return String(template).replace(/\{(\w+)\}/g, (_match, name) => replacements[name] ?? "");
 }
 

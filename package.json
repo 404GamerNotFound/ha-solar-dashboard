@@ -4,7 +4,7 @@
   "private": true,
   "description": "Validation checks for the HA Solar Dashboard HACS dashboard card.",
   "scripts": {
-    "build": "node scripts/build-dist.mjs",
+    "build": "node scripts/build.mjs",
     "test": "node tests/validate-hacs-package.mjs"
   },
   "engines": {

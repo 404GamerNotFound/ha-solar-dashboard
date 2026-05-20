@@ -31,8 +31,8 @@ jobs:
       - name: Collect release assets
         run: |
           mkdir -p release-assets
-          cp dist/ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
-          find dist/images -type f -name "*.png" -exec cp {} release-assets/ \;
+          cp ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
+          find images -type f -name "*.png" -exec cp {} release-assets/ \;
 
       - name: Upload assets to existing release
         env:

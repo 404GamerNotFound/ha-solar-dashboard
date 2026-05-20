@@ -87,8 +87,16 @@ function validatePackage() {
   assertExists("ha-solar-dashboard.js");
 
   const distFiles = listFilesRecursive("dist");
-  if (distFiles.length > 0) {
-    fail(`dist must not contain duplicated package files; found: ${distFiles.join(", ")}`);
+  const allowedDistFiles = ["dist/ha-solar-dashboard.js"];
+  const unexpectedDistFiles = distFiles.filter((file) => !allowedDistFiles.includes(file));
+  if (unexpectedDistFiles.length > 0) {
+    fail(`dist must not contain duplicated package files; found: ${unexpectedDistFiles.join(", ")}`);
+  }
+  if (distFiles.includes("dist/ha-solar-dashboard.js")) {
+    const distShim = readText("dist/ha-solar-dashboard.js");
+    if (distShim.length > 1000) fail("dist/ha-solar-dashboard.js must stay a small compatibility loader, not a duplicated bundle");
+    if (!distShim.includes("../ha-solar-dashboard.js")) fail("dist compatibility loader must point to the root HACS entry");
+    if (distShim.includes("customElements.define")) fail("dist compatibility loader must not duplicate the card implementation");
   }
 
   try {
@@ -171,7 +179,8 @@ function validateJavaScript() {
   const moduleFiles = [
     ...listFiles("modules").filter((file) => file.endsWith(".js")).map((file) => `modules/${file}`),
   ];
-  for (const file of ["src/ha-solar-dashboard.js", "ha-solar-dashboard.js", ...moduleFiles]) {
+  const distShimFiles = existsSync(join(root, "dist/ha-solar-dashboard.js")) ? ["dist/ha-solar-dashboard.js"] : [];
+  for (const file of ["src/ha-solar-dashboard.js", "ha-solar-dashboard.js", ...moduleFiles, ...distShimFiles]) {
     try {
       execFileSync("node", ["--check", join(root, file)], { stdio: "pipe" });
     } catch (error) {

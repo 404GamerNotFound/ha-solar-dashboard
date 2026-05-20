@@ -99,6 +99,25 @@ function validateDistPackage() {
   if (!distJsFiles.includes(`${repoName}.js`)) fail(`dist must contain ${repoName}.js`);
   if (distJsFiles.length !== 1) fail(`dist must contain exactly one JavaScript entry file, found: ${distJsFiles.join(", ")}`);
 
+  const sourceI18nFiles = listFiles("i18n").filter((file) => file.endsWith(".json")).sort();
+  const distI18nFiles = listFiles("dist/i18n").filter((file) => file.endsWith(".json")).sort();
+  if (sourceI18nFiles.length === 0) fail("i18n must contain at least one translation JSON file");
+  if (sourceI18nFiles.join(",") !== distI18nFiles.join(",")) {
+    fail(`dist/i18n must contain the same JSON files as i18n, found: ${distI18nFiles.join(", ")}`);
+  }
+  for (const file of sourceI18nFiles) {
+    try {
+      JSON.parse(readText(`i18n/${file}`));
+      JSON.parse(readText(`dist/i18n/${file}`));
+    } catch (error) {
+      fail(`i18n/${file} or dist/i18n/${file} is not valid JSON: ${error.message}`);
+      continue;
+    }
+    if (hash(`i18n/${file}`) !== hash(`dist/i18n/${file}`)) {
+      fail(`dist/i18n/${file} must match i18n/${file}`);
+    }
+  }
+
   const source = readText("ha-solar-dashboard.js");
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");

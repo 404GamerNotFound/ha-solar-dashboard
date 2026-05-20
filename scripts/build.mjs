@@ -39,16 +39,25 @@ function bundledI18nSource() {
   return `const I18N = ${JSON.stringify(dictionaries, null, 2)};`;
 }
 
+function inlineModuleImport(source, modulePath) {
+  const moduleName = modulePath.split("/").pop();
+  const moduleSource = stripModuleExports(readText(modulePath)).trim();
+  const pattern = new RegExp(
+    `^import\\s+\\{[\\s\\S]*?\\}\\s+from\\s+"(?:\\.\\.\\/|\\.\\/)modules\\/${moduleName.replace(".", "\\.")}";\\n+`,
+    "m",
+  );
+  const bundled = source.replace(pattern, `${moduleSource}\n\n`);
+  if (bundled === source) {
+    throw new Error(`Could not inline ${modulePath} import into HACS entry`);
+  }
+  return bundled;
+}
+
 function buildEntry() {
   const cardSource = readText("src/ha-solar-dashboard.js");
-  const advisorModule = stripModuleExports(readText("modules/advisor.js")).trim();
-  let bundled = cardSource.replace(
-    /^import\s+\{[\s\S]*?\}\s+from\s+"(?:\.\.\/|\.\/)modules\/advisor\.js";\n\n/,
-    `${advisorModule}\n\n`,
-  );
-  if (bundled === cardSource) {
-    throw new Error("Could not inline modules/advisor.js import into HACS entry");
-  }
+  let bundled = cardSource;
+  bundled = inlineModuleImport(bundled, "modules/advisor.js");
+  bundled = inlineModuleImport(bundled, "modules/formatters.js");
 
   bundled = bundled
     .replace("const I18N = {};", bundledI18nSource())
@@ -61,8 +70,8 @@ function buildEntry() {
       styleTagFromFile("styles/editor.css"),
     );
 
-  if (bundled.includes('from "./modules/advisor.js"')) {
-    throw new Error("HACS entry still contains a static advisor module import");
+  if (/^\s*import\s+/m.test(bundled)) {
+    throw new Error("HACS entry still contains a static module import");
   }
   if (bundled.includes('assetUrl("styles/')) {
     throw new Error("HACS entry still depends on external CSS files");

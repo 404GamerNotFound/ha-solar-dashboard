@@ -73,6 +73,186 @@ function sortAdvisorItems(items = []) {
   ) || ((b.priority ?? 0) - (a.priority ?? 0)));
 }
 
+function numericState(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  const normalized = String(value ?? "").trim().replace(/,/g, ".");
+  if (!normalized || ["unknown", "unavailable", "offline", "none", "null"].includes(normalized.toLowerCase())) return undefined;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function formatValue(value, unavailable = "—") {
+  const normalized = String(value ?? "").toLowerCase();
+  if (
+    value === undefined
+    || value === null
+    || normalized === "unknown"
+    || normalized === "unavailable"
+    || normalized === "offline"
+  ) return unavailable;
+  return value;
+}
+
+function normalizeUnit(unit) {
+  return String(unit || "").trim().toLowerCase();
+}
+
+function isEnergyUnit(unit) {
+  return ["wh", "kwh", "mwh"].includes(normalizeUnit(unit));
+}
+
+function isPowerUnit(unit) {
+  return ["w", "kw", "mw"].includes(normalizeUnit(unit));
+}
+
+function valueAsWatts(value, unit) {
+  const numericValue = numericState(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const normalizedUnit = normalizeUnit(unit);
+  if (normalizedUnit === "kw") return numericValue * 1000;
+  if (normalizedUnit === "mw") return numericValue * 1000000;
+  return numericValue;
+}
+
+function valueAsVolts(value, unit) {
+  const numericValue = numericState(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const normalizedUnit = normalizeUnit(unit);
+  if (normalizedUnit === "kv") return numericValue * 1000;
+  if (normalizedUnit === "mv") return numericValue / 1000;
+  return numericValue;
+}
+
+function valueAsKwh(value, unit) {
+  const numericValue = numericState(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const normalizedUnit = normalizeUnit(unit);
+  if (normalizedUnit === "wh") return numericValue / 1000;
+  if (normalizedUnit === "mwh") return numericValue * 1000;
+  return numericValue;
+}
+
+function formatWithUnit(rawValue, unit, unavailable = "—") {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+  if (unit === undefined || unit === null || String(unit).trim() === "") return value;
+  return `${value} ${unit}`;
+}
+
+function formatVoltageValue(rawValue, entityUnit = "V", unavailable = "—") {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+  const volts = valueAsVolts(rawValue, entityUnit);
+  if (!Number.isFinite(volts)) return entityUnit ? `${value} ${entityUnit}` : String(value);
+  const decimals = Math.abs(volts) >= 100 || Number.isInteger(volts) ? 0 : 1;
+  return `${volts.toFixed(decimals)} V`;
+}
+
+function formatEnergyValue(rawValue, entityUnit, targetUnit = "kWh", unavailable = "—") {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+  const normalizedTargetUnit = normalizeUnit(targetUnit);
+  if (normalizedTargetUnit === "kwh") {
+    const kwhValue = valueAsKwh(rawValue, entityUnit);
+    if (kwhValue !== undefined) return `${kwhValue.toFixed(2)} kWh`;
+  }
+  return `${value} ${targetUnit || entityUnit || "kWh"}`;
+}
+
+function formatPowerValue(rawValue, unit, entityUnit, { powerDisplayMode = "auto_kw", unavailable = "—" } = {}) {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+
+  const normalizedUnit = normalizeUnit(unit);
+  const normalizedEntityUnit = normalizeUnit(entityUnit);
+
+  if (isEnergyUnit(normalizedEntityUnit)) {
+    if (!unit || normalizedUnit === "auto" || isPowerUnit(normalizedUnit)) {
+      return formatEnergyValue(rawValue, entityUnit, "kWh", unavailable);
+    }
+    if (isEnergyUnit(normalizedUnit)) return formatEnergyValue(rawValue, entityUnit, unit, unavailable);
+  }
+
+  if (normalizedUnit === "kwh") return formatEnergyValue(rawValue, entityUnit, "kWh", unavailable);
+  if (normalizedUnit === "w") {
+    const wattValue = valueAsWatts(rawValue, entityUnit);
+    return `${wattValue === undefined ? value : wattValue.toFixed(0)} W`;
+  }
+  if (normalizedUnit === "kw") {
+    const wattValue = valueAsWatts(rawValue, entityUnit);
+    if (wattValue === undefined) return `${value} kW`;
+    return `${(wattValue / 1000).toFixed(2)} kW`;
+  }
+  if (unit && normalizedUnit !== "auto") return `${value} ${unit}`;
+
+  const numericValue = isPowerUnit(normalizedEntityUnit)
+    ? valueAsWatts(rawValue, entityUnit)
+    : Number(rawValue);
+  if (!Number.isFinite(numericValue)) return `${value} W`;
+
+  if (powerDisplayMode === "auto_kw" && Math.abs(numericValue) >= 1000) {
+    return `${(numericValue / 1000).toFixed(2)} kW`;
+  }
+
+  return `${numericValue.toFixed(0)} W`;
+}
+
+function formatDurationMinutes(minutes) {
+  if (!Number.isFinite(minutes) || minutes <= 0) return "";
+  const rounded = Math.max(1, Math.round(minutes));
+  const hours = Math.floor(rounded / 60);
+  const restMinutes = rounded % 60;
+  if (hours <= 0) return `${restMinutes}min`;
+  if (restMinutes <= 0) return `${hours}h`;
+  return `${hours}h ${restMinutes}m`;
+}
+
+function formatDurationSeconds(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "";
+  const rounded = Math.max(1, Math.round(seconds));
+  if (rounded < 60) return `${rounded}s`;
+  const minutes = Math.floor(rounded / 60);
+  const restSeconds = rounded % 60;
+  if (minutes < 60) return restSeconds > 0 ? `${minutes}min ${restSeconds}s` : `${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+  if (restMinutes <= 0) return `${hours}h`;
+  return `${hours}h ${restMinutes}m`;
+}
+
+function formatRemainingChargeTimeValue(rawValue, entityUnit = "") {
+  const raw = String(rawValue ?? "").trim();
+  const normalized = raw.toLowerCase();
+  if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return "";
+
+  const durationMatch = normalized.match(/^(\d{1,3}):([0-5]\d)(?::([0-5]\d))?$/);
+  if (durationMatch) {
+    const first = Number(durationMatch[1]);
+    const second = Number(durationMatch[2]);
+    const third = durationMatch[3] !== undefined ? Number(durationMatch[3]) : undefined;
+    const minutes = third === undefined ? first * 60 + second : first * 60 + second + third / 60;
+    return formatDurationMinutes(minutes);
+  }
+
+  if (/[a-z]{3,}:\/\//i.test(raw) || /\d{4}-\d{2}-\d{2}/.test(raw)) {
+    const timestamp = Date.parse(raw);
+    const minutes = (timestamp - Date.now()) / 60000;
+    const formatted = formatDurationMinutes(minutes);
+    if (formatted) return formatted;
+  }
+
+  const numericValue = Number(raw.replace(",", "."));
+  if (Number.isFinite(numericValue)) {
+    const unit = normalizeUnit(entityUnit);
+    if (unit.includes("h") || unit.includes("std") || unit.includes("hour") || unit.includes("stunde")) return formatDurationMinutes(numericValue * 60);
+    if (unit.includes("min") || unit === "m") return formatDurationMinutes(numericValue);
+    if (unit.includes("s") && !unit.includes("stunden")) return formatDurationMinutes(numericValue / 60);
+    return numericValue > 24 ? formatDurationMinutes(numericValue) : formatDurationMinutes(numericValue * 60);
+  }
+
+  return raw;
+}
+
 const CARD_TYPE = "ha-solar-dashboard-card";
 const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
 const REPOSITORY_IMAGE_BASE =
@@ -2165,14 +2345,6 @@ const MINUTE_MS = 60 * 1000;
 const MAX_HISTORY_CACHE_ENTRIES = 48;
 const MAX_COUNTER_CACHE_ENTRIES = 72;
 
-function numericState(value) {
-  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
-  const normalized = String(value ?? "").trim().replace(/,/g, ".");
-  if (!normalized || ["unknown", "unavailable", "offline", "none", "null"].includes(normalized.toLowerCase())) return undefined;
-  const number = Number(normalized);
-  return Number.isFinite(number) ? number : undefined;
-}
-
 function normalizeConfigId(value, fallback) {
   const id = String(value || fallback || "").trim().replace(/[^\w-]+/g, "_");
   return id || String(fallback || "item").replace(/[^\w-]+/g, "_");
@@ -2868,15 +3040,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _formatValue(value) {
-    const normalized = String(value ?? "").toLowerCase();
-    if (
-      value === undefined
-      || value === null
-      || normalized === "unknown"
-      || normalized === "unavailable"
-      || normalized === "offline"
-    ) return "—";
-    return value;
+    return formatValue(value);
   }
 
   _unitForMetric(metric) {
@@ -3508,69 +3672,39 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _formatWithUnit(rawValue, unit) {
-    const value = this._formatValue(rawValue);
-    if (value === "—") return value;
-    if (unit === undefined || unit === null || String(unit).trim() === "") return value;
-    return `${value} ${unit}`;
+    return formatWithUnit(rawValue, unit);
   }
 
   _normalizeUnit(unit) {
-    return String(unit || "").trim().toLowerCase();
+    return normalizeUnit(unit);
   }
 
   _isEnergyUnit(unit) {
-    return ["wh", "kwh", "mwh"].includes(this._normalizeUnit(unit));
+    return isEnergyUnit(unit);
   }
 
   _isPowerUnit(unit) {
-    return ["w", "kw", "mw"].includes(this._normalizeUnit(unit));
+    return isPowerUnit(unit);
   }
 
   _valueAsWatts(value, unit) {
-    const numericValue = numericState(value);
-    if (!Number.isFinite(numericValue)) return undefined;
-    const normalizedUnit = this._normalizeUnit(unit);
-    if (normalizedUnit === "kw") return numericValue * 1000;
-    if (normalizedUnit === "mw") return numericValue * 1000000;
-    return numericValue;
+    return valueAsWatts(value, unit);
   }
 
   _valueAsVolts(value, unit) {
-    const numericValue = numericState(value);
-    if (!Number.isFinite(numericValue)) return undefined;
-    const normalizedUnit = this._normalizeUnit(unit);
-    if (normalizedUnit === "kv") return numericValue * 1000;
-    if (normalizedUnit === "mv") return numericValue / 1000;
-    return numericValue;
+    return valueAsVolts(value, unit);
   }
 
   _formatVoltageValue(rawValue, entityUnit = "V") {
-    const value = this._formatValue(rawValue);
-    if (value === "—") return value;
-    const volts = this._valueAsVolts(rawValue, entityUnit);
-    if (!Number.isFinite(volts)) return entityUnit ? `${value} ${entityUnit}` : String(value);
-    const decimals = Math.abs(volts) >= 100 || Number.isInteger(volts) ? 0 : 1;
-    return `${volts.toFixed(decimals)} V`;
+    return formatVoltageValue(rawValue, entityUnit);
   }
 
   _valueAsKwh(value, unit) {
-    const numericValue = numericState(value);
-    if (!Number.isFinite(numericValue)) return undefined;
-    const normalizedUnit = this._normalizeUnit(unit);
-    if (normalizedUnit === "wh") return numericValue / 1000;
-    if (normalizedUnit === "mwh") return numericValue * 1000;
-    return numericValue;
+    return valueAsKwh(value, unit);
   }
 
   _formatEnergyValue(rawValue, entityUnit, targetUnit = "kWh") {
-    const value = this._formatValue(rawValue);
-    if (value === "—") return value;
-    const normalizedTargetUnit = this._normalizeUnit(targetUnit);
-    if (normalizedTargetUnit === "kwh") {
-      const kwhValue = this._valueAsKwh(rawValue, entityUnit);
-      if (kwhValue !== undefined) return `${kwhValue.toFixed(2)} kWh`;
-    }
-    return `${value} ${targetUnit || entityUnit || "kWh"}`;
+    return formatEnergyValue(rawValue, entityUnit, targetUnit);
   }
 
   _energyRangeMinutes(range) {
@@ -3679,43 +3813,9 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _formatPowerValue(rawValue, unit, entityUnit) {
-    const value = this._formatValue(rawValue);
-    if (value === "—") return value;
-
-    const normalizedUnit = this._normalizeUnit(unit);
-    const normalizedEntityUnit = this._normalizeUnit(entityUnit);
-
-    if (this._isEnergyUnit(normalizedEntityUnit)) {
-      if (!unit || normalizedUnit === "auto" || this._isPowerUnit(normalizedUnit)) {
-        return this._formatEnergyValue(rawValue, entityUnit);
-      }
-      if (this._isEnergyUnit(normalizedUnit)) return this._formatEnergyValue(rawValue, entityUnit, unit);
-    }
-
-    if (normalizedUnit === "kwh") return this._formatEnergyValue(rawValue, entityUnit, "kWh");
-    if (normalizedUnit === "w") {
-      const wattValue = this._valueAsWatts(rawValue, entityUnit);
-      return `${wattValue === undefined ? value : wattValue.toFixed(0)} W`;
-    }
-    if (normalizedUnit === "kw") {
-      const wattValue = this._valueAsWatts(rawValue, entityUnit);
-      if (wattValue === undefined) return `${value} kW`;
-      return `${(wattValue / 1000).toFixed(2)} kW`;
-    }
-    if (unit && normalizedUnit !== "auto") return `${value} ${unit}`;
-
-    const numericValue = this._isPowerUnit(normalizedEntityUnit)
-      ? this._valueAsWatts(rawValue, entityUnit)
-      : Number(rawValue);
-    if (!Number.isFinite(numericValue)) return `${value} W`;
-
-    const mode = this.config.power_display_mode || "auto_kw";
-    if (mode === "auto_kw" && Math.abs(numericValue) >= 1000) {
-      const kwValue = numericValue / 1000;
-      return `${kwValue.toFixed(2)} kW`;
-    }
-
-    return `${numericValue.toFixed(0)} W`;
+    return formatPowerValue(rawValue, unit, entityUnit, {
+      powerDisplayMode: this.config.power_display_mode || "auto_kw",
+    });
   }
 
   _metricNumericValue(metric) {
@@ -4395,26 +4495,11 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _formatDurationMinutes(minutes) {
-    if (!Number.isFinite(minutes) || minutes <= 0) return "";
-    const rounded = Math.max(1, Math.round(minutes));
-    const hours = Math.floor(rounded / 60);
-    const restMinutes = rounded % 60;
-    if (hours <= 0) return `${restMinutes}min`;
-    if (restMinutes <= 0) return `${hours}h`;
-    return `${hours}h ${restMinutes}m`;
+    return formatDurationMinutes(minutes);
   }
 
   _formatDurationSeconds(seconds) {
-    if (!Number.isFinite(seconds) || seconds <= 0) return "";
-    const rounded = Math.max(1, Math.round(seconds));
-    if (rounded < 60) return `${rounded}s`;
-    const minutes = Math.floor(rounded / 60);
-    const restSeconds = rounded % 60;
-    if (minutes < 60) return restSeconds > 0 ? `${minutes}min ${restSeconds}s` : `${minutes}min`;
-    const hours = Math.floor(minutes / 60);
-    const restMinutes = minutes % 60;
-    if (restMinutes <= 0) return `${hours}h`;
-    return `${hours}h ${restMinutes}m`;
+    return formatDurationSeconds(seconds);
   }
 
   _wallboxPhaseActionEntityKey(metric) {
@@ -4486,36 +4571,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _formatRemainingChargeTimeValue(rawValue, entityUnit = "") {
-    const raw = String(rawValue ?? "").trim();
-    const normalized = raw.toLowerCase();
-    if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return "";
-
-    const durationMatch = normalized.match(/^(\d{1,3}):([0-5]\d)(?::([0-5]\d))?$/);
-    if (durationMatch) {
-      const first = Number(durationMatch[1]);
-      const second = Number(durationMatch[2]);
-      const third = durationMatch[3] !== undefined ? Number(durationMatch[3]) : undefined;
-      const minutes = third === undefined ? first * 60 + second : first * 60 + second + third / 60;
-      return this._formatDurationMinutes(minutes);
-    }
-
-    if (/[a-z]{3,}:\/\//i.test(raw) || /\d{4}-\d{2}-\d{2}/.test(raw)) {
-      const timestamp = Date.parse(raw);
-      const minutes = (timestamp - Date.now()) / 60000;
-      const formatted = this._formatDurationMinutes(minutes);
-      if (formatted) return formatted;
-    }
-
-    const numericValue = Number(raw.replace(",", "."));
-    if (Number.isFinite(numericValue)) {
-      const unit = String(entityUnit || "").trim().toLowerCase();
-      if (unit.includes("h") || unit.includes("std") || unit.includes("hour") || unit.includes("stunde")) return this._formatDurationMinutes(numericValue * 60);
-      if (unit.includes("min") || unit === "m") return this._formatDurationMinutes(numericValue);
-      if (unit.includes("s") && !unit.includes("stunden")) return this._formatDurationMinutes(numericValue / 60);
-      return numericValue > 24 ? this._formatDurationMinutes(numericValue) : this._formatDurationMinutes(numericValue * 60);
-    }
-
-    return raw;
+    return formatRemainingChargeTimeValue(rawValue, entityUnit);
   }
 
   _wallboxIsCharging(metric) {

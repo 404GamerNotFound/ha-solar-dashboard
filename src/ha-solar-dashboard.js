@@ -58,6 +58,18 @@ import {
   rawHtml,
   styleMap,
 } from "../modules/html.js";
+import {
+  largeConsumerAdvisorDetails,
+  largeConsumerEnergyEntityId,
+  largeConsumerEntityIds,
+  largeConsumerHasEntity,
+  largeConsumerLabel,
+  largeConsumerMetrics,
+  largeConsumerPowerEntityId,
+  largeConsumerPowerWatts,
+  largeConsumerVoltageEntityId,
+  normalizeLargeConsumers,
+} from "../modules/large-consumers.js";
 
 const CARD_TYPE = "ha-solar-dashboard-card";
 const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
@@ -347,18 +359,6 @@ const DEFAULT_IMAGE_OVERLAYS = {
 
 const IMAGE_OVERLAY_KEYS = ["smoke", "heatpump"];
 
-const LARGE_CONSUMER_DEFINITIONS = [
-  { id: "washing_machine", labelKey: "consumer.washing_machine", label: "Washing machine", color: "#34d399", maxPowerKw: 2.2 },
-  { id: "dishwasher", labelKey: "consumer.dishwasher", label: "Dishwasher", color: "#38bdf8", maxPowerKw: 2.0 },
-  { id: "space_heater", labelKey: "consumer.space_heater", label: "Fan heater", color: "#fb923c", maxPowerKw: 2.0 },
-  { id: "dryer", labelKey: "consumer.dryer", label: "Dryer", color: "#facc15", maxPowerKw: 2.8 },
-  { id: "dhw_heatpump", labelKey: "consumer.dhw_heatpump", label: "Domestic hot water heat pump", color: "#60a5fa", maxPowerKw: 0.8 },
-];
-
-const LEGACY_LARGE_CONSUMER_DEFINITIONS = new Map([
-  ["custom_1", { id: "custom_1", labelKey: "consumer.custom", label: "Custom", color: "#a78bfa", maxPowerKw: "", custom: true }],
-]);
-
 const OVERLAY_TILE_METRICS = [
   { key: "overlay_smoke", label: "Gas", labelKey: "overlay.smoke", color: "yellow", unit: "overlay", overlay: "smoke", tileOrder: 7 },
   { key: "overlay_heatpump", label: "Heat pump", labelKey: "overlay.heatpump", color: "blue", unit: "overlay", overlay: "heatpump", tileOrder: 8 },
@@ -444,66 +444,6 @@ function clampConfigNumber(value, fallback, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, number));
-}
-
-function safeConfigColor(color, fallback = "#1f8fff") {
-  const value = String(color || "").trim();
-  if (!value) return fallback;
-  if (/^#[0-9a-f]{3,8}$/i.test(value)) return value;
-  if (/^(rgb|rgba|hsl|hsla)\([\d\s.,%/-]+\)$/i.test(value)) return value;
-  if (/^var\(--[\w-]+\)$/i.test(value)) return value;
-  if (/^[a-z]+$/i.test(value)) return value;
-  return fallback;
-}
-
-function normalizeLargeConsumerConfig(raw, index, definition) {
-  const source = raw && typeof raw === "object" ? raw : {};
-  const id = normalizeConfigId(source.id || source.key || source.type, definition?.id || `consumer_${index + 1}`);
-  const maxPowerSource = source.max_power_kw ?? source.maxPowerKw ?? source.max_power ?? definition?.maxPowerKw ?? "";
-  const maxPowerKw = maxPowerSource === "" || maxPowerSource === undefined || maxPowerSource === null
-    ? ""
-    : clampConfigNumber(maxPowerSource, "", 0, 1000);
-  return {
-    id,
-    type: String(source.type || definition?.id || id).trim(),
-    labelKey: definition?.labelKey || "",
-    defaultLabel: definition?.label || `Consumer ${index + 1}`,
-    label: String(source.label || source.name || "").trim(),
-    power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
-    voltage_entity: String(source.voltage_entity || source.voltageEntity || source.voltage || "").trim(),
-    energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.energy || source.counter || source.meter || "").trim(),
-    max_power_kw: maxPowerKw,
-    position: clampConfigNumber(source.position ?? source.order ?? 200 + index, 200 + index, 0, 999),
-    columns: Math.round(clampConfigNumber(source.columns ?? source.span ?? 1, 1, 1, 6)),
-    color: safeConfigColor(source.color, definition?.color || "#1f8fff"),
-    custom: source.custom === true || definition?.custom === true || !definition,
-    visible: source.enabled === false ? false : source.visible !== false,
-  };
-}
-
-function normalizeLargeConsumers(consumers) {
-  const rawList = Array.isArray(consumers)
-    ? consumers
-    : consumers && typeof consumers === "object"
-      ? Object.entries(consumers).map(([id, value]) => (
-        value && typeof value === "object" ? { id, ...value } : { id, power_entity: value }
-      ))
-      : [];
-  const definitionIds = new Set(LARGE_CONSUMER_DEFINITIONS.map((definition) => definition.id));
-  const rawById = new Map();
-  rawList.forEach((item, index) => {
-    if (!item || typeof item !== "object") return;
-    const fallbackId = item.type || `consumer_${index + 1}`;
-    rawById.set(normalizeConfigId(item.id || item.key || item.type, fallbackId), item);
-  });
-  const defaultConsumers = LARGE_CONSUMER_DEFINITIONS.map((definition, index) => (
-    normalizeLargeConsumerConfig(rawById.get(definition.id) || {}, index, definition)
-  ));
-  const extraConsumers = rawList
-    .map((item, index) => ({ item, id: normalizeConfigId(item?.id || item?.key || item?.type, `consumer_${index + 1}`) }))
-    .filter(({ item, id }) => item && typeof item === "object" && !definitionIds.has(id))
-    .map(({ item, id }, index) => normalizeLargeConsumerConfig(item, LARGE_CONSUMER_DEFINITIONS.length + index, LEGACY_LARGE_CONSUMER_DEFINITIONS.get(id)));
-  return [...defaultConsumers, ...extraConsumers];
 }
 
 function adjacentWallboxPosition(basePosition = {}) {
@@ -1249,43 +1189,29 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _largeConsumerLabel(consumer, index = 0) {
-    const configured = String(consumer?.label || "").trim();
-    if (configured) return configured;
-    if (consumer?.labelKey) return this._t(consumer.labelKey, {}, consumer.defaultLabel || `Consumer ${index + 1}`);
-    return this._t(`consumer.${consumer?.type || consumer?.id}`, {}, consumer?.defaultLabel || `Consumer ${index + 1}`);
+    return largeConsumerLabel(consumer, index, (key, params, fallback) => this._t(key, params, fallback));
   }
 
   _largeConsumerHasEntity(consumer) {
-    return Boolean(consumer?.power_entity || consumer?.energy_entity);
+    return largeConsumerHasEntity(consumer);
   }
 
   _largeConsumerMetrics() {
-    return (this.config.large_consumers || [])
-      .filter((consumer) => consumer?.visible !== false && this._largeConsumerHasEntity(consumer))
-      .map((consumer, index) => ({
-        key: `large_consumers.${consumer.id || index}`,
-        label: this._largeConsumerLabel(consumer, index),
-        unit: "power",
-        color: "blue",
-        accentColor: consumer.color,
-        largeConsumer: consumer,
-        hud: false,
-        tileOrder: consumer.position ?? 200 + index,
-        tileColumns: consumer.columns ?? 1,
-      }))
-      .sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
+    return largeConsumerMetrics(this.config.large_consumers || [], {
+      labelForConsumer: (consumer, index) => this._largeConsumerLabel(consumer, index),
+    });
   }
 
   _largeConsumerPowerEntityId(metricOrConsumer) {
-    return metricOrConsumer?.largeConsumer?.power_entity || metricOrConsumer?.power_entity || "";
+    return largeConsumerPowerEntityId(metricOrConsumer);
   }
 
   _largeConsumerEnergyEntityId(metricOrConsumer) {
-    return metricOrConsumer?.largeConsumer?.energy_entity || metricOrConsumer?.energy_entity || "";
+    return largeConsumerEnergyEntityId(metricOrConsumer);
   }
 
   _largeConsumerVoltageEntityId(metricOrConsumer) {
-    return metricOrConsumer?.largeConsumer?.voltage_entity || metricOrConsumer?.voltage_entity || "";
+    return largeConsumerVoltageEntityId(metricOrConsumer);
   }
 
   _metricVoltageEntityKey(metric) {
@@ -1448,11 +1374,11 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _largeConsumerPowerWatts(metricOrConsumer) {
-    const entityId = this._largeConsumerPowerEntityId(metricOrConsumer);
-    if (!entityId) return undefined;
-    const value = this._getEntityValue(entityId, undefined);
-    const watts = this._valueAsWatts(value, this._getEntityUnit(entityId));
-    return Number.isFinite(watts) ? Math.max(0, watts) : undefined;
+    return largeConsumerPowerWatts(metricOrConsumer, {
+      getValue: (entityId) => this._getEntityValue(entityId, undefined),
+      getUnit: (entityId) => this._getEntityUnit(entityId),
+      valueAsWatts: (value, unit) => this._valueAsWatts(value, unit),
+    });
   }
 
   _formatRoundedCustomValue(value) {
@@ -1502,9 +1428,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _latestEntityUpdate() {
-    const largeConsumerEntities = (this.config.large_consumers || [])
-      .flatMap((consumer) => [consumer.power_entity, consumer.voltage_entity, consumer.energy_entity])
-      .filter(Boolean);
+    const largeConsumerEntities = largeConsumerEntityIds(this.config.large_consumers || []);
     const pvRoofStringEntities = normalizePvRoofStrings(this.config.pv_roof_strings || [])
       .flatMap((string) => [string.power_entity, string.energy_entity])
       .filter(Boolean);
@@ -3532,23 +3456,11 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _largeConsumerAdvisorDetails() {
-    return (this.config.large_consumers || [])
-      .map((consumer, index) => {
-        const label = this._largeConsumerLabel(consumer, index);
-        const watts = this._largeConsumerPowerWatts(consumer);
-        const maxPowerWatts = this._parsePowerLimitWatts(consumer.max_power_kw, "kw");
-        return {
-          id: consumer.id || `consumer_${index + 1}`,
-          label,
-          powerEntityId: consumer.power_entity || "",
-          energyEntityId: consumer.energy_entity || "",
-          watts: Number.isFinite(watts) ? watts : 0,
-          maxPowerWatts,
-          configured: consumer.visible !== false && this._largeConsumerHasEntity(consumer),
-          active: Number.isFinite(watts) && watts >= 100,
-        };
-      })
-      .filter((consumer) => consumer.configured);
+    return largeConsumerAdvisorDetails(this.config.large_consumers || [], {
+      labelForConsumer: (consumer, index) => this._largeConsumerLabel(consumer, index),
+      powerWattsForConsumer: (consumer) => this._largeConsumerPowerWatts(consumer),
+      parsePowerLimitWatts: (value, unit) => this._parsePowerLimitWatts(value, unit),
+    });
   }
 
   _pvRoofStringAdvisorDetails() {
@@ -6296,10 +6208,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   }
 
   _largeConsumerLabel(consumer, index = 0) {
-    const configured = String(consumer?.label || "").trim();
-    if (configured) return configured;
-    if (consumer?.labelKey) return this._t(consumer.labelKey, {}, consumer.defaultLabel || `Consumer ${index + 1}`);
-    return this._t(`consumer.${consumer?.type || consumer?.id}`, {}, consumer?.defaultLabel || `Consumer ${index + 1}`);
+    return largeConsumerLabel(consumer, index, (key, params, fallback) => this._t(key, params, fallback));
   }
 
   _renderLargeConsumerField(consumer, index) {

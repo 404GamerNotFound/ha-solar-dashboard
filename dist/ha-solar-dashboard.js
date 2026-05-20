@@ -1,3 +1,12 @@
+import {
+  ADVISOR_DEFAULTS,
+  advisorSuggestionLimit,
+  advisorThresholds,
+  advisorTypeRank,
+  normalizeAdvisorConfig,
+  sortAdvisorItems,
+} from "./modules/advisor.js";
+
 const CARD_TYPE = "ha-solar-dashboard-card";
 const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
 const REPOSITORY_IMAGE_BASE =
@@ -594,13 +603,13 @@ class HaSolarDashboardCard extends HTMLElement {
       grid_neutral_threshold: 25,
       grid_voltage_warning_threshold: 245,
       grid_voltage_critical_threshold: 253,
-      advisor_surplus_threshold: 250,
-      advisor_import_threshold: 250,
-      advisor_high_load_threshold: 3000,
-      advisor_ev_surplus_threshold: 1500,
-      advisor_max_suggestions: 8,
-      advisor_stale_sensor_warning_minutes: 30,
-      advisor_stale_sensor_critical_minutes: 1440,
+      advisor_surplus_threshold: ADVISOR_DEFAULTS.surplusThreshold,
+      advisor_import_threshold: ADVISOR_DEFAULTS.importThreshold,
+      advisor_high_load_threshold: ADVISOR_DEFAULTS.highLoadThreshold,
+      advisor_ev_surplus_threshold: ADVISOR_DEFAULTS.evSurplusThreshold,
+      advisor_max_suggestions: ADVISOR_DEFAULTS.maxSuggestions,
+      advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
+      advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
       max_power_kw: {
         pv_roof_power: 10,
@@ -727,13 +736,13 @@ class HaSolarDashboardCard extends HTMLElement {
       grid_neutral_threshold: 25,
       grid_voltage_warning_threshold: 245,
       grid_voltage_critical_threshold: 253,
-      advisor_surplus_threshold: 250,
-      advisor_import_threshold: 250,
-      advisor_high_load_threshold: 3000,
-      advisor_ev_surplus_threshold: 1500,
-      advisor_max_suggestions: 8,
-      advisor_stale_sensor_warning_minutes: 30,
-      advisor_stale_sensor_critical_minutes: 1440,
+      advisor_surplus_threshold: ADVISOR_DEFAULTS.surplusThreshold,
+      advisor_import_threshold: ADVISOR_DEFAULTS.importThreshold,
+      advisor_high_load_threshold: ADVISOR_DEFAULTS.highLoadThreshold,
+      advisor_ev_surplus_threshold: ADVISOR_DEFAULTS.evSurplusThreshold,
+      advisor_max_suggestions: ADVISOR_DEFAULTS.maxSuggestions,
+      advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
+      advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
       daylight_entity: "sun.sun",
       weather_entity: "",
@@ -816,13 +825,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.grid_neutral_threshold = this._clampNumber(this.config.grid_neutral_threshold, 25, 0, 1000000);
     this.config.grid_voltage_warning_threshold = this._clampNumber(this.config.grid_voltage_warning_threshold, 245, 0, 1000);
     this.config.grid_voltage_critical_threshold = this._clampNumber(this.config.grid_voltage_critical_threshold, 253, this.config.grid_voltage_warning_threshold, 1000);
-    this.config.advisor_surplus_threshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
-    this.config.advisor_import_threshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
-    this.config.advisor_high_load_threshold = this._clampNumber(this.config.advisor_high_load_threshold, 3000, 0, 1000000);
-    this.config.advisor_ev_surplus_threshold = this._clampNumber(this.config.advisor_ev_surplus_threshold, 1500, 0, 1000000);
-    this.config.advisor_max_suggestions = Math.round(this._clampNumber(this.config.advisor_max_suggestions, 8, 1, 12));
-    this.config.advisor_stale_sensor_warning_minutes = this._clampNumber(this.config.advisor_stale_sensor_warning_minutes, 30, 1, 10080);
-    this.config.advisor_stale_sensor_critical_minutes = this._clampNumber(this.config.advisor_stale_sensor_critical_minutes, 1440, Math.max(1440, this.config.advisor_stale_sensor_warning_minutes), 20160);
+    Object.assign(this.config, normalizeAdvisorConfig(this.config));
     this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
     this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
@@ -3972,8 +3975,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _advisorStaleSensorItem() {
-    const warningMinutes = this._clampNumber(this.config.advisor_stale_sensor_warning_minutes, 30, 1, 10080);
-    const criticalMinutes = this._clampNumber(this.config.advisor_stale_sensor_critical_minutes, 1440, Math.max(1440, warningMinutes), 20160);
+    const { staleSensorWarningMinutes: warningMinutes, staleSensorCriticalMinutes: criticalMinutes } = advisorThresholds(this.config);
     const stale = this._advisorSensorCandidates()
       .map((candidate) => {
         const entity = this._getEntity(candidate.entityId);
@@ -4027,21 +4029,11 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _advisorTypeRank(type) {
-    const ranks = {
-      critical: 4,
-      warning: 3,
-      info: 2,
-      setup: 2,
-      opportunity: 1,
-      success: 0,
-    };
-    return ranks[type] ?? 2;
+    return advisorTypeRank(type);
   }
 
   _sortAdvisorItems(items) {
-    return [...items].sort((a, b) => (
-      this._advisorTypeRank(b.type) - this._advisorTypeRank(a.type)
-    ) || ((b.priority ?? 0) - (a.priority ?? 0)));
+    return sortAdvisorItems(items);
   }
 
   _advisorTypeLabel(type) {
@@ -4152,7 +4144,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _advisorSuggestionLimit() {
-    return Math.round(this._clampNumber(this.config.advisor_max_suggestions, 8, 1, 12));
+    return advisorSuggestionLimit(this.config);
   }
 
   _advisorItems(snapshot = this._advisorSnapshot(), { maxItems = this._advisorSuggestionLimit() } = {}) {
@@ -4161,10 +4153,7 @@ class HaSolarDashboardCard extends HTMLElement {
       items.push({ type, priority, title, text, value, window: "now", signals: [], ...extra });
     };
     const itemLimit = Math.round(this._clampNumber(maxItems, this._advisorSuggestionLimit(), 1, 12));
-    const surplusThreshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
-    const importThreshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
-    const highLoadThreshold = this._clampNumber(this.config.advisor_high_load_threshold, 3000, 0, 1000000);
-    const evSurplusThreshold = this._clampNumber(this.config.advisor_ev_surplus_threshold, 1500, 0, 1000000);
+    const { surplusThreshold, importThreshold, highLoadThreshold, evSurplusThreshold } = advisorThresholds(this.config);
     const lowBatteryThreshold = Number.isFinite(snapshot.batteryReserveThreshold)
       ? snapshot.batteryReserveThreshold
       : this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
@@ -4432,8 +4421,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const hasCritical = items.some((item) => item.type === "critical");
     const hasInfo = items.some((item) => item.type === "info");
     const hasSetup = items.some((item) => item.type === "setup");
-    const surplusThreshold = this._clampNumber(this.config.advisor_surplus_threshold, 250, 0, 1000000);
-    const importThreshold = this._clampNumber(this.config.advisor_import_threshold, 250, 0, 1000000);
+    const { surplusThreshold, importThreshold } = advisorThresholds(this.config);
     if (hasCritical) return { type: "critical", label: this._t("advisor.headlineWarning", {}, "Energy setup needs attention") };
     if (hasDiagnosticWarning) return { type: "warning", label: this._t("advisor.headlineWarning", {}, "Energy setup needs attention") };
     if (Number.isFinite(snapshot.exportWatts) && snapshot.exportWatts > surplusThreshold) {
@@ -5381,7 +5369,20 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     delete next.show_energy_advisor;
     const parts = path.split(".");
     const lastPart = parts[parts.length - 1];
-    const numericFields = new Set(["hud_box_opacity", "hud_box_scale", "power_decimals", "advisor_max_suggestions", "advisor_ev_surplus_threshold", "grid_voltage_warning_threshold", "grid_voltage_critical_threshold"]);
+    const numericFields = new Set([
+      "hud_box_opacity",
+      "hud_box_scale",
+      "power_decimals",
+      "advisor_max_suggestions",
+      "advisor_surplus_threshold",
+      "advisor_import_threshold",
+      "advisor_high_load_threshold",
+      "advisor_ev_surplus_threshold",
+      "advisor_stale_sensor_warning_minutes",
+      "advisor_stale_sensor_critical_minutes",
+      "grid_voltage_warning_threshold",
+      "grid_voltage_critical_threshold",
+    ]);
     const numericProps = new Set(["left", "top", "width", "position", "columns"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
@@ -6655,11 +6656,11 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     `;
     const advisorSettingsHtml = `
       <div class="details-grid">
-        <label>${this._escape(this._t("editor.advisorMaxSuggestions", {}, "Advisor suggestions"))} (${this._escape(Number(this._config.advisor_max_suggestions ?? 8).toFixed(0))})
-          <input type="range" min="1" max="12" step="1" data-path="advisor_max_suggestions" value="${this._escape(this._config.advisor_max_suggestions ?? 8)}" />
+        <label>${this._escape(this._t("editor.advisorMaxSuggestions", {}, "Advisor suggestions"))} (${this._escape(Number(this._config.advisor_max_suggestions ?? ADVISOR_DEFAULTS.maxSuggestions).toFixed(0))})
+          <input type="range" min="1" max="12" step="1" data-path="advisor_max_suggestions" value="${this._escape(this._config.advisor_max_suggestions ?? ADVISOR_DEFAULTS.maxSuggestions)}" />
         </label>
         <label>${this._escape(this._t("editor.advisorEvSurplusThreshold", {}, "EV surplus threshold (W)"))}
-          <input type="number" min="0" max="1000000" step="50" data-path="advisor_ev_surplus_threshold" value="${this._escape(this._config.advisor_ev_surplus_threshold ?? 1500)}" />
+          <input type="number" min="0" max="1000000" step="50" data-path="advisor_ev_surplus_threshold" value="${this._escape(this._config.advisor_ev_surplus_threshold ?? ADVISOR_DEFAULTS.evSurplusThreshold)}" />
         </label>
         <label>${this._escape(this._t("editor.electricityPriceEntity", {}, "Electricity price entity"))}
           <input data-path="entities.electricity_price" list="ha-solar-dashboard-entities" placeholder="sensor.electricity_price" value="${this._escape(this._config.entities?.electricity_price || "")}" autocomplete="off" />

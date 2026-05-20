@@ -130,6 +130,18 @@ function validateDistPackage() {
     }
   }
 
+  const sourceModuleFiles = listFiles("modules").filter((file) => file.endsWith(".js")).sort();
+  const distModuleFiles = listFiles("dist/modules").filter((file) => file.endsWith(".js")).sort();
+  if (sourceModuleFiles.length === 0) fail("modules must contain at least one JavaScript module");
+  if (sourceModuleFiles.join(",") !== distModuleFiles.join(",")) {
+    fail(`dist/modules must contain the same JavaScript files as modules, found: ${distModuleFiles.join(", ")}`);
+  }
+  for (const file of sourceModuleFiles) {
+    if (hash(`modules/${file}`) !== hash(`dist/modules/${file}`)) {
+      fail(`dist/modules/${file} must match modules/${file}`);
+    }
+  }
+
   const source = readText("ha-solar-dashboard.js");
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");
@@ -161,7 +173,11 @@ function validateDistPackage() {
 }
 
 function validateJavaScript() {
-  for (const file of ["ha-solar-dashboard.js", "dist/ha-solar-dashboard.js"]) {
+  const moduleFiles = [
+    ...listFiles("modules").filter((file) => file.endsWith(".js")).map((file) => `modules/${file}`),
+    ...listFiles("dist/modules").filter((file) => file.endsWith(".js")).map((file) => `dist/modules/${file}`),
+  ];
+  for (const file of ["ha-solar-dashboard.js", "dist/ha-solar-dashboard.js", ...moduleFiles]) {
     try {
       execFileSync("node", ["--check", join(root, file)], { stdio: "pipe" });
     } catch (error) {

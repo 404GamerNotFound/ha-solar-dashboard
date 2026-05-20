@@ -88,12 +88,13 @@ function validateReadme() {
 }
 
 function validateDistPackage() {
+  assertExists("src/ha-solar-dashboard.js");
   assertExists("ha-solar-dashboard.js");
   assertExists("dist/ha-solar-dashboard.js");
 
   const rootCard = hash("ha-solar-dashboard.js");
   const distCard = hash("dist/ha-solar-dashboard.js");
-  if (rootCard === distCard) fail("dist/ha-solar-dashboard.js must be the bundled HACS entry, not a raw source copy");
+  if (rootCard !== distCard) fail("dist/ha-solar-dashboard.js must match the root HACS entry file");
 
   const distJsFiles = listFiles("dist").filter((file) => file.endsWith(".js"));
   if (!distJsFiles.includes(`${repoName}.js`)) fail(`dist must contain ${repoName}.js`);
@@ -102,7 +103,7 @@ function validateDistPackage() {
   try {
     execFileSync("node", [join(root, "scripts/build-dist.mjs"), "--check"], { stdio: "pipe" });
   } catch (error) {
-    fail(`dist/ha-solar-dashboard.js must be generated from source:\n${error.stderr?.toString() || error.message}`);
+    fail(`ha-solar-dashboard.js and dist/ha-solar-dashboard.js must be generated from source:\n${error.stderr?.toString() || error.message}`);
   }
 
   const sourceI18nFiles = listFiles("i18n").filter((file) => file.endsWith(".json")).sort();
@@ -148,10 +149,13 @@ function validateDistPackage() {
     }
   }
 
-  const source = readText("ha-solar-dashboard.js");
+  const source = readText("src/ha-solar-dashboard.js");
+  const rootSource = readText("ha-solar-dashboard.js");
   const distSource = readText("dist/ha-solar-dashboard.js");
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");
+  if (rootSource.includes('from "./modules/') || rootSource.includes("import {")) fail("ha-solar-dashboard.js must be a bundled entry without static module imports");
+  if (rootSource.includes('assetUrl("styles/')) fail("ha-solar-dashboard.js must inline critical CSS for direct HACS loads");
   if (distSource.includes('from "./modules/')) fail("dist/ha-solar-dashboard.js must not depend on external JavaScript modules");
   if (distSource.includes('assetUrl("styles/')) fail("dist/ha-solar-dashboard.js must inline critical CSS for HACS release assets");
 
@@ -186,7 +190,7 @@ function validateJavaScript() {
     ...listFiles("modules").filter((file) => file.endsWith(".js")).map((file) => `modules/${file}`),
     ...listFiles("dist/modules").filter((file) => file.endsWith(".js")).map((file) => `dist/modules/${file}`),
   ];
-  for (const file of ["ha-solar-dashboard.js", "dist/ha-solar-dashboard.js", ...moduleFiles]) {
+  for (const file of ["src/ha-solar-dashboard.js", "ha-solar-dashboard.js", "dist/ha-solar-dashboard.js", ...moduleFiles]) {
     try {
       execFileSync("node", ["--check", join(root, file)], { stdio: "pipe" });
     } catch (error) {

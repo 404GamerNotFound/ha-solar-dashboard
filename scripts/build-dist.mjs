@@ -32,10 +32,10 @@ function styleTagFromFile(path) {
 }
 
 function buildDistEntry() {
-  const cardSource = readText("ha-solar-dashboard.js");
+  const cardSource = readText("src/ha-solar-dashboard.js");
   const advisorModule = stripModuleExports(readText("modules/advisor.js")).trim();
   let bundled = cardSource.replace(
-    /^import\s+\{[\s\S]*?\}\s+from\s+"\.\/modules\/advisor\.js";\n\n/,
+    /^import\s+\{[\s\S]*?\}\s+from\s+"(?:\.\.\/|\.\/)modules\/advisor\.js";\n\n/,
     `${advisorModule}\n\n`,
   );
   if (bundled === cardSource) {
@@ -62,16 +62,20 @@ function buildDistEntry() {
 }
 
 const distEntry = buildDistEntry();
+const rootEntryPath = "ha-solar-dashboard.js";
 const distPath = "dist/ha-solar-dashboard.js";
+const entryPaths = [rootEntryPath, distPath];
 
 if (checkOnly) {
-  if (!existsSync(join(root, distPath))) {
-    throw new Error(`${distPath} is missing`);
-  }
-  const current = readText(distPath);
-  if (current !== distEntry) {
-    throw new Error(`${distPath} is not up to date; run npm run build`);
+  for (const entryPath of entryPaths) {
+    if (!existsSync(join(root, entryPath))) {
+      throw new Error(`${entryPath} is missing`);
+    }
+    const current = readText(entryPath);
+    if (current !== distEntry) {
+      throw new Error(`${entryPath} is not up to date; run npm run build`);
+    }
   }
 } else {
-  writeText(distPath, distEntry);
+  entryPaths.forEach((entryPath) => writeText(entryPath, distEntry));
 }

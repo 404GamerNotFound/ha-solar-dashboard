@@ -93,11 +93,17 @@ function validateDistPackage() {
 
   const rootCard = hash("ha-solar-dashboard.js");
   const distCard = hash("dist/ha-solar-dashboard.js");
-  if (rootCard !== distCard) fail("dist/ha-solar-dashboard.js must match ha-solar-dashboard.js");
+  if (rootCard === distCard) fail("dist/ha-solar-dashboard.js must be the bundled HACS entry, not a raw source copy");
 
   const distJsFiles = listFiles("dist").filter((file) => file.endsWith(".js"));
   if (!distJsFiles.includes(`${repoName}.js`)) fail(`dist must contain ${repoName}.js`);
   if (distJsFiles.length !== 1) fail(`dist must contain exactly one JavaScript entry file, found: ${distJsFiles.join(", ")}`);
+
+  try {
+    execFileSync("node", [join(root, "scripts/build-dist.mjs"), "--check"], { stdio: "pipe" });
+  } catch (error) {
+    fail(`dist/ha-solar-dashboard.js must be generated from source:\n${error.stderr?.toString() || error.message}`);
+  }
 
   const sourceI18nFiles = listFiles("i18n").filter((file) => file.endsWith(".json")).sort();
   const distI18nFiles = listFiles("dist/i18n").filter((file) => file.endsWith(".json")).sort();
@@ -143,8 +149,11 @@ function validateDistPackage() {
   }
 
   const source = readText("ha-solar-dashboard.js");
+  const distSource = readText("dist/ha-solar-dashboard.js");
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");
+  if (distSource.includes('from "./modules/')) fail("dist/ha-solar-dashboard.js must not depend on external JavaScript modules");
+  if (distSource.includes('assetUrl("styles/')) fail("dist/ha-solar-dashboard.js must inline critical CSS for HACS release assets");
 
   const configuredImages = [...source.matchAll(/\b(?:file|dayFile):\s*"([^"]+)"/g)].map((match) => match[1]);
   const fallbackImages = [...source.matchAll(/fallbackFiles:\s*\[([^\]]*)\]/g)]

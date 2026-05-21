@@ -1349,7 +1349,7 @@ const ENERGY_RANGE_OPTIONS = [
 const VIEW_MODE_OPTIONS = [
   { key: "house", labelKey: "view.house", label: "House View", icon: "house" },
   { key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard", icon: "advisor" },
-  { key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart", iconOnly: true },
+  { key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart" },
 ];
 
 const DEFAULT_LANGUAGE = "en";
@@ -6187,7 +6187,7 @@ class HaSolarDashboardCard extends HTMLElement {
           ? `${icon}<span class="view-mode-label">${this._escape(label)}</span>`
           : this._escape(label);
         return htmlTag("button", {
-          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon), "view-mode-icon-only": option.iconOnly === true }),
+          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon), "view-mode-icon-only": Boolean(option.icon) }),
           type: "button",
           "data-view-mode": option.key,
           "aria-pressed": active ? "true" : "false",
@@ -7835,7 +7835,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select,.energy-range-select,.view-mode-toggle { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
         .house-select,.energy-range-select { max-width:170px; padding:0 30px 0 10px; }
         .energy-range-select { max-width:110px; }
-        .view-mode-toggle { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 42px; width:clamp(274px,30vw,358px); max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
+        .view-mode-toggle { display:grid; grid-template-columns:repeat(3,42px); width:max-content; max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
         .view-mode-button { min-width:0; min-height:28px; border:0; border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.82rem; font-weight:800; line-height:1.1; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
         .view-mode-icon { width:17px; height:17px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
         .view-mode-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

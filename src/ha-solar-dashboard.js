@@ -149,7 +149,7 @@ const ENERGY_RANGE_OPTIONS = [
 const VIEW_MODE_OPTIONS = [
   { key: "house", labelKey: "view.house", label: "House View", icon: "house" },
   { key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard", icon: "advisor" },
-  { key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart", iconOnly: true },
+  { key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart" },
 ];
 
 const DEFAULT_LANGUAGE = "en";
@@ -3221,7 +3221,7 @@ class HaSolarDashboardCard extends HTMLElement {
           ? `${icon}<span class="view-mode-label">${this._escape(label)}</span>`
           : this._escape(label);
         return htmlTag("button", {
-          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon), "view-mode-icon-only": option.iconOnly === true }),
+          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon), "view-mode-icon-only": Boolean(option.icon) }),
           type: "button",
           "data-view-mode": option.key,
           "aria-pressed": active ? "true" : "false",

@@ -62,6 +62,7 @@ function buildEntry() {
   bundled = inlineModuleImport(bundled, "modules/grid-flow.js");
   bundled = inlineModuleImport(bundled, "modules/html.js");
   bundled = inlineModuleImport(bundled, "modules/large-consumers.js");
+  bundled = inlineModuleImport(bundled, "modules/wallbox.js");
 
   bundled = bundled
     .replace("const I18N = {};", bundledI18nSource())

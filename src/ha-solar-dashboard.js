@@ -59,6 +59,17 @@ import {
   styleMap,
 } from "../modules/html.js";
 import {
+  CHART_DASHBOARD_VIEW,
+  chartBounds,
+  chartDashboardSections,
+  chartHistoryApiPath,
+  chartHistoryCacheKey,
+  chartHistoryPoint,
+  chartLastPointCoordinates,
+  chartPath,
+  flattenChartSections,
+} from "../modules/charts.js";
+import {
   largeConsumerAdvisorDetails,
   largeConsumerEnergyEntityId,
   largeConsumerEntityIds,
@@ -138,6 +149,7 @@ const ENERGY_RANGE_OPTIONS = [
 const VIEW_MODE_OPTIONS = [
   { key: "house", labelKey: "view.house", label: "House View" },
   { key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard" },
+  { key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart" },
 ];
 
 const DEFAULT_LANGUAGE = "en";
@@ -539,6 +551,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
+    this._chartDashboardLoading?.clear();
     this._stopAdvisorRefreshTimer();
   }
 
@@ -675,6 +688,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
+    this._chartDashboardLoading?.clear();
     this._advisorConditionSince = new Map();
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
@@ -797,6 +811,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
     this._chartHours = this._chartHours || this.config.chart_hours;
     this._historyCache = this._historyCache || new Map();
+    this._chartDashboardLoading = this._chartDashboardLoading || new Set();
     this._overlayConsumptionCache = this._overlayConsumptionCache || new Map();
     this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();
     this._energyRangeCache = this._energyRangeCache || new Map();
@@ -884,6 +899,10 @@ class HaSolarDashboardCard extends HTMLElement {
       adviser: "advisor",
       adviser_dashboard: "advisor",
       energy_advisor: "advisor",
+      chart: CHART_DASHBOARD_VIEW,
+      diagram: CHART_DASHBOARD_VIEW,
+      verlauf: CHART_DASHBOARD_VIEW,
+      charts_dashboard: CHART_DASHBOARD_VIEW,
     };
     const key = aliases[normalized] || normalized;
     return VIEW_MODE_OPTIONS.some((option) => option.key === key) ? key : undefined;
@@ -1018,6 +1037,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricEntityId(metric) {
+    if (metric.chartEntityId) return metric.chartEntityId;
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric.customKpi) return metric.customKpi.entity || "";
     if (metric.largeConsumer) {
@@ -1034,6 +1054,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _unitForMetric(metric) {
+    if (metric.chartUnit) return metric.chartUnit;
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.unit || "auto";
     if (metric.customKpi) return metric.customKpi.unit;
     if (metric.largeConsumer) return metric.largeConsumer.unit || this.config.units?.power || "auto";
@@ -2526,12 +2547,13 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _chartMetric(metricKey) {
-    return this._allChartMetrics().find((metric) => metric.key === metricKey);
+    return this._allChartMetrics().find((metric) => metric.key === metricKey)
+      || flattenChartSections(this._chartDashboardSections()).find((metric) => metric.key === metricKey || metric.chartKey === metricKey);
   }
 
   _historyCacheKey(entityId, hours) {
     const bucket = this._cacheBucket(MINUTE_MS);
-    return `${entityId}|${hours}|${bucket}`;
+    return chartHistoryCacheKey(entityId, hours, bucket);
   }
 
   async _openChart(metricKey, hours = this._chartHours || this.config.chart_hours || 24) {
@@ -2584,15 +2606,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const cached = this._historyCache.get(cacheKey);
     if (cached) return cached;
 
-    const end = new Date();
-    const start = new Date(end.getTime() - hours * 60 * 60 * 1000);
-    const query = [
-      `filter_entity_id=${encodeURIComponent(entityId)}`,
-      `end_time=${encodeURIComponent(end.toISOString())}`,
-      "significant_changes_only=0",
-    ].join("&");
-    const path = `history/period/${start.toISOString()}?${query}`;
-    const history = await this._hass.callApi("GET", path);
+    const history = await this._hass.callApi("GET", chartHistoryApiPath(entityId, hours));
     const states = Array.isArray(history?.[0]) ? history[0] : [];
     const points = states
       .map((entry) => this._historyPoint(metric, entry))
@@ -2604,21 +2618,16 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _historyPoint(metric, entry) {
-    if (!entry || typeof entry !== "object") return undefined;
-    const rawValue = entry.state ?? entry.s;
-    const value = this._formatValue(rawValue);
-    if (value === "—") return undefined;
-    const entityUnit = entry.attributes?.unit_of_measurement || this._getEntityUnit(this._metricEntityId(metric));
-    const numericValue = this._isMetricEnergyMode(metric)
-      ? this._valueAsKwh(rawValue, entityUnit)
-      : metric.unit === "power" || (metric.overlay === "heatpump" && this._isPowerUnit(entityUnit))
-      ? this._valueAsWatts(rawValue, entityUnit)
-      : numericState(rawValue);
-    if (!Number.isFinite(numericValue)) return undefined;
-    const rawTime = entry.last_changed || entry.last_updated || entry.lu;
-    const time = Date.parse(rawTime || "");
-    if (!Number.isFinite(time)) return undefined;
-    return { time, value: numericValue };
+    return chartHistoryPoint(metric, entry, {
+      metricEntityId: (item) => this._metricEntityId(item),
+      getEntityUnit: (entityId) => this._getEntityUnit(entityId),
+      formatValue: (value) => this._formatValue(value),
+      isMetricEnergyMode: (item) => this._isMetricEnergyMode(item),
+      valueAsKwh: (value, unit) => this._valueAsKwh(value, unit),
+      valueAsWatts: (value, unit) => this._valueAsWatts(value, unit),
+      numericState,
+      isPowerUnit: (unit) => this._isPowerUnit(unit),
+    });
   }
 
   _formatChartValue(value, metric) {
@@ -2647,12 +2656,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _chartPath(points, min, max, start, end, width, height, padding) {
-    const range = max - min || 1;
-    return points.map((point) => {
-      const x = padding.left + ((point.time - start) / Math.max(1, end - start)) * (width - padding.left - padding.right);
-      const y = padding.top + (1 - ((point.value - min) / range)) * (height - padding.top - padding.bottom);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
+    return chartPath(points, min, max, start, end, width, height, padding);
   }
 
   _renderChartSvg(metric, chart) {
@@ -2664,16 +2668,12 @@ class HaSolarDashboardCard extends HTMLElement {
     const width = 720;
     const height = 260;
     const padding = { top: 22, right: 22, bottom: 36, left: 58 };
-    const values = points.map((point) => point.value);
-    const rawMin = Math.min(...values);
-    const rawMax = Math.max(...values);
-    const pad = Math.max((rawMax - rawMin) * 0.12, rawMax === rawMin ? Math.abs(rawMax || 1) * 0.1 : 0);
-    const min = rawMin === rawMax ? rawMin - pad : rawMin - pad;
-    const max = rawMin === rawMax ? rawMax + pad : rawMax + pad;
+    const { min, max } = chartBounds(points);
     const start = Date.now() - chart.hours * 60 * 60 * 1000;
     const end = Date.now();
     const line = this._chartPath(points, min, max, start, end, width, height, padding);
     const latest = points[points.length - 1];
+    const latestCoordinates = chartLastPointCoordinates(line, padding);
     const zeroY = min < 0 && max > 0
       ? padding.top + (1 - ((0 - min) / (max - min))) * (height - padding.top - padding.bottom)
       : undefined;
@@ -2685,7 +2685,7 @@ class HaSolarDashboardCard extends HTMLElement {
         <line class="chart-gridline soft" x1="${padding.left}" y1="${padding.top + (height - padding.top - padding.bottom) / 2}" x2="${width - padding.right}" y2="${padding.top + (height - padding.top - padding.bottom) / 2}"></line>
         ${zeroY ? `<line class="chart-zero" x1="${padding.left}" y1="${zeroY.toFixed(1)}" x2="${width - padding.right}" y2="${zeroY.toFixed(1)}"></line>` : ""}
         <polyline class="chart-line" points="${this._escape(line)}"></polyline>
-        <circle class="chart-dot" cx="${this._escape(line.split(" ").at(-1)?.split(",")[0] || padding.left)}" cy="${this._escape(line.split(" ").at(-1)?.split(",")[1] || padding.top)}" r="4"></circle>
+        <circle class="chart-dot" cx="${this._escape(latestCoordinates.x)}" cy="${this._escape(latestCoordinates.y)}" r="4"></circle>
         <text class="chart-label" x="${padding.left}" y="16">${this._escape(this._formatChartValue(max, metric))}</text>
         <text class="chart-label" x="${padding.left}" y="${height - 8}">${this._escape(this._formatChartTime(start))}</text>
         <text class="chart-label end" x="${width - padding.right}" y="${height - 8}">${this._escape(this._formatChartTime(end))}</text>
@@ -2723,6 +2723,138 @@ class HaSolarDashboardCard extends HTMLElement {
           ${this._renderChartSvg(metric, this._activeChart)}
         </div>
       </div>
+    `;
+  }
+
+  _chartDashboardHours() {
+    return [24, 48].includes(Number(this._chartHours)) ? Number(this._chartHours) : this.config.chart_hours || 24;
+  }
+
+  _chartEntityId(metric) {
+    if (metric?.chartEntityId) return metric.chartEntityId;
+    if (metric?.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
+    if (metric?.customKpi) return metric.customKpi.entity || "";
+    if (metric?.largeConsumer) return this._largeConsumerPowerEntityId(metric);
+    if ((metric?.sourceKey || metric?.key) === "import_export_power") return this._gridPrimaryEntityId();
+    return this.config.entities?.[metric?.sourceKey || metric?.key] || "";
+  }
+
+  _chartDashboardMetricPool(variant = this._currentVariant || this._layoutState().variant) {
+    return [
+      ...TILE_METRICS,
+      ...this._visibleOverlayMetrics(),
+      ...this._customKpiMetrics(),
+      ...this._largeConsumerMetrics(),
+      ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
+    ].filter((metric, index, metrics) => {
+      if (!this._chartEntityId(metric)) return false;
+      return metrics.findIndex((item) => item.key === metric.key) === index;
+    });
+  }
+
+  _chartDashboardSections(variant = this._currentVariant || this._layoutState().variant) {
+    return chartDashboardSections({
+      pvRoofStringEntries: this._pvRoofStringEntries(),
+      metrics: this._chartDashboardMetricPool(variant),
+      metricEntityId: (metric) => this._chartEntityId(metric),
+      metricLabel: (metric) => this._metricLabel(metric, variant),
+      translate: (key, values, fallback) => this._t(key, values, fallback),
+    });
+  }
+
+  _dashboardChartState(metric) {
+    const entityId = this._chartEntityId(metric);
+    const hours = this._chartDashboardHours();
+    if (!entityId) return { hours, loading: false, error: this._t("chart.empty"), points: [] };
+    const cacheKey = this._historyCacheKey(entityId, hours);
+    const cached = this._historyCache.get(cacheKey);
+    if (cached?.error) return { hours, loading: false, error: this._t("chart.error"), points: [] };
+    if (cached) return { hours, loading: false, error: "", points: cached };
+    this._requestDashboardChart(metric, entityId, hours, cacheKey);
+    return { hours, loading: true, error: "", points: [] };
+  }
+
+  _requestDashboardChart(metric, entityId, hours, cacheKey) {
+    if (!this._hass?.callApi || this._chartDashboardLoading?.has(cacheKey)) return;
+    const requestToken = this._asyncRequestToken || 0;
+    this._chartDashboardLoading.add(cacheKey);
+    this._loadHistoryPoints(metric, entityId, hours)
+      .then((points) => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._historyCache, cacheKey, points, MAX_HISTORY_CACHE_ENTRIES);
+      })
+      .catch(() => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._historyCache, cacheKey, { error: true, points: [] }, MAX_HISTORY_CACHE_ENTRIES);
+      })
+      .finally(() => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._chartDashboardLoading?.delete(cacheKey);
+        this._updateReadingsIfReady();
+      });
+  }
+
+  _renderChartDashboardCard(metric) {
+    const entityId = this._chartEntityId(metric);
+    const chart = this._dashboardChartState(metric);
+    const normalizedChart = chart?.error === true
+      ? { hours: this._chartDashboardHours(), loading: false, error: this._t("chart.error"), points: [] }
+      : chart;
+    return `
+      <article class="chart-card" data-chart-dashboard-card="${this._escape(metric.chartKey || metric.key)}" style="${this._escape(this._accentStyle(metric))}">
+        <div class="chart-card-head">
+          <div>
+            <strong>${this._escape(this._metricLabel(metric, this._currentVariant))}</strong>
+            <span>${this._escape(entityId)}</span>
+          </div>
+          <button type="button" class="chart-open-button" data-chart-key="${this._escape(metric.key)}" aria-label="${this._escape(this._t("charts.openLarge", {}, "Open large chart"))}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"></path><path d="M4 19h16"></path><path d="m7 15 3-4 3 2 4-6"></path><path d="M17 7h3v3"></path></svg>
+          </button>
+        </div>
+        <div class="chart-card-body">
+          ${this._renderChartSvg(metric, normalizedChart)}
+        </div>
+      </article>
+    `;
+  }
+
+  _renderChartDashboard(variant = this._currentVariant || this._layoutState().variant) {
+    const sections = this._chartDashboardSections(variant);
+    const totalCharts = flattenChartSections(sections).length;
+    const hours = this._chartDashboardHours();
+    const rangeButton = (value) => `
+      <button type="button" class="chart-range${hours === value ? " active" : ""}" data-chart-dashboard-hours="${value}">${this._escape(this._t(`chart.range${value}`, {}, `${value}h`))}</button>
+    `;
+    const sectionHtml = sections.map((section) => `
+      <section class="chart-section">
+        <div class="chart-section-head">
+          <h3>${this._escape(section.label)}</h3>
+          <span>${this._escape(section.items.length === 1
+            ? this._t("charts.countOne", { count: section.items.length }, "1 chart")
+            : this._t("charts.count", { count: section.items.length }, `${section.items.length} charts`))}</span>
+        </div>
+        <div class="chart-grid">
+          ${section.items.map((metric) => this._renderChartDashboardCard(metric)).join("")}
+        </div>
+      </section>
+    `).join("");
+
+    return `
+      <section class="chart-dashboard" data-chart-dashboard>
+        <div class="chart-dashboard-head">
+          <div>
+            <div class="chart-dashboard-label">${this._escape(this._t("charts.label", {}, "Charts"))}</div>
+            <h2>${this._escape(this._t("charts.title", {}, "Entity history"))}</h2>
+          </div>
+          <div class="chart-actions">
+            ${rangeButton(24)}
+            ${rangeButton(48)}
+          </div>
+        </div>
+        ${totalCharts > 0
+          ? sectionHtml
+          : `<div class="chart-message">${this._escape(this._t("charts.empty", {}, "No chartable entities configured yet."))}</div>`}
+      </section>
     `;
   }
 
@@ -2886,6 +3018,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricLabel(metric, variant) {
+    if (metric.chartLabel) return metric.chartLabel;
     if (metric.overlay) return this._overlayLabel(metric.overlay);
     if (metric.customKpi) return metric.customKpi.label || metric.label;
     if (metric.largeConsumer) return metric.label || this._largeConsumerLabel(metric.largeConsumer);
@@ -3048,17 +3181,29 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderViewSelector() {
     if (this.config.show_view_selector !== true) return "";
     const activeView = this._currentViewMode();
+    const chartIcon = `
+      <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 19V5"></path>
+        <path d="M4 19h16"></path>
+        <path d="m7 15 3-4 3 2 4-6"></path>
+        <path d="M17 7h3v3"></path>
+      </svg>
+    `;
     const buttons = VIEW_MODE_OPTIONS
       .map((option) => {
         const active = option.key === activeView;
         const label = this._t(option.labelKey, {}, option.label);
+        const content = option.icon === "chart"
+          ? `${chartIcon}<span class="view-mode-label">${this._escape(label)}</span>`
+          : this._escape(label);
         return htmlTag("button", {
-          class: classNames("view-mode-button", { active }),
+          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon) }),
           type: "button",
           "data-view-mode": option.key,
           "aria-pressed": active ? "true" : "false",
+          "aria-label": label,
           title: label,
-        }, label);
+        }, rawHtml(content));
       })
       .join("");
 
@@ -4493,6 +4638,7 @@ class HaSolarDashboardCard extends HTMLElement {
     });
 
     this.shadowRoot.querySelectorAll("[data-chart-key]").forEach((element) => {
+      if (element.closest("[data-chart-dashboard]")) return;
       const metricKey = element.dataset.chartKey;
       if (!metricKey) return;
       element.addEventListener("click", (event) => {
@@ -4512,6 +4658,8 @@ class HaSolarDashboardCard extends HTMLElement {
       });
     });
 
+    this._attachChartDashboardControls();
+
     this.shadowRoot.querySelectorAll("[data-chart-close]").forEach((element) => {
       element.addEventListener("click", (event) => {
         event.preventDefault();
@@ -4521,6 +4669,32 @@ class HaSolarDashboardCard extends HTMLElement {
     });
 
     this._attachAdvisorControls();
+  }
+
+  _attachChartDashboardControls() {
+    this.shadowRoot.querySelectorAll("[data-chart-dashboard] [data-chart-key]").forEach((element) => {
+      if (element.dataset.chartDashboardBound === "true") return;
+      element.dataset.chartDashboardBound = "true";
+      const metricKey = element.dataset.chartKey;
+      if (!metricKey) return;
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._openChart(metricKey);
+      });
+    });
+
+    this.shadowRoot.querySelectorAll("[data-chart-dashboard-hours]").forEach((button) => {
+      if (button.dataset.chartDashboardBound === "true") return;
+      button.dataset.chartDashboardBound = "true";
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const hours = Number(event.currentTarget.dataset.chartDashboardHours);
+        this._chartHours = [24, 48].includes(hours) ? hours : 24;
+        this._renderCardShell(this._layoutState());
+      });
+    });
   }
 
   _attachAdvisorControls() {
@@ -4603,6 +4777,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
     const advisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
+    const chartDashboardHtml = activeView === CHART_DASHBOARD_VIEW ? this._renderChartDashboard(state.variant) : "";
     const voltageAlertHtml = this._renderGridVoltageAlert();
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
@@ -4674,7 +4849,9 @@ class HaSolarDashboardCard extends HTMLElement {
         ${voltageAlertHtml}
         ${activeView === "advisor"
           ? advisorHtml
-          : `
+          : activeView === CHART_DASHBOARD_VIEW
+            ? chartDashboardHtml
+            : `
             <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
             ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${largeConsumerSectionHtml}` : ""}
           `}
@@ -4873,6 +5050,19 @@ class HaSolarDashboardCard extends HTMLElement {
       advisorChanged = true;
     }
     if (advisorChanged) this._attachAdvisorControls();
+    const nextChartDashboardHtml = activeView === CHART_DASHBOARD_VIEW ? this._renderChartDashboard(variant) : "";
+    const chartDashboardElement = this.shadowRoot.querySelector("[data-chart-dashboard]");
+    let chartDashboardChanged = false;
+    if (chartDashboardElement && nextChartDashboardHtml) {
+      chartDashboardElement.outerHTML = nextChartDashboardHtml.trim();
+      chartDashboardChanged = true;
+    } else if (chartDashboardElement && !nextChartDashboardHtml) {
+      chartDashboardElement.remove();
+    } else if (!chartDashboardElement && nextChartDashboardHtml) {
+      this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextChartDashboardHtml);
+      chartDashboardChanged = true;
+    }
+    if (chartDashboardChanged) this._attachChartDashboardControls();
   }
 
   renderCard() {
@@ -4971,6 +5161,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       adviser: "advisor",
       adviser_dashboard: "advisor",
       energy_advisor: "advisor",
+      chart: CHART_DASHBOARD_VIEW,
+      diagram: CHART_DASHBOARD_VIEW,
+      verlauf: CHART_DASHBOARD_VIEW,
+      charts_dashboard: CHART_DASHBOARD_VIEW,
     };
     const key = aliases[normalized] || normalized;
     return VIEW_MODE_OPTIONS.some((option) => option.key === key) ? key : undefined;

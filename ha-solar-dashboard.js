@@ -673,6 +673,156 @@ function htmlTag(name, attrs = {}, children = []) {
   return `${openTag}${childToHtml(children)}</${tagName}>`;
 }
 
+const CHART_DASHBOARD_VIEW = "charts";
+
+function chartHistoryCacheKey(entityId, hours, bucket) {
+  return `${entityId}|${hours}|${bucket}`;
+}
+
+function chartHistoryApiPath(entityId, hours, end = new Date()) {
+  const endDate = end instanceof Date ? end : new Date(end);
+  const start = new Date(endDate.getTime() - hours * 60 * 60 * 1000);
+  const query = [
+    `filter_entity_id=${encodeURIComponent(entityId)}`,
+    `end_time=${encodeURIComponent(endDate.toISOString())}`,
+    "significant_changes_only=0",
+  ].join("&");
+  return `history/period/${start.toISOString()}?${query}`;
+}
+
+function chartHistoryPoint(metric, entry, {
+  metricEntityId,
+  getEntityUnit,
+  formatValue,
+  isMetricEnergyMode,
+  valueAsKwh,
+  valueAsWatts,
+  numericState,
+  isPowerUnit,
+} = {}) {
+  if (!entry || typeof entry !== "object") return undefined;
+  const rawValue = entry.state ?? entry.s;
+  if (formatValue?.(rawValue) === "—") return undefined;
+  const entityId = metricEntityId?.(metric) || metric?.chartEntityId || "";
+  const entityUnit = entry.attributes?.unit_of_measurement || getEntityUnit?.(entityId) || "";
+  const numericValue = isMetricEnergyMode?.(metric)
+    ? valueAsKwh?.(rawValue, entityUnit)
+    : metric?.unit === "power" || (metric?.overlay === "heatpump" && isPowerUnit?.(entityUnit))
+      ? valueAsWatts?.(rawValue, entityUnit)
+      : numericState?.(rawValue);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const rawTime = entry.last_changed || entry.last_updated || entry.lu;
+  const time = Date.parse(rawTime || "");
+  if (!Number.isFinite(time)) return undefined;
+  return { time, value: numericValue };
+}
+
+function chartBounds(points = []) {
+  const values = points.map((point) => point.value).filter(Number.isFinite);
+  if (values.length === 0) return { min: 0, max: 1 };
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const pad = Math.max((rawMax - rawMin) * 0.12, rawMax === rawMin ? Math.abs(rawMax || 1) * 0.1 : 0);
+  return {
+    min: rawMin - pad,
+    max: rawMax + pad,
+  };
+}
+
+function chartPath(points, min, max, start, end, width, height, padding) {
+  const range = max - min || 1;
+  return points.map((point) => {
+    const x = padding.left + ((point.time - start) / Math.max(1, end - start)) * (width - padding.left - padding.right);
+    const y = padding.top + (1 - ((point.value - min) / range)) * (height - padding.top - padding.bottom);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+}
+
+function chartLastPointCoordinates(path, padding = { left: 0, top: 0 }) {
+  const [x, y] = String(path || "").split(" ").at(-1)?.split(",") || [];
+  return {
+    x: x || padding.left,
+    y: y || padding.top,
+  };
+}
+
+function dedupeChartItems(items = []) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = item?.entityId || item?.key;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function flattenChartSections(sections = []) {
+  return sections.flatMap((section) => section.items || []);
+}
+
+function chartDashboardSections({
+  pvRoofStringEntries = [],
+  metrics = [],
+  metricEntityId,
+  metricLabel,
+  translate,
+} = {}) {
+  const toItem = (metric) => {
+    const entityId = metric?.chartEntityId || metricEntityId?.(metric) || "";
+    if (!entityId) return undefined;
+    const key = metric?.chartKey || metric?.key || entityId;
+    return {
+      ...metric,
+      key,
+      chartKey: key,
+      chartEntityId: entityId,
+      chartLabel: metric?.chartLabel || metricLabel?.(metric) || metric?.label || key,
+    };
+  };
+  const pvItems = pvRoofStringEntries
+    .filter((entry) => entry?.powerEntityId)
+    .map((entry, index) => toItem({
+      key: `pv_roof_string_${entry.id || index}`,
+      chartKey: `pv_roof_string_${entry.id || index}`,
+      chartEntityId: entry.powerEntityId,
+      chartLabel: entry.label || `String ${index + 1}`,
+      unit: "power",
+      color: "yellow",
+    }))
+    .filter(Boolean);
+
+  const sectionDefinitions = [
+    {
+      key: "pv",
+      label: translate?.("charts.sectionPvStrings", {}, "PV strings") || "PV strings",
+      items: pvItems,
+    },
+    {
+      key: "wallbox",
+      label: translate?.("charts.sectionWallbox", {}, "Wallbox") || "Wallbox",
+      items: metrics.filter((metric) => String(metric?.key || "").includes("wallbox")).map(toItem).filter(Boolean),
+    },
+    {
+      key: "system",
+      label: translate?.("charts.sectionSystem", {}, "Inverter and system") || "Inverter and system",
+      items: metrics.filter((metric) => !String(metric?.key || "").includes("wallbox")).map(toItem).filter(Boolean),
+    },
+  ];
+
+  const seenAcrossSections = new Set();
+  return sectionDefinitions
+    .map((section) => ({
+      ...section,
+      items: dedupeChartItems(section.items).filter((item) => {
+        const key = item.entityId || item.key;
+        if (seenAcrossSections.has(key)) return false;
+        seenAcrossSections.add(key);
+        return true;
+      }),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
 const LARGE_CONSUMER_DEFINITIONS = Object.freeze([
   { id: "washing_machine", labelKey: "consumer.washing_machine", label: "Washing machine", color: "#34d399", maxPowerKw: 2.2 },
   { id: "dishwasher", labelKey: "consumer.dishwasher", label: "Dishwasher", color: "#38bdf8", maxPowerKw: 2.0 },
@@ -1199,6 +1349,7 @@ const ENERGY_RANGE_OPTIONS = [
 const VIEW_MODE_OPTIONS = [
   { key: "house", labelKey: "view.house", label: "House View" },
   { key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard" },
+  { key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart" },
 ];
 
 const DEFAULT_LANGUAGE = "en";
@@ -1314,7 +1465,7 @@ const I18N = {
     "advisor.impactSurplus": "That value shows how much power is currently available for flexible loads before it is exported.",
     "advisor.impactTemperature": "That value is used to detect possible battery stress or operating limits.",
     "advisor.impactWallbox": "That value describes the charger state and determines whether charging should start, stop, or wait.",
-    "editor.showViewSelector": "Show House/Advisor view selector",
+    "editor.showViewSelector": "Show view selector",
     "chart.close": "Close",
     "chart.empty": "No history data found",
     "chart.error": "History could not be loaded",
@@ -1322,6 +1473,15 @@ const I18N = {
     "chart.range24": "24h",
     "chart.range48": "48h",
     "chart.subtitle": "Last {hours} hours",
+    "charts.count": "{count} charts",
+    "charts.countOne": "{count} chart",
+    "charts.empty": "No chartable entities configured yet.",
+    "charts.label": "Charts",
+    "charts.openLarge": "Open large chart",
+    "charts.sectionPvStrings": "PV strings",
+    "charts.sectionSystem": "Inverter and system",
+    "charts.sectionWallbox": "Wallbox",
+    "charts.title": "Entity history",
     "editor.customDayImage": "Custom Day Image",
     "editor.customImage": "Custom Image",
     "editor.batteryChargeEntity": "Battery charge entity",
@@ -1525,6 +1685,7 @@ const I18N = {
     "value.soon": "soon",
     "view.advisor": "Advisor Dashboard",
     "view.house": "House View",
+    "view.charts": "Charts",
     "weather.clear": "Clear",
     "weather.clear-night": "Clear",
     "weather.cloudy": "Cloudy",
@@ -1657,7 +1818,7 @@ const I18N = {
     "advisor.impactSurplus": "Dieser Wert zeigt, wie viel Leistung gerade für flexible Verbraucher verfügbar ist, bevor sie eingespeist wird.",
     "advisor.impactTemperature": "Dieser Wert hilft, mögliche Batteriestress- oder Betriebsgrenzen zu erkennen.",
     "advisor.impactWallbox": "Dieser Wert beschreibt den Zustand der Wallbox und beeinflusst, ob Laden starten, stoppen oder warten sollte.",
-    "editor.showViewSelector": "Haus-/Advisor-Ansichtsauswahl anzeigen",
+    "editor.showViewSelector": "Ansichtsauswahl anzeigen",
     "chart.close": "Schließen",
     "chart.empty": "Keine Verlaufsdaten gefunden",
     "chart.error": "Verlauf konnte nicht geladen werden",
@@ -1665,6 +1826,15 @@ const I18N = {
     "chart.range24": "24h",
     "chart.range48": "48h",
     "chart.subtitle": "Letzte {hours} Stunden",
+    "charts.count": "{count} Charts",
+    "charts.countOne": "{count} Chart",
+    "charts.empty": "Noch keine Entitäten mit Verlauf konfiguriert.",
+    "charts.label": "Charts",
+    "charts.openLarge": "Großen Chart öffnen",
+    "charts.sectionPvStrings": "PV-Strings",
+    "charts.sectionSystem": "Wechselrichter und System",
+    "charts.sectionWallbox": "Wallbox",
+    "charts.title": "Entitätsverlauf",
     "editor.customDayImage": "Eigenes Tagbild",
     "editor.customImage": "Eigenes Bild",
     "editor.batteryChargeEntity": "Batterie-Lade-Entität",
@@ -1868,6 +2038,7 @@ const I18N = {
     "value.soon": "bald",
     "view.advisor": "Advisor Dashboard",
     "view.house": "Hausansicht",
+    "view.charts": "Charts",
     "weather.clear": "Klar",
     "weather.clear-night": "Klar",
     "weather.cloudy": "Bewölkt",
@@ -2000,7 +2171,7 @@ const I18N = {
     "advisor.impactSurplus": "That value shows how much power is currently available for flexible loads before it is exported.",
     "advisor.impactTemperature": "That value is used to detect possible battery stress or operating limits.",
     "advisor.impactWallbox": "That value describes the charger state and determines whether charging should start, stop, or wait.",
-    "editor.showViewSelector": "Mostrar selector Casa/Asesor",
+    "editor.showViewSelector": "Mostrar selector de vista",
     "chart.close": "Cerrar",
     "chart.empty": "No se encontraron datos históricos",
     "chart.error": "No se pudo cargar el historial",
@@ -2008,6 +2179,15 @@ const I18N = {
     "chart.range24": "24h",
     "chart.range48": "48h",
     "chart.subtitle": "Últimas {hours} horas",
+    "charts.count": "{count} gráficos",
+    "charts.countOne": "{count} gráfico",
+    "charts.empty": "Aún no hay entidades con historial configuradas.",
+    "charts.label": "Gráficos",
+    "charts.openLarge": "Abrir gráfico grande",
+    "charts.sectionPvStrings": "Strings FV",
+    "charts.sectionSystem": "Inversor y sistema",
+    "charts.sectionWallbox": "Wallbox",
+    "charts.title": "Historial de entidades",
     "editor.customDayImage": "Imagen diurna personalizada",
     "editor.customImage": "Imagen personalizada",
     "editor.batteryChargeEntity": "Entidad de carga de batería",
@@ -2211,6 +2391,7 @@ const I18N = {
     "value.soon": "pronto",
     "view.advisor": "Panel del asesor",
     "view.house": "Vista de casa",
+    "view.charts": "Gráficos",
     "weather.clear": "Despejado",
     "weather.clear-night": "Despejado",
     "weather.cloudy": "Nublado",
@@ -2343,7 +2524,7 @@ const I18N = {
     "advisor.impactSurplus": "That value shows how much power is currently available for flexible loads before it is exported.",
     "advisor.impactTemperature": "That value is used to detect possible battery stress or operating limits.",
     "advisor.impactWallbox": "That value describes the charger state and determines whether charging should start, stop, or wait.",
-    "editor.showViewSelector": "Afficher le sélecteur Maison/Conseiller",
+    "editor.showViewSelector": "Afficher le sélecteur de vue",
     "chart.close": "Fermer",
     "chart.empty": "Aucune donnée historique trouvée",
     "chart.error": "Impossible de charger l'historique",
@@ -2351,6 +2532,15 @@ const I18N = {
     "chart.range24": "24h",
     "chart.range48": "48h",
     "chart.subtitle": "Dernières {hours} heures",
+    "charts.count": "{count} graphiques",
+    "charts.countOne": "{count} graphique",
+    "charts.empty": "Aucune entité avec historique n'est encore configurée.",
+    "charts.label": "Graphiques",
+    "charts.openLarge": "Ouvrir le grand graphique",
+    "charts.sectionPvStrings": "Strings PV",
+    "charts.sectionSystem": "Onduleur et système",
+    "charts.sectionWallbox": "Wallbox",
+    "charts.title": "Historique des entités",
     "editor.customDayImage": "Image de jour personnalisée",
     "editor.customImage": "Image personnalisée",
     "editor.batteryChargeEntity": "Entité de charge batterie",
@@ -2554,6 +2744,7 @@ const I18N = {
     "value.soon": "bientôt",
     "view.advisor": "Tableau conseiller",
     "view.house": "Vue maison",
+    "view.charts": "Graphiques",
     "weather.clear": "Dégagé",
     "weather.clear-night": "Dégagé",
     "weather.cloudy": "Nuageux",
@@ -2686,7 +2877,7 @@ const I18N = {
     "advisor.impactSurplus": "That value shows how much power is currently available for flexible loads before it is exported.",
     "advisor.impactTemperature": "That value is used to detect possible battery stress or operating limits.",
     "advisor.impactWallbox": "That value describes the charger state and determines whether charging should start, stop, or wait.",
-    "editor.showViewSelector": "Pokaż przełącznik Dom/Doradca",
+    "editor.showViewSelector": "Pokaż przełącznik widoku",
     "chart.close": "Zamknij",
     "chart.empty": "Nie znaleziono danych historii",
     "chart.error": "Nie udało się wczytać historii",
@@ -2694,6 +2885,15 @@ const I18N = {
     "chart.range24": "24h",
     "chart.range48": "48h",
     "chart.subtitle": "Ostatnie {hours} godzin",
+    "charts.count": "{count} wykresy",
+    "charts.countOne": "{count} wykres",
+    "charts.empty": "Nie skonfigurowano jeszcze encji z historią.",
+    "charts.label": "Wykresy",
+    "charts.openLarge": "Otwórz duży wykres",
+    "charts.sectionPvStrings": "Stringi PV",
+    "charts.sectionSystem": "Falownik i system",
+    "charts.sectionWallbox": "Wallbox",
+    "charts.title": "Historia encji",
     "editor.customDayImage": "Własny obraz dzienny",
     "editor.customImage": "Własny obraz",
     "editor.batteryChargeEntity": "Encja ładowania baterii",
@@ -2897,6 +3097,7 @@ const I18N = {
     "value.soon": "wkrótce",
     "view.advisor": "Panel doradcy",
     "view.house": "Widok domu",
+    "view.charts": "Wykresy",
     "weather.clear": "Bezchmurnie",
     "weather.clear-night": "Bezchmurnie",
     "weather.cloudy": "Pochmurno",
@@ -3316,6 +3517,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
+    this._chartDashboardLoading?.clear();
     this._stopAdvisorRefreshTimer();
   }
 
@@ -3452,6 +3654,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
+    this._chartDashboardLoading?.clear();
     this._advisorConditionSince = new Map();
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
@@ -3574,6 +3777,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
     this._chartHours = this._chartHours || this.config.chart_hours;
     this._historyCache = this._historyCache || new Map();
+    this._chartDashboardLoading = this._chartDashboardLoading || new Set();
     this._overlayConsumptionCache = this._overlayConsumptionCache || new Map();
     this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();
     this._energyRangeCache = this._energyRangeCache || new Map();
@@ -3661,6 +3865,10 @@ class HaSolarDashboardCard extends HTMLElement {
       adviser: "advisor",
       adviser_dashboard: "advisor",
       energy_advisor: "advisor",
+      chart: CHART_DASHBOARD_VIEW,
+      diagram: CHART_DASHBOARD_VIEW,
+      verlauf: CHART_DASHBOARD_VIEW,
+      charts_dashboard: CHART_DASHBOARD_VIEW,
     };
     const key = aliases[normalized] || normalized;
     return VIEW_MODE_OPTIONS.some((option) => option.key === key) ? key : undefined;
@@ -3795,6 +4003,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricEntityId(metric) {
+    if (metric.chartEntityId) return metric.chartEntityId;
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric.customKpi) return metric.customKpi.entity || "";
     if (metric.largeConsumer) {
@@ -3811,6 +4020,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _unitForMetric(metric) {
+    if (metric.chartUnit) return metric.chartUnit;
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.unit || "auto";
     if (metric.customKpi) return metric.customKpi.unit;
     if (metric.largeConsumer) return metric.largeConsumer.unit || this.config.units?.power || "auto";
@@ -5303,12 +5513,13 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _chartMetric(metricKey) {
-    return this._allChartMetrics().find((metric) => metric.key === metricKey);
+    return this._allChartMetrics().find((metric) => metric.key === metricKey)
+      || flattenChartSections(this._chartDashboardSections()).find((metric) => metric.key === metricKey || metric.chartKey === metricKey);
   }
 
   _historyCacheKey(entityId, hours) {
     const bucket = this._cacheBucket(MINUTE_MS);
-    return `${entityId}|${hours}|${bucket}`;
+    return chartHistoryCacheKey(entityId, hours, bucket);
   }
 
   async _openChart(metricKey, hours = this._chartHours || this.config.chart_hours || 24) {
@@ -5361,15 +5572,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const cached = this._historyCache.get(cacheKey);
     if (cached) return cached;
 
-    const end = new Date();
-    const start = new Date(end.getTime() - hours * 60 * 60 * 1000);
-    const query = [
-      `filter_entity_id=${encodeURIComponent(entityId)}`,
-      `end_time=${encodeURIComponent(end.toISOString())}`,
-      "significant_changes_only=0",
-    ].join("&");
-    const path = `history/period/${start.toISOString()}?${query}`;
-    const history = await this._hass.callApi("GET", path);
+    const history = await this._hass.callApi("GET", chartHistoryApiPath(entityId, hours));
     const states = Array.isArray(history?.[0]) ? history[0] : [];
     const points = states
       .map((entry) => this._historyPoint(metric, entry))
@@ -5381,21 +5584,16 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _historyPoint(metric, entry) {
-    if (!entry || typeof entry !== "object") return undefined;
-    const rawValue = entry.state ?? entry.s;
-    const value = this._formatValue(rawValue);
-    if (value === "—") return undefined;
-    const entityUnit = entry.attributes?.unit_of_measurement || this._getEntityUnit(this._metricEntityId(metric));
-    const numericValue = this._isMetricEnergyMode(metric)
-      ? this._valueAsKwh(rawValue, entityUnit)
-      : metric.unit === "power" || (metric.overlay === "heatpump" && this._isPowerUnit(entityUnit))
-      ? this._valueAsWatts(rawValue, entityUnit)
-      : numericState(rawValue);
-    if (!Number.isFinite(numericValue)) return undefined;
-    const rawTime = entry.last_changed || entry.last_updated || entry.lu;
-    const time = Date.parse(rawTime || "");
-    if (!Number.isFinite(time)) return undefined;
-    return { time, value: numericValue };
+    return chartHistoryPoint(metric, entry, {
+      metricEntityId: (item) => this._metricEntityId(item),
+      getEntityUnit: (entityId) => this._getEntityUnit(entityId),
+      formatValue: (value) => this._formatValue(value),
+      isMetricEnergyMode: (item) => this._isMetricEnergyMode(item),
+      valueAsKwh: (value, unit) => this._valueAsKwh(value, unit),
+      valueAsWatts: (value, unit) => this._valueAsWatts(value, unit),
+      numericState,
+      isPowerUnit: (unit) => this._isPowerUnit(unit),
+    });
   }
 
   _formatChartValue(value, metric) {
@@ -5424,12 +5622,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _chartPath(points, min, max, start, end, width, height, padding) {
-    const range = max - min || 1;
-    return points.map((point) => {
-      const x = padding.left + ((point.time - start) / Math.max(1, end - start)) * (width - padding.left - padding.right);
-      const y = padding.top + (1 - ((point.value - min) / range)) * (height - padding.top - padding.bottom);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
+    return chartPath(points, min, max, start, end, width, height, padding);
   }
 
   _renderChartSvg(metric, chart) {
@@ -5441,16 +5634,12 @@ class HaSolarDashboardCard extends HTMLElement {
     const width = 720;
     const height = 260;
     const padding = { top: 22, right: 22, bottom: 36, left: 58 };
-    const values = points.map((point) => point.value);
-    const rawMin = Math.min(...values);
-    const rawMax = Math.max(...values);
-    const pad = Math.max((rawMax - rawMin) * 0.12, rawMax === rawMin ? Math.abs(rawMax || 1) * 0.1 : 0);
-    const min = rawMin === rawMax ? rawMin - pad : rawMin - pad;
-    const max = rawMin === rawMax ? rawMax + pad : rawMax + pad;
+    const { min, max } = chartBounds(points);
     const start = Date.now() - chart.hours * 60 * 60 * 1000;
     const end = Date.now();
     const line = this._chartPath(points, min, max, start, end, width, height, padding);
     const latest = points[points.length - 1];
+    const latestCoordinates = chartLastPointCoordinates(line, padding);
     const zeroY = min < 0 && max > 0
       ? padding.top + (1 - ((0 - min) / (max - min))) * (height - padding.top - padding.bottom)
       : undefined;
@@ -5462,7 +5651,7 @@ class HaSolarDashboardCard extends HTMLElement {
         <line class="chart-gridline soft" x1="${padding.left}" y1="${padding.top + (height - padding.top - padding.bottom) / 2}" x2="${width - padding.right}" y2="${padding.top + (height - padding.top - padding.bottom) / 2}"></line>
         ${zeroY ? `<line class="chart-zero" x1="${padding.left}" y1="${zeroY.toFixed(1)}" x2="${width - padding.right}" y2="${zeroY.toFixed(1)}"></line>` : ""}
         <polyline class="chart-line" points="${this._escape(line)}"></polyline>
-        <circle class="chart-dot" cx="${this._escape(line.split(" ").at(-1)?.split(",")[0] || padding.left)}" cy="${this._escape(line.split(" ").at(-1)?.split(",")[1] || padding.top)}" r="4"></circle>
+        <circle class="chart-dot" cx="${this._escape(latestCoordinates.x)}" cy="${this._escape(latestCoordinates.y)}" r="4"></circle>
         <text class="chart-label" x="${padding.left}" y="16">${this._escape(this._formatChartValue(max, metric))}</text>
         <text class="chart-label" x="${padding.left}" y="${height - 8}">${this._escape(this._formatChartTime(start))}</text>
         <text class="chart-label end" x="${width - padding.right}" y="${height - 8}">${this._escape(this._formatChartTime(end))}</text>
@@ -5500,6 +5689,138 @@ class HaSolarDashboardCard extends HTMLElement {
           ${this._renderChartSvg(metric, this._activeChart)}
         </div>
       </div>
+    `;
+  }
+
+  _chartDashboardHours() {
+    return [24, 48].includes(Number(this._chartHours)) ? Number(this._chartHours) : this.config.chart_hours || 24;
+  }
+
+  _chartEntityId(metric) {
+    if (metric?.chartEntityId) return metric.chartEntityId;
+    if (metric?.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
+    if (metric?.customKpi) return metric.customKpi.entity || "";
+    if (metric?.largeConsumer) return this._largeConsumerPowerEntityId(metric);
+    if ((metric?.sourceKey || metric?.key) === "import_export_power") return this._gridPrimaryEntityId();
+    return this.config.entities?.[metric?.sourceKey || metric?.key] || "";
+  }
+
+  _chartDashboardMetricPool(variant = this._currentVariant || this._layoutState().variant) {
+    return [
+      ...TILE_METRICS,
+      ...this._visibleOverlayMetrics(),
+      ...this._customKpiMetrics(),
+      ...this._largeConsumerMetrics(),
+      ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
+    ].filter((metric, index, metrics) => {
+      if (!this._chartEntityId(metric)) return false;
+      return metrics.findIndex((item) => item.key === metric.key) === index;
+    });
+  }
+
+  _chartDashboardSections(variant = this._currentVariant || this._layoutState().variant) {
+    return chartDashboardSections({
+      pvRoofStringEntries: this._pvRoofStringEntries(),
+      metrics: this._chartDashboardMetricPool(variant),
+      metricEntityId: (metric) => this._chartEntityId(metric),
+      metricLabel: (metric) => this._metricLabel(metric, variant),
+      translate: (key, values, fallback) => this._t(key, values, fallback),
+    });
+  }
+
+  _dashboardChartState(metric) {
+    const entityId = this._chartEntityId(metric);
+    const hours = this._chartDashboardHours();
+    if (!entityId) return { hours, loading: false, error: this._t("chart.empty"), points: [] };
+    const cacheKey = this._historyCacheKey(entityId, hours);
+    const cached = this._historyCache.get(cacheKey);
+    if (cached?.error) return { hours, loading: false, error: this._t("chart.error"), points: [] };
+    if (cached) return { hours, loading: false, error: "", points: cached };
+    this._requestDashboardChart(metric, entityId, hours, cacheKey);
+    return { hours, loading: true, error: "", points: [] };
+  }
+
+  _requestDashboardChart(metric, entityId, hours, cacheKey) {
+    if (!this._hass?.callApi || this._chartDashboardLoading?.has(cacheKey)) return;
+    const requestToken = this._asyncRequestToken || 0;
+    this._chartDashboardLoading.add(cacheKey);
+    this._loadHistoryPoints(metric, entityId, hours)
+      .then((points) => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._historyCache, cacheKey, points, MAX_HISTORY_CACHE_ENTRIES);
+      })
+      .catch(() => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._historyCache, cacheKey, { error: true, points: [] }, MAX_HISTORY_CACHE_ENTRIES);
+      })
+      .finally(() => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._chartDashboardLoading?.delete(cacheKey);
+        this._updateReadingsIfReady();
+      });
+  }
+
+  _renderChartDashboardCard(metric) {
+    const entityId = this._chartEntityId(metric);
+    const chart = this._dashboardChartState(metric);
+    const normalizedChart = chart?.error === true
+      ? { hours: this._chartDashboardHours(), loading: false, error: this._t("chart.error"), points: [] }
+      : chart;
+    return `
+      <article class="chart-card" data-chart-dashboard-card="${this._escape(metric.chartKey || metric.key)}" style="${this._escape(this._accentStyle(metric))}">
+        <div class="chart-card-head">
+          <div>
+            <strong>${this._escape(this._metricLabel(metric, this._currentVariant))}</strong>
+            <span>${this._escape(entityId)}</span>
+          </div>
+          <button type="button" class="chart-open-button" data-chart-key="${this._escape(metric.key)}" aria-label="${this._escape(this._t("charts.openLarge", {}, "Open large chart"))}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"></path><path d="M4 19h16"></path><path d="m7 15 3-4 3 2 4-6"></path><path d="M17 7h3v3"></path></svg>
+          </button>
+        </div>
+        <div class="chart-card-body">
+          ${this._renderChartSvg(metric, normalizedChart)}
+        </div>
+      </article>
+    `;
+  }
+
+  _renderChartDashboard(variant = this._currentVariant || this._layoutState().variant) {
+    const sections = this._chartDashboardSections(variant);
+    const totalCharts = flattenChartSections(sections).length;
+    const hours = this._chartDashboardHours();
+    const rangeButton = (value) => `
+      <button type="button" class="chart-range${hours === value ? " active" : ""}" data-chart-dashboard-hours="${value}">${this._escape(this._t(`chart.range${value}`, {}, `${value}h`))}</button>
+    `;
+    const sectionHtml = sections.map((section) => `
+      <section class="chart-section">
+        <div class="chart-section-head">
+          <h3>${this._escape(section.label)}</h3>
+          <span>${this._escape(section.items.length === 1
+            ? this._t("charts.countOne", { count: section.items.length }, "1 chart")
+            : this._t("charts.count", { count: section.items.length }, `${section.items.length} charts`))}</span>
+        </div>
+        <div class="chart-grid">
+          ${section.items.map((metric) => this._renderChartDashboardCard(metric)).join("")}
+        </div>
+      </section>
+    `).join("");
+
+    return `
+      <section class="chart-dashboard" data-chart-dashboard>
+        <div class="chart-dashboard-head">
+          <div>
+            <div class="chart-dashboard-label">${this._escape(this._t("charts.label", {}, "Charts"))}</div>
+            <h2>${this._escape(this._t("charts.title", {}, "Entity history"))}</h2>
+          </div>
+          <div class="chart-actions">
+            ${rangeButton(24)}
+            ${rangeButton(48)}
+          </div>
+        </div>
+        ${totalCharts > 0
+          ? sectionHtml
+          : `<div class="chart-message">${this._escape(this._t("charts.empty", {}, "No chartable entities configured yet."))}</div>`}
+      </section>
     `;
   }
 
@@ -5663,6 +5984,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricLabel(metric, variant) {
+    if (metric.chartLabel) return metric.chartLabel;
     if (metric.overlay) return this._overlayLabel(metric.overlay);
     if (metric.customKpi) return metric.customKpi.label || metric.label;
     if (metric.largeConsumer) return metric.label || this._largeConsumerLabel(metric.largeConsumer);
@@ -5825,17 +6147,29 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderViewSelector() {
     if (this.config.show_view_selector !== true) return "";
     const activeView = this._currentViewMode();
+    const chartIcon = `
+      <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 19V5"></path>
+        <path d="M4 19h16"></path>
+        <path d="m7 15 3-4 3 2 4-6"></path>
+        <path d="M17 7h3v3"></path>
+      </svg>
+    `;
     const buttons = VIEW_MODE_OPTIONS
       .map((option) => {
         const active = option.key === activeView;
         const label = this._t(option.labelKey, {}, option.label);
+        const content = option.icon === "chart"
+          ? `${chartIcon}<span class="view-mode-label">${this._escape(label)}</span>`
+          : this._escape(label);
         return htmlTag("button", {
-          class: classNames("view-mode-button", { active }),
+          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon) }),
           type: "button",
           "data-view-mode": option.key,
           "aria-pressed": active ? "true" : "false",
+          "aria-label": label,
           title: label,
-        }, label);
+        }, rawHtml(content));
       })
       .join("");
 
@@ -7270,6 +7604,7 @@ class HaSolarDashboardCard extends HTMLElement {
     });
 
     this.shadowRoot.querySelectorAll("[data-chart-key]").forEach((element) => {
+      if (element.closest("[data-chart-dashboard]")) return;
       const metricKey = element.dataset.chartKey;
       if (!metricKey) return;
       element.addEventListener("click", (event) => {
@@ -7289,6 +7624,8 @@ class HaSolarDashboardCard extends HTMLElement {
       });
     });
 
+    this._attachChartDashboardControls();
+
     this.shadowRoot.querySelectorAll("[data-chart-close]").forEach((element) => {
       element.addEventListener("click", (event) => {
         event.preventDefault();
@@ -7298,6 +7635,32 @@ class HaSolarDashboardCard extends HTMLElement {
     });
 
     this._attachAdvisorControls();
+  }
+
+  _attachChartDashboardControls() {
+    this.shadowRoot.querySelectorAll("[data-chart-dashboard] [data-chart-key]").forEach((element) => {
+      if (element.dataset.chartDashboardBound === "true") return;
+      element.dataset.chartDashboardBound = "true";
+      const metricKey = element.dataset.chartKey;
+      if (!metricKey) return;
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._openChart(metricKey);
+      });
+    });
+
+    this.shadowRoot.querySelectorAll("[data-chart-dashboard-hours]").forEach((button) => {
+      if (button.dataset.chartDashboardBound === "true") return;
+      button.dataset.chartDashboardBound = "true";
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const hours = Number(event.currentTarget.dataset.chartDashboardHours);
+        this._chartHours = [24, 48].includes(hours) ? hours : 24;
+        this._renderCardShell(this._layoutState());
+      });
+    });
   }
 
   _attachAdvisorControls() {
@@ -7380,6 +7743,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
     const advisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
+    const chartDashboardHtml = activeView === CHART_DASHBOARD_VIEW ? this._renderChartDashboard(state.variant) : "";
     const voltageAlertHtml = this._renderGridVoltageAlert();
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
@@ -7447,8 +7811,11 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select,.energy-range-select,.view-mode-toggle { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
         .house-select,.energy-range-select { max-width:170px; padding:0 30px 0 10px; }
         .energy-range-select { max-width:110px; }
-        .view-mode-toggle { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:clamp(224px,24vw,292px); max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
-        .view-mode-button { min-width:0; min-height:28px; border:0; border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.82rem; font-weight:800; line-height:1.1; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .view-mode-toggle { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 42px; width:clamp(274px,30vw,358px); max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
+        .view-mode-button { min-width:0; min-height:28px; border:0; border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.82rem; font-weight:800; line-height:1.1; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+        .view-mode-icon { width:17px; height:17px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        .view-mode-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .view-mode-icon-button .view-mode-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
         .view-mode-button.active { background:linear-gradient(135deg,rgba(31,143,255,.5),rgba(52,211,153,.22)); color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 4px 12px rgba(31,143,255,.22); }
         .view-mode-button:focus-visible { outline:2px solid rgba(147,197,253,.95); outline-offset:1px; }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
@@ -7561,6 +7928,26 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-explanation-sources summary { color:var(--text-muted); font-size:.68rem; line-height:1.2; font-weight:800; text-transform:uppercase; letter-spacing:0; cursor:pointer; }
         .advisor-explanation-sources div { display:grid; gap:3px; min-width:0; }
         .advisor-explanation-sources code { min-width:0; color:rgba(243,246,255,.78); font-size:.72rem; line-height:1.28; overflow-wrap:anywhere; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; border-radius:6px; padding:2px 5px; background:rgba(255,255,255,.06); }
+        .chart-dashboard { display:grid; gap:14px; min-width:0; }
+        .chart-dashboard-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-width:0; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:linear-gradient(135deg,rgba(15,23,42,.76),rgba(8,13,28,.68)); }
+        .chart-dashboard-label { color:var(--text-muted); font-size:.72rem; line-height:1.2; font-weight:800; text-transform:uppercase; letter-spacing:0; }
+        .chart-dashboard h2 { margin:2px 0 0; color:var(--text-main); font-size:1.02rem; line-height:1.25; overflow-wrap:anywhere; }
+        .chart-section { display:grid; gap:8px; min-width:0; }
+        .chart-section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
+        .chart-section-head h3 { margin:0; color:var(--text-muted); font-size:.78rem; line-height:1.2; font-weight:900; text-transform:uppercase; letter-spacing:0; overflow-wrap:anywhere; }
+        .chart-section-head span { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:rgba(255,255,255,.08); color:var(--text-main); font-size:.7rem; line-height:1.1; font-weight:800; }
+        .chart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:10px; min-width:0; }
+        .chart-card { --tile-accent:#1f8fff; --tile-glow:transparent; display:grid; grid-template-rows:auto minmax(0,1fr); min-width:0; border-radius:8px; border:1px solid color-mix(in srgb,var(--tile-accent) 30%,rgba(255,255,255,.1)); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 18px var(--tile-glow); overflow:hidden; }
+        .chart-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; min-width:0; padding:10px 10px 6px; }
+        .chart-card-head div { display:grid; gap:2px; min-width:0; }
+        .chart-card-head strong { min-width:0; color:var(--tile-accent); font-size:.86rem; line-height:1.2; overflow-wrap:anywhere; }
+        .chart-card-head span { min-width:0; color:var(--text-muted); font-size:.66rem; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .chart-open-button { flex:0 0 auto; width:30px; height:30px; display:grid; place-items:center; border-radius:8px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.07); color:var(--tile-accent); cursor:pointer; }
+        .chart-open-button svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+        .chart-card-body { min-width:0; padding:0 10px 10px; }
+        .chart-card .chart-svg { min-height:150px; }
+        .chart-card .chart-message { min-height:150px; font-size:.8rem; }
+        .chart-card .chart-line { stroke-width:2.5; }
         .chart-backdrop { position:fixed; inset:0; z-index:1000; background:rgba(2,6,18,.58); backdrop-filter:blur(3px); }
         .chart-dialog { --tile-accent:#1f8fff; --tile-glow:transparent; position:fixed; z-index:1001; left:50%; top:50%; width:min(760px,calc(100vw - 28px)); max-height:calc(100vh - 32px); transform:translate(-50%,-50%); overflow:hidden; border-radius:14px; border:1px solid color-mix(in srgb,var(--tile-accent) 34%,rgba(255,255,255,.18)); background:linear-gradient(135deg,rgba(15,24,45,.98),rgba(8,14,28,.98)); box-shadow:0 24px 70px rgba(0,0,0,.62),0 0 26px var(--tile-glow); color:var(--text-main); }
         .chart-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px 14px 10px; border-bottom:1px solid rgba(255,255,255,.1); }
@@ -7583,7 +7970,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .chart-label,.chart-current { fill:var(--text-muted); font-size:12px; }
         .chart-current { fill:var(--tile-accent); text-anchor:end; font-weight:700; }
         .chart-label.end { text-anchor:end; }
-        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head{display:grid;} .chart-actions{justify-content:end;} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <style>
@@ -7597,7 +7984,9 @@ class HaSolarDashboardCard extends HTMLElement {
         ${voltageAlertHtml}
         ${activeView === "advisor"
           ? advisorHtml
-          : `
+          : activeView === CHART_DASHBOARD_VIEW
+            ? chartDashboardHtml
+            : `
             <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
             ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${largeConsumerSectionHtml}` : ""}
           `}
@@ -7796,6 +8185,19 @@ class HaSolarDashboardCard extends HTMLElement {
       advisorChanged = true;
     }
     if (advisorChanged) this._attachAdvisorControls();
+    const nextChartDashboardHtml = activeView === CHART_DASHBOARD_VIEW ? this._renderChartDashboard(variant) : "";
+    const chartDashboardElement = this.shadowRoot.querySelector("[data-chart-dashboard]");
+    let chartDashboardChanged = false;
+    if (chartDashboardElement && nextChartDashboardHtml) {
+      chartDashboardElement.outerHTML = nextChartDashboardHtml.trim();
+      chartDashboardChanged = true;
+    } else if (chartDashboardElement && !nextChartDashboardHtml) {
+      chartDashboardElement.remove();
+    } else if (!chartDashboardElement && nextChartDashboardHtml) {
+      this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextChartDashboardHtml);
+      chartDashboardChanged = true;
+    }
+    if (chartDashboardChanged) this._attachChartDashboardControls();
   }
 
   renderCard() {
@@ -7894,6 +8296,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
       adviser: "advisor",
       adviser_dashboard: "advisor",
       energy_advisor: "advisor",
+      chart: CHART_DASHBOARD_VIEW,
+      diagram: CHART_DASHBOARD_VIEW,
+      verlauf: CHART_DASHBOARD_VIEW,
+      charts_dashboard: CHART_DASHBOARD_VIEW,
     };
     const key = aliases[normalized] || normalized;
     return VIEW_MODE_OPTIONS.some((option) => option.key === key) ? key : undefined;

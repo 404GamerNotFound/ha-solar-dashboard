@@ -1,5 +1,3 @@
-export const CHART_DASHBOARD_VIEW = "charts";
-
 export function chartHistoryCacheKey(entityId, hours, bucket) {
   return `${entityId}|${hours}|${bucket}`;
 }

@@ -76,10 +76,20 @@ import {
 } from "../modules/charts.js";
 import {
   CHART_DASHBOARD_VIEW,
+  RECORDS_DASHBOARD_VIEW,
   VIEW_MODE_OPTIONS,
   normalizeViewMode,
   viewModeIconSvg,
 } from "../modules/views.js";
+import {
+  RECORDS_DAY_OPTIONS,
+  RECORDS_DEFAULT_DAYS,
+  activeDurationRecords,
+  createRecordsDashboardMethods,
+  dailyEnergyRecords,
+  peakPowerRecord,
+  recordsHistoryCacheKey,
+} from "../modules/records.js";
 import {
   DEFAULT_TILE_COLOR_RULES,
   GRID_STATUS_METRIC,
@@ -510,6 +520,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
     this._chartDashboardLoading?.clear();
+    this._recordsLoading?.clear();
     this._stopAdvisorRefreshTimer();
   }
 
@@ -548,6 +559,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
       advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
+      records_days: RECORDS_DEFAULT_DAYS,
       max_power_kw: {
         pv_roof_power: 10,
         pv_shed_power: 3,
@@ -647,6 +659,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
     this._chartDashboardLoading?.clear();
+    this._recordsLoading?.clear();
     this._advisorConditionSince = new Map();
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
@@ -682,6 +695,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
       advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
+      records_days: RECORDS_DEFAULT_DAYS,
       daylight_entity: "sun.sun",
       weather_entity: "",
       dynamic_tile_colors: true,
@@ -767,9 +781,13 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
     this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
+    this.config.records_days = RECORDS_DAY_OPTIONS.includes(Number(this.config.records_days)) ? Number(this.config.records_days) : RECORDS_DEFAULT_DAYS;
     this._chartHours = this._chartHours || this.config.chart_hours;
+    this._recordsDays = this._recordsDays || this.config.records_days;
     this._historyCache = this._historyCache || new Map();
     this._chartDashboardLoading = this._chartDashboardLoading || new Set();
+    this._recordsCache = this._recordsCache || new Map();
+    this._recordsLoading = this._recordsLoading || new Set();
     this._overlayConsumptionCache = this._overlayConsumptionCache || new Map();
     this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();
     this._energyRangeCache = this._energyRangeCache || new Map();
@@ -3504,6 +3522,7 @@ class HaSolarDashboardCard extends HTMLElement {
     });
 
     this._attachChartDashboardControls();
+    this._attachRecordsDashboardControls();
 
     this.shadowRoot.querySelectorAll("[data-chart-close]").forEach((element) => {
       element.addEventListener("click", (event) => {
@@ -3623,6 +3642,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const flowHtml = this._renderEnergyFlows(state.variant);
     const advisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
     const chartDashboardHtml = activeView === CHART_DASHBOARD_VIEW ? this._renderChartDashboard(state.variant) : "";
+    const recordsDashboardHtml = activeView === RECORDS_DASHBOARD_VIEW ? this._renderRecordsDashboard(state.variant) : "";
     const voltageAlertHtml = this._renderGridVoltageAlert();
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
@@ -3696,7 +3716,9 @@ class HaSolarDashboardCard extends HTMLElement {
           ? advisorHtml
           : activeView === CHART_DASHBOARD_VIEW
             ? chartDashboardHtml
-            : `
+            : activeView === RECORDS_DASHBOARD_VIEW
+              ? recordsDashboardHtml
+              : `
             <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
             ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${largeConsumerSectionHtml}` : ""}
           `}
@@ -3908,6 +3930,19 @@ class HaSolarDashboardCard extends HTMLElement {
       chartDashboardChanged = true;
     }
     if (chartDashboardChanged) this._attachChartDashboardControls();
+    const nextRecordsDashboardHtml = activeView === RECORDS_DASHBOARD_VIEW ? this._renderRecordsDashboard(variant) : "";
+    const recordsDashboardElement = this.shadowRoot.querySelector("[data-record-dashboard]");
+    let recordsDashboardChanged = false;
+    if (recordsDashboardElement && nextRecordsDashboardHtml) {
+      recordsDashboardElement.outerHTML = nextRecordsDashboardHtml.trim();
+      recordsDashboardChanged = true;
+    } else if (recordsDashboardElement && !nextRecordsDashboardHtml) {
+      recordsDashboardElement.remove();
+    } else if (!recordsDashboardElement && nextRecordsDashboardHtml) {
+      this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextRecordsDashboardHtml);
+      recordsDashboardChanged = true;
+    }
+    if (recordsDashboardChanged) this._attachRecordsDashboardControls();
   }
 
   renderCard() {
@@ -3933,6 +3968,16 @@ Object.assign(
     wallboxAdvisorDetails,
   }),
   createAdvisorViewMethods(),
+  createRecordsDashboardMethods({
+    RECORDS_DAY_OPTIONS,
+    RECORDS_DEFAULT_DAYS,
+    activeDurationRecords,
+    chartHistoryApiPath,
+    dailyEnergyRecords,
+    numericState,
+    peakPowerRecord,
+    recordsHistoryCacheKey,
+  }),
 );
 
 const HaSolarDashboardCardEditor = createDashboardEditorClass({

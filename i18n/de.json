@@ -349,5 +349,19 @@
   "warning.gridVoltageHigh": "Hohe Spannung im Stromnetz",
   "warning.sensorMissing": "Entität nicht gefunden",
   "warning.sensorOffline": "Sensor offline",
-  "warning.sensorUnavailable": "Sensor nicht verfügbar"
+  "warning.sensorUnavailable": "Sensor nicht verfügbar",
+  "view.records": "Rekorde",
+  "records.count": "{count} Rekorde",
+  "records.countOne": "{count} Rekord",
+  "records.days": "{days} Tage",
+  "records.empty": "Noch keine auswertbare Historie gefunden.",
+  "records.error": "Rekorde konnten nicht geladen werden.",
+  "records.label": "Highscores",
+  "records.loading": "Rekorde werden geladen…",
+  "records.sectionPeaks": "Leistungsrekorde",
+  "records.sectionPvEnergy": "Bester PV-Ertrag pro String",
+  "records.sectionSolarHours": "Längste solare Stunden",
+  "records.sectionWallbox": "Wallbox-Rekorde",
+  "records.subtitle": "Bestwerte aus den letzten {days} Tagen Home-Assistant-Historie.",
+  "records.title": "Energie-Rekorde"
 }

@@ -1,9 +1,11 @@
 export const CHART_DASHBOARD_VIEW = "charts";
+export const RECORDS_DASHBOARD_VIEW = "records";
 
 export const VIEW_MODE_OPTIONS = Object.freeze([
   Object.freeze({ key: "house", labelKey: "view.house", label: "House View", icon: "house" }),
   Object.freeze({ key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard", icon: "advisor" }),
   Object.freeze({ key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart" }),
+  Object.freeze({ key: RECORDS_DASHBOARD_VIEW, labelKey: "view.records", label: "Records", icon: "records" }),
 ]);
 
 const VIEW_MODE_ALIASES = Object.freeze({
@@ -20,6 +22,12 @@ const VIEW_MODE_ALIASES = Object.freeze({
   diagram: CHART_DASHBOARD_VIEW,
   verlauf: CHART_DASHBOARD_VIEW,
   charts_dashboard: CHART_DASHBOARD_VIEW,
+  highscore: RECORDS_DASHBOARD_VIEW,
+  high_score: RECORDS_DASHBOARD_VIEW,
+  highscores: RECORDS_DASHBOARD_VIEW,
+  records: RECORDS_DASHBOARD_VIEW,
+  rekord: RECORDS_DASHBOARD_VIEW,
+  rekorde: RECORDS_DASHBOARD_VIEW,
 });
 
 const VIEW_MODE_ICONS = Object.freeze({
@@ -50,6 +58,16 @@ const VIEW_MODE_ICONS = Object.freeze({
       <path d="M4 19h16"></path>
       <path d="m7 15 3-4 3 2 4-6"></path>
       <path d="M17 7h3v3"></path>
+    </svg>
+  `,
+  records: `
+    <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 21h8"></path>
+      <path d="M12 17v4"></path>
+      <path d="M7 4h10v4a5 5 0 0 1-10 0Z"></path>
+      <path d="M17 5h3v2a3 3 0 0 1-3 3"></path>
+      <path d="M7 5H4v2a3 3 0 0 0 3 3"></path>
+      <path d="m10 9 1.2 1.2L14 7.5"></path>
     </svg>
   `,
 });

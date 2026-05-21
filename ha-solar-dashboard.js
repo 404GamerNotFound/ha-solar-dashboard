@@ -1923,11 +1923,13 @@ function chartDashboardSections({
 }
 
 const CHART_DASHBOARD_VIEW = "charts";
+const RECORDS_DASHBOARD_VIEW = "records";
 
 const VIEW_MODE_OPTIONS = Object.freeze([
   Object.freeze({ key: "house", labelKey: "view.house", label: "House View", icon: "house" }),
   Object.freeze({ key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard", icon: "advisor" }),
   Object.freeze({ key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart" }),
+  Object.freeze({ key: RECORDS_DASHBOARD_VIEW, labelKey: "view.records", label: "Records", icon: "records" }),
 ]);
 
 const VIEW_MODE_ALIASES = Object.freeze({
@@ -1944,6 +1946,12 @@ const VIEW_MODE_ALIASES = Object.freeze({
   diagram: CHART_DASHBOARD_VIEW,
   verlauf: CHART_DASHBOARD_VIEW,
   charts_dashboard: CHART_DASHBOARD_VIEW,
+  highscore: RECORDS_DASHBOARD_VIEW,
+  high_score: RECORDS_DASHBOARD_VIEW,
+  highscores: RECORDS_DASHBOARD_VIEW,
+  records: RECORDS_DASHBOARD_VIEW,
+  rekord: RECORDS_DASHBOARD_VIEW,
+  rekorde: RECORDS_DASHBOARD_VIEW,
 });
 
 const VIEW_MODE_ICONS = Object.freeze({
@@ -1976,6 +1984,16 @@ const VIEW_MODE_ICONS = Object.freeze({
       <path d="M17 7h3v3"></path>
     </svg>
   `,
+  records: `
+    <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 21h8"></path>
+      <path d="M12 17v4"></path>
+      <path d="M7 4h10v4a5 5 0 0 1-10 0Z"></path>
+      <path d="M17 5h3v2a3 3 0 0 1-3 3"></path>
+      <path d="M7 5H4v2a3 3 0 0 0 3 3"></path>
+      <path d="m10 9 1.2 1.2L14 7.5"></path>
+    </svg>
+  `,
 });
 
 function normalizeViewMode(value) {
@@ -1986,6 +2004,369 @@ function normalizeViewMode(value) {
 
 function viewModeIconSvg(icon) {
   return VIEW_MODE_ICONS[icon] || "";
+}
+
+const RECORDS_DEFAULT_DAYS = 7;
+const RECORDS_DAY_OPTIONS = Object.freeze([7, 14, 30]);
+
+const RECORD_SOLAR_THRESHOLD_WATTS = 100;
+const RECORD_ACTIVE_THRESHOLD_WATTS = 100;
+const RECORD_MAX_GAP_MS = 20 * 60 * 1000;
+const RECORD_CACHE_BUCKET_MS = 10 * 60 * 1000;
+
+function recordDateKey(timestamp) {
+  const date = new Date(timestamp);
+  if (!Number.isFinite(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function sortedPoints(points = []) {
+  return points
+    .filter((point) => Number.isFinite(point?.time) && Number.isFinite(point?.value))
+    .sort((a, b) => a.time - b.time);
+}
+
+function recordsHistoryCacheKey(entityId, days, bucket) {
+  return `${entityId}|records|${days}|${bucket}`;
+}
+
+function dailyEnergyRecords(points = []) {
+  const ordered = sortedPoints(points);
+  const totals = new Map();
+  for (let index = 1; index < ordered.length; index += 1) {
+    const previous = ordered[index - 1];
+    const current = ordered[index];
+    const day = recordDateKey(current.time);
+    if (!day) continue;
+    const diff = current.value - previous.value;
+    const amount = diff >= 0 ? diff : current.value >= 0 ? current.value : 0;
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    totals.set(day, (totals.get(day) || 0) + amount);
+  }
+  return [...totals.entries()]
+    .map(([day, amount]) => ({ day, amount }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+function activeDurationRecords(points = [], { threshold = RECORD_ACTIVE_THRESHOLD_WATTS, maxGapMs = RECORD_MAX_GAP_MS } = {}) {
+  const ordered = sortedPoints(points);
+  const totals = new Map();
+  for (let index = 0; index < ordered.length - 1; index += 1) {
+    const current = ordered[index];
+    const next = ordered[index + 1];
+    if (!(current.value > threshold)) continue;
+    const day = recordDateKey(current.time);
+    if (!day) continue;
+    const duration = Math.min(Math.max(0, next.time - current.time), maxGapMs);
+    if (duration <= 0) continue;
+    totals.set(day, (totals.get(day) || 0) + duration);
+  }
+  return [...totals.entries()]
+    .map(([day, durationMs]) => ({ day, durationMs, hours: durationMs / 3600000 }))
+    .sort((a, b) => b.durationMs - a.durationMs);
+}
+
+function peakPowerRecord(points = []) {
+  return sortedPoints(points)
+    .reduce((best, point) => (!best || point.value > best.value ? point : best), undefined);
+}
+
+function createRecordsDashboardMethods({
+  RECORDS_DAY_OPTIONS: dayOptions = RECORDS_DAY_OPTIONS,
+  RECORDS_DEFAULT_DAYS: defaultDays = RECORDS_DEFAULT_DAYS,
+  chartHistoryApiPath,
+  dailyEnergyRecords: dailyEnergyRecordsFn = dailyEnergyRecords,
+  activeDurationRecords: activeDurationRecordsFn = activeDurationRecords,
+  peakPowerRecord: peakPowerRecordFn = peakPowerRecord,
+  recordsHistoryCacheKey: recordsHistoryCacheKeyFn = recordsHistoryCacheKey,
+  numericState,
+} = {}) {
+  return {
+    _recordsDashboardDays() {
+      const days = Number(this._recordsDays || this.config.records_days || defaultDays);
+      return dayOptions.includes(days) ? days : defaultDays;
+    },
+
+    _recordsHistoryCacheKey(entityId, days) {
+      return recordsHistoryCacheKeyFn(entityId, days, this._cacheBucket(RECORD_CACHE_BUCKET_MS));
+    },
+
+    _recordDateLabel(day) {
+      const [year, month, date] = String(day || "").split("-").map(Number);
+      if (!year || !month || !date) return day || "";
+      try {
+        return new Intl.DateTimeFormat(this._language(), { weekday: "short", day: "2-digit", month: "2-digit" })
+          .format(new Date(year, month - 1, date));
+      } catch (_err) {
+        return day || "";
+      }
+    },
+
+    _recordEnergyPoint(entry, entityId) {
+      const rawValue = entry?.state ?? entry?.s;
+      if (this._formatValue(rawValue) === "—") return undefined;
+      const entityUnit = entry?.attributes?.unit_of_measurement || this._getEntityUnit(entityId) || "kWh";
+      const value = this._valueAsKwh(rawValue, entityUnit);
+      const time = Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || "");
+      if (!Number.isFinite(value) || !Number.isFinite(time)) return undefined;
+      return { time, value };
+    },
+
+    _recordPowerPoint(metric, entry) {
+      return this._historyPoint(metric, entry);
+    },
+
+    _recordSources(variant = this._currentVariant || this._layoutState().variant) {
+      const pvStrings = this._pvRoofStringEntries()
+        .filter((entry) => entry.powerEntityId || entry.energyEntityId)
+        .map((entry, index) => ({
+          key: `pv_string_${entry.id || index}`,
+          label: entry.label || `String ${index + 1}`,
+          powerEntityId: entry.powerEntityId || "",
+          energyEntityId: entry.energyEntityId || "",
+          color: "yellow",
+        }));
+      const pvPowerSources = pvStrings
+        .filter((entry) => entry.powerEntityId)
+        .map((entry) => ({
+          key: `${entry.key}_power`,
+          label: entry.label,
+          entityId: entry.powerEntityId,
+          type: "power",
+          group: "pv",
+          metric: { key: `${entry.key}_power`, chartEntityId: entry.powerEntityId, unit: "power", color: "yellow" },
+        }));
+      const pvEnergySources = pvStrings
+        .filter((entry) => entry.energyEntityId)
+        .map((entry) => ({
+          key: `${entry.key}_energy`,
+          label: entry.label,
+          entityId: entry.energyEntityId,
+          type: "energy",
+          group: "pv",
+        }));
+      const metricSources = this._chartDashboardMetricPool(variant)
+        .map((metric) => {
+          const entityId = this._chartEntityId(metric);
+          if (!entityId || metric.gridStatus) return undefined;
+          const key = metric.chartKey || metric.key;
+          const group = String(metric.key || "").includes("wallbox")
+            ? "wallbox"
+            : metric.largeConsumer
+              ? "consumer"
+              : "system";
+          return {
+            key,
+            label: this._metricLabel(metric, variant),
+            entityId,
+            type: "power",
+            group,
+            metric,
+          };
+        })
+        .filter(Boolean);
+      const seen = new Set();
+      return [...pvEnergySources, ...pvPowerSources, ...metricSources].filter((source) => {
+        const key = `${source.type}:${source.entityId}`;
+        if (!source.entityId || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    },
+
+    _recordHistoryState(source) {
+      const days = this._recordsDashboardDays();
+      const cacheKey = this._recordsHistoryCacheKey(source.entityId, days);
+      const cached = this._recordsCache?.get(cacheKey);
+      if (cached?.error) return { loading: false, error: this._t("records.error", {}, "Records could not be loaded."), points: [] };
+      if (cached) return { loading: false, error: "", points: cached };
+      this._requestRecordHistory(source, days, cacheKey);
+      return { loading: true, error: "", points: [] };
+    },
+
+    _requestRecordHistory(source, days, cacheKey) {
+      if (!this._hass?.callApi || this._recordsLoading?.has(cacheKey)) return;
+      const requestToken = this._asyncRequestToken || 0;
+      this._recordsLoading.add(cacheKey);
+      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, days * 24))
+        .then((history) => {
+          if (!this._isActiveRequest(requestToken)) return;
+          const states = Array.isArray(history?.[0]) ? history[0] : [];
+          const points = states
+            .map((entry) => source.type === "energy"
+              ? this._recordEnergyPoint(entry, source.entityId)
+              : this._recordPowerPoint(source.metric, entry))
+            .filter(Boolean)
+            .sort((a, b) => a.time - b.time);
+          this._setCacheEntry(this._recordsCache, cacheKey, points, 96);
+        })
+        .catch(() => {
+          if (!this._isActiveRequest(requestToken)) return;
+          this._setCacheEntry(this._recordsCache, cacheKey, { error: true, points: [] }, 96);
+        })
+        .finally(() => {
+          if (!this._isActiveRequest(requestToken)) return;
+          this._recordsLoading?.delete(cacheKey);
+          this._updateReadingsIfReady();
+        });
+    },
+
+    _recordsSections(variant = this._currentVariant || this._layoutState().variant) {
+      const sources = this._recordSources(variant);
+      const states = sources.map((source) => ({ source, state: this._recordHistoryState(source) }));
+      const loading = states.some((entry) => entry.state.loading);
+      const hasError = states.some((entry) => entry.state.error);
+      const cards = {
+        pvEnergy: [],
+        solarHours: [],
+        peaks: [],
+        wallbox: [],
+      };
+      const pushCard = (section, card) => {
+        if (!card || !card.value) return;
+        cards[section].push(card);
+      };
+
+      states.forEach(({ source, state }) => {
+        if (state.loading || state.error || !Array.isArray(state.points) || state.points.length < 2) return;
+        if (source.type === "energy" && source.group === "pv") {
+          const bestDay = dailyEnergyRecordsFn(state.points)[0];
+          if (bestDay) {
+            pushCard("pvEnergy", {
+              title: source.label,
+              value: this._formatEnergyValue(bestDay.amount, "kWh", "kWh"),
+              sortValue: bestDay.amount,
+              meta: this._recordDateLabel(bestDay.day),
+              entityId: source.entityId,
+            });
+          }
+        }
+        if (source.type === "power") {
+          const peak = peakPowerRecordFn(state.points);
+          if (peak) {
+            pushCard("peaks", {
+              title: source.label,
+              value: this._formatPowerValue(peak.value, "auto", "W"),
+              sortValue: peak.value,
+              meta: this._formatLocalDateTime(new Date(peak.time).toISOString()),
+              entityId: source.entityId,
+            });
+          }
+          if (source.group === "pv") {
+            const bestSolarDay = activeDurationRecordsFn(state.points, { threshold: this.config.records_solar_threshold_watts || RECORD_SOLAR_THRESHOLD_WATTS })[0];
+            if (bestSolarDay) {
+              pushCard("solarHours", {
+                title: source.label,
+                value: this._formatDurationMinutes(bestSolarDay.durationMs / 60000),
+                sortValue: bestSolarDay.durationMs,
+                meta: this._recordDateLabel(bestSolarDay.day),
+                entityId: source.entityId,
+              });
+            }
+          }
+          if (source.group === "wallbox") {
+            const bestChargingDay = activeDurationRecordsFn(state.points, { threshold: RECORD_ACTIVE_THRESHOLD_WATTS })[0];
+            if (bestChargingDay) {
+              pushCard("wallbox", {
+                title: source.label,
+                value: this._formatDurationMinutes(bestChargingDay.durationMs / 60000),
+                sortValue: bestChargingDay.durationMs,
+                meta: this._recordDateLabel(bestChargingDay.day),
+                entityId: source.entityId,
+              });
+            }
+          }
+        }
+      });
+
+      const sortByValue = (items) => [...items].sort((a, b) => (
+        (Number.isFinite(b.sortValue) ? b.sortValue : numericState?.(b.value) || 0)
+        - (Number.isFinite(a.sortValue) ? a.sortValue : numericState?.(a.value) || 0)
+      ));
+      return {
+        loading,
+        hasError,
+        sections: [
+          { key: "pvEnergy", label: this._t("records.sectionPvEnergy", {}, "Best PV yield per string"), items: sortByValue(cards.pvEnergy) },
+          { key: "solarHours", label: this._t("records.sectionSolarHours", {}, "Longest solar hours"), items: sortByValue(cards.solarHours) },
+          { key: "wallbox", label: this._t("records.sectionWallbox", {}, "Wallbox records"), items: sortByValue(cards.wallbox) },
+          { key: "peaks", label: this._t("records.sectionPeaks", {}, "Power peaks"), items: sortByValue(cards.peaks).slice(0, 8) },
+        ].filter((section) => section.items.length > 0),
+      };
+    },
+
+    _renderRecordCard(card) {
+      return `
+        <article class="record-card" title="${this._escape(card.entityId || "")}">
+          <div class="record-card-head">
+            <strong>${this._escape(card.title)}</strong>
+            <span>${this._escape(card.meta || "")}</span>
+          </div>
+          <div class="record-card-value">${this._escape(card.value)}</div>
+          ${card.entityId ? `<code>${this._escape(card.entityId)}</code>` : ""}
+        </article>
+      `;
+    },
+
+    _renderRecordsDashboard(variant = this._currentVariant || this._layoutState().variant) {
+      const days = this._recordsDashboardDays();
+      const records = this._recordsSections(variant);
+      const rangeButton = (value) => `
+        <button type="button" class="chart-range${days === value ? " active" : ""}" data-record-days="${value}">${this._escape(this._t("records.days", { days: value }, `${value} days`))}</button>
+      `;
+      const sectionHtml = records.sections.map((section) => `
+        <section class="record-section">
+          <div class="chart-section-head">
+            <h3>${this._escape(section.label)}</h3>
+            <span>${this._escape(section.items.length === 1
+              ? this._t("records.countOne", { count: section.items.length }, "1 record")
+              : this._t("records.count", { count: section.items.length }, `${section.items.length} records`))}</span>
+          </div>
+          <div class="record-grid">
+            ${section.items.map((card) => this._renderRecordCard(card)).join("")}
+          </div>
+        </section>
+      `).join("");
+
+      return `
+        <section class="record-dashboard" data-record-dashboard>
+          <div class="chart-dashboard-head">
+            <div>
+              <div class="chart-dashboard-label">${this._escape(this._t("records.label", {}, "Records"))}</div>
+              <h2>${this._escape(this._t("records.title", {}, "Energy records"))}</h2>
+              <p>${this._escape(this._t("records.subtitle", { days }, `Best values from the last ${days} days of Home Assistant history.`))}</p>
+            </div>
+            <div class="chart-actions">
+              ${dayOptions.map((value) => rangeButton(value)).join("")}
+            </div>
+          </div>
+          ${records.sections.length > 0
+            ? sectionHtml
+            : `<div class="chart-message">${this._escape(records.loading
+              ? this._t("records.loading", {}, "Loading records…")
+              : records.hasError
+                ? this._t("records.error", {}, "Records could not be loaded.")
+                : this._t("records.empty", {}, "No recordable history found yet."))}</div>`}
+        </section>
+      `;
+    },
+
+    _attachRecordsDashboardControls() {
+      this.shadowRoot.querySelectorAll("[data-record-days]").forEach((button) => {
+        if (button.dataset.recordDaysBound === "true") return;
+        button.dataset.recordDaysBound = "true";
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const days = Number(event.currentTarget.dataset.recordDays);
+          this._recordsDays = dayOptions.includes(days) ? days : defaultDays;
+          this._renderCardShell(this._layoutState());
+        });
+      });
+    },
+  };
 }
 
 const OVERLAY_TILE_METRICS = Object.freeze([
@@ -4530,7 +4911,21 @@ const I18N = {
     "warning.gridVoltageHigh": "High grid voltage",
     "warning.sensorMissing": "Entity not found",
     "warning.sensorOffline": "Sensor offline",
-    "warning.sensorUnavailable": "Sensor unavailable"
+    "warning.sensorUnavailable": "Sensor unavailable",
+    "view.records": "Records",
+    "records.count": "{count} records",
+    "records.countOne": "{count} record",
+    "records.days": "{days} days",
+    "records.empty": "No recordable history found yet.",
+    "records.error": "Records could not be loaded.",
+    "records.label": "High scores",
+    "records.loading": "Loading records…",
+    "records.sectionPeaks": "Power peaks",
+    "records.sectionPvEnergy": "Best PV yield per string",
+    "records.sectionSolarHours": "Longest solar hours",
+    "records.sectionWallbox": "Wallbox records",
+    "records.subtitle": "Best values from the last {days} days of Home Assistant history.",
+    "records.title": "Energy records"
   },
   "de": {
     "aria.energyRangeSelector": "Wertebereich auswählen",
@@ -4883,7 +5278,21 @@ const I18N = {
     "warning.gridVoltageHigh": "Hohe Spannung im Stromnetz",
     "warning.sensorMissing": "Entität nicht gefunden",
     "warning.sensorOffline": "Sensor offline",
-    "warning.sensorUnavailable": "Sensor nicht verfügbar"
+    "warning.sensorUnavailable": "Sensor nicht verfügbar",
+    "view.records": "Rekorde",
+    "records.count": "{count} Rekorde",
+    "records.countOne": "{count} Rekord",
+    "records.days": "{days} Tage",
+    "records.empty": "Noch keine auswertbare Historie gefunden.",
+    "records.error": "Rekorde konnten nicht geladen werden.",
+    "records.label": "Highscores",
+    "records.loading": "Rekorde werden geladen…",
+    "records.sectionPeaks": "Leistungsrekorde",
+    "records.sectionPvEnergy": "Bester PV-Ertrag pro String",
+    "records.sectionSolarHours": "Längste solare Stunden",
+    "records.sectionWallbox": "Wallbox-Rekorde",
+    "records.subtitle": "Bestwerte aus den letzten {days} Tagen Home-Assistant-Historie.",
+    "records.title": "Energie-Rekorde"
   },
   "es": {
     "aria.energyRangeSelector": "Seleccionar rango de valores",
@@ -5236,7 +5645,21 @@ const I18N = {
     "warning.gridVoltageHigh": "Tensión de red alta",
     "warning.sensorMissing": "Entidad no encontrada",
     "warning.sensorOffline": "Sensor sin conexión",
-    "warning.sensorUnavailable": "Sensor no disponible"
+    "warning.sensorUnavailable": "Sensor no disponible",
+    "view.records": "Récords",
+    "records.count": "{count} récords",
+    "records.countOne": "{count} récord",
+    "records.days": "{days} días",
+    "records.empty": "Aún no hay historial evaluable.",
+    "records.error": "No se pudieron cargar los récords.",
+    "records.label": "Puntuaciones",
+    "records.loading": "Cargando récords…",
+    "records.sectionPeaks": "Picos de potencia",
+    "records.sectionPvEnergy": "Mejor rendimiento FV por string",
+    "records.sectionSolarHours": "Horas solares más largas",
+    "records.sectionWallbox": "Récords de wallbox",
+    "records.subtitle": "Mejores valores de los últimos {days} días del historial de Home Assistant.",
+    "records.title": "Récords de energía"
   },
   "fr": {
     "aria.energyRangeSelector": "Sélectionner la période de valeur",
@@ -5589,7 +6012,21 @@ const I18N = {
     "warning.gridVoltageHigh": "Tension réseau élevée",
     "warning.sensorMissing": "Entité introuvable",
     "warning.sensorOffline": "Capteur hors ligne",
-    "warning.sensorUnavailable": "Capteur indisponible"
+    "warning.sensorUnavailable": "Capteur indisponible",
+    "view.records": "Records",
+    "records.count": "{count} records",
+    "records.countOne": "{count} record",
+    "records.days": "{days} jours",
+    "records.empty": "Aucun historique exploitable pour le moment.",
+    "records.error": "Les records n’ont pas pu être chargés.",
+    "records.label": "High scores",
+    "records.loading": "Chargement des records…",
+    "records.sectionPeaks": "Pics de puissance",
+    "records.sectionPvEnergy": "Meilleur rendement PV par string",
+    "records.sectionSolarHours": "Plus longues heures solaires",
+    "records.sectionWallbox": "Records wallbox",
+    "records.subtitle": "Meilleures valeurs des {days} derniers jours de l’historique Home Assistant.",
+    "records.title": "Records d’énergie"
   },
   "pl": {
     "aria.energyRangeSelector": "Wybierz zakres wartości",
@@ -5942,7 +6379,21 @@ const I18N = {
     "warning.gridVoltageHigh": "Wysokie napięcie sieci",
     "warning.sensorMissing": "Nie znaleziono encji",
     "warning.sensorOffline": "Sensor offline",
-    "warning.sensorUnavailable": "Sensor niedostępny"
+    "warning.sensorUnavailable": "Sensor niedostępny",
+    "view.records": "Rekordy",
+    "records.count": "{count} rekordów",
+    "records.countOne": "{count} rekord",
+    "records.days": "{days} dni",
+    "records.empty": "Brak historii możliwej do oceny.",
+    "records.error": "Nie udało się wczytać rekordów.",
+    "records.label": "Najlepsze wyniki",
+    "records.loading": "Ładowanie rekordów…",
+    "records.sectionPeaks": "Szczyty mocy",
+    "records.sectionPvEnergy": "Najlepszy uzysk PV na string",
+    "records.sectionSolarHours": "Najdłuższe godziny solarne",
+    "records.sectionWallbox": "Rekordy wallboxa",
+    "records.subtitle": "Najlepsze wartości z ostatnich {days} dni historii Home Assistant.",
+    "records.title": "Rekordy energii"
   }
 };
 const I18N_LOADS = new Map();
@@ -6276,6 +6727,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
     this._chartDashboardLoading?.clear();
+    this._recordsLoading?.clear();
     this._stopAdvisorRefreshTimer();
   }
 
@@ -6314,6 +6766,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
       advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
+      records_days: RECORDS_DEFAULT_DAYS,
       max_power_kw: {
         pv_roof_power: 10,
         pv_shed_power: 3,
@@ -6413,6 +6866,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
     this._chartDashboardLoading?.clear();
+    this._recordsLoading?.clear();
     this._advisorConditionSince = new Map();
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
@@ -6448,6 +6902,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
       advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
+      records_days: RECORDS_DEFAULT_DAYS,
       daylight_entity: "sun.sun",
       weather_entity: "",
       dynamic_tile_colors: true,
@@ -6533,9 +6988,13 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
     this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
+    this.config.records_days = RECORDS_DAY_OPTIONS.includes(Number(this.config.records_days)) ? Number(this.config.records_days) : RECORDS_DEFAULT_DAYS;
     this._chartHours = this._chartHours || this.config.chart_hours;
+    this._recordsDays = this._recordsDays || this.config.records_days;
     this._historyCache = this._historyCache || new Map();
     this._chartDashboardLoading = this._chartDashboardLoading || new Set();
+    this._recordsCache = this._recordsCache || new Map();
+    this._recordsLoading = this._recordsLoading || new Set();
     this._overlayConsumptionCache = this._overlayConsumptionCache || new Map();
     this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();
     this._energyRangeCache = this._energyRangeCache || new Map();
@@ -9270,6 +9729,7 @@ class HaSolarDashboardCard extends HTMLElement {
     });
 
     this._attachChartDashboardControls();
+    this._attachRecordsDashboardControls();
 
     this.shadowRoot.querySelectorAll("[data-chart-close]").forEach((element) => {
       element.addEventListener("click", (event) => {
@@ -9389,6 +9849,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const flowHtml = this._renderEnergyFlows(state.variant);
     const advisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
     const chartDashboardHtml = activeView === CHART_DASHBOARD_VIEW ? this._renderChartDashboard(state.variant) : "";
+    const recordsDashboardHtml = activeView === RECORDS_DASHBOARD_VIEW ? this._renderRecordsDashboard(state.variant) : "";
     const voltageAlertHtml = this._renderGridVoltageAlert();
     const statusLabel = this._statusLabel();
     const statusHtml = this.config.show_status_label !== false
@@ -9456,7 +9917,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select,.energy-range-select,.view-mode-toggle { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
         .house-select,.energy-range-select { max-width:170px; padding:0 30px 0 10px; }
         .energy-range-select { max-width:110px; }
-        .view-mode-toggle { display:grid; grid-template-columns:repeat(3,42px); width:max-content; max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
+        .view-mode-toggle { display:grid; grid-template-columns:repeat(4,42px); width:max-content; max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
         .view-mode-button { min-width:0; min-height:28px; border:0; border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.82rem; font-weight:800; line-height:1.1; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
         .view-mode-icon { width:17px; height:17px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
         .view-mode-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -9577,6 +10038,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .chart-dashboard-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-width:0; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:linear-gradient(135deg,rgba(15,23,42,.76),rgba(8,13,28,.68)); }
         .chart-dashboard-label { color:var(--text-muted); font-size:.72rem; line-height:1.2; font-weight:800; text-transform:uppercase; letter-spacing:0; }
         .chart-dashboard h2 { margin:2px 0 0; color:var(--text-main); font-size:1.02rem; line-height:1.25; overflow-wrap:anywhere; }
+        .chart-dashboard-head p { margin:4px 0 0; color:rgba(243,246,255,.72); font-size:.76rem; line-height:1.35; overflow-wrap:anywhere; }
         .chart-section { display:grid; gap:8px; min-width:0; }
         .chart-section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
         .chart-section-head h3 { margin:0; color:var(--text-muted); font-size:.78rem; line-height:1.2; font-weight:900; text-transform:uppercase; letter-spacing:0; overflow-wrap:anywhere; }
@@ -9615,6 +10077,15 @@ class HaSolarDashboardCard extends HTMLElement {
         .chart-label,.chart-current { fill:var(--text-muted); font-size:12px; }
         .chart-current { fill:var(--tile-accent); text-anchor:end; font-weight:700; }
         .chart-label.end { text-anchor:end; }
+        .record-dashboard { display:grid; gap:14px; min-width:0; }
+        .record-section { display:grid; gap:8px; min-width:0; }
+        .record-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr)); gap:10px; min-width:0; }
+        .record-card { display:grid; gap:7px; min-width:0; padding:11px; border-radius:8px; border:1px solid color-mix(in srgb,#facc15 30%,rgba(255,255,255,.1)); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); box-shadow:inset 3px 0 0 #facc15,0 8px 20px rgba(0,0,0,.18); }
+        .record-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; min-width:0; }
+        .record-card-head strong { min-width:0; color:var(--text-main); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
+        .record-card-head span { flex:0 0 auto; max-width:45%; color:var(--text-muted); font-size:.68rem; line-height:1.2; text-align:right; overflow-wrap:anywhere; }
+        .record-card-value { color:#facc15; font-size:1.22rem; line-height:1.1; font-weight:900; overflow-wrap:anywhere; }
+        .record-card code { min-width:0; color:rgba(243,246,255,.68); font-size:.66rem; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; border-radius:6px; padding:3px 5px; background:rgba(255,255,255,.06); }
         @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
@@ -9631,7 +10102,9 @@ class HaSolarDashboardCard extends HTMLElement {
           ? advisorHtml
           : activeView === CHART_DASHBOARD_VIEW
             ? chartDashboardHtml
-            : `
+            : activeView === RECORDS_DASHBOARD_VIEW
+              ? recordsDashboardHtml
+              : `
             <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
             ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${largeConsumerSectionHtml}` : ""}
           `}
@@ -9843,6 +10316,19 @@ class HaSolarDashboardCard extends HTMLElement {
       chartDashboardChanged = true;
     }
     if (chartDashboardChanged) this._attachChartDashboardControls();
+    const nextRecordsDashboardHtml = activeView === RECORDS_DASHBOARD_VIEW ? this._renderRecordsDashboard(variant) : "";
+    const recordsDashboardElement = this.shadowRoot.querySelector("[data-record-dashboard]");
+    let recordsDashboardChanged = false;
+    if (recordsDashboardElement && nextRecordsDashboardHtml) {
+      recordsDashboardElement.outerHTML = nextRecordsDashboardHtml.trim();
+      recordsDashboardChanged = true;
+    } else if (recordsDashboardElement && !nextRecordsDashboardHtml) {
+      recordsDashboardElement.remove();
+    } else if (!recordsDashboardElement && nextRecordsDashboardHtml) {
+      this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextRecordsDashboardHtml);
+      recordsDashboardChanged = true;
+    }
+    if (recordsDashboardChanged) this._attachRecordsDashboardControls();
   }
 
   renderCard() {
@@ -9868,6 +10354,16 @@ Object.assign(
     wallboxAdvisorDetails,
   }),
   createAdvisorViewMethods(),
+  createRecordsDashboardMethods({
+    RECORDS_DAY_OPTIONS,
+    RECORDS_DEFAULT_DAYS,
+    activeDurationRecords,
+    chartHistoryApiPath,
+    dailyEnergyRecords,
+    numericState,
+    peakPowerRecord,
+    recordsHistoryCacheKey,
+  }),
 );
 
 const HaSolarDashboardCardEditor = createDashboardEditorClass({

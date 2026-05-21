@@ -349,5 +349,19 @@
   "warning.gridVoltageHigh": "High grid voltage",
   "warning.sensorMissing": "Entity not found",
   "warning.sensorOffline": "Sensor offline",
-  "warning.sensorUnavailable": "Sensor unavailable"
+  "warning.sensorUnavailable": "Sensor unavailable",
+  "view.records": "Records",
+  "records.count": "{count} records",
+  "records.countOne": "{count} record",
+  "records.days": "{days} days",
+  "records.empty": "No recordable history found yet.",
+  "records.error": "Records could not be loaded.",
+  "records.label": "High scores",
+  "records.loading": "Loading records…",
+  "records.sectionPeaks": "Power peaks",
+  "records.sectionPvEnergy": "Best PV yield per string",
+  "records.sectionSolarHours": "Longest solar hours",
+  "records.sectionWallbox": "Wallbox records",
+  "records.subtitle": "Best values from the last {days} days of Home Assistant history.",
+  "records.title": "Energy records"
 }

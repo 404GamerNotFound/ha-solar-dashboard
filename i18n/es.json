@@ -349,5 +349,19 @@
   "warning.gridVoltageHigh": "Tensión de red alta",
   "warning.sensorMissing": "Entidad no encontrada",
   "warning.sensorOffline": "Sensor sin conexión",
-  "warning.sensorUnavailable": "Sensor no disponible"
+  "warning.sensorUnavailable": "Sensor no disponible",
+  "view.records": "Récords",
+  "records.count": "{count} récords",
+  "records.countOne": "{count} récord",
+  "records.days": "{days} días",
+  "records.empty": "Aún no hay historial evaluable.",
+  "records.error": "No se pudieron cargar los récords.",
+  "records.label": "Puntuaciones",
+  "records.loading": "Cargando récords…",
+  "records.sectionPeaks": "Picos de potencia",
+  "records.sectionPvEnergy": "Mejor rendimiento FV por string",
+  "records.sectionSolarHours": "Horas solares más largas",
+  "records.sectionWallbox": "Récords de wallbox",
+  "records.subtitle": "Mejores valores de los últimos {days} días del historial de Home Assistant.",
+  "records.title": "Récords de energía"
 }

@@ -349,5 +349,19 @@
   "warning.gridVoltageHigh": "Tension réseau élevée",
   "warning.sensorMissing": "Entité introuvable",
   "warning.sensorOffline": "Capteur hors ligne",
-  "warning.sensorUnavailable": "Capteur indisponible"
+  "warning.sensorUnavailable": "Capteur indisponible",
+  "view.records": "Records",
+  "records.count": "{count} records",
+  "records.countOne": "{count} record",
+  "records.days": "{days} jours",
+  "records.empty": "Aucun historique exploitable pour le moment.",
+  "records.error": "Les records n’ont pas pu être chargés.",
+  "records.label": "High scores",
+  "records.loading": "Chargement des records…",
+  "records.sectionPeaks": "Pics de puissance",
+  "records.sectionPvEnergy": "Meilleur rendement PV par string",
+  "records.sectionSolarHours": "Plus longues heures solaires",
+  "records.sectionWallbox": "Records wallbox",
+  "records.subtitle": "Meilleures valeurs des {days} derniers jours de l’historique Home Assistant.",
+  "records.title": "Records d’énergie"
 }

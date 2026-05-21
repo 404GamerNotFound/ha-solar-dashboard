@@ -349,5 +349,19 @@
   "warning.gridVoltageHigh": "Wysokie napięcie sieci",
   "warning.sensorMissing": "Nie znaleziono encji",
   "warning.sensorOffline": "Sensor offline",
-  "warning.sensorUnavailable": "Sensor niedostępny"
+  "warning.sensorUnavailable": "Sensor niedostępny",
+  "view.records": "Rekordy",
+  "records.count": "{count} rekordów",
+  "records.countOne": "{count} rekord",
+  "records.days": "{days} dni",
+  "records.empty": "Brak historii możliwej do oceny.",
+  "records.error": "Nie udało się wczytać rekordów.",
+  "records.label": "Najlepsze wyniki",
+  "records.loading": "Ładowanie rekordów…",
+  "records.sectionPeaks": "Szczyty mocy",
+  "records.sectionPvEnergy": "Najlepszy uzysk PV na string",
+  "records.sectionSolarHours": "Najdłuższe godziny solarne",
+  "records.sectionWallbox": "Rekordy wallboxa",
+  "records.subtitle": "Najlepsze wartości z ostatnich {days} dni historii Home Assistant.",
+  "records.title": "Rekordy energii"
 }

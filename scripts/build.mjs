@@ -57,6 +57,8 @@ function buildEntry() {
   const cardSource = readText("src/ha-solar-dashboard.js");
   let bundled = cardSource;
   bundled = inlineModuleImport(bundled, "modules/advisor.js");
+  bundled = inlineModuleImport(bundled, "modules/advisor-engine.js");
+  bundled = inlineModuleImport(bundled, "modules/advisor-view.js");
   bundled = inlineModuleImport(bundled, "modules/formatters.js");
   bundled = inlineModuleImport(bundled, "modules/pv-strings.js");
   bundled = inlineModuleImport(bundled, "modules/grid-flow.js");

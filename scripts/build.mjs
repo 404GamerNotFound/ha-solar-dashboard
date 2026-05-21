@@ -63,6 +63,7 @@ function buildEntry() {
   bundled = inlineModuleImport(bundled, "modules/html.js");
   bundled = inlineModuleImport(bundled, "modules/charts.js");
   bundled = inlineModuleImport(bundled, "modules/views.js");
+  bundled = inlineModuleImport(bundled, "modules/metrics.js");
   bundled = inlineModuleImport(bundled, "modules/large-consumers.js");
   bundled = inlineModuleImport(bundled, "modules/wallbox.js");
 

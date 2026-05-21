@@ -887,6 +887,109 @@ function viewModeIconSvg(icon) {
   return VIEW_MODE_ICONS[icon] || "";
 }
 
+const OVERLAY_TILE_METRICS = Object.freeze([
+  Object.freeze({ key: "overlay_smoke", label: "Gas", labelKey: "overlay.smoke", color: "yellow", unit: "overlay", overlay: "smoke", tileOrder: 7 }),
+  Object.freeze({ key: "overlay_heatpump", label: "Heat pump", labelKey: "overlay.heatpump", color: "blue", unit: "overlay", overlay: "heatpump", tileOrder: 8 }),
+]);
+
+const METRICS = Object.freeze([
+  Object.freeze({ key: "pv_roof_power", label: "Roof PV", unit: "power", color: "yellow" }),
+  Object.freeze({ key: "pv_shed_power", label: "Shed PV", unit: "power", color: "yellow" }),
+  Object.freeze({ key: "battery_level", label: "Battery", unit: "battery", color: "green" }),
+  Object.freeze({ key: "inverter_power", label: "Inverter", unit: "power", color: "blue" }),
+  Object.freeze({ key: "wallbox_power", label: "EV Charger", unit: "power", color: "blue" }),
+  Object.freeze({ key: "wallbox2_power", label: "EV Charger 2", unit: "power", color: "blue", optional: true }),
+  Object.freeze({ key: "import_export_power", label: "Import/Export", unit: "power", color: "blue", optional: true, tile: false }),
+]);
+
+const TILE_METRICS = Object.freeze([
+  ...METRICS,
+  Object.freeze({ key: "pv_total_power", label: "PV Total", unit: "power", color: "yellow", hud: false }),
+  Object.freeze({ key: "house_consumption_power", label: "Consumption", unit: "power", color: "blue", hud: false, optional: true, tileOrder: 6 }),
+]);
+
+const STATUS_METRIC = Object.freeze({ key: "import_export_power", label: "Import/Export", unit: "power", color: "blue" });
+
+const GRID_STATUS_METRIC = Object.freeze({
+  ...STATUS_METRIC,
+  key: "grid_status",
+  sourceKey: "import_export_power",
+  label: "Grid",
+  labelKey: "metrics.grid_status",
+  gridStatus: true,
+  hud: false,
+  tileOrder: 90,
+});
+
+const DEFAULT_TILE_COLOR_RULES = Object.freeze({
+  pv_roof_power: Object.freeze([
+    Object.freeze({ above: 3000, color: "#34d399", glow: true }),
+    Object.freeze({ above: 1000, color: "#ffc233" }),
+    Object.freeze({ below: 100, color: "#9ba3b8" }),
+  ]),
+  pv_shed_power: Object.freeze([
+    Object.freeze({ above: 3000, color: "#34d399", glow: true }),
+    Object.freeze({ above: 1000, color: "#ffc233" }),
+    Object.freeze({ below: 100, color: "#9ba3b8" }),
+  ]),
+  pv_total_power: Object.freeze([
+    Object.freeze({ above: 3000, color: "#34d399", glow: true }),
+    Object.freeze({ above: 1000, color: "#ffc233" }),
+    Object.freeze({ below: 100, color: "#9ba3b8" }),
+  ]),
+  battery_level: Object.freeze([
+    Object.freeze({ below: 20, color: "#f87171", glow: true }),
+    Object.freeze({ below: 50, color: "#fb923c" }),
+    Object.freeze({ above: 80, color: "#34d399" }),
+  ]),
+  import_export_power: Object.freeze([
+    Object.freeze({ gt: 25, color: "#fb923c", glow: true }),
+    Object.freeze({ lt: -25, color: "#34d399", glow: true }),
+  ]),
+});
+
+const STATIC_METRIC_COLORS = Object.freeze({
+  yellow: "#ffc233",
+  blue: "#1f8fff",
+  green: "#34d399",
+});
+
+function metricSourceKey(metric) {
+  return metric?.sourceKey || metric?.key || "";
+}
+
+function findMetricByKey(key, metrics = TILE_METRICS) {
+  return metrics.find((metric) => metric.key === key);
+}
+
+function findFlowMetric(key) {
+  return findMetricByKey(key, TILE_METRICS)
+    || findMetricByKey(key, METRICS)
+    || (key === STATUS_METRIC.key ? STATUS_METRIC : undefined);
+}
+
+function isPvMetric(metric) {
+  return ["pv_roof_power", "pv_shed_power", "pv_total_power"].includes(metric?.key);
+}
+
+function isPvRoofMetric(metric) {
+  return metricSourceKey(metric) === "pv_roof_power";
+}
+
+function isImportExportMetric(metric) {
+  return metricSourceKey(metric) === "import_export_power";
+}
+
+function metricVoltageEntityKey(metric) {
+  if (!metric || metric.largeConsumer) return "";
+  return `${metricSourceKey(metric)}_voltage`;
+}
+
+function inverterPhaseVoltageEntityKeys(metric) {
+  if (metricSourceKey(metric) !== "inverter_power") return [];
+  return ["inverter_power_voltage_l1", "inverter_power_voltage_l2", "inverter_power_voltage_l3"];
+}
+
 const LARGE_CONSUMER_DEFINITIONS = Object.freeze([
   { id: "washing_machine", labelKey: "consumer.washing_machine", label: "Washing machine", color: "#34d399", maxPowerKw: 2.2 },
   { id: "dishwasher", labelKey: "consumer.dishwasher", label: "Dishwasher", color: "#38bdf8", maxPowerKw: 2.0 },
@@ -3425,77 +3528,11 @@ const DEFAULT_IMAGE_OVERLAYS = {
 
 const IMAGE_OVERLAY_KEYS = ["smoke", "heatpump"];
 
-const OVERLAY_TILE_METRICS = [
-  { key: "overlay_smoke", label: "Gas", labelKey: "overlay.smoke", color: "yellow", unit: "overlay", overlay: "smoke", tileOrder: 7 },
-  { key: "overlay_heatpump", label: "Heat pump", labelKey: "overlay.heatpump", color: "blue", unit: "overlay", overlay: "heatpump", tileOrder: 8 },
-];
-
-const METRICS = [
-  { key: "pv_roof_power", label: "Roof PV", unit: "power", color: "yellow" },
-  { key: "pv_shed_power", label: "Shed PV", unit: "power", color: "yellow" },
-  { key: "battery_level", label: "Battery", unit: "battery", color: "green" },
-  { key: "inverter_power", label: "Inverter", unit: "power", color: "blue" },
-  { key: "wallbox_power", label: "EV Charger", unit: "power", color: "blue" },
-  { key: "wallbox2_power", label: "EV Charger 2", unit: "power", color: "blue", optional: true },
-  { key: "import_export_power", label: "Import/Export", unit: "power", color: "blue", optional: true, tile: false },
-];
-
 const PV_LABELS = [
   { suffix: "today_energy", labelKey: "pvLabel.todayEnergy", editorKey: "editor.pvTodayEnergyEntity", source: "entity", unit: "energy" },
   { suffix: "forecast_today", labelKey: "pvLabel.forecastToday", editorKey: "editor.pvForecastTodayEntity", source: "entity", unit: "energy" },
   { suffix: "peak_today", labelKey: "pvLabel.peakToday", editorKey: "editor.pvPeakTodayEntity", source: "entity", unit: "power" },
 ];
-
-const TILE_METRICS = [
-  ...METRICS,
-  { key: "pv_total_power", label: "PV Total", unit: "power", color: "yellow", hud: false },
-  { key: "house_consumption_power", label: "Consumption", unit: "power", color: "blue", hud: false, optional: true, tileOrder: 6 },
-];
-
-const STATUS_METRIC = { key: "import_export_power", label: "Import/Export", unit: "power", color: "blue" };
-const GRID_STATUS_METRIC = {
-  ...STATUS_METRIC,
-  key: "grid_status",
-  sourceKey: "import_export_power",
-  label: "Grid",
-  labelKey: "metrics.grid_status",
-  gridStatus: true,
-  hud: false,
-  tileOrder: 90,
-};
-
-const DEFAULT_TILE_COLOR_RULES = {
-  pv_roof_power: [
-    { above: 3000, color: "#34d399", glow: true },
-    { above: 1000, color: "#ffc233" },
-    { below: 100, color: "#9ba3b8" },
-  ],
-  pv_shed_power: [
-    { above: 3000, color: "#34d399", glow: true },
-    { above: 1000, color: "#ffc233" },
-    { below: 100, color: "#9ba3b8" },
-  ],
-  pv_total_power: [
-    { above: 3000, color: "#34d399", glow: true },
-    { above: 1000, color: "#ffc233" },
-    { below: 100, color: "#9ba3b8" },
-  ],
-  battery_level: [
-    { below: 20, color: "#f87171", glow: true },
-    { below: 50, color: "#fb923c" },
-    { above: 80, color: "#34d399" },
-  ],
-  import_export_power: [
-    { gt: 25, color: "#fb923c", glow: true },
-    { lt: -25, color: "#34d399", glow: true },
-  ],
-};
-
-const STATIC_METRIC_COLORS = {
-  yellow: "#ffc233",
-  blue: "#1f8fff",
-  green: "#34d399",
-};
 
 const MINUTE_MS = 60 * 1000;
 const MAX_HISTORY_CACHE_ENTRIES = 48;
@@ -4051,9 +4088,9 @@ class HaSolarDashboardCard extends HTMLElement {
       if (this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
       return this._largeConsumerPowerEntityId(metric);
     }
-    if ((metric.sourceKey || metric.key) === "import_export_power") return this._gridPrimaryEntityId();
+    if (isImportExportMetric(metric)) return this._gridPrimaryEntityId();
     if (!metric.gridStatus && this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
-    return this.config.entities?.[metric.sourceKey || metric.key] || "";
+    return this.config.entities?.[metricSourceKey(metric)] || "";
   }
 
   _formatValue(value) {
@@ -4071,7 +4108,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _isPvRoofMetric(metric) {
-    return (metric?.sourceKey || metric?.key) === "pv_roof_power";
+    return isPvRoofMetric(metric);
   }
 
   _pvRoofStringDisplayMode() {
@@ -4262,18 +4299,11 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _metricVoltageEntityKey(metric) {
     if (!metric || metric.unit !== "power") return "";
-    if (metric.largeConsumer) return "";
-    return `${metric.sourceKey || metric.key}_voltage`;
+    return metricVoltageEntityKey(metric);
   }
 
   _metricVoltagePhaseDefinitions(metric) {
-    const key = metric?.sourceKey || metric?.key;
-    if (key !== "inverter_power") return [];
-    return [
-      { key: "inverter_power_voltage_l1", phase: "L1" },
-      { key: "inverter_power_voltage_l2", phase: "L2" },
-      { key: "inverter_power_voltage_l3", phase: "L3" },
-    ];
+    return inverterPhaseVoltageEntityKeys(metric).map((key) => ({ key, phase: key.slice(-2).toUpperCase() }));
   }
 
   _metricVoltageEntityDefinitions(metric) {
@@ -4285,7 +4315,7 @@ class HaSolarDashboardCard extends HTMLElement {
         phase: "",
       }];
     }
-    const key = metric.sourceKey || metric.key;
+    const key = metricSourceKey(metric);
     const baseKey = this._metricVoltageEntityKey(metric);
     const aliases = [
       baseKey,
@@ -4346,7 +4376,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _voltageSensorEntries() {
     const variant = this._currentVariant || this._layoutState().variant;
     const batteryVoltageEntityId = this._batteryVoltageEntityId();
-    const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", label: "Battery", unit: "battery" };
+    const batteryMetric = findMetricByKey("battery_level") || { key: "battery_level", label: "Battery", unit: "battery" };
     const metrics = [
       ...this._visibleMetrics(variant),
       ...this._largeConsumerMetrics(),
@@ -4758,7 +4788,7 @@ class HaSolarDashboardCard extends HTMLElement {
       }
       return this._largeConsumerPowerWatts(metric);
     }
-    if ((metric.sourceKey || metric.key) === "import_export_power") {
+    if (isImportExportMetric(metric)) {
       const flowInfo = this._gridFlowInfo();
       return Number.isFinite(flowInfo?.watts) ? flowInfo.watts : undefined;
     }
@@ -5169,7 +5199,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _isPvMetric(metric) {
-    return ["pv_roof_power", "pv_shed_power", "pv_total_power"].includes(metric?.key);
+    return isPvMetric(metric);
   }
 
   _pvLabelKey(metric, label) {
@@ -5456,7 +5486,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricWarning(metric) {
-    if ((metric.sourceKey || metric.key) === "import_export_power") {
+    if (isImportExportMetric(metric)) {
       const signedEntityId = this._gridSignedEntityId();
       const entityIds = signedEntityId
         ? [signedEntityId]
@@ -5742,8 +5772,8 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric?.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric?.customKpi) return metric.customKpi.entity || "";
     if (metric?.largeConsumer) return this._largeConsumerPowerEntityId(metric);
-    if ((metric?.sourceKey || metric?.key) === "import_export_power") return this._gridPrimaryEntityId();
-    return this.config.entities?.[metric?.sourceKey || metric?.key] || "";
+    if (isImportExportMetric(metric)) return this._gridPrimaryEntityId();
+    return this.config.entities?.[metricSourceKey(metric)] || "";
   }
 
   _chartDashboardMetricPool(variant = this._currentVariant || this._layoutState().variant) {
@@ -5928,7 +5958,7 @@ class HaSolarDashboardCard extends HTMLElement {
       return { color: fallbackColor, glow: "transparent" };
     }
 
-    const rules = this.config.tile_color_rules?.[metric.sourceKey || metric.key];
+    const rules = this.config.tile_color_rules?.[metricSourceKey(metric)];
     const normalizedRules = Array.isArray(rules) ? rules : [];
     const value = this._metricNumericValue(metric);
     const matchedRule = normalizedRules.find((rule) => this._ruleMatches(rule, value));
@@ -6324,9 +6354,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _flowMetric(key) {
-    return TILE_METRICS.find((metric) => metric.key === key)
-      || METRICS.find((metric) => metric.key === key)
-      || (key === STATUS_METRIC.key ? STATUS_METRIC : undefined);
+    return findFlowMetric(key);
   }
 
   _hasFlowPosition(variant, key) {
@@ -6489,7 +6517,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _wallboxAdvisorDetails() {
     return wallboxAdvisorDetails(WALLBOX_POWER_KEYS, {
-      metricForKey: (key) => TILE_METRICS.find((item) => item.key === key) || { key, label: key, unit: "power" },
+      metricForKey: (key) => findMetricByKey(key) || { key, label: key, unit: "power" },
       entityForKey: (key) => this.config.entities?.[key] || "",
       positiveWattsForKey: (key) => this._positiveWattsForKey(key),
       socEntityIdForMetric: (metric) => this._wallboxSocEntityId(metric),
@@ -6544,7 +6572,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const largeConsumers = this._largeConsumerAdvisorDetails();
     const largeConsumerWatts = largeConsumers.reduce((sum, consumer) => sum + (Number.isFinite(consumer.watts) ? consumer.watts : 0), 0);
     const pvRoofStrings = this._pvRoofStringAdvisorDetails();
-    const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", unit: "battery" };
+    const batteryMetric = findMetricByKey("battery_level") || { key: "battery_level", unit: "battery" };
     const batteryPercent = this._batteryPercent(batteryMetric);
     const batterySocEntityId = this._batterySocEntityId();
     const batteryMinSocPercent = this._batteryMinSocPercent();
@@ -6716,7 +6744,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _advisorStaleSensorIsExpectedStatic(candidate) {
     if (candidate?.key !== "battery_level") return false;
-    const batteryMetric = TILE_METRICS.find((metric) => metric.key === "battery_level") || { key: "battery_level", unit: "battery" };
+    const batteryMetric = findMetricByKey("battery_level") || { key: "battery_level", unit: "battery" };
     const percent = this._batteryPercent(batteryMetric);
     if (!Number.isFinite(percent)) return false;
     const minSoc = this._batteryMinSocPercent();
@@ -8538,10 +8566,10 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _entityLabelForPath(path) {
     const key = path.split(".").pop();
-    const metric = TILE_METRICS.find((item) => item.key === key);
+    const metric = findMetricByKey(key);
     if (metric) return this._metricLabel(metric);
     const voltageMetricKey = key?.replace(/_voltage$/, "");
-    const voltageMetric = TILE_METRICS.find((item) => item.key === voltageMetricKey);
+    const voltageMetric = findMetricByKey(voltageMetricKey);
     if (voltageMetric) return `${this._metricLabel(voltageMetric)} ${this._t("tooltip.voltage", {}, "Voltage")}`;
     const labels = {
       weather_entity: this._t("editor.weatherEntity", {}, "Weather Entity"),
@@ -8579,7 +8607,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
     if (labels[key]) return labels[key];
     const energyMatch = path.match(/^energy_entities\.([^.]+)\.entity$/);
     if (energyMatch) {
-      const energyMetric = TILE_METRICS.find((item) => item.key === energyMatch[1]);
+      const energyMetric = findMetricByKey(energyMatch[1]);
       return `${this._metricLabel(energyMetric || { key: energyMatch[1], label: energyMatch[1] })} ${this._t("editor.energyCounterEntity", {}, "kWh counter entity")}`;
     }
     return key || path;
@@ -8876,16 +8904,15 @@ class HaSolarDashboardCardEditor extends HTMLElement {
 
   _metricVoltageEntityKey(metric) {
     if (!metric || metric.unit !== "power") return "";
-    return `${metric.sourceKey || metric.key}_voltage`;
+    return metricVoltageEntityKey(metric);
   }
 
   _metricVoltagePhaseFields(metric) {
-    if ((metric?.sourceKey || metric?.key) !== "inverter_power") return [];
-    return [
-      ["inverter_power_voltage_l1", "editor.voltageEntityL1", "Voltage L1 entity"],
-      ["inverter_power_voltage_l2", "editor.voltageEntityL2", "Voltage L2 entity"],
-      ["inverter_power_voltage_l3", "editor.voltageEntityL3", "Voltage L3 entity"],
-    ];
+    return inverterPhaseVoltageEntityKeys(metric).map((key) => [
+      key,
+      `editor.voltageEntity${key.slice(-2).toUpperCase()}`,
+      `Voltage ${key.slice(-2).toUpperCase()} entity`,
+    ]);
   }
 
   _renderVoltageEntityInput(metric) {
@@ -8908,7 +8935,7 @@ class HaSolarDashboardCardEditor extends HTMLElement {
   }
 
   _isPvMetric(metric) {
-    return ["pv_roof_power", "pv_shed_power", "pv_total_power"].includes(metric?.key);
+    return isPvMetric(metric);
   }
 
   _pvLabelKey(metric, label) {

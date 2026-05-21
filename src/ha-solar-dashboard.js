@@ -147,9 +147,9 @@ const ENERGY_RANGE_OPTIONS = [
 ];
 
 const VIEW_MODE_OPTIONS = [
-  { key: "house", labelKey: "view.house", label: "House View" },
-  { key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard" },
-  { key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart" },
+  { key: "house", labelKey: "view.house", label: "House View", icon: "house" },
+  { key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard", icon: "advisor" },
+  { key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart", iconOnly: true },
 ];
 
 const DEFAULT_LANGUAGE = "en";
@@ -3181,23 +3181,47 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderViewSelector() {
     if (this.config.show_view_selector !== true) return "";
     const activeView = this._currentViewMode();
-    const chartIcon = `
-      <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 19V5"></path>
-        <path d="M4 19h16"></path>
-        <path d="m7 15 3-4 3 2 4-6"></path>
-        <path d="M17 7h3v3"></path>
-      </svg>
-    `;
+    const icons = {
+      house: `
+        <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m3 10.5 9-7 9 7"></path>
+          <path d="M5 9.5V20h14V9.5"></path>
+          <path d="M9 20v-6h6v6"></path>
+        </svg>
+      `,
+      advisor: `
+        <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v2"></path>
+          <path d="M12 19v2"></path>
+          <path d="M4.22 4.22 5.64 5.64"></path>
+          <path d="M18.36 18.36 19.78 19.78"></path>
+          <path d="M3 12h2"></path>
+          <path d="M19 12h2"></path>
+          <path d="M4.22 19.78 5.64 18.36"></path>
+          <path d="M18.36 5.64 19.78 4.22"></path>
+          <path d="M9 12.5 11 14.5 15.5 9.5"></path>
+          <circle cx="12" cy="12" r="5"></circle>
+        </svg>
+      `,
+      chart: `
+        <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 19V5"></path>
+          <path d="M4 19h16"></path>
+          <path d="m7 15 3-4 3 2 4-6"></path>
+          <path d="M17 7h3v3"></path>
+        </svg>
+      `,
+    };
     const buttons = VIEW_MODE_OPTIONS
       .map((option) => {
         const active = option.key === activeView;
         const label = this._t(option.labelKey, {}, option.label);
-        const content = option.icon === "chart"
-          ? `${chartIcon}<span class="view-mode-label">${this._escape(label)}</span>`
+        const icon = icons[option.icon] || "";
+        const content = option.icon
+          ? `${icon}<span class="view-mode-label">${this._escape(label)}</span>`
           : this._escape(label);
         return htmlTag("button", {
-          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon) }),
+          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon), "view-mode-icon-only": option.iconOnly === true }),
           type: "button",
           "data-view-mode": option.key,
           "aria-pressed": active ? "true" : "false",

@@ -2278,13 +2278,17 @@ function createRecordsDashboardMethods({
           const entityId = this._chartEntityId(metric);
           if (!entityId || metric.gridStatus) return [];
           const key = metric.chartKey || metric.key;
+          const metricKey = String(metric.key || "");
           const isGasCounter = metric.overlay === "smoke";
-          const group = String(metric.key || "").includes("wallbox")
+          const isPvMetric = metricKey.startsWith("pv_") || metric.overlay === "solar";
+          const group = metricKey.includes("wallbox")
             ? "wallbox"
             : metric.largeConsumer
               ? "consumer"
               : isGasCounter
                 ? "counter"
+                : isPvMetric
+                  ? "pv"
               : "system";
           const sources = [{
             key,
@@ -2432,6 +2436,13 @@ function createRecordsDashboardMethods({
       const states = sources.map((source) => ({ source, state: this._recordHistoryState(source) }));
       const loading = states.some((entry) => entry.state.loading);
       const hasError = states.some((entry) => entry.state.error);
+      const loadingSources = states
+        .filter((entry) => entry.state.loading)
+        .map(({ source }) => ({
+          label: source.label,
+          purpose: this._recordLoadingPurpose(source),
+          entityId: source.entityId,
+        }));
       const cards = {
         pvEnergy: [],
         solarHours: [],
@@ -2450,7 +2461,7 @@ function createRecordsDashboardMethods({
           const bestDay = dailyEnergyRecordsFn(state.points)[0];
           if (bestDay) {
             pushCard("pvEnergy", {
-              title: source.label,
+              title: this._t("records.pvBestYield", { name: source.label }, `${source.label}: best PV yield`),
               value: this._formatEnergyValue(bestDay.amount, "kWh", "kWh"),
               sortValue: bestDay.amount,
               meta: this._recordDateLabel(bestDay.day),
@@ -2474,7 +2485,7 @@ function createRecordsDashboardMethods({
           const bestDay = dailyEnergyRecordsFn(state.points)[0];
           if (bestDay) {
             pushCard("counters", {
-              title: source.label,
+              title: this._t("records.counterLargestIncrease", { name: source.label }, `${source.label}: largest daily meter increase`),
               value: this._formatRecordCounterValue(bestDay.amount, source.unit),
               sortValue: bestDay.amount,
               meta: this._recordDateLabel(bestDay.day),
@@ -2539,10 +2550,15 @@ function createRecordsDashboardMethods({
         if (source.type === "power") {
           const peak = peakPowerRecordFn(state.points);
           if (peak) {
+            const peakTitle = source.group === "wallbox"
+              ? this._t("records.wallboxPeakPower", { name: source.label }, `${source.label}: highest charging power`)
+              : source.group === "pv"
+                ? this._t("records.pvPeakPower", { name: source.label }, `${source.label}: highest PV power`)
+                : source.group === "consumer"
+                  ? this._t("records.consumerPeakPower", { name: source.label }, `${source.label}: highest consumption peak`)
+                  : this._t("records.powerPeak", { name: source.label }, `${source.label}: highest power peak`);
             const card = {
-              title: source.group === "wallbox"
-                ? this._t("records.wallboxPeakPower", { name: source.label }, `${source.label}: highest charging power`)
-                : source.label,
+              title: peakTitle,
               value: this._formatPowerValue(peak.value, "auto", "W"),
               sortValue: peak.value,
               meta: this._formatLocalDateTime(new Date(peak.time).toISOString()),
@@ -2555,7 +2571,7 @@ function createRecordsDashboardMethods({
             const bestSolarDay = activeDurationRecordsFn(state.points, { threshold: this.config.records_solar_threshold_watts || RECORD_SOLAR_THRESHOLD_WATTS })[0];
             if (bestSolarDay) {
               pushCard("solarHours", {
-                title: source.label,
+                title: this._t("records.solarLongestHours", { name: source.label }, `${source.label}: longest solar production time`),
                 value: this._formatDurationMinutes(bestSolarDay.durationMs / 60000),
                 sortValue: bestSolarDay.durationMs,
                 meta: this._recordDateLabel(bestSolarDay.day),
@@ -2585,6 +2601,7 @@ function createRecordsDashboardMethods({
       return {
         loading,
         hasError,
+        loadingSources,
         sections: [
           { key: "pvEnergy", label: this._t("records.sectionPvEnergy", {}, "Best PV yield per string"), items: sortByValue(cards.pvEnergy) },
           { key: "solarHours", label: this._t("records.sectionSolarHours", {}, "Longest solar hours"), items: sortByValue(cards.solarHours) },
@@ -2605,6 +2622,45 @@ function createRecordsDashboardMethods({
           <div class="record-card-value">${this._escape(card.value)}</div>
           ${card.entityId ? `<code>${this._escape(card.entityId)}</code>` : ""}
         </article>
+      `;
+    },
+
+    _recordLoadingPurpose(source) {
+      if (source.type === "energy" && source.group === "pv") return this._t("records.loadingPurposePvEnergy", {}, "PV daily yield");
+      if (source.type === "energy" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxEnergy", {}, "Wallbox charged energy");
+      if (source.type === "counter") return this._t("records.loadingPurposeCounter", {}, "Meter daily increase");
+      if (source.type === "boolean" && source.recordKind === "chargingEnabled") return this._t("records.loadingPurposeWallboxChargingEnabled", {}, "Wallbox charging enabled time");
+      if (source.type === "boolean" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxPluggedIn", {}, "Wallbox plugged-in time");
+      if (source.type === "percent" && source.recordKind === "maxSocLimit") return this._t("records.loadingPurposeWallboxMaxSocLimit", {}, "Wallbox charge limit");
+      if (source.type === "percent" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxSoc", {}, "Wallbox vehicle SoC");
+      if (source.type === "phase") return this._t("records.loadingPurposeWallboxPhase", {}, "Wallbox phase history");
+      if (source.type === "power" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxPower", {}, "Wallbox charging power");
+      if (source.type === "power" && source.group === "pv") return this._t("records.loadingPurposePvPower", {}, "PV power and solar hours");
+      if (source.type === "power" && source.group === "consumer") return this._t("records.loadingPurposeConsumerPower", {}, "Consumption peak");
+      return this._t("records.loadingPurposePower", {}, "Power peak");
+    },
+
+    _renderRecordsLoadingDetails(records) {
+      const items = records.loadingSources || [];
+      if (!items.length) return "";
+      return `
+        <div class="record-loading-details" aria-live="polite">
+          <div class="record-loading-title">
+            <span>${this._escape(this._t("records.loadingTitle", { count: items.length }, "Loading history"))}</span>
+            <strong>${this._escape(items.length === 1
+              ? this._t("records.loadingCountOne", { count: items.length }, "1 entity")
+              : this._t("records.loadingCount", { count: items.length }, `${items.length} entities`))}</strong>
+          </div>
+          <div class="record-loading-list">
+            ${items.map((item) => `
+              <div class="record-loading-item">
+                <span>${this._escape(item.label)}</span>
+                <small>${this._escape(item.purpose)}</small>
+                <code>${this._escape(item.entityId)}</code>
+              </div>
+            `).join("")}
+          </div>
+        </div>
       `;
     },
 
@@ -2641,6 +2697,7 @@ function createRecordsDashboardMethods({
               ${rangeOptions.map((option) => rangeButton(option)).join("")}
             </div>
           </div>
+          ${this._renderRecordsLoadingDetails(records)}
           ${records.sections.length > 0
             ? sectionHtml
             : `<div class="chart-message">${this._escape(records.loading
@@ -5218,6 +5275,21 @@ const I18N = {
     "records.empty": "No recordable history found yet.",
     "records.error": "Records could not be loaded.",
     "records.label": "High scores",
+    "records.loadingCount": "{count} entities",
+    "records.loadingCountOne": "{count} entity",
+    "records.loadingPurposeConsumerPower": "Consumption peak",
+    "records.loadingPurposeCounter": "Daily meter increase",
+    "records.loadingPurposePower": "Power peak",
+    "records.loadingPurposePvEnergy": "Daily PV yield",
+    "records.loadingPurposePvPower": "PV power and solar hours",
+    "records.loadingPurposeWallboxChargingEnabled": "Wallbox charging enabled time",
+    "records.loadingPurposeWallboxEnergy": "Wallbox charged energy",
+    "records.loadingPurposeWallboxMaxSocLimit": "Wallbox charge limit",
+    "records.loadingPurposeWallboxPhase": "Wallbox phase history",
+    "records.loadingPurposeWallboxPluggedIn": "Wallbox plugged-in time",
+    "records.loadingPurposeWallboxPower": "Wallbox charging power",
+    "records.loadingPurposeWallboxSoc": "Wallbox vehicle SoC",
+    "records.loadingTitle": "Querying history",
     "records.loading": "Loading records…",
     "records.sectionPeaks": "Power peaks",
     "records.sectionPvEnergy": "Best PV yield per string",
@@ -5231,6 +5303,12 @@ const I18N = {
     "records.rangeMonth": "This month",
     "records.rangeYear": "This year",
     "records.range356d": "356 days",
+    "records.consumerPeakPower": "{name}: highest consumption peak",
+    "records.counterLargestIncrease": "{name}: largest daily meter increase",
+    "records.powerPeak": "{name}: highest power peak",
+    "records.pvBestYield": "{name}: best daily PV yield",
+    "records.pvPeakPower": "{name}: highest PV power",
+    "records.solarLongestHours": "{name}: longest solar production time",
     "records.wallboxChargedEnergy": "{name}: most charged energy",
     "records.wallboxChargingEnabled": "{name}: longest charging enabled time",
     "records.wallboxLongestCharge": "{name}: longest charging day",
@@ -5601,6 +5679,21 @@ const I18N = {
     "records.empty": "Noch keine auswertbare Historie gefunden.",
     "records.error": "Rekorde konnten nicht geladen werden.",
     "records.label": "Highscores",
+    "records.loadingCount": "{count} Entitäten",
+    "records.loadingCountOne": "{count} Entität",
+    "records.loadingPurposeConsumerPower": "Verbrauchsspitze",
+    "records.loadingPurposeCounter": "Tageszähler-Zuwachs",
+    "records.loadingPurposePower": "Leistungsspitze",
+    "records.loadingPurposePvEnergy": "PV-Tagesertrag",
+    "records.loadingPurposePvPower": "PV-Leistung und solare Stunden",
+    "records.loadingPurposeWallboxChargingEnabled": "Wallbox-Ladefreigabe",
+    "records.loadingPurposeWallboxEnergy": "Wallbox-Ladeenergie",
+    "records.loadingPurposeWallboxMaxSocLimit": "Wallbox-Ladegrenze",
+    "records.loadingPurposeWallboxPhase": "Wallbox-Phasenhistorie",
+    "records.loadingPurposeWallboxPluggedIn": "Wallbox eingesteckt",
+    "records.loadingPurposeWallboxPower": "Wallbox-Ladeleistung",
+    "records.loadingPurposeWallboxSoc": "Wallbox-Fahrzeug-SoC",
+    "records.loadingTitle": "Historie wird abgefragt",
     "records.loading": "Rekorde werden geladen…",
     "records.sectionPeaks": "Leistungsrekorde",
     "records.sectionPvEnergy": "Bester PV-Ertrag pro String",
@@ -5614,6 +5707,12 @@ const I18N = {
     "records.rangeMonth": "Diesen Monat",
     "records.rangeYear": "Dieses Jahr",
     "records.range356d": "356 Tage",
+    "records.consumerPeakPower": "{name}: höchste Verbrauchsspitze",
+    "records.counterLargestIncrease": "{name}: größter Tageszähler-Zuwachs",
+    "records.powerPeak": "{name}: höchste Leistungsspitze",
+    "records.pvBestYield": "{name}: bester PV-Tagesertrag",
+    "records.pvPeakPower": "{name}: höchste PV-Leistung",
+    "records.solarLongestHours": "{name}: längste solare Produktionszeit",
     "records.wallboxChargedEnergy": "{name}: meiste geladene Energie",
     "records.wallboxChargingEnabled": "{name}: längste Ladefreigabe",
     "records.wallboxLongestCharge": "{name}: längster Ladetag",
@@ -5984,6 +6083,21 @@ const I18N = {
     "records.empty": "Aún no hay historial evaluable.",
     "records.error": "No se pudieron cargar los récords.",
     "records.label": "Puntuaciones",
+    "records.loadingCount": "{count} entidades",
+    "records.loadingCountOne": "{count} entidad",
+    "records.loadingPurposeConsumerPower": "Pico de consumo",
+    "records.loadingPurposeCounter": "Incremento diario del contador",
+    "records.loadingPurposePower": "Pico de potencia",
+    "records.loadingPurposePvEnergy": "Rendimiento FV diario",
+    "records.loadingPurposePvPower": "Potencia FV y horas solares",
+    "records.loadingPurposeWallboxChargingEnabled": "Tiempo con carga habilitada",
+    "records.loadingPurposeWallboxEnergy": "Energía cargada de wallbox",
+    "records.loadingPurposeWallboxMaxSocLimit": "Límite de carga de wallbox",
+    "records.loadingPurposeWallboxPhase": "Historial de fases de wallbox",
+    "records.loadingPurposeWallboxPluggedIn": "Tiempo enchufado de wallbox",
+    "records.loadingPurposeWallboxPower": "Potencia de carga de wallbox",
+    "records.loadingPurposeWallboxSoc": "SoC del vehículo en wallbox",
+    "records.loadingTitle": "Consultando historial",
     "records.loading": "Cargando récords…",
     "records.sectionPeaks": "Picos de potencia",
     "records.sectionPvEnergy": "Mejor rendimiento FV por string",
@@ -5997,6 +6111,12 @@ const I18N = {
     "records.rangeMonth": "Este mes",
     "records.rangeYear": "Este año",
     "records.range356d": "356 días",
+    "records.consumerPeakPower": "{name}: mayor pico de consumo",
+    "records.counterLargestIncrease": "{name}: mayor incremento diario del contador",
+    "records.powerPeak": "{name}: mayor pico de potencia",
+    "records.pvBestYield": "{name}: mejor rendimiento FV diario",
+    "records.pvPeakPower": "{name}: mayor potencia FV",
+    "records.solarLongestHours": "{name}: mayor tiempo de producción solar",
     "records.wallboxChargedEnergy": "{name}: mayor energía cargada",
     "records.wallboxChargingEnabled": "{name}: más tiempo con carga habilitada",
     "records.wallboxLongestCharge": "{name}: día de carga más largo",
@@ -6367,6 +6487,21 @@ const I18N = {
     "records.empty": "Aucun historique exploitable pour le moment.",
     "records.error": "Les records n’ont pas pu être chargés.",
     "records.label": "High scores",
+    "records.loadingCount": "{count} entités",
+    "records.loadingCountOne": "{count} entité",
+    "records.loadingPurposeConsumerPower": "Pic de consommation",
+    "records.loadingPurposeCounter": "Hausse quotidienne du compteur",
+    "records.loadingPurposePower": "Pic de puissance",
+    "records.loadingPurposePvEnergy": "Rendement PV journalier",
+    "records.loadingPurposePvPower": "Puissance PV et heures solaires",
+    "records.loadingPurposeWallboxChargingEnabled": "Temps de charge autorisée",
+    "records.loadingPurposeWallboxEnergy": "Énergie chargée wallbox",
+    "records.loadingPurposeWallboxMaxSocLimit": "Limite de charge wallbox",
+    "records.loadingPurposeWallboxPhase": "Historique des phases wallbox",
+    "records.loadingPurposeWallboxPluggedIn": "Temps branché wallbox",
+    "records.loadingPurposeWallboxPower": "Puissance de charge wallbox",
+    "records.loadingPurposeWallboxSoc": "SoC véhicule wallbox",
+    "records.loadingTitle": "Consultation de l’historique",
     "records.loading": "Chargement des records…",
     "records.sectionPeaks": "Pics de puissance",
     "records.sectionPvEnergy": "Meilleur rendement PV par string",
@@ -6380,6 +6515,12 @@ const I18N = {
     "records.rangeMonth": "Ce mois-ci",
     "records.rangeYear": "Cette année",
     "records.range356d": "356 jours",
+    "records.consumerPeakPower": "{name}: plus grand pic de consommation",
+    "records.counterLargestIncrease": "{name}: plus forte hausse quotidienne du compteur",
+    "records.powerPeak": "{name}: plus grand pic de puissance",
+    "records.pvBestYield": "{name}: meilleur rendement PV journalier",
+    "records.pvPeakPower": "{name}: puissance PV maximale",
+    "records.solarLongestHours": "{name}: plus longue durée de production solaire",
     "records.wallboxChargedEnergy": "{name}: énergie chargée maximale",
     "records.wallboxChargingEnabled": "{name}: plus longue durée de charge autorisée",
     "records.wallboxLongestCharge": "{name}: journée de charge la plus longue",
@@ -6750,6 +6891,21 @@ const I18N = {
     "records.empty": "Brak historii możliwej do oceny.",
     "records.error": "Nie udało się wczytać rekordów.",
     "records.label": "Najlepsze wyniki",
+    "records.loadingCount": "{count} encji",
+    "records.loadingCountOne": "{count} encja",
+    "records.loadingPurposeConsumerPower": "Szczyt poboru",
+    "records.loadingPurposeCounter": "Dzienny przyrost licznika",
+    "records.loadingPurposePower": "Szczyt mocy",
+    "records.loadingPurposePvEnergy": "Dzienny uzysk PV",
+    "records.loadingPurposePvPower": "Moc PV i godziny solarne",
+    "records.loadingPurposeWallboxChargingEnabled": "Czas włączonego ładowania wallboxa",
+    "records.loadingPurposeWallboxEnergy": "Energia ładowania wallboxa",
+    "records.loadingPurposeWallboxMaxSocLimit": "Limit ładowania wallboxa",
+    "records.loadingPurposeWallboxPhase": "Historia faz wallboxa",
+    "records.loadingPurposeWallboxPluggedIn": "Czas podłączenia wallboxa",
+    "records.loadingPurposeWallboxPower": "Moc ładowania wallboxa",
+    "records.loadingPurposeWallboxSoc": "SoC pojazdu wallboxa",
+    "records.loadingTitle": "Pobieranie historii",
     "records.loading": "Ładowanie rekordów…",
     "records.sectionPeaks": "Szczyty mocy",
     "records.sectionPvEnergy": "Najlepszy uzysk PV na string",
@@ -6763,6 +6919,12 @@ const I18N = {
     "records.rangeMonth": "Ten miesiąc",
     "records.rangeYear": "Ten rok",
     "records.range356d": "356 dni",
+    "records.consumerPeakPower": "{name}: najwyższy szczyt poboru",
+    "records.counterLargestIncrease": "{name}: największy dzienny przyrost licznika",
+    "records.powerPeak": "{name}: najwyższy szczyt mocy",
+    "records.pvBestYield": "{name}: najlepszy dzienny uzysk PV",
+    "records.pvPeakPower": "{name}: najwyższa moc PV",
+    "records.solarLongestHours": "{name}: najdłuższy czas produkcji solarnej",
     "records.wallboxChargedEnergy": "{name}: najwięcej naładowanej energii",
     "records.wallboxChargingEnabled": "{name}: najdłuższy czas włączonego ładowania",
     "records.wallboxLongestCharge": "{name}: najdłuższy dzień ładowania",
@@ -10459,13 +10621,21 @@ class HaSolarDashboardCard extends HTMLElement {
         .record-dashboard { display:grid; gap:14px; min-width:0; }
         .record-section { display:grid; gap:8px; min-width:0; }
         .record-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr)); gap:10px; min-width:0; }
+        .record-loading-details { display:grid; gap:8px; min-width:0; padding:10px; border:1px solid rgba(96,165,250,.28); border-radius:8px; background:rgba(59,130,246,.08); }
+        .record-loading-title { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; color:var(--text-main); font-size:.74rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+        .record-loading-title strong { flex:0 0 auto; color:#93c5fd; font-size:.68rem; }
+        .record-loading-list { display:grid; gap:6px; max-height:190px; overflow:auto; min-width:0; }
+        .record-loading-item { display:grid; grid-template-columns:minmax(0,.85fr) minmax(0,1fr) minmax(0,1.25fr); align-items:center; gap:8px; min-width:0; padding:6px 8px; border-radius:6px; background:rgba(255,255,255,.055); }
+        .record-loading-item span { min-width:0; color:var(--text-main); font-size:.74rem; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .record-loading-item small { min-width:0; color:var(--text-muted); font-size:.68rem; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .record-loading-item code { min-width:0; color:rgba(243,246,255,.72); font-size:.66rem; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
         .record-card { display:grid; gap:7px; min-width:0; padding:11px; border-radius:8px; border:1px solid color-mix(in srgb,#facc15 30%,rgba(255,255,255,.1)); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); box-shadow:inset 3px 0 0 #facc15,0 8px 20px rgba(0,0,0,.18); }
         .record-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; min-width:0; }
         .record-card-head strong { min-width:0; color:var(--text-main); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
         .record-card-head span { flex:0 0 auto; max-width:45%; color:var(--text-muted); font-size:.68rem; line-height:1.2; text-align:right; overflow-wrap:anywhere; }
         .record-card-value { color:#facc15; font-size:1.22rem; line-height:1.1; font-weight:900; overflow-wrap:anywhere; }
         .record-card code { min-width:0; color:rgba(243,246,255,.68); font-size:.66rem; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; border-radius:6px; padding:3px 5px; background:rgba(255,255,255,.06); }
-        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} .record-loading-item{grid-template-columns:1fr;align-items:start;gap:2px;} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <style>

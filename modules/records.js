@@ -270,13 +270,17 @@ export function createRecordsDashboardMethods({
           const entityId = this._chartEntityId(metric);
           if (!entityId || metric.gridStatus) return [];
           const key = metric.chartKey || metric.key;
+          const metricKey = String(metric.key || "");
           const isGasCounter = metric.overlay === "smoke";
-          const group = String(metric.key || "").includes("wallbox")
+          const isPvMetric = metricKey.startsWith("pv_") || metric.overlay === "solar";
+          const group = metricKey.includes("wallbox")
             ? "wallbox"
             : metric.largeConsumer
               ? "consumer"
               : isGasCounter
                 ? "counter"
+                : isPvMetric
+                  ? "pv"
               : "system";
           const sources = [{
             key,
@@ -424,6 +428,13 @@ export function createRecordsDashboardMethods({
       const states = sources.map((source) => ({ source, state: this._recordHistoryState(source) }));
       const loading = states.some((entry) => entry.state.loading);
       const hasError = states.some((entry) => entry.state.error);
+      const loadingSources = states
+        .filter((entry) => entry.state.loading)
+        .map(({ source }) => ({
+          label: source.label,
+          purpose: this._recordLoadingPurpose(source),
+          entityId: source.entityId,
+        }));
       const cards = {
         pvEnergy: [],
         solarHours: [],
@@ -442,7 +453,7 @@ export function createRecordsDashboardMethods({
           const bestDay = dailyEnergyRecordsFn(state.points)[0];
           if (bestDay) {
             pushCard("pvEnergy", {
-              title: source.label,
+              title: this._t("records.pvBestYield", { name: source.label }, `${source.label}: best PV yield`),
               value: this._formatEnergyValue(bestDay.amount, "kWh", "kWh"),
               sortValue: bestDay.amount,
               meta: this._recordDateLabel(bestDay.day),
@@ -466,7 +477,7 @@ export function createRecordsDashboardMethods({
           const bestDay = dailyEnergyRecordsFn(state.points)[0];
           if (bestDay) {
             pushCard("counters", {
-              title: source.label,
+              title: this._t("records.counterLargestIncrease", { name: source.label }, `${source.label}: largest daily meter increase`),
               value: this._formatRecordCounterValue(bestDay.amount, source.unit),
               sortValue: bestDay.amount,
               meta: this._recordDateLabel(bestDay.day),
@@ -531,10 +542,15 @@ export function createRecordsDashboardMethods({
         if (source.type === "power") {
           const peak = peakPowerRecordFn(state.points);
           if (peak) {
+            const peakTitle = source.group === "wallbox"
+              ? this._t("records.wallboxPeakPower", { name: source.label }, `${source.label}: highest charging power`)
+              : source.group === "pv"
+                ? this._t("records.pvPeakPower", { name: source.label }, `${source.label}: highest PV power`)
+                : source.group === "consumer"
+                  ? this._t("records.consumerPeakPower", { name: source.label }, `${source.label}: highest consumption peak`)
+                  : this._t("records.powerPeak", { name: source.label }, `${source.label}: highest power peak`);
             const card = {
-              title: source.group === "wallbox"
-                ? this._t("records.wallboxPeakPower", { name: source.label }, `${source.label}: highest charging power`)
-                : source.label,
+              title: peakTitle,
               value: this._formatPowerValue(peak.value, "auto", "W"),
               sortValue: peak.value,
               meta: this._formatLocalDateTime(new Date(peak.time).toISOString()),
@@ -547,7 +563,7 @@ export function createRecordsDashboardMethods({
             const bestSolarDay = activeDurationRecordsFn(state.points, { threshold: this.config.records_solar_threshold_watts || RECORD_SOLAR_THRESHOLD_WATTS })[0];
             if (bestSolarDay) {
               pushCard("solarHours", {
-                title: source.label,
+                title: this._t("records.solarLongestHours", { name: source.label }, `${source.label}: longest solar production time`),
                 value: this._formatDurationMinutes(bestSolarDay.durationMs / 60000),
                 sortValue: bestSolarDay.durationMs,
                 meta: this._recordDateLabel(bestSolarDay.day),
@@ -577,6 +593,7 @@ export function createRecordsDashboardMethods({
       return {
         loading,
         hasError,
+        loadingSources,
         sections: [
           { key: "pvEnergy", label: this._t("records.sectionPvEnergy", {}, "Best PV yield per string"), items: sortByValue(cards.pvEnergy) },
           { key: "solarHours", label: this._t("records.sectionSolarHours", {}, "Longest solar hours"), items: sortByValue(cards.solarHours) },
@@ -597,6 +614,45 @@ export function createRecordsDashboardMethods({
           <div class="record-card-value">${this._escape(card.value)}</div>
           ${card.entityId ? `<code>${this._escape(card.entityId)}</code>` : ""}
         </article>
+      `;
+    },
+
+    _recordLoadingPurpose(source) {
+      if (source.type === "energy" && source.group === "pv") return this._t("records.loadingPurposePvEnergy", {}, "PV daily yield");
+      if (source.type === "energy" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxEnergy", {}, "Wallbox charged energy");
+      if (source.type === "counter") return this._t("records.loadingPurposeCounter", {}, "Meter daily increase");
+      if (source.type === "boolean" && source.recordKind === "chargingEnabled") return this._t("records.loadingPurposeWallboxChargingEnabled", {}, "Wallbox charging enabled time");
+      if (source.type === "boolean" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxPluggedIn", {}, "Wallbox plugged-in time");
+      if (source.type === "percent" && source.recordKind === "maxSocLimit") return this._t("records.loadingPurposeWallboxMaxSocLimit", {}, "Wallbox charge limit");
+      if (source.type === "percent" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxSoc", {}, "Wallbox vehicle SoC");
+      if (source.type === "phase") return this._t("records.loadingPurposeWallboxPhase", {}, "Wallbox phase history");
+      if (source.type === "power" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxPower", {}, "Wallbox charging power");
+      if (source.type === "power" && source.group === "pv") return this._t("records.loadingPurposePvPower", {}, "PV power and solar hours");
+      if (source.type === "power" && source.group === "consumer") return this._t("records.loadingPurposeConsumerPower", {}, "Consumption peak");
+      return this._t("records.loadingPurposePower", {}, "Power peak");
+    },
+
+    _renderRecordsLoadingDetails(records) {
+      const items = records.loadingSources || [];
+      if (!items.length) return "";
+      return `
+        <div class="record-loading-details" aria-live="polite">
+          <div class="record-loading-title">
+            <span>${this._escape(this._t("records.loadingTitle", { count: items.length }, "Loading history"))}</span>
+            <strong>${this._escape(items.length === 1
+              ? this._t("records.loadingCountOne", { count: items.length }, "1 entity")
+              : this._t("records.loadingCount", { count: items.length }, `${items.length} entities`))}</strong>
+          </div>
+          <div class="record-loading-list">
+            ${items.map((item) => `
+              <div class="record-loading-item">
+                <span>${this._escape(item.label)}</span>
+                <small>${this._escape(item.purpose)}</small>
+                <code>${this._escape(item.entityId)}</code>
+              </div>
+            `).join("")}
+          </div>
+        </div>
       `;
     },
 
@@ -633,6 +689,7 @@ export function createRecordsDashboardMethods({
               ${rangeOptions.map((option) => rangeButton(option)).join("")}
             </div>
           </div>
+          ${this._renderRecordsLoadingDetails(records)}
           ${records.sections.length > 0
             ? sectionHtml
             : `<div class="chart-message">${this._escape(records.loading

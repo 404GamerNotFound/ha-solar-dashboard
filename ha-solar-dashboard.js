@@ -2007,7 +2007,14 @@ function viewModeIconSvg(icon) {
 }
 
 const RECORDS_DEFAULT_DAYS = 7;
-const RECORDS_DAY_OPTIONS = Object.freeze([7, 14, 30]);
+const RECORDS_RANGE_OPTIONS = Object.freeze([
+  Object.freeze({ key: "7d", days: 7, labelKey: "records.range7d", label: "7 days" }),
+  Object.freeze({ key: "14d", days: 14, labelKey: "records.range14d", label: "14 days" }),
+  Object.freeze({ key: "30d", days: 30, labelKey: "records.range30d", label: "30 days" }),
+  Object.freeze({ key: "month", labelKey: "records.rangeMonth", label: "This month" }),
+  Object.freeze({ key: "year", labelKey: "records.rangeYear", label: "This year" }),
+  Object.freeze({ key: "356d", days: 356, labelKey: "records.range356d", label: "356 days" }),
+]);
 
 const RECORD_SOLAR_THRESHOLD_WATTS = 100;
 const RECORD_ACTIVE_THRESHOLD_WATTS = 100;
@@ -2028,8 +2035,68 @@ function sortedPoints(points = []) {
     .sort((a, b) => a.time - b.time);
 }
 
+function booleanRecordValue(rawValue) {
+  const normalized = String(rawValue ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["on", "true", "1", "yes", "ja", "connected", "plugged", "plugged_in", "home", "enabled", "active", "ready", "verbunden", "eingesteckt", "angeschlossen"].includes(normalized)) return 1;
+  if (["off", "false", "0", "no", "nein", "disconnected", "unplugged", "not_connected", "away", "disabled", "inactive", "nicht_verbunden", "ausgesteckt", "getrennt"].includes(normalized)) return 0;
+  return undefined;
+}
+
+function phaseRecordValue(rawValue) {
+  const normalized = String(rawValue ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const numeric = Number.parseFloat(normalized.replace(",", "."));
+  if (Number.isFinite(numeric) && numeric > 0) return Math.round(numeric);
+  if (["1p", "1_phase", "one_phase", "single_phase", "single", "einphasig", "eine_phase"].includes(normalized)) return 1;
+  if (["3p", "3_phase", "three_phase", "dreiphasig", "drei_phasen"].includes(normalized)) return 3;
+  return undefined;
+}
+
 function recordsHistoryCacheKey(entityId, days, bucket) {
   return `${entityId}|records|${days}|${bucket}`;
+}
+
+function normalizeRecordsRange(value, options = RECORDS_RANGE_OPTIONS) {
+  const normalized = String(value ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  const aliases = {
+    "7": "7d",
+    "7d": "7d",
+    "7_days": "7d",
+    "7_tage": "7d",
+    "14": "14d",
+    "14d": "14d",
+    "14_days": "14d",
+    "14_tage": "14d",
+    "30": "30d",
+    "30d": "30d",
+    "30_days": "30d",
+    "30_tage": "30d",
+    "356": "356d",
+    "356d": "356d",
+    "356_days": "356d",
+    "356_tage": "356d",
+    month: "month",
+    this_month: "month",
+    current_month: "month",
+    dieser_monat: "month",
+    diesen_monat: "month",
+    year: "year",
+    this_year: "year",
+    current_year: "year",
+    dieses_jahr: "year",
+  };
+  const key = aliases[normalized] || normalized;
+  return options.some((option) => option.key === key) ? key : undefined;
+}
+
+function recordsRangeDefinition(key, options = RECORDS_RANGE_OPTIONS) {
+  return options.find((option) => option.key === key) || options[0];
+}
+
+function recordsRangeStart(range, now = new Date()) {
+  const end = now instanceof Date ? now : new Date(now);
+  if (range?.key === "month") return new Date(end.getFullYear(), end.getMonth(), 1);
+  if (range?.key === "year") return new Date(end.getFullYear(), 0, 1);
+  return new Date(end.getTime() - (range?.days || RECORDS_DEFAULT_DAYS) * 24 * 60 * 60 * 1000);
 }
 
 function dailyEnergyRecords(points = []) {
@@ -2074,7 +2141,7 @@ function peakPowerRecord(points = []) {
 }
 
 function createRecordsDashboardMethods({
-  RECORDS_DAY_OPTIONS: dayOptions = RECORDS_DAY_OPTIONS,
+  RECORDS_RANGE_OPTIONS: rangeOptions = RECORDS_RANGE_OPTIONS,
   RECORDS_DEFAULT_DAYS: defaultDays = RECORDS_DEFAULT_DAYS,
   chartHistoryApiPath,
   dailyEnergyRecords: dailyEnergyRecordsFn = dailyEnergyRecords,
@@ -2084,13 +2151,23 @@ function createRecordsDashboardMethods({
   numericState,
 } = {}) {
   return {
-    _recordsDashboardDays() {
-      const days = Number(this._recordsDays || this.config.records_days || defaultDays);
-      return dayOptions.includes(days) ? days : defaultDays;
+    _recordsDashboardRangeKey() {
+      return normalizeRecordsRange(this._recordsRange || this.config.records_range || this.config.records_days, rangeOptions)
+        || normalizeRecordsRange(defaultDays, rangeOptions)
+        || rangeOptions[0].key;
     },
 
-    _recordsHistoryCacheKey(entityId, days) {
-      return recordsHistoryCacheKeyFn(entityId, days, this._cacheBucket(RECORD_CACHE_BUCKET_MS));
+    _recordsDashboardRange() {
+      return recordsRangeDefinition(this._recordsDashboardRangeKey(), rangeOptions);
+    },
+
+    _recordsDashboardHours() {
+      const start = recordsRangeStart(this._recordsDashboardRange());
+      return Math.max(1, Math.ceil((Date.now() - start.getTime()) / 3600000));
+    },
+
+    _recordsHistoryCacheKey(entityId, rangeKey) {
+      return recordsHistoryCacheKeyFn(entityId, rangeKey, this._cacheBucket(RECORD_CACHE_BUCKET_MS));
     },
 
     _recordDateLabel(day) {
@@ -2112,6 +2189,55 @@ function createRecordsDashboardMethods({
       const time = Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || "");
       if (!Number.isFinite(value) || !Number.isFinite(time)) return undefined;
       return { time, value };
+    },
+
+    _recordCounterPoint(entry, entityId) {
+      const rawValue = entry?.state ?? entry?.s;
+      if (this._formatValue(rawValue) === "—") return undefined;
+      const value = numericState?.(rawValue);
+      const time = Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || "");
+      if (!Number.isFinite(value) || !Number.isFinite(time)) return undefined;
+      return { time, value };
+    },
+
+    _recordBooleanPoint(entry) {
+      const value = booleanRecordValue(entry?.state ?? entry?.s);
+      const time = Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || "");
+      if (!Number.isFinite(value) || !Number.isFinite(time)) return undefined;
+      return { time, value };
+    },
+
+    _recordPercentPoint(entry) {
+      const rawValue = entry?.state ?? entry?.s;
+      const value = numericState?.(String(rawValue ?? "").replace("%", ""));
+      const time = Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || "");
+      if (!Number.isFinite(value) || !Number.isFinite(time)) return undefined;
+      return { time, value: Math.max(0, Math.min(100, value)) };
+    },
+
+    _recordPhasePoint(entry) {
+      const value = phaseRecordValue(entry?.state ?? entry?.s);
+      const time = Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || "");
+      if (!Number.isFinite(value) || !Number.isFinite(time)) return undefined;
+      return { time, value };
+    },
+
+    _durationRecordForValue(points, targetValue) {
+      return activeDurationRecordsFn(
+        points.map((point) => ({ ...point, value: point.value === targetValue ? 1 : 0 })),
+        { threshold: 0.5 }
+      )[0];
+    },
+
+    _formatRecordCounterValue(value, unit = "") {
+      const normalizedUnit = String(unit || "").trim() || "m³";
+      const number = Number(value);
+      if (!Number.isFinite(number)) return `— ${normalizedUnit}`;
+      const formatted = number.toLocaleString(this._language(), {
+        minimumFractionDigits: number >= 10 ? 1 : 2,
+        maximumFractionDigits: number >= 10 ? 1 : 2,
+      });
+      return `${formatted} ${normalizedUnit}`;
     },
 
     _recordPowerPoint(metric, entry) {
@@ -2148,23 +2274,102 @@ function createRecordsDashboardMethods({
           group: "pv",
         }));
       const metricSources = this._chartDashboardMetricPool(variant)
-        .map((metric) => {
+        .flatMap((metric) => {
           const entityId = this._chartEntityId(metric);
-          if (!entityId || metric.gridStatus) return undefined;
+          if (!entityId || metric.gridStatus) return [];
           const key = metric.chartKey || metric.key;
+          const isGasCounter = metric.overlay === "smoke";
           const group = String(metric.key || "").includes("wallbox")
             ? "wallbox"
             : metric.largeConsumer
               ? "consumer"
+              : isGasCounter
+                ? "counter"
               : "system";
-          return {
+          const sources = [{
             key,
             label: this._metricLabel(metric, variant),
             entityId,
-            type: "power",
+            type: isGasCounter ? "counter" : "power",
             group,
+            unit: isGasCounter ? this._getEntityUnit(entityId) || this.config.image_overlays?.smoke?.unit || "m³" : "",
             metric,
-          };
+          }];
+          if (group === "wallbox") {
+            const energyEntityId = this._metricEnergyEntityId(metric, "total");
+            const connectedEntityId = this._wallboxConnectedEntityId(metric);
+            const chargingEnabledEntityId = this._wallboxChargingEnabledEntityId(metric);
+            const phaseEntityId = this._wallboxPhaseEntityId(metric);
+            const socEntityId = this._wallboxSocEntityId(metric);
+            const maxSocEntityId = this._wallboxMaxSocEntityId(metric);
+            if (energyEntityId) {
+              sources.push({
+                key: `${key}_energy`,
+                label: this._metricLabel(metric, variant),
+                entityId: energyEntityId,
+                type: "energy",
+                group: "wallbox",
+                recordKind: "chargedEnergy",
+                metric,
+              });
+            }
+            if (connectedEntityId) {
+              sources.push({
+                key: `${key}_connected`,
+                label: this._metricLabel(metric, variant),
+                entityId: connectedEntityId,
+                type: "boolean",
+                group: "wallbox",
+                recordKind: "pluggedIn",
+                metric,
+              });
+            }
+            if (chargingEnabledEntityId) {
+              sources.push({
+                key: `${key}_charging_enabled`,
+                label: this._metricLabel(metric, variant),
+                entityId: chargingEnabledEntityId,
+                type: "boolean",
+                group: "wallbox",
+                recordKind: "chargingEnabled",
+                metric,
+              });
+            }
+            if (phaseEntityId) {
+              sources.push({
+                key: `${key}_phase`,
+                label: this._metricLabel(metric, variant),
+                entityId: phaseEntityId,
+                type: "phase",
+                group: "wallbox",
+                recordKind: "phase",
+                metric,
+              });
+            }
+            if (socEntityId) {
+              sources.push({
+                key: `${key}_soc`,
+                label: this._metricLabel(metric, variant),
+                entityId: socEntityId,
+                type: "percent",
+                group: "wallbox",
+                recordKind: "maxSoc",
+                metric,
+              });
+            }
+            if (maxSocEntityId) {
+              sources.push({
+                key: `${key}_max_soc`,
+                label: this._metricLabel(metric, variant),
+                entityId: maxSocEntityId,
+                type: "percent",
+                group: "wallbox",
+                recordKind: "maxSocLimit",
+                metric,
+              });
+            }
+          }
+          return sources;
         })
         .filter(Boolean);
       const seen = new Set();
@@ -2177,26 +2382,35 @@ function createRecordsDashboardMethods({
     },
 
     _recordHistoryState(source) {
-      const days = this._recordsDashboardDays();
-      const cacheKey = this._recordsHistoryCacheKey(source.entityId, days);
+      const rangeKey = this._recordsDashboardRangeKey();
+      const cacheKey = this._recordsHistoryCacheKey(source.entityId, rangeKey);
       const cached = this._recordsCache?.get(cacheKey);
       if (cached?.error) return { loading: false, error: this._t("records.error", {}, "Records could not be loaded."), points: [] };
       if (cached) return { loading: false, error: "", points: cached };
-      this._requestRecordHistory(source, days, cacheKey);
+      this._requestRecordHistory(source, cacheKey);
       return { loading: true, error: "", points: [] };
     },
 
-    _requestRecordHistory(source, days, cacheKey) {
+    _requestRecordHistory(source, cacheKey) {
       if (!this._hass?.callApi || this._recordsLoading?.has(cacheKey)) return;
       const requestToken = this._asyncRequestToken || 0;
+      const hours = this._recordsDashboardHours();
       this._recordsLoading.add(cacheKey);
-      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, days * 24))
+      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours))
         .then((history) => {
           if (!this._isActiveRequest(requestToken)) return;
           const states = Array.isArray(history?.[0]) ? history[0] : [];
           const points = states
             .map((entry) => source.type === "energy"
               ? this._recordEnergyPoint(entry, source.entityId)
+              : source.type === "counter"
+                ? this._recordCounterPoint(entry, source.entityId)
+                : source.type === "boolean"
+                  ? this._recordBooleanPoint(entry)
+                : source.type === "percent"
+                  ? this._recordPercentPoint(entry)
+                  : source.type === "phase"
+                    ? this._recordPhasePoint(entry)
               : this._recordPowerPoint(source.metric, entry))
             .filter(Boolean)
             .sort((a, b) => a.time - b.time);
@@ -2223,6 +2437,7 @@ function createRecordsDashboardMethods({
         solarHours: [],
         peaks: [],
         wallbox: [],
+        counters: [],
       };
       const pushCard = (section, card) => {
         if (!card || !card.value) return;
@@ -2243,16 +2458,98 @@ function createRecordsDashboardMethods({
             });
           }
         }
+        if (source.type === "energy" && source.group === "wallbox") {
+          const bestDay = dailyEnergyRecordsFn(state.points)[0];
+          if (bestDay) {
+            pushCard("wallbox", {
+              title: this._t("records.wallboxChargedEnergy", { name: source.label }, `${source.label}: most charged energy`),
+              value: this._formatEnergyValue(bestDay.amount, "kWh", "kWh"),
+              sortValue: bestDay.amount,
+              meta: this._recordDateLabel(bestDay.day),
+              entityId: source.entityId,
+            });
+          }
+        }
+        if (source.type === "counter") {
+          const bestDay = dailyEnergyRecordsFn(state.points)[0];
+          if (bestDay) {
+            pushCard("counters", {
+              title: source.label,
+              value: this._formatRecordCounterValue(bestDay.amount, source.unit),
+              sortValue: bestDay.amount,
+              meta: this._recordDateLabel(bestDay.day),
+              entityId: source.entityId,
+            });
+          }
+        }
+        if (source.type === "boolean" && source.group === "wallbox") {
+          const bestBooleanDay = activeDurationRecordsFn(state.points, { threshold: 0.5 })[0];
+          if (bestBooleanDay) {
+            const titleKey = source.recordKind === "chargingEnabled" ? "records.wallboxChargingEnabled" : "records.wallboxPluggedIn";
+            const fallback = source.recordKind === "chargingEnabled"
+              ? `${source.label}: longest charging enabled time`
+              : `${source.label}: longest plugged-in time`;
+            pushCard("wallbox", {
+              title: this._t(titleKey, { name: source.label }, fallback),
+              value: this._formatDurationMinutes(bestBooleanDay.durationMs / 60000),
+              sortValue: bestBooleanDay.durationMs,
+              meta: this._recordDateLabel(bestBooleanDay.day),
+              entityId: source.entityId,
+            });
+          }
+        }
+        if (source.type === "percent" && source.group === "wallbox") {
+          const bestSoc = peakPowerRecordFn(state.points);
+          if (bestSoc) {
+            const titleKey = source.recordKind === "maxSocLimit" ? "records.wallboxMaxSocLimit" : "records.wallboxMaxSoc";
+            const fallback = source.recordKind === "maxSocLimit"
+              ? `${source.label}: highest charge limit`
+              : `${source.label}: highest vehicle SoC`;
+            pushCard("wallbox", {
+              title: this._t(titleKey, { name: source.label }, fallback),
+              value: `${Math.round(bestSoc.value)}%`,
+              sortValue: bestSoc.value,
+              meta: this._formatLocalDateTime(new Date(bestSoc.time).toISOString()),
+              entityId: source.entityId,
+            });
+          }
+        }
+        if (source.type === "phase" && source.group === "wallbox") {
+          const bestOnePhaseDay = this._durationRecordForValue(state.points, 1);
+          if (bestOnePhaseDay) {
+            pushCard("wallbox", {
+              title: this._t("records.wallboxOnePhase", { name: source.label }, `${source.label}: longest 1-phase time`),
+              value: this._formatDurationMinutes(bestOnePhaseDay.durationMs / 60000),
+              sortValue: bestOnePhaseDay.durationMs,
+              meta: this._recordDateLabel(bestOnePhaseDay.day),
+              entityId: source.entityId,
+            });
+          }
+          const bestThreePhaseDay = this._durationRecordForValue(state.points, 3);
+          if (bestThreePhaseDay) {
+            pushCard("wallbox", {
+              title: this._t("records.wallboxThreePhase", { name: source.label }, `${source.label}: longest 3-phase time`),
+              value: this._formatDurationMinutes(bestThreePhaseDay.durationMs / 60000),
+              sortValue: bestThreePhaseDay.durationMs,
+              meta: this._recordDateLabel(bestThreePhaseDay.day),
+              entityId: source.entityId,
+            });
+          }
+        }
         if (source.type === "power") {
           const peak = peakPowerRecordFn(state.points);
           if (peak) {
-            pushCard("peaks", {
-              title: source.label,
+            const card = {
+              title: source.group === "wallbox"
+                ? this._t("records.wallboxPeakPower", { name: source.label }, `${source.label}: highest charging power`)
+                : source.label,
               value: this._formatPowerValue(peak.value, "auto", "W"),
               sortValue: peak.value,
               meta: this._formatLocalDateTime(new Date(peak.time).toISOString()),
               entityId: source.entityId,
-            });
+            };
+            if (source.group === "wallbox") pushCard("wallbox", card);
+            else pushCard("peaks", card);
           }
           if (source.group === "pv") {
             const bestSolarDay = activeDurationRecordsFn(state.points, { threshold: this.config.records_solar_threshold_watts || RECORD_SOLAR_THRESHOLD_WATTS })[0];
@@ -2270,7 +2567,7 @@ function createRecordsDashboardMethods({
             const bestChargingDay = activeDurationRecordsFn(state.points, { threshold: RECORD_ACTIVE_THRESHOLD_WATTS })[0];
             if (bestChargingDay) {
               pushCard("wallbox", {
-                title: source.label,
+                title: this._t("records.wallboxLongestCharge", { name: source.label }, `${source.label}: longest charging day`),
                 value: this._formatDurationMinutes(bestChargingDay.durationMs / 60000),
                 sortValue: bestChargingDay.durationMs,
                 meta: this._recordDateLabel(bestChargingDay.day),
@@ -2292,6 +2589,7 @@ function createRecordsDashboardMethods({
           { key: "pvEnergy", label: this._t("records.sectionPvEnergy", {}, "Best PV yield per string"), items: sortByValue(cards.pvEnergy) },
           { key: "solarHours", label: this._t("records.sectionSolarHours", {}, "Longest solar hours"), items: sortByValue(cards.solarHours) },
           { key: "wallbox", label: this._t("records.sectionWallbox", {}, "Wallbox records"), items: sortByValue(cards.wallbox) },
+          { key: "counters", label: this._t("records.sectionCounters", {}, "Meter records"), items: sortByValue(cards.counters) },
           { key: "peaks", label: this._t("records.sectionPeaks", {}, "Power peaks"), items: sortByValue(cards.peaks).slice(0, 8) },
         ].filter((section) => section.items.length > 0),
       };
@@ -2311,10 +2609,11 @@ function createRecordsDashboardMethods({
     },
 
     _renderRecordsDashboard(variant = this._currentVariant || this._layoutState().variant) {
-      const days = this._recordsDashboardDays();
+      const range = this._recordsDashboardRange();
+      const rangeLabel = this._t(range.labelKey, {}, range.label);
       const records = this._recordsSections(variant);
-      const rangeButton = (value) => `
-        <button type="button" class="chart-range${days === value ? " active" : ""}" data-record-days="${value}">${this._escape(this._t("records.days", { days: value }, `${value} days`))}</button>
+      const rangeButton = (option) => `
+        <button type="button" class="chart-range${range.key === option.key ? " active" : ""}" data-record-range="${this._escape(option.key)}">${this._escape(this._t(option.labelKey, {}, option.label))}</button>
       `;
       const sectionHtml = records.sections.map((section) => `
         <section class="record-section">
@@ -2336,10 +2635,10 @@ function createRecordsDashboardMethods({
             <div>
               <div class="chart-dashboard-label">${this._escape(this._t("records.label", {}, "Records"))}</div>
               <h2>${this._escape(this._t("records.title", {}, "Energy records"))}</h2>
-              <p>${this._escape(this._t("records.subtitle", { days }, `Best values from the last ${days} days of Home Assistant history.`))}</p>
+              <p>${this._escape(this._t("records.subtitle", { range: rangeLabel }, `Best values for ${rangeLabel} from Home Assistant history.`))}</p>
             </div>
             <div class="chart-actions">
-              ${dayOptions.map((value) => rangeButton(value)).join("")}
+              ${rangeOptions.map((option) => rangeButton(option)).join("")}
             </div>
           </div>
           ${records.sections.length > 0
@@ -2354,14 +2653,14 @@ function createRecordsDashboardMethods({
     },
 
     _attachRecordsDashboardControls() {
-      this.shadowRoot.querySelectorAll("[data-record-days]").forEach((button) => {
-        if (button.dataset.recordDaysBound === "true") return;
-        button.dataset.recordDaysBound = "true";
+      this.shadowRoot.querySelectorAll("[data-record-range]").forEach((button) => {
+        if (button.dataset.recordRangeBound === "true") return;
+        button.dataset.recordRangeBound = "true";
         button.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          const days = Number(event.currentTarget.dataset.recordDays);
-          this._recordsDays = dayOptions.includes(days) ? days : defaultDays;
+          const rangeKey = normalizeRecordsRange(event.currentTarget.dataset.recordRange, rangeOptions);
+          this._recordsRange = rangeKey || normalizeRecordsRange(defaultDays, rangeOptions);
           this._renderCardShell(this._layoutState());
         });
       });
@@ -4924,8 +5223,24 @@ const I18N = {
     "records.sectionPvEnergy": "Best PV yield per string",
     "records.sectionSolarHours": "Longest solar hours",
     "records.sectionWallbox": "Wallbox records",
-    "records.subtitle": "Best values from the last {days} days of Home Assistant history.",
-    "records.title": "Energy records"
+    "records.subtitle": "Best values for {range} from Home Assistant history.",
+    "records.title": "Energy records",
+    "records.range7d": "7 days",
+    "records.range14d": "14 days",
+    "records.range30d": "30 days",
+    "records.rangeMonth": "This month",
+    "records.rangeYear": "This year",
+    "records.range356d": "356 days",
+    "records.wallboxChargedEnergy": "{name}: most charged energy",
+    "records.wallboxChargingEnabled": "{name}: longest charging enabled time",
+    "records.wallboxLongestCharge": "{name}: longest charging day",
+    "records.wallboxMaxSoc": "{name}: highest vehicle SoC",
+    "records.wallboxMaxSocLimit": "{name}: highest charge limit",
+    "records.wallboxOnePhase": "{name}: longest 1-phase time",
+    "records.wallboxPeakPower": "{name}: highest charging power",
+    "records.wallboxPluggedIn": "{name}: longest plugged-in time",
+    "records.wallboxThreePhase": "{name}: longest 3-phase time",
+    "records.sectionCounters": "Meter records"
   },
   "de": {
     "aria.energyRangeSelector": "Wertebereich auswählen",
@@ -5291,8 +5606,24 @@ const I18N = {
     "records.sectionPvEnergy": "Bester PV-Ertrag pro String",
     "records.sectionSolarHours": "Längste solare Stunden",
     "records.sectionWallbox": "Wallbox-Rekorde",
-    "records.subtitle": "Bestwerte aus den letzten {days} Tagen Home-Assistant-Historie.",
-    "records.title": "Energie-Rekorde"
+    "records.subtitle": "Bestwerte für {range} aus der Home-Assistant-Historie.",
+    "records.title": "Energie-Rekorde",
+    "records.range7d": "7 Tage",
+    "records.range14d": "14 Tage",
+    "records.range30d": "30 Tage",
+    "records.rangeMonth": "Diesen Monat",
+    "records.rangeYear": "Dieses Jahr",
+    "records.range356d": "356 Tage",
+    "records.wallboxChargedEnergy": "{name}: meiste geladene Energie",
+    "records.wallboxChargingEnabled": "{name}: längste Ladefreigabe",
+    "records.wallboxLongestCharge": "{name}: längster Ladetag",
+    "records.wallboxMaxSoc": "{name}: höchster Fahrzeug-SoC",
+    "records.wallboxMaxSocLimit": "{name}: höchste Ladegrenze",
+    "records.wallboxOnePhase": "{name}: längste 1-phasige Zeit",
+    "records.wallboxPeakPower": "{name}: höchste Ladeleistung",
+    "records.wallboxPluggedIn": "{name}: längste eingesteckte Zeit",
+    "records.wallboxThreePhase": "{name}: längste 3-phasige Zeit",
+    "records.sectionCounters": "Zähler-Rekorde"
   },
   "es": {
     "aria.energyRangeSelector": "Seleccionar rango de valores",
@@ -5658,8 +5989,24 @@ const I18N = {
     "records.sectionPvEnergy": "Mejor rendimiento FV por string",
     "records.sectionSolarHours": "Horas solares más largas",
     "records.sectionWallbox": "Récords de wallbox",
-    "records.subtitle": "Mejores valores de los últimos {days} días del historial de Home Assistant.",
-    "records.title": "Récords de energía"
+    "records.subtitle": "Mejores valores de {range} del historial de Home Assistant.",
+    "records.title": "Récords de energía",
+    "records.range7d": "7 días",
+    "records.range14d": "14 días",
+    "records.range30d": "30 días",
+    "records.rangeMonth": "Este mes",
+    "records.rangeYear": "Este año",
+    "records.range356d": "356 días",
+    "records.wallboxChargedEnergy": "{name}: mayor energía cargada",
+    "records.wallboxChargingEnabled": "{name}: más tiempo con carga habilitada",
+    "records.wallboxLongestCharge": "{name}: día de carga más largo",
+    "records.wallboxMaxSoc": "{name}: SoC del vehículo más alto",
+    "records.wallboxMaxSocLimit": "{name}: límite de carga más alto",
+    "records.wallboxOnePhase": "{name}: más tiempo en 1 fase",
+    "records.wallboxPeakPower": "{name}: mayor potencia de carga",
+    "records.wallboxPluggedIn": "{name}: más tiempo enchufado",
+    "records.wallboxThreePhase": "{name}: más tiempo en 3 fases",
+    "records.sectionCounters": "Récords de contadores"
   },
   "fr": {
     "aria.energyRangeSelector": "Sélectionner la période de valeur",
@@ -6025,8 +6372,24 @@ const I18N = {
     "records.sectionPvEnergy": "Meilleur rendement PV par string",
     "records.sectionSolarHours": "Plus longues heures solaires",
     "records.sectionWallbox": "Records wallbox",
-    "records.subtitle": "Meilleures valeurs des {days} derniers jours de l’historique Home Assistant.",
-    "records.title": "Records d’énergie"
+    "records.subtitle": "Meilleures valeurs pour {range} depuis l’historique Home Assistant.",
+    "records.title": "Records d’énergie",
+    "records.range7d": "7 jours",
+    "records.range14d": "14 jours",
+    "records.range30d": "30 jours",
+    "records.rangeMonth": "Ce mois-ci",
+    "records.rangeYear": "Cette année",
+    "records.range356d": "356 jours",
+    "records.wallboxChargedEnergy": "{name}: énergie chargée maximale",
+    "records.wallboxChargingEnabled": "{name}: plus longue durée de charge autorisée",
+    "records.wallboxLongestCharge": "{name}: journée de charge la plus longue",
+    "records.wallboxMaxSoc": "{name}: SoC véhicule maximal",
+    "records.wallboxMaxSocLimit": "{name}: limite de charge maximale",
+    "records.wallboxOnePhase": "{name}: plus longue durée en 1 phase",
+    "records.wallboxPeakPower": "{name}: puissance de charge maximale",
+    "records.wallboxPluggedIn": "{name}: plus longue durée branchée",
+    "records.wallboxThreePhase": "{name}: plus longue durée en 3 phases",
+    "records.sectionCounters": "Records de compteurs"
   },
   "pl": {
     "aria.energyRangeSelector": "Wybierz zakres wartości",
@@ -6392,8 +6755,24 @@ const I18N = {
     "records.sectionPvEnergy": "Najlepszy uzysk PV na string",
     "records.sectionSolarHours": "Najdłuższe godziny solarne",
     "records.sectionWallbox": "Rekordy wallboxa",
-    "records.subtitle": "Najlepsze wartości z ostatnich {days} dni historii Home Assistant.",
-    "records.title": "Rekordy energii"
+    "records.subtitle": "Najlepsze wartości dla {range} z historii Home Assistant.",
+    "records.title": "Rekordy energii",
+    "records.range7d": "7 dni",
+    "records.range14d": "14 dni",
+    "records.range30d": "30 dni",
+    "records.rangeMonth": "Ten miesiąc",
+    "records.rangeYear": "Ten rok",
+    "records.range356d": "356 dni",
+    "records.wallboxChargedEnergy": "{name}: najwięcej naładowanej energii",
+    "records.wallboxChargingEnabled": "{name}: najdłuższy czas włączonego ładowania",
+    "records.wallboxLongestCharge": "{name}: najdłuższy dzień ładowania",
+    "records.wallboxMaxSoc": "{name}: najwyższy SoC pojazdu",
+    "records.wallboxMaxSocLimit": "{name}: najwyższy limit ładowania",
+    "records.wallboxOnePhase": "{name}: najdłuższy czas 1-fazowy",
+    "records.wallboxPeakPower": "{name}: najwyższa moc ładowania",
+    "records.wallboxPluggedIn": "{name}: najdłuższy czas podłączenia",
+    "records.wallboxThreePhase": "{name}: najdłuższy czas 3-fazowy",
+    "records.sectionCounters": "Rekordy liczników"
   }
 };
 const I18N_LOADS = new Map();
@@ -6766,7 +7145,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
       advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
-      records_days: RECORDS_DEFAULT_DAYS,
+      records_range: "7d",
       max_power_kw: {
         pv_roof_power: 10,
         pv_shed_power: 3,
@@ -6902,7 +7281,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
       advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
-      records_days: RECORDS_DEFAULT_DAYS,
+      records_range: "7d",
       daylight_entity: "sun.sun",
       weather_entity: "",
       dynamic_tile_colors: true,
@@ -6988,9 +7367,9 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
     this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
-    this.config.records_days = RECORDS_DAY_OPTIONS.includes(Number(this.config.records_days)) ? Number(this.config.records_days) : RECORDS_DEFAULT_DAYS;
+    this.config.records_range = String(this.config.records_range || this.config.records_days || `${RECORDS_DEFAULT_DAYS}d`);
     this._chartHours = this._chartHours || this.config.chart_hours;
-    this._recordsDays = this._recordsDays || this.config.records_days;
+    this._recordsRange = this._recordsRange || this.config.records_range;
     this._historyCache = this._historyCache || new Map();
     this._chartDashboardLoading = this._chartDashboardLoading || new Set();
     this._recordsCache = this._recordsCache || new Map();
@@ -10355,8 +10734,8 @@ Object.assign(
   }),
   createAdvisorViewMethods(),
   createRecordsDashboardMethods({
-    RECORDS_DAY_OPTIONS,
     RECORDS_DEFAULT_DAYS,
+    RECORDS_RANGE_OPTIONS,
     activeDurationRecords,
     chartHistoryApiPath,
     dailyEnergyRecords,

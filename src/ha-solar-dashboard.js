@@ -82,8 +82,8 @@ import {
   viewModeIconSvg,
 } from "../modules/views.js";
 import {
-  RECORDS_DAY_OPTIONS,
   RECORDS_DEFAULT_DAYS,
+  RECORDS_RANGE_OPTIONS,
   activeDurationRecords,
   createRecordsDashboardMethods,
   dailyEnergyRecords,
@@ -559,7 +559,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
       advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
-      records_days: RECORDS_DEFAULT_DAYS,
+      records_range: "7d",
       max_power_kw: {
         pv_roof_power: 10,
         pv_shed_power: 3,
@@ -695,7 +695,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
       advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
-      records_days: RECORDS_DEFAULT_DAYS,
+      records_range: "7d",
       daylight_entity: "sun.sun",
       weather_entity: "",
       dynamic_tile_colors: true,
@@ -781,9 +781,9 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
     this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
-    this.config.records_days = RECORDS_DAY_OPTIONS.includes(Number(this.config.records_days)) ? Number(this.config.records_days) : RECORDS_DEFAULT_DAYS;
+    this.config.records_range = String(this.config.records_range || this.config.records_days || `${RECORDS_DEFAULT_DAYS}d`);
     this._chartHours = this._chartHours || this.config.chart_hours;
-    this._recordsDays = this._recordsDays || this.config.records_days;
+    this._recordsRange = this._recordsRange || this.config.records_range;
     this._historyCache = this._historyCache || new Map();
     this._chartDashboardLoading = this._chartDashboardLoading || new Set();
     this._recordsCache = this._recordsCache || new Map();
@@ -3969,8 +3969,8 @@ Object.assign(
   }),
   createAdvisorViewMethods(),
   createRecordsDashboardMethods({
-    RECORDS_DAY_OPTIONS,
     RECORDS_DEFAULT_DAYS,
+    RECORDS_RANGE_OPTIONS,
     activeDurationRecords,
     chartHistoryApiPath,
     dailyEnergyRecords,

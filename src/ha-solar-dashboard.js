@@ -82,6 +82,9 @@ import {
   viewModeIconSvg,
 } from "../modules/views.js";
 import {
+  createWeatherImageMethods,
+} from "../modules/weather-images.js";
+import {
   RECORDS_DEFAULT_DAYS,
   RECORDS_RANGE_OPTIONS,
   activeDurationRecords,
@@ -156,26 +159,6 @@ const CARD_TYPE = "ha-solar-dashboard-card";
 const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
 const REPOSITORY_IMAGE_BASE =
   "https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/images";
-
-const WEATHER_IMAGE_SUFFIXES = {
-  sunny: ["sunny"],
-  clear: ["sunny"],
-  "clear-night": ["clear"],
-  partlycloudy: ["cloudy"],
-  cloudy: ["cloudy"],
-  fog: ["cloudy", "fog"],
-  rainy: ["rainy"],
-  pouring: ["rainy"],
-  "lightning-rainy": ["rainy", "thunderstorm"],
-  snowy: ["snowy", "snow", "winter"],
-  snowy_rainy: ["snowy", "snow", "rainy"],
-  "snowy-rainy": ["snowy", "snow", "rainy"],
-  hail: ["hail"],
-  lightning: ["thunderstorm"],
-  windy: ["wind"],
-  windy_variant: ["wind", "cloudy"],
-  "windy-variant": ["wind", "cloudy"],
-};
 
 const ENERGY_RANGE_OPTIONS = [
   { key: "live", labelKey: "range.live", label: "Live" },
@@ -2987,73 +2970,6 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._t(`metrics.${metric.key}`, {}, metric.label);
   }
 
-  _weatherState() {
-    const entityId = this.config?.weather_entity;
-    if (!entityId) return "";
-    return String(this._hass?.states?.[entityId]?.state || "").toLowerCase().trim().replace(/\s+/g, "-");
-  }
-
-  _weatherSuffixes() {
-    return WEATHER_IMAGE_SUFFIXES[this._weatherState()] || [];
-  }
-
-  _imageStateKey() {
-    return `${this._isDaylight()}|${this._weatherState()}|${this.config?.image || ""}|${this.config?.day_image || ""}`;
-  }
-
-  _imageWithSuffix(file, suffix) {
-    if (!file || !suffix) return "";
-    const dotIndex = file.lastIndexOf(".");
-    if (dotIndex < 0) return `${file}_${suffix}`;
-    return `${file.slice(0, dotIndex)}_${suffix}${file.slice(dotIndex)}`;
-  }
-
-  _weatherImageFiles(variant, isDaylight) {
-    const primaryFile = isDaylight && variant.dayFile ? variant.dayFile : variant.file;
-    const fallbackFile = isDaylight ? variant.file : variant.dayFile;
-    const weatherFiles = this._weatherSuffixes().flatMap((suffix) => [
-      this._imageWithSuffix(primaryFile, suffix),
-      this._imageWithSuffix(fallbackFile, suffix),
-    ]);
-    return [
-      ...weatherFiles,
-      primaryFile,
-      ...(fallbackFile && fallbackFile !== primaryFile ? [fallbackFile] : []),
-      ...(variant.fallbackFiles || []),
-    ].filter(Boolean);
-  }
-
-  _imagePath(variant, file) {
-    if (!file || file.includes("/")) return file;
-    return variant?.folder ? `${variant.folder}/${file}` : file;
-  }
-
-  _variantImage(variant) {
-    const files = this._weatherImageFiles(variant, this._isDaylight())
-      .map((file) => this._imagePath(variant, file));
-    const urls = [...new Set(files.flatMap((file) => [
-      this._localImageUrl(file),
-      this._remoteImageUrl(file),
-    ]).filter(Boolean))];
-    const [primaryUrl, ...fallbackUrls] = urls;
-    return {
-      src: primaryUrl,
-      fallbacks: fallbackUrls,
-    };
-  }
-
-  _remoteImageUrl(file) {
-    return `${REPOSITORY_IMAGE_BASE}/${file}`;
-  }
-
-  _localImageUrl(file) {
-    try {
-      return assetUrl(`images/${file}`);
-    } catch (_err) {
-      return "";
-    }
-  }
-
   _metricPosition(variant, key) {
     if (key === "wallbox2_power") {
       const configured = this.config.positions[key];
@@ -3969,6 +3885,10 @@ Object.assign(
     wallboxAdvisorDetails,
   }),
   createAdvisorViewMethods(),
+  createWeatherImageMethods({
+    REPOSITORY_IMAGE_BASE,
+    assetUrl,
+  }),
   createRecordsDashboardMethods({
     RECORDS_DEFAULT_DAYS,
     RECORDS_RANGE_OPTIONS,

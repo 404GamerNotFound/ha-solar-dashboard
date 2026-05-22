@@ -1,3 +1,21 @@
+const HA_SOLAR_DASHBOARD_BUILD = "2026-05-22-bootstrap";
+globalThis.__HA_SOLAR_DASHBOARD_BUILD__ = HA_SOLAR_DASHBOARD_BUILD;
+(function registerHaSolarDashboardBootstrap() {
+  const type = "ha-solar-dashboard-card";
+  if (!globalThis.customElements || !globalThis.HTMLElement || customElements.get(type)) return;
+  customElements.define(type, class HaSolarDashboardBootstrap extends HTMLElement {
+    setConfig(config) {
+      this.config = config;
+    }
+
+    connectedCallback() {
+      if (this.shadowRoot) return;
+      const root = this.attachShadow({ mode: "open" });
+      root.innerHTML = "<div style=\"display:block;padding:16px;border-radius:12px;background:#1f2937;color:#e5e7eb;font:14px system-ui,sans-serif\">HA Solar Dashboard wird geladen...</div>";
+    }
+  });
+}());
+
 const ADVISOR_DEFAULTS = Object.freeze({
   surplusThreshold: 250,
   importThreshold: 250,
@@ -10984,6 +11002,11 @@ function upgradeCustomElement(type, elementClass) {
   Object.getOwnPropertyNames(elementClass).forEach((name) => {
     if (["length", "name", "prototype"].includes(name)) return;
     Object.defineProperty(existingClass, name, Object.getOwnPropertyDescriptor(elementClass, name));
+  });
+
+  globalThis.document?.querySelectorAll?.(type).forEach((element) => {
+    if (element.config && typeof element.setConfig === "function") element.setConfig(element.config);
+    if (typeof element.connectedCallback === "function") element.connectedCallback();
   });
 }
 

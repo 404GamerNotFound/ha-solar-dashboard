@@ -4031,6 +4031,11 @@ function upgradeCustomElement(type, elementClass) {
     if (["length", "name", "prototype"].includes(name)) return;
     Object.defineProperty(existingClass, name, Object.getOwnPropertyDescriptor(elementClass, name));
   });
+
+  globalThis.document?.querySelectorAll?.(type).forEach((element) => {
+    if (element.config && typeof element.setConfig === "function") element.setConfig(element.config);
+    if (typeof element.connectedCallback === "function") element.connectedCallback();
+  });
 }
 
 upgradeCustomElement(CARD_TYPE, HaSolarDashboardCard);

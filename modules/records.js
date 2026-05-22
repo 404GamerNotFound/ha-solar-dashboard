@@ -425,7 +425,7 @@ export function createRecordsDashboardMethods({
       const requestToken = this._asyncRequestToken || 0;
       const hours = this._recordsDashboardHours();
       this._recordsLoading.add(rawCacheKey);
-      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours, new Date(), { minimalResponse: true }))
+      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours))
         .then((history) => {
           if (!this._isActiveRequest(requestToken)) return;
           const states = Array.isArray(history?.[0]) ? history[0] : [];

@@ -1778,16 +1778,14 @@ function chartHistoryCacheKey(entityId, hours, bucket) {
   return `${entityId}|${hours}|${bucket}`;
 }
 
-function chartHistoryApiPath(entityId, hours, end = new Date(), options = {}) {
+function chartHistoryApiPath(entityId, hours, end = new Date()) {
   const endDate = end instanceof Date ? end : new Date(end);
   const start = new Date(endDate.getTime() - hours * 60 * 60 * 1000);
   const query = [
     `filter_entity_id=${encodeURIComponent(entityId)}`,
     `end_time=${encodeURIComponent(endDate.toISOString())}`,
-    `significant_changes_only=${options.significantChangesOnly ? "1" : "0"}`,
-    options.minimalResponse ? "minimal_response=1" : "",
-    options.noAttributes ? "no_attributes=1" : "",
-  ].filter(Boolean).join("&");
+    "significant_changes_only=0",
+  ].join("&");
   return `history/period/${start.toISOString()}?${query}`;
 }
 
@@ -2435,7 +2433,7 @@ function createRecordsDashboardMethods({
       const requestToken = this._asyncRequestToken || 0;
       const hours = this._recordsDashboardHours();
       this._recordsLoading.add(rawCacheKey);
-      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours, new Date(), { minimalResponse: true }))
+      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours))
         .then((history) => {
           if (!this._isActiveRequest(requestToken)) return;
           const states = Array.isArray(history?.[0]) ? history[0] : [];

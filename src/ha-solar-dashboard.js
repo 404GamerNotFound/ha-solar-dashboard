@@ -787,6 +787,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._historyCache = this._historyCache || new Map();
     this._chartDashboardLoading = this._chartDashboardLoading || new Set();
     this._recordsCache = this._recordsCache || new Map();
+    this._recordsRawHistoryCache = this._recordsRawHistoryCache || new Map();
     this._recordsLoading = this._recordsLoading || new Set();
     this._overlayConsumptionCache = this._overlayConsumptionCache || new Map();
     this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();

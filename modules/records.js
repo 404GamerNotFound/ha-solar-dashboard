@@ -162,6 +162,11 @@ export function createRecordsDashboardMethods({
       return recordsHistoryCacheKeyFn(entityId, rangeKey, this._cacheBucket(RECORD_CACHE_BUCKET_MS));
     },
 
+    _recordSourceHistoryCacheKey(source, rangeKey) {
+      const baseKey = this._recordsHistoryCacheKey(source.entityId, rangeKey);
+      return `${baseKey}|${source.type || "power"}|${source.recordKind || ""}`;
+    },
+
     _recordDateLabel(day) {
       const [year, month, date] = String(day || "").split("-").map(Number);
       if (!year || !month || !date) return day || "";
@@ -234,6 +239,23 @@ export function createRecordsDashboardMethods({
 
     _recordPowerPoint(metric, entry) {
       return this._historyPoint(metric, entry);
+    },
+
+    _recordPointsFromStates(source, states = []) {
+      return states
+        .map((entry) => source.type === "energy"
+          ? this._recordEnergyPoint(entry, source.entityId)
+          : source.type === "counter"
+            ? this._recordCounterPoint(entry, source.entityId)
+            : source.type === "boolean"
+              ? this._recordBooleanPoint(entry)
+              : source.type === "percent"
+                ? this._recordPercentPoint(entry)
+                : source.type === "phase"
+                  ? this._recordPhasePoint(entry)
+                  : this._recordPowerPoint(source.metric, entry))
+        .filter(Boolean)
+        .sort((a, b) => a.time - b.time);
     },
 
     _recordSources(variant = this._currentVariant || this._layoutState().variant) {
@@ -379,46 +401,43 @@ export function createRecordsDashboardMethods({
 
     _recordHistoryState(source) {
       const rangeKey = this._recordsDashboardRangeKey();
-      const cacheKey = this._recordsHistoryCacheKey(source.entityId, rangeKey);
+      const cacheKey = this._recordSourceHistoryCacheKey(source, rangeKey);
       const cached = this._recordsCache?.get(cacheKey);
       if (cached?.error) return { loading: false, error: this._t("records.error", {}, "Records could not be loaded."), points: [] };
       if (cached) return { loading: false, error: "", points: cached };
-      this._requestRecordHistory(source, cacheKey);
+      const rawCacheKey = this._recordsHistoryCacheKey(source.entityId, rangeKey);
+      const rawCached = this._recordsRawHistoryCache?.get(rawCacheKey);
+      if (rawCached?.error) {
+        this._setCacheEntry(this._recordsCache, cacheKey, { error: true, points: [] }, 192);
+        return { loading: false, error: this._t("records.error", {}, "Records could not be loaded."), points: [] };
+      }
+      if (Array.isArray(rawCached)) {
+        const points = this._recordPointsFromStates(source, rawCached);
+        this._setCacheEntry(this._recordsCache, cacheKey, points, 192);
+        return { loading: false, error: "", points };
+      }
+      this._requestRecordHistory(source, rawCacheKey);
       return { loading: true, error: "", points: [] };
     },
 
-    _requestRecordHistory(source, cacheKey) {
-      if (!this._hass?.callApi || this._recordsLoading?.has(cacheKey)) return;
+    _requestRecordHistory(source, rawCacheKey) {
+      if (!this._hass?.callApi || this._recordsLoading?.has(rawCacheKey)) return;
       const requestToken = this._asyncRequestToken || 0;
       const hours = this._recordsDashboardHours();
-      this._recordsLoading.add(cacheKey);
-      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours))
+      this._recordsLoading.add(rawCacheKey);
+      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours, new Date(), { minimalResponse: true }))
         .then((history) => {
           if (!this._isActiveRequest(requestToken)) return;
           const states = Array.isArray(history?.[0]) ? history[0] : [];
-          const points = states
-            .map((entry) => source.type === "energy"
-              ? this._recordEnergyPoint(entry, source.entityId)
-              : source.type === "counter"
-                ? this._recordCounterPoint(entry, source.entityId)
-                : source.type === "boolean"
-                  ? this._recordBooleanPoint(entry)
-                : source.type === "percent"
-                  ? this._recordPercentPoint(entry)
-                  : source.type === "phase"
-                    ? this._recordPhasePoint(entry)
-              : this._recordPowerPoint(source.metric, entry))
-            .filter(Boolean)
-            .sort((a, b) => a.time - b.time);
-          this._setCacheEntry(this._recordsCache, cacheKey, points, 96);
+          this._setCacheEntry(this._recordsRawHistoryCache, rawCacheKey, states, 96);
         })
         .catch(() => {
           if (!this._isActiveRequest(requestToken)) return;
-          this._setCacheEntry(this._recordsCache, cacheKey, { error: true, points: [] }, 96);
+          this._setCacheEntry(this._recordsRawHistoryCache, rawCacheKey, { error: true, points: [] }, 96);
         })
         .finally(() => {
           if (!this._isActiveRequest(requestToken)) return;
-          this._recordsLoading?.delete(cacheKey);
+          this._recordsLoading?.delete(rawCacheKey);
           this._updateReadingsIfReady();
         });
     },

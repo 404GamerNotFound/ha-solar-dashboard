@@ -2,14 +2,16 @@ export function chartHistoryCacheKey(entityId, hours, bucket) {
   return `${entityId}|${hours}|${bucket}`;
 }
 
-export function chartHistoryApiPath(entityId, hours, end = new Date()) {
+export function chartHistoryApiPath(entityId, hours, end = new Date(), options = {}) {
   const endDate = end instanceof Date ? end : new Date(end);
   const start = new Date(endDate.getTime() - hours * 60 * 60 * 1000);
   const query = [
     `filter_entity_id=${encodeURIComponent(entityId)}`,
     `end_time=${encodeURIComponent(endDate.toISOString())}`,
-    "significant_changes_only=0",
-  ].join("&");
+    `significant_changes_only=${options.significantChangesOnly ? "1" : "0"}`,
+    options.minimalResponse ? "minimal_response=1" : "",
+    options.noAttributes ? "no_attributes=1" : "",
+  ].filter(Boolean).join("&");
   return `history/period/${start.toISOString()}?${query}`;
 }
 

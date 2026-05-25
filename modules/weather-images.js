@@ -68,8 +68,8 @@ export function variantImage({
   const files = weatherImageFiles({ variant, isDaylight, weatherState })
     .map((file) => imagePath(variant, file));
   const urls = [...new Set(files.flatMap((file) => [
-    localImageUrl?.(file),
     remoteImageUrl?.(file),
+    localImageUrl?.(file),
   ]).filter(Boolean))];
   const [primaryUrl, ...fallbackUrls] = urls;
   return {

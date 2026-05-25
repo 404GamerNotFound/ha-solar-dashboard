@@ -50,7 +50,6 @@ jobs:
         run: |
           mkdir -p release-assets
           cp ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
-          find images -type f -name "*.png" -exec cp {} release-assets/ \;
 
       - name: Ensure release exists
         env:
@@ -60,6 +59,17 @@ jobs:
             gh release create "${{ steps.release.outputs.tag }}" \
               --title "${{ steps.release.outputs.tag }}" \
               --notes "Automated release for ${{ steps.release.outputs.tag }}"
+
+      - name: Remove stale image assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${{ steps.release.outputs.tag }}" --json assets --jq '.assets[].name' | \
+            while IFS= read -r asset; do
+              if [ "$asset" != "ha-solar-dashboard.js" ]; then
+                gh release delete-asset "${{ steps.release.outputs.tag }}" "$asset" --yes
+              fi
+            done
 
       - name: Publish release assets
         env:

@@ -51,16 +51,20 @@ export function normalizePvRoofStringDisplay(value) {
   return ["sum", "values", "dominant"].includes(key) ? key : "sum";
 }
 
-function normalizePvRoofStringConfig(raw, index) {
+function normalizePowerSourceConfig(raw, index, {
+  fallbackIdPrefix = "item",
+  fallbackLabel = "Item",
+} = {}) {
   const source = raw && typeof raw === "object" ? raw : { power_entity: raw };
-  const id = normalizePvConfigId(source.id || source.key || source.name || source.label, `string_${index + 2}`);
+  const sequence = index + 2;
+  const id = normalizePvConfigId(source.id || source.key || source.name || source.label, `${fallbackIdPrefix}_${sequence}`);
   const maxPowerSource = source.max_power_kw ?? source.maxPowerKw ?? source.max_power ?? source.maxPower ?? "";
   const maxPowerKw = maxPowerSource === "" || maxPowerSource === undefined || maxPowerSource === null
     ? ""
     : clampPvConfigNumber(maxPowerSource, "", 0, 1000);
   return {
     id,
-    label: String(source.label || source.name || `String ${index + 2}`).trim(),
+    label: String(source.label || source.name || `${fallbackLabel} ${sequence}`).trim(),
     power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
     energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.kwh || source.energy || source.counter || source.meter || "").trim(),
     max_power_kw: maxPowerKw,
@@ -68,21 +72,87 @@ function normalizePvRoofStringConfig(raw, index) {
   };
 }
 
-export function normalizePvRoofStrings(strings) {
-  const rawList = Array.isArray(strings)
-    ? strings
-    : strings && typeof strings === "object"
-      ? Object.entries(strings).map(([id, value]) => (
+function normalizePowerSourceConfigs(configs, normalizeItem) {
+  const rawList = Array.isArray(configs)
+    ? configs
+    : configs && typeof configs === "object"
+      ? Object.entries(configs).map(([id, value]) => (
         value && typeof value === "object" ? { id, ...value } : { id, power_entity: value }
       ))
       : [];
   return rawList
-    .map((item, index) => normalizePvRoofStringConfig(item, index))
+    .map((item, index) => normalizeItem(item, index))
     .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.label);
+}
+
+function normalizePvRoofStringConfig(raw, index) {
+  return normalizePowerSourceConfig(raw, index, {
+    fallbackIdPrefix: "string",
+    fallbackLabel: "String",
+  });
+}
+
+function normalizeInverterConfig(raw, index) {
+  return normalizePowerSourceConfig(raw, index, {
+    fallbackIdPrefix: "inverter",
+    fallbackLabel: "Inverter",
+  });
+}
+
+export function normalizePvRoofStrings(strings) {
+  return normalizePowerSourceConfigs(strings, normalizePvRoofStringConfig);
+}
+
+export function normalizeInverterDisplay(value) {
+  return normalizePvRoofStringDisplay(value);
+}
+
+export function normalizeInverters(inverters) {
+  return normalizePowerSourceConfigs(inverters, normalizeInverterConfig);
 }
 
 export function pvRoofBaseEnergyEntityId(config = {}) {
   return String(config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "").trim();
+}
+
+function buildPowerSourceEntries({
+  configs = [],
+  powerEntityId = "",
+  energyEntityId = "",
+  maxPowerKw,
+  maxPowerW,
+  maxPower,
+  baseId = "item_1",
+  baseLabel = "Item 1",
+  normalizeConfigs = (items) => items,
+  fallbackIdPrefix = "item",
+  fallbackLabel = "Item",
+} = {}) {
+  const baseMaxPower = parsePowerLimitWatts(maxPowerKw, "kw")
+    || parsePowerLimitWatts(maxPowerW, "w")
+    || parsePowerLimitWatts(maxPower, "kw");
+  const baseEntry = {
+    id: baseId,
+    label: baseLabel,
+    powerEntityId: powerEntityId || "",
+    energyEntityId: energyEntityId || "",
+    maxPowerWatts: baseMaxPower,
+    base: true,
+    visible: true,
+  };
+  const extraEntries = normalizeConfigs(configs)
+    .filter((config) => config.visible !== false)
+    .map((config, index) => ({
+      id: config.id || `${fallbackIdPrefix}_${index + 2}`,
+      label: config.label || `${fallbackLabel} ${index + 2}`,
+      powerEntityId: config.power_entity || "",
+      energyEntityId: config.energy_entity || "",
+      maxPowerWatts: parsePowerLimitWatts(config.max_power_kw, "kw"),
+      base: false,
+      visible: true,
+    }))
+    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.maxPowerWatts);
+  return [baseEntry, ...extraEntries];
 }
 
 export function buildPvRoofStringEntries({
@@ -93,35 +163,50 @@ export function buildPvRoofStringEntries({
   maxPowerW,
   maxPower,
 } = {}) {
-  const baseMaxPower = parsePowerLimitWatts(maxPowerKw, "kw")
-    || parsePowerLimitWatts(maxPowerW, "w")
-    || parsePowerLimitWatts(maxPower, "kw");
-  const baseEntry = {
-    id: "string_1",
-    label: "String 1",
-    powerEntityId: powerEntityId || "",
-    energyEntityId: energyEntityId || "",
-    maxPowerWatts: baseMaxPower,
-    base: true,
-    visible: true,
-  };
-  const extraEntries = normalizePvRoofStrings(strings)
-    .filter((string) => string.visible !== false)
-    .map((string, index) => ({
-      id: string.id || `string_${index + 2}`,
-      label: string.label || `String ${index + 2}`,
-      powerEntityId: string.power_entity || "",
-      energyEntityId: string.energy_entity || "",
-      maxPowerWatts: parsePowerLimitWatts(string.max_power_kw, "kw"),
-      base: false,
-      visible: true,
-    }))
-    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.maxPowerWatts);
-  return [baseEntry, ...extraEntries];
+  return buildPowerSourceEntries({
+    configs: strings,
+    powerEntityId,
+    energyEntityId,
+    maxPowerKw,
+    maxPowerW,
+    maxPower,
+    baseId: "string_1",
+    baseLabel: "String 1",
+    normalizeConfigs: normalizePvRoofStrings,
+    fallbackIdPrefix: "string",
+    fallbackLabel: "String",
+  });
+}
+
+export function buildInverterEntries({
+  inverters = [],
+  powerEntityId = "",
+  energyEntityId = "",
+  maxPowerKw,
+  maxPowerW,
+  maxPower,
+} = {}) {
+  return buildPowerSourceEntries({
+    configs: inverters,
+    powerEntityId,
+    energyEntityId,
+    maxPowerKw,
+    maxPowerW,
+    maxPower,
+    baseId: "inverter_1",
+    baseLabel: "Inverter 1",
+    normalizeConfigs: normalizeInverters,
+    fallbackIdPrefix: "inverter",
+    fallbackLabel: "Inverter",
+  });
 }
 
 export function hasAdditionalPvRoofStrings(entries = []) {
   return entries.some((entry) => !entry.base && (entry.powerEntityId || entry.energyEntityId));
+}
+
+export function hasAdditionalInverters(entries = []) {
+  return hasAdditionalPvRoofStrings(entries);
 }
 
 export function pvRoofStringPowerParts(entries = [], { unit = "auto", readPowerWatts, formatPowerValue } = {}) {
@@ -144,12 +229,24 @@ export function pvRoofStringTotalPowerWatts(parts = []) {
   return values.reduce((sum, value) => sum + value, 0);
 }
 
+export function inverterPowerParts(entries = [], options = {}) {
+  return pvRoofStringPowerParts(entries, options);
+}
+
+export function inverterTotalPowerWatts(parts = []) {
+  return pvRoofStringTotalPowerWatts(parts);
+}
+
 export function pvRoofStringMaxPowerWatts(entries = []) {
   const maxValues = entries
     .map((entry) => entry.maxPowerWatts)
     .filter((value) => Number.isFinite(value) && value > 0);
   if (maxValues.length === 0) return undefined;
   return maxValues.reduce((sum, value) => sum + value, 0);
+}
+
+export function inverterMaxPowerWatts(entries = []) {
+  return pvRoofStringMaxPowerWatts(entries);
 }
 
 export function pvRoofStringEnergyParts(entries = [], { range = "live", readEnergyInfo, formatEnergyValue } = {}) {
@@ -175,6 +272,10 @@ export function pvRoofStringEnergyParts(entries = [], { range = "live", readEner
     .filter((part) => part.energyEntityId || !part.base);
 }
 
+export function inverterEnergyParts(entries = [], options = {}) {
+  return pvRoofStringEnergyParts(entries, options);
+}
+
 export function formatPvRoofStringReading({
   parts = [],
   mode = "sum",
@@ -194,6 +295,13 @@ export function formatPvRoofStringReading({
     : formatEnergyValue(total, "kWh", "kWh");
 }
 
+export function formatInverterReading(options = {}) {
+  return formatPvRoofStringReading({
+    ...options,
+    mode: normalizeInverterDisplay(options.mode),
+  });
+}
+
 export function pvRoofStringAdvisorDetails(entries = [], { readPowerWatts } = {}) {
   return entries
     .map((entry, index) => {
@@ -201,6 +309,23 @@ export function pvRoofStringAdvisorDetails(entries = [], { readPowerWatts } = {}
       return {
         id: entry.id || `string_${index + 1}`,
         label: entry.label || `String ${index + 1}`,
+        powerEntityId: entry.powerEntityId || "",
+        energyEntityId: entry.energyEntityId || "",
+        watts: Number.isFinite(watts) ? watts : undefined,
+        maxPowerWatts: entry.maxPowerWatts,
+        configured: Boolean(entry.powerEntityId || entry.energyEntityId),
+      };
+    })
+    .filter((entry) => entry.configured);
+}
+
+export function inverterAdvisorDetails(entries = [], { readPowerWatts } = {}) {
+  return entries
+    .map((entry, index) => {
+      const watts = typeof readPowerWatts === "function" ? readPowerWatts(entry) : undefined;
+      return {
+        id: entry.id || `inverter_${index + 1}`,
+        label: entry.label || `Inverter ${index + 1}`,
         powerEntityId: entry.powerEntityId || "",
         energyEntityId: entry.energyEntityId || "",
         watts: Number.isFinite(watts) ? watts : undefined,

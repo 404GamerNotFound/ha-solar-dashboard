@@ -88,6 +88,7 @@ export function flattenChartSections(sections = []) {
 
 export function chartDashboardSections({
   pvRoofStringEntries = [],
+  inverterEntries = [],
   metrics = [],
   metricEntityId,
   metricLabel,
@@ -116,12 +117,28 @@ export function chartDashboardSections({
       color: "yellow",
     }))
     .filter(Boolean);
+  const inverterItems = inverterEntries
+    .filter((entry) => entry?.powerEntityId)
+    .map((entry, index) => toItem({
+      key: `inverter_${entry.id || index}`,
+      chartKey: `inverter_${entry.id || index}`,
+      chartEntityId: entry.powerEntityId,
+      chartLabel: entry.label || `Inverter ${index + 1}`,
+      unit: "power",
+      color: "blue",
+    }))
+    .filter(Boolean);
 
   const sectionDefinitions = [
     {
       key: "pv",
       label: translate?.("charts.sectionPvStrings", {}, "PV strings") || "PV strings",
       items: pvItems,
+    },
+    {
+      key: "inverters",
+      label: translate?.("charts.sectionInverters", {}, "Inverters") || "Inverters",
+      items: inverterItems,
     },
     {
       key: "wallbox",

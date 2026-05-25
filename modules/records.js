@@ -282,6 +282,18 @@ export function createRecordsDashboardMethods({
           group: "pv",
           metric: { key: `${entry.key}_power`, chartEntityId: entry.powerEntityId, unit: "power", color: "yellow" },
         }));
+      const inverterPowerSources = typeof this._hasAdditionalInverters === "function" && this._hasAdditionalInverters()
+        ? this._inverterEntries()
+          .filter((entry) => entry.powerEntityId)
+          .map((entry, index) => ({
+            key: `inverter_${entry.id || index}_power`,
+            label: entry.label || `Inverter ${index + 1}`,
+            entityId: entry.powerEntityId,
+            type: "power",
+            group: "system",
+            metric: { key: `inverter_${entry.id || index}_power`, chartEntityId: entry.powerEntityId, unit: "power", color: "blue" },
+          }))
+        : [];
       const pvEnergySources = pvStrings
         .filter((entry) => entry.energyEntityId)
         .map((entry) => ({
@@ -396,7 +408,7 @@ export function createRecordsDashboardMethods({
         })
         .filter(Boolean);
       const seen = new Set();
-      return [...pvEnergySources, ...pvPowerSources, ...metricSources].filter((source) => {
+      return [...pvEnergySources, ...pvPowerSources, ...inverterPowerSources, ...metricSources].filter((source) => {
         const key = `${source.type}:${source.entityId}`;
         if (!source.entityId || seen.has(key)) return false;
         seen.add(key);

@@ -17,6 +17,8 @@ export function createDashboardEditorClass({
   metricVoltageEntityKey,
   normalizeAdvisorConfig,
   normalizeHouse,
+  normalizeInverterDisplay,
+  normalizeInverters,
   normalizeLargeConsumers,
   normalizePvRoofStringDisplay,
   normalizePvRoofStrings,
@@ -46,6 +48,8 @@ export function createDashboardEditorClass({
       large_consumers: [],
       pv_roof_strings: [],
       pv_roof_string_display: "sum",
+      inverters: [],
+      inverter_display: "sum",
       ...config,
       image_overlays: {
         smoke: {
@@ -67,6 +71,8 @@ export function createDashboardEditorClass({
       large_consumers: normalizeLargeConsumers((config || {}).large_consumers || (config || {}).large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings((config || {}).pv_roof_strings || (config || {}).pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay((config || {}).pv_roof_string_display || (config || {}).pv_roof_display || "sum"),
+      inverters: normalizeInverters((config || {}).inverters || (config || {}).inverter_strings || (config || {}).inverter_config || []),
+      inverter_display: normalizeInverterDisplay((config || {}).inverter_display || (config || {}).inverter_string_display || "sum"),
     };
     delete this._config.show_energy_advisor;
     this._render();
@@ -216,6 +222,33 @@ export function createDashboardEditorClass({
     const next = this._cloneConfig(this._config || {});
     next.pv_roof_strings = normalizePvRoofStrings(next.pv_roof_strings || []);
     next.pv_roof_strings.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _addInverter() {
+    const next = this._cloneConfig(this._config || {});
+    next.inverters = normalizeInverters(next.inverters || []);
+    const index = next.inverters.length;
+    const label = `${this._t("metrics.inverter_power", {}, "Inverter")} ${index + 2}`;
+    next.inverters.push({
+      id: `inverter_${Date.now()}`,
+      label,
+      power_entity: "",
+      energy_entity: "",
+      max_power_kw: "",
+      visible: true,
+    });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeInverter(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.inverters = normalizeInverters(next.inverters || []);
+    next.inverters.splice(index, 1);
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -666,6 +699,7 @@ export function createDashboardEditorClass({
   _renderEnergyEntityInputs(metric) {
     if (metric.unit !== "power") return "";
     if (metric.key === "pv_roof_power") return "";
+    if (metric.key === "inverter_power") return "";
     const config = this._energyEntityConfig(metric);
     const counterValue = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
 
@@ -813,6 +847,84 @@ export function createDashboardEditorClass({
           ${baseStringField}
           ${stringFields}
           <button type="button" data-action="add-pv-roof-string">${this._escape(this._t("editor.pvRoofStringAdd", {}, "Add string"))}</button>
+        </div>
+      </details>
+    `;
+  }
+
+  _renderInverterInputs(metric) {
+    if (metric?.key !== "inverter_power") return "";
+    const inverters = normalizeInverters(this._config.inverters || []);
+    this._config.inverters = inverters;
+    const baseEnergyConfig = this._energyEntityConfig(metric);
+    const baseEnergyEntity = baseEnergyConfig.entity || baseEnergyConfig.counter || baseEnergyConfig.kwh_entity || baseEnergyConfig.kwh || baseEnergyConfig.meter || "";
+    const baseMaxPowerKw = this._maxPowerKwValue(metric);
+    const basePowerEntity = this._config?.entities?.inverter_power || "";
+    const inverterLabel = this._t("metrics.inverter_power", {}, "Inverter");
+    const selectedDisplay = normalizeInverterDisplay(this._config.inverter_display);
+    const displayOptions = [
+      ["sum", this._t("editor.inverterDisplaySum", {}, "Sum inverters")],
+      ["values", this._t("editor.inverterDisplayValues", {}, "Show inverter values")],
+      ["dominant", this._t("editor.inverterDisplayDominant", {}, "Highest inverter large, others small")],
+    ].map(([value, label]) => (
+      `<option value="${this._escape(value)}"${value === selectedDisplay ? " selected" : ""}>${this._escape(label)}</option>`
+    )).join("");
+    const baseInverterField = `
+      <div class="box-field pv-string-field">
+        <div class="kpi-head">
+          <strong>${this._escape(inverterLabel)} 1</strong>
+        </div>
+        <label>${this._escape(this._t("editor.inverterPowerEntity", {}, "Inverter power entity"))}
+          <input data-path="entities.inverter_power" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_power" value="${this._escape(basePowerEntity)}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.inverterEnergyEntity", {}, "Inverter kWh counter entity"))}
+          <input data-path="energy_entities.inverter_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_energy_total" value="${this._escape(baseEnergyEntity)}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.maxPowerKw"))}
+          <input type="number" min="0" step="0.1" data-path="max_power_kw.inverter_power" placeholder="10.0" value="${this._escape(baseMaxPowerKw)}" />
+        </label>
+      </div>
+    `;
+    const inverterFields = inverters.map((inverter, index) => {
+      const defaultEnglishLabel = `Inverter ${index + 2}`;
+      const label = !inverter.label || inverter.label === defaultEnglishLabel
+        ? `${inverterLabel} ${index + 2}`
+        : inverter.label;
+      const powerEntity = inverter.power_entity || "";
+      const energyEntity = inverter.energy_entity || "";
+      const maxPowerKw = inverter.max_power_kw ?? "";
+      return `
+        <div class="box-field pv-string-field">
+          <div class="kpi-head">
+            <strong>${this._escape(label)}</strong>
+            <button type="button" data-action="remove-inverter" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
+          </div>
+          <label>${this._escape(this._t("editor.inverterLabel", {}, "Inverter name"))}
+            <input data-path="inverters.${index}.label" placeholder="${this._escape(inverterLabel)} ${this._escape(index + 2)}" value="${this._escape(label)}" />
+          </label>
+          <label>${this._escape(this._t("editor.inverterPowerEntity", {}, "Inverter power entity"))}
+            <input data-path="inverters.${index}.power_entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_${this._escape(index + 2)}_power" value="${this._escape(powerEntity)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.inverterEnergyEntity", {}, "Inverter kWh counter entity"))}
+            <input data-path="inverters.${index}.energy_entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_${this._escape(index + 2)}_energy_total" value="${this._escape(energyEntity)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.maxPowerKw"))}
+            <input type="number" min="0" step="0.1" data-path="inverters.${index}.max_power_kw" placeholder="10.0" value="${this._escape(maxPowerKw)}" />
+          </label>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <details class="pv-labels" open>
+        <summary>${this._escape(this._t("editor.inverters", {}, "Inverters"))}</summary>
+        <div class="details-grid">
+          <label>${this._escape(this._t("editor.inverterDisplay", {}, "Inverter display"))}
+            <select data-path="inverter_display">${displayOptions}</select>
+          </label>
+          ${baseInverterField}
+          ${inverterFields}
+          <button type="button" data-action="add-inverter">${this._escape(this._t("editor.inverterAdd", {}, "Add inverter"))}</button>
         </div>
       </details>
     `;
@@ -1098,6 +1210,7 @@ export function createDashboardEditorClass({
         ${this._renderVoltageEntityInput(metric)}
         ${this._renderPvLabelInputs(metric)}
         ${this._renderPvRoofStringInputs(metric)}
+        ${this._renderInverterInputs(metric)}
         ${this._renderEnergyEntityInputs(metric)}
         ${this._renderWallboxPhaseInput(metric)}
         ${this._renderWallboxPhaseActionInput(metric)}
@@ -1369,6 +1482,8 @@ export function createDashboardEditorClass({
     const customKpiFields = customKpis.map((kpi, index) => this._renderCustomKpiField(kpi, index)).join("");
     this._config.pv_roof_string_display = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
     this._config.pv_roof_strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
+    this._config.inverter_display = normalizeInverterDisplay(this._config.inverter_display);
+    this._config.inverters = normalizeInverters(this._config.inverters || []);
     const largeConsumers = normalizeLargeConsumers(this._config.large_consumers || []);
     this._config.large_consumers = largeConsumers;
     const largeConsumerFields = largeConsumers.map((consumer, index) => this._renderLargeConsumerField(consumer, index)).join("");
@@ -1489,6 +1604,8 @@ export function createDashboardEditorClass({
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
         if (target.dataset.action === "add-pv-roof-string") this._addPvRoofString();
         if (target.dataset.action === "remove-pv-roof-string") this._removePvRoofString(Number(target.dataset.index));
+        if (target.dataset.action === "add-inverter") this._addInverter();
+        if (target.dataset.action === "remove-inverter") this._removeInverter(Number(target.dataset.index));
         if (target.dataset.action === "add-large-consumer") this._addLargeConsumer();
         if (target.dataset.action === "remove-large-consumer") this._removeLargeConsumer(Number(target.dataset.index));
         if (target.dataset.action === "auto-detect") this._applyAutoDetection(target.dataset.mode || "fill");

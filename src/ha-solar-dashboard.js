@@ -33,9 +33,18 @@ import {
   valueAsWatts,
 } from "../modules/formatters.js";
 import {
+  buildInverterEntries,
   buildPvRoofStringEntries,
+  formatInverterReading,
   formatPvRoofStringReading,
+  hasAdditionalInverters,
   hasAdditionalPvRoofStrings,
+  inverterEnergyParts,
+  inverterMaxPowerWatts,
+  inverterPowerParts,
+  inverterTotalPowerWatts,
+  normalizeInverterDisplay,
+  normalizeInverters,
   normalizePvRoofStringDisplay,
   normalizePvRoofStrings,
   parsePowerLimitWatts,
@@ -539,6 +548,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_weather_status: false,
       show_grid_status_tile: true,
       pv_roof_string_display: "sum",
+      inverter_display: "sum",
       hud_box_opacity: 0.65,
       hud_box_scale: 1,
       battery_low_threshold: 20,
@@ -579,6 +589,7 @@ class HaSolarDashboardCard extends HTMLElement {
       custom_kpis: [],
       large_consumers: normalizeLargeConsumers([]),
       pv_roof_strings: [],
+      inverters: [],
       image_overlays: {
         smoke: { enabled: false, entity: "", period: "1h" },
         heatpump: { enabled: false, entity: "" },
@@ -702,6 +713,7 @@ class HaSolarDashboardCard extends HTMLElement {
       weather_entity: "",
       dynamic_tile_colors: true,
       pv_roof_string_display: "sum",
+      inverter_display: "sum",
       power_display_mode: "auto_kw",
       power_decimals: 2,
       energy_range: energyRange,
@@ -718,6 +730,7 @@ class HaSolarDashboardCard extends HTMLElement {
       custom_kpis: [],
       large_consumers: [],
       pv_roof_strings: [],
+      inverters: [],
       ...config,
       house,
       view_mode: viewMode,
@@ -770,6 +783,8 @@ class HaSolarDashboardCard extends HTMLElement {
       large_consumers: normalizeLargeConsumers(config.large_consumers || config.large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings(config.pv_roof_strings || config.pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay(config.pv_roof_string_display || config.pv_roof_display || "sum"),
+      inverters: normalizeInverters(config.inverters || config.inverter_strings || config.inverter_config || []),
+      inverter_display: normalizeInverterDisplay(config.inverter_display || config.inverter_string_display || "sum"),
     };
     delete this.config.show_energy_advisor;
 
@@ -783,6 +798,8 @@ class HaSolarDashboardCard extends HTMLElement {
     Object.assign(this.config, normalizeAdvisorConfig(this.config));
     this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
     this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
+    this.config.inverter_display = normalizeInverterDisplay(this.config.inverter_display);
+    this.config.inverters = normalizeInverters(this.config.inverters || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
     this.config.records_range = String(this.config.records_range || this.config.records_days || `${RECORDS_DEFAULT_DAYS}d`);
     this._chartHours = this._chartHours || this.config.chart_hours;
@@ -1126,9 +1143,117 @@ class HaSolarDashboardCard extends HTMLElement {
     });
   }
 
+  _isInverterMetric(metric) {
+    return metric?.key === "inverter_power";
+  }
+
+  _inverterDisplayMode() {
+    return normalizeInverterDisplay(this.config.inverter_display);
+  }
+
+  _inverterBaseEnergyEntityId() {
+    const config = this._energyEntityConfig("inverter_power");
+    return pvRoofBaseEnergyEntityId(config);
+  }
+
+  _inverterEntries() {
+    const labelPrefix = this._t("metrics.inverter_power", {}, "Inverter");
+    return buildInverterEntries({
+      inverters: this.config.inverters || [],
+      powerEntityId: this.config.entities?.inverter_power || "",
+      energyEntityId: this._inverterBaseEnergyEntityId(),
+      maxPowerKw: this.config.max_power_kw?.inverter_power,
+      maxPowerW: this.config.max_power_w?.inverter_power,
+      maxPower: this.config.max_power?.inverter_power,
+    }).map((entry, index) => {
+      const fallbackLabel = `${labelPrefix} ${index + 1}`;
+      const defaultEnglishLabel = `Inverter ${index + 1}`;
+      return {
+        ...entry,
+        label: !entry.label || entry.label === defaultEnglishLabel ? fallbackLabel : entry.label,
+      };
+    });
+  }
+
+  _hasAdditionalInverters() {
+    return hasAdditionalInverters(this._inverterEntries());
+  }
+
+  _inverterEntryPowerWatts(entry) {
+    if (!entry?.powerEntityId) return undefined;
+    const watts = this._valueAsWatts(this._getEntityValue(entry.powerEntityId, undefined), this._getEntityUnit(entry.powerEntityId));
+    return Number.isFinite(watts) ? Math.max(0, watts) : undefined;
+  }
+
+  _inverterPowerUnit(metric) {
+    return this._unitForMetric(metric || { key: "inverter_power", unit: "power" }) || "auto";
+  }
+
+  _inverterPowerParts(metric) {
+    const unit = this._inverterPowerUnit(metric);
+    return inverterPowerParts(this._inverterEntries(), {
+      unit,
+      readPowerWatts: (entry) => this._inverterEntryPowerWatts(entry),
+      formatPowerValue: (value, targetUnit, entityUnit) => this._formatPowerValue(value, targetUnit, entityUnit),
+    });
+  }
+
+  _inverterPowerWatts() {
+    if (!this._hasAdditionalInverters()) return undefined;
+    return inverterTotalPowerWatts(this._inverterPowerParts());
+  }
+
+  _inverterMaxPowerWatts() {
+    if (!this._hasAdditionalInverters()) return undefined;
+    return inverterMaxPowerWatts(this._inverterEntries());
+  }
+
+  _inverterEnergyParts() {
+    const range = this._currentEnergyRange();
+    return inverterEnergyParts(this._inverterEntries(), {
+      range,
+      readEnergyInfo: (entry, selectedRange) => this._energyRangeConsumptionInfoForSource({
+        entityId: entry.energyEntityId,
+        mode: selectedRange === "total" ? "direct" : "counter",
+        range: selectedRange,
+      }),
+      formatEnergyValue: (value, entityUnit, targetUnit) => this._formatEnergyValue(value, entityUnit, targetUnit),
+    });
+  }
+
+  _inverterReadingParts(metric) {
+    if (!this._isInverterMetric(metric) || !this._hasAdditionalInverters()) return [];
+    return this._currentEnergyRange() === "live"
+      ? this._inverterPowerParts(metric)
+      : this._inverterEnergyParts();
+  }
+
+  _formatInverterReading(metric) {
+    const parts = this._inverterReadingParts(metric);
+    return formatInverterReading({
+      parts,
+      mode: this._inverterDisplayMode(),
+      range: this._currentEnergyRange(),
+      unit: this._inverterPowerUnit(metric),
+      formatPowerValue: (value, unit, entityUnit) => this._formatPowerValue(value, unit, entityUnit),
+      formatEnergyValue: (value, entityUnit, targetUnit) => this._formatEnergyValue(value, entityUnit, targetUnit),
+    });
+  }
+
+  _multiSourceReadingParts(metric) {
+    if (this._isPvRoofMetric(metric)) return this._pvRoofStringReadingParts(metric);
+    if (this._isInverterMetric(metric)) return this._inverterReadingParts(metric);
+    return [];
+  }
+
+  _multiSourceDisplayMode(metric) {
+    if (this._isInverterMetric(metric)) return this._inverterDisplayMode();
+    return this._pvRoofStringDisplayMode();
+  }
+
   _renderMetricValueHtml(metric) {
-    const parts = this._pvRoofStringReadingParts(metric);
-    const mode = this._pvRoofStringDisplayMode();
+    const parts = this._multiSourceReadingParts(metric);
+    const mode = this._multiSourceDisplayMode(metric);
     if (parts.length === 0 || mode === "sum") return this._escape(this._formatReading(metric));
     const orderedParts = mode === "dominant"
       ? [...parts].sort((a, b) => (Number.isFinite(b.amount) ? b.amount : -Infinity) - (Number.isFinite(a.amount) ? a.amount : -Infinity))
@@ -1148,6 +1273,10 @@ class HaSolarDashboardCard extends HTMLElement {
     if (this._isPvRoofMetric(metric)) {
       const stringReading = this._formatPvRoofStringReading(metric);
       if (stringReading) return stringReading;
+    }
+    if (this._isInverterMetric(metric)) {
+      const inverterReading = this._formatInverterReading(metric);
+      if (inverterReading) return inverterReading;
     }
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
       return this._formatEnergyRangeReading(metric);
@@ -1442,10 +1571,14 @@ class HaSolarDashboardCard extends HTMLElement {
     const pvRoofStringEntities = normalizePvRoofStrings(this.config.pv_roof_strings || [])
       .flatMap((string) => [string.power_entity, string.energy_entity])
       .filter(Boolean);
+    const inverterEntities = normalizeInverters(this.config.inverters || [])
+      .flatMap((inverter) => [inverter.power_entity, inverter.energy_entity])
+      .filter(Boolean);
     const timestamps = [
       ...Object.values(this.config.entities || {}),
       ...largeConsumerEntities,
       ...pvRoofStringEntities,
+      ...inverterEntities,
     ]
       .map((entityId) => Date.parse(this._getEntityLastUpdated(entityId) || ""))
       .filter(Number.isFinite);
@@ -1768,6 +1901,17 @@ class HaSolarDashboardCard extends HTMLElement {
         if (Number.isFinite(watts)) return watts;
       }
     }
+    if (this._isInverterMetric(metric)) {
+      if (this._currentEnergyRange() !== "live") {
+        const values = this._inverterEnergyParts()
+          .map((part) => part.amount)
+          .filter(Number.isFinite);
+        if (values.length > 0) return values.reduce((sum, value) => sum + value, 0);
+      } else {
+        const watts = this._inverterPowerWatts();
+        if (Number.isFinite(watts)) return watts;
+      }
+    }
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
       const info = this._energyRangeConsumptionInfo(metric);
       return Number.isFinite(info?.amount) ? info.amount : undefined;
@@ -1847,6 +1991,10 @@ class HaSolarDashboardCard extends HTMLElement {
     if (this._isPvRoofMetric(metric)) {
       const stringMaxPower = this._pvRoofStringMaxPowerWatts();
       if (Number.isFinite(stringMaxPower)) return stringMaxPower;
+    }
+    if (this._isInverterMetric(metric)) {
+      const inverterMaxPower = this._inverterMaxPowerWatts();
+      if (Number.isFinite(inverterMaxPower)) return inverterMaxPower;
     }
     const key = metric.key;
     const fromKw = this.config.max_power_kw?.[key];
@@ -2765,6 +2913,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _chartDashboardSections(variant = this._currentVariant || this._layoutState().variant) {
     return chartDashboardSections({
       pvRoofStringEntries: this._pvRoofStringEntries(),
+      inverterEntries: this._inverterEntries(),
       metrics: this._chartDashboardMetricPool(variant),
       metricEntityId: (metric) => this._chartEntityId(metric),
       metricLabel: (metric) => this._metricLabel(metric, variant),
@@ -3994,6 +4143,8 @@ const HaSolarDashboardCardEditor = createDashboardEditorClass({
   metricVoltageEntityKey,
   normalizeAdvisorConfig,
   normalizeHouse,
+  normalizeInverterDisplay,
+  normalizeInverters,
   normalizeLargeConsumers,
   normalizePvRoofStringDisplay,
   normalizePvRoofStrings,

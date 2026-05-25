@@ -230,6 +230,15 @@ export function createAdvisorEngineMethods({
         minActiveWatts: 100,
       });
     });
+    if (typeof this._inverterEntries === "function") {
+      this._inverterEntries().forEach((entry, index) => {
+        if (entry.base || !entry.powerEntityId) return;
+        add(entry.powerEntityId, entry.label || `Inverter ${index + 1}`, true, {
+          key: `inverters.${entry.id || index}`,
+          minActiveWatts: 100,
+        });
+      });
+    }
 
     const seen = new Set();
     return candidates

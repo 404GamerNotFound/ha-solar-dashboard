@@ -15,6 +15,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Variante `terraced_middle_house` mit Tag-/Nachtbild
 - Variante `bungalow` mit Tag-/Nachtbild
 - Konfigurierbare Entitäten und eigene Labels für PV, Batterie, Wechselrichter, Wallbox, Wasserzähler, Gesamtleistung und Import/Export
+- Mehrere Wechselrichter können wie PV-Dach-Strings zusammengefasst oder einzeln angezeigt werden; der bestehende Wechselrichter ist automatisch Wechselrichter 1
 - Optionaler Umschalter oben für Live-, 1h-, 24h-, Monats-, Jahres- und Gesamtwerte über separate kWh-Zähler je Leistungsbox
 - Optionale zweite Wallbox-Entität, standardmäßig deaktiviert und automatisch neben der ersten Wallbox positioniert
 - Optionale Verbrauchs-Kachel für den Hausverbrauch

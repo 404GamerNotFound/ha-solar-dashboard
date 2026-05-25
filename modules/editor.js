@@ -237,6 +237,10 @@ export function createDashboardEditorClass({
       label,
       power_entity: "",
       energy_entity: "",
+      voltage_entity: "",
+      voltage_entity_l1: "",
+      voltage_entity_l2: "",
+      voltage_entity_l3: "",
       max_power_kw: "",
       visible: true,
     });
@@ -595,6 +599,7 @@ export function createDashboardEditorClass({
 
   _renderEntityInput(metric) {
     if (metric.key === "pv_roof_power") return "";
+    if (metric.key === "inverter_power") return "";
     if (metric.key === "import_export_power") {
       return `
         <label>${this._escape(this._t("editor.importExportSignedEntity", {}, "Signed import/export entity (+/-)"))}
@@ -724,6 +729,7 @@ export function createDashboardEditorClass({
   }
 
   _renderVoltageEntityInput(metric) {
+    if (metric?.key === "inverter_power") return "";
     const key = this._metricVoltageEntityKey(metric);
     if (!key) return "";
     const selected = this._config?.entities?.[key] || "";
@@ -860,6 +866,10 @@ export function createDashboardEditorClass({
     const baseEnergyEntity = baseEnergyConfig.entity || baseEnergyConfig.counter || baseEnergyConfig.kwh_entity || baseEnergyConfig.kwh || baseEnergyConfig.meter || "";
     const baseMaxPowerKw = this._maxPowerKwValue(metric);
     const basePowerEntity = this._config?.entities?.inverter_power || "";
+    const baseVoltageEntity = this._config?.entities?.inverter_power_voltage || "";
+    const baseVoltageEntityL1 = this._config?.entities?.inverter_power_voltage_l1 || "";
+    const baseVoltageEntityL2 = this._config?.entities?.inverter_power_voltage_l2 || "";
+    const baseVoltageEntityL3 = this._config?.entities?.inverter_power_voltage_l3 || "";
     const inverterLabel = this._t("metrics.inverter_power", {}, "Inverter");
     const selectedDisplay = normalizeInverterDisplay(this._config.inverter_display);
     const displayOptions = [
@@ -880,6 +890,15 @@ export function createDashboardEditorClass({
         <label>${this._escape(this._t("editor.inverterEnergyEntity", {}, "Inverter kWh counter entity"))}
           <input data-path="energy_entities.inverter_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_energy_total" value="${this._escape(baseEnergyEntity)}" autocomplete="off" />
         </label>
+        ${this._renderInverterVoltageInputs({
+          pathPrefix: "entities",
+          fieldPrefix: "inverter_power",
+          voltageEntity: baseVoltageEntity,
+          voltageEntityL1: baseVoltageEntityL1,
+          voltageEntityL2: baseVoltageEntityL2,
+          voltageEntityL3: baseVoltageEntityL3,
+          visibilityBaseKey: "inverter_power_voltage",
+        })}
         <label>${this._escape(this._t("editor.maxPowerKw"))}
           <input type="number" min="0" step="0.1" data-path="max_power_kw.inverter_power" placeholder="10.0" value="${this._escape(baseMaxPowerKw)}" />
         </label>
@@ -892,7 +911,12 @@ export function createDashboardEditorClass({
         : inverter.label;
       const powerEntity = inverter.power_entity || "";
       const energyEntity = inverter.energy_entity || "";
+      const voltageEntity = inverter.voltage_entity || "";
+      const voltageEntityL1 = inverter.voltage_entity_l1 || "";
+      const voltageEntityL2 = inverter.voltage_entity_l2 || "";
+      const voltageEntityL3 = inverter.voltage_entity_l3 || "";
       const maxPowerKw = inverter.max_power_kw ?? "";
+      const visibilityBaseKey = `inverter_${String(inverter.id || `inverter_${index + 2}`).replace(/[^\w-]+/g, "_")}_voltage`;
       return `
         <div class="box-field pv-string-field">
           <div class="kpi-head">
@@ -908,6 +932,15 @@ export function createDashboardEditorClass({
           <label>${this._escape(this._t("editor.inverterEnergyEntity", {}, "Inverter kWh counter entity"))}
             <input data-path="inverters.${index}.energy_entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_${this._escape(index + 2)}_energy_total" value="${this._escape(energyEntity)}" autocomplete="off" />
           </label>
+          ${this._renderInverterVoltageInputs({
+            pathPrefix: `inverters.${index}`,
+            fieldPrefix: "",
+            voltageEntity,
+            voltageEntityL1,
+            voltageEntityL2,
+            voltageEntityL3,
+            visibilityBaseKey,
+          })}
           <label>${this._escape(this._t("editor.maxPowerKw"))}
             <input type="number" min="0" step="0.1" data-path="inverters.${index}.max_power_kw" placeholder="10.0" value="${this._escape(maxPowerKw)}" />
           </label>
@@ -928,6 +961,35 @@ export function createDashboardEditorClass({
         </div>
       </details>
     `;
+  }
+
+  _renderInverterVoltageInputs({
+    pathPrefix,
+    fieldPrefix,
+    voltageEntity = "",
+    voltageEntityL1 = "",
+    voltageEntityL2 = "",
+    voltageEntityL3 = "",
+    visibilityBaseKey,
+  } = {}) {
+    const fieldPath = (field) => {
+      if (fieldPrefix) return `${pathPrefix}.${fieldPrefix}_${field}`;
+      return field === "voltage"
+        ? `${pathPrefix}.voltage_entity`
+        : `${pathPrefix}.voltage_entity_${field.slice(-2)}`;
+    };
+    const voltageFields = [
+      ["voltage", this._t("editor.voltageEntity", {}, "Voltage entity"), "sensor.inverter_voltage", voltageEntity, visibilityBaseKey],
+      ["voltage_l1", this._t("editor.voltageEntityL1", {}, "Voltage L1 entity"), "sensor.inverter_voltage_l1", voltageEntityL1, `${visibilityBaseKey}_l1`],
+      ["voltage_l2", this._t("editor.voltageEntityL2", {}, "Voltage L2 entity"), "sensor.inverter_voltage_l2", voltageEntityL2, `${visibilityBaseKey}_l2`],
+      ["voltage_l3", this._t("editor.voltageEntityL3", {}, "Voltage L3 entity"), "sensor.inverter_voltage_l3", voltageEntityL3, `${visibilityBaseKey}_l3`],
+    ];
+    return voltageFields.map(([field, label, placeholder, value, visibilityKey]) => `
+      <label>${this._escape(label)}
+        <input data-path="${this._escape(fieldPath(field))}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
+      </label>
+      ${this._renderLabelVisibilityOptions(visibilityKey)}
+    `).join("");
   }
 
   _wallboxPhaseEntityKey(metric) {
@@ -1117,6 +1179,7 @@ export function createDashboardEditorClass({
   _renderMaxPowerInput(metric) {
     if (metric.unit !== "power") return "";
     if (metric.key === "pv_roof_power") return "";
+    if (metric.key === "inverter_power") return "";
     const value = this._maxPowerKwValue(metric);
     return `
       <label>${this._escape(this._t("editor.maxPowerKw"))}

@@ -1156,6 +1156,16 @@ class HaSolarDashboardCard extends HTMLElement {
     return pvRoofBaseEnergyEntityId(config);
   }
 
+  _inverterBaseVoltageEntityId(phase = "") {
+    const normalizedPhase = String(phase || "").toLowerCase();
+    if (normalizedPhase) return this.config.entities?.[`inverter_power_voltage_${normalizedPhase}`] || "";
+    return [
+      "inverter_power_voltage",
+      "inverter_power_volt",
+      "inverter_power_volts",
+    ].map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
   _inverterEntries() {
     const labelPrefix = this._t("metrics.inverter_power", {}, "Inverter");
     return buildInverterEntries({
@@ -1165,6 +1175,10 @@ class HaSolarDashboardCard extends HTMLElement {
       maxPowerKw: this.config.max_power_kw?.inverter_power,
       maxPowerW: this.config.max_power_w?.inverter_power,
       maxPower: this.config.max_power?.inverter_power,
+      voltageEntityId: this._inverterBaseVoltageEntityId(),
+      voltageEntityIdL1: this._inverterBaseVoltageEntityId("l1"),
+      voltageEntityIdL2: this._inverterBaseVoltageEntityId("l2"),
+      voltageEntityIdL3: this._inverterBaseVoltageEntityId("l3"),
     }).map((entry, index) => {
       const fallbackLabel = `${labelPrefix} ${index + 1}`;
       const defaultEnglishLabel = `Inverter ${index + 1}`;
@@ -1173,6 +1187,12 @@ class HaSolarDashboardCard extends HTMLElement {
         label: !entry.label || entry.label === defaultEnglishLabel ? fallbackLabel : entry.label,
       };
     });
+  }
+
+  _inverterVoltageDefinitionKey(entry, index, phase = "") {
+    if (entry?.base) return phase ? `inverter_power_voltage_${phase}` : "inverter_power_voltage";
+    const id = String(entry?.id || `inverter_${index + 1}`).replace(/[^\w-]+/g, "_");
+    return phase ? `inverter_${id}_voltage_${phase}` : `inverter_${id}_voltage`;
   }
 
   _hasAdditionalInverters() {
@@ -1379,6 +1399,44 @@ class HaSolarDashboardCard extends HTMLElement {
       }];
     }
     const key = metricSourceKey(metric);
+    if (key === "inverter_power") {
+      const inverterEntries = this._inverterEntries();
+      const hasMultipleInverters = inverterEntries.some((entry) => !entry.base && (entry.powerEntityId || entry.energyEntityId || entry.voltageEntityId || entry.voltageEntityIdL1 || entry.voltageEntityIdL2 || entry.voltageEntityIdL3));
+      return inverterEntries.flatMap((entry, index) => {
+        const label = entry.label || `${this._t("metrics.inverter_power", {}, "Inverter")} ${index + 1}`;
+        const displayPrefix = hasMultipleInverters ? label : "";
+        return [
+          {
+            key: this._inverterVoltageDefinitionKey(entry, index),
+            entityId: entry.voltageEntityId || "",
+            phase: "",
+            label,
+            displayPrefix,
+          },
+          {
+            key: this._inverterVoltageDefinitionKey(entry, index, "l1"),
+            entityId: entry.voltageEntityIdL1 || "",
+            phase: "L1",
+            label: `${label} L1`,
+            displayPrefix: hasMultipleInverters ? `${label} L1` : "L1",
+          },
+          {
+            key: this._inverterVoltageDefinitionKey(entry, index, "l2"),
+            entityId: entry.voltageEntityIdL2 || "",
+            phase: "L2",
+            label: `${label} L2`,
+            displayPrefix: hasMultipleInverters ? `${label} L2` : "L2",
+          },
+          {
+            key: this._inverterVoltageDefinitionKey(entry, index, "l3"),
+            entityId: entry.voltageEntityIdL3 || "",
+            phase: "L3",
+            label: `${label} L3`,
+            displayPrefix: hasMultipleInverters ? `${label} L3` : "L3",
+          },
+        ];
+      });
+    }
     const baseKey = this._metricVoltageEntityKey(metric);
     const aliases = [
       baseKey,
@@ -1421,9 +1479,9 @@ class HaSolarDashboardCard extends HTMLElement {
         metric,
         entityId: definition.entityId,
         volts,
-        label: definition.phase ? `${baseLabel} ${definition.phase}` : baseLabel,
+        label: definition.label || (definition.phase ? `${baseLabel} ${definition.phase}` : baseLabel),
         value,
-        displayValue: definition.phase ? `${definition.phase} ${value}` : value,
+        displayValue: definition.displayPrefix ? `${definition.displayPrefix} ${value}` : definition.phase ? `${definition.phase} ${value}` : value,
       });
     });
     return entries;
@@ -1572,7 +1630,14 @@ class HaSolarDashboardCard extends HTMLElement {
       .flatMap((string) => [string.power_entity, string.energy_entity])
       .filter(Boolean);
     const inverterEntities = normalizeInverters(this.config.inverters || [])
-      .flatMap((inverter) => [inverter.power_entity, inverter.energy_entity])
+      .flatMap((inverter) => [
+        inverter.power_entity,
+        inverter.energy_entity,
+        inverter.voltage_entity,
+        inverter.voltage_entity_l1,
+        inverter.voltage_entity_l2,
+        inverter.voltage_entity_l3,
+      ])
       .filter(Boolean);
     const timestamps = [
       ...Object.values(this.config.entities || {}),

@@ -325,10 +325,21 @@ function createAdvisorEngineMethods({
     });
     if (typeof this._inverterEntries === "function") {
       this._inverterEntries().forEach((entry, index) => {
-        if (entry.base || !entry.powerEntityId) return;
-        add(entry.powerEntityId, entry.label || `Inverter ${index + 1}`, true, {
+        if (entry.base) return;
+        const label = entry.label || `Inverter ${index + 1}`;
+        add(entry.powerEntityId, label, true, {
           key: `inverters.${entry.id || index}`,
           minActiveWatts: 100,
+        });
+        [
+          [entry.voltageEntityId, "voltage", "Voltage"],
+          [entry.voltageEntityIdL1, "voltage_l1", "L1"],
+          [entry.voltageEntityIdL2, "voltage_l2", "L2"],
+          [entry.voltageEntityIdL3, "voltage_l3", "L3"],
+        ].forEach(([entityId, suffix, suffixLabel]) => {
+          add(entityId, `${label} ${suffixLabel}`, true, {
+            key: `inverters.${entry.id || index}.${suffix}`,
+          });
         });
       });
     }
@@ -1511,6 +1522,10 @@ function normalizePowerSourceConfig(raw, index, {
     label: String(source.label || source.name || `${fallbackLabel} ${sequence}`).trim(),
     power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
     energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.kwh || source.energy || source.counter || source.meter || "").trim(),
+    voltage_entity: String(source.voltage_entity || source.voltageEntity || source.voltage || source.voltage_meter || "").trim(),
+    voltage_entity_l1: String(source.voltage_entity_l1 || source.voltageEntityL1 || source.voltage_l1 || source.voltageL1 || "").trim(),
+    voltage_entity_l2: String(source.voltage_entity_l2 || source.voltageEntityL2 || source.voltage_l2 || source.voltageL2 || "").trim(),
+    voltage_entity_l3: String(source.voltage_entity_l3 || source.voltageEntityL3 || source.voltage_l3 || source.voltageL3 || "").trim(),
     max_power_kw: maxPowerKw,
     visible: source.enabled === false ? false : source.visible !== false,
   };
@@ -1526,7 +1541,7 @@ function normalizePowerSourceConfigs(configs, normalizeItem) {
       : [];
   return rawList
     .map((item, index) => normalizeItem(item, index))
-    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.label);
+    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.voltage_entity || item.voltage_entity_l1 || item.voltage_entity_l2 || item.voltage_entity_l3 || item.label);
 }
 
 function normalizePvRoofStringConfig(raw, index) {
@@ -1566,6 +1581,10 @@ function buildPowerSourceEntries({
   maxPowerKw,
   maxPowerW,
   maxPower,
+  voltageEntityId = "",
+  voltageEntityIdL1 = "",
+  voltageEntityIdL2 = "",
+  voltageEntityIdL3 = "",
   baseId = "item_1",
   baseLabel = "Item 1",
   normalizeConfigs = (items) => items,
@@ -1580,6 +1599,10 @@ function buildPowerSourceEntries({
     label: baseLabel,
     powerEntityId: powerEntityId || "",
     energyEntityId: energyEntityId || "",
+    voltageEntityId: voltageEntityId || "",
+    voltageEntityIdL1: voltageEntityIdL1 || "",
+    voltageEntityIdL2: voltageEntityIdL2 || "",
+    voltageEntityIdL3: voltageEntityIdL3 || "",
     maxPowerWatts: baseMaxPower,
     base: true,
     visible: true,
@@ -1591,11 +1614,15 @@ function buildPowerSourceEntries({
       label: config.label || `${fallbackLabel} ${index + 2}`,
       powerEntityId: config.power_entity || "",
       energyEntityId: config.energy_entity || "",
+      voltageEntityId: config.voltage_entity || "",
+      voltageEntityIdL1: config.voltage_entity_l1 || "",
+      voltageEntityIdL2: config.voltage_entity_l2 || "",
+      voltageEntityIdL3: config.voltage_entity_l3 || "",
       maxPowerWatts: parsePowerLimitWatts(config.max_power_kw, "kw"),
       base: false,
       visible: true,
     }))
-    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.maxPowerWatts);
+    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.voltageEntityId || entry.voltageEntityIdL1 || entry.voltageEntityIdL2 || entry.voltageEntityIdL3 || entry.maxPowerWatts);
   return [baseEntry, ...extraEntries];
 }
 
@@ -1629,6 +1656,10 @@ function buildInverterEntries({
   maxPowerKw,
   maxPowerW,
   maxPower,
+  voltageEntityId = "",
+  voltageEntityIdL1 = "",
+  voltageEntityIdL2 = "",
+  voltageEntityIdL3 = "",
 } = {}) {
   return buildPowerSourceEntries({
     configs: inverters,
@@ -1637,6 +1668,10 @@ function buildInverterEntries({
     maxPowerKw,
     maxPowerW,
     maxPower,
+    voltageEntityId,
+    voltageEntityIdL1,
+    voltageEntityIdL2,
+    voltageEntityIdL3,
     baseId: "inverter_1",
     baseLabel: "Inverter 1",
     normalizeConfigs: normalizeInverters,
@@ -3478,6 +3513,10 @@ function createDashboardEditorClass({
       label,
       power_entity: "",
       energy_entity: "",
+      voltage_entity: "",
+      voltage_entity_l1: "",
+      voltage_entity_l2: "",
+      voltage_entity_l3: "",
       max_power_kw: "",
       visible: true,
     });
@@ -3836,6 +3875,7 @@ function createDashboardEditorClass({
 
   _renderEntityInput(metric) {
     if (metric.key === "pv_roof_power") return "";
+    if (metric.key === "inverter_power") return "";
     if (metric.key === "import_export_power") {
       return `
         <label>${this._escape(this._t("editor.importExportSignedEntity", {}, "Signed import/export entity (+/-)"))}
@@ -3965,6 +4005,7 @@ function createDashboardEditorClass({
   }
 
   _renderVoltageEntityInput(metric) {
+    if (metric?.key === "inverter_power") return "";
     const key = this._metricVoltageEntityKey(metric);
     if (!key) return "";
     const selected = this._config?.entities?.[key] || "";
@@ -4101,6 +4142,10 @@ function createDashboardEditorClass({
     const baseEnergyEntity = baseEnergyConfig.entity || baseEnergyConfig.counter || baseEnergyConfig.kwh_entity || baseEnergyConfig.kwh || baseEnergyConfig.meter || "";
     const baseMaxPowerKw = this._maxPowerKwValue(metric);
     const basePowerEntity = this._config?.entities?.inverter_power || "";
+    const baseVoltageEntity = this._config?.entities?.inverter_power_voltage || "";
+    const baseVoltageEntityL1 = this._config?.entities?.inverter_power_voltage_l1 || "";
+    const baseVoltageEntityL2 = this._config?.entities?.inverter_power_voltage_l2 || "";
+    const baseVoltageEntityL3 = this._config?.entities?.inverter_power_voltage_l3 || "";
     const inverterLabel = this._t("metrics.inverter_power", {}, "Inverter");
     const selectedDisplay = normalizeInverterDisplay(this._config.inverter_display);
     const displayOptions = [
@@ -4121,6 +4166,15 @@ function createDashboardEditorClass({
         <label>${this._escape(this._t("editor.inverterEnergyEntity", {}, "Inverter kWh counter entity"))}
           <input data-path="energy_entities.inverter_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_energy_total" value="${this._escape(baseEnergyEntity)}" autocomplete="off" />
         </label>
+        ${this._renderInverterVoltageInputs({
+          pathPrefix: "entities",
+          fieldPrefix: "inverter_power",
+          voltageEntity: baseVoltageEntity,
+          voltageEntityL1: baseVoltageEntityL1,
+          voltageEntityL2: baseVoltageEntityL2,
+          voltageEntityL3: baseVoltageEntityL3,
+          visibilityBaseKey: "inverter_power_voltage",
+        })}
         <label>${this._escape(this._t("editor.maxPowerKw"))}
           <input type="number" min="0" step="0.1" data-path="max_power_kw.inverter_power" placeholder="10.0" value="${this._escape(baseMaxPowerKw)}" />
         </label>
@@ -4133,7 +4187,12 @@ function createDashboardEditorClass({
         : inverter.label;
       const powerEntity = inverter.power_entity || "";
       const energyEntity = inverter.energy_entity || "";
+      const voltageEntity = inverter.voltage_entity || "";
+      const voltageEntityL1 = inverter.voltage_entity_l1 || "";
+      const voltageEntityL2 = inverter.voltage_entity_l2 || "";
+      const voltageEntityL3 = inverter.voltage_entity_l3 || "";
       const maxPowerKw = inverter.max_power_kw ?? "";
+      const visibilityBaseKey = `inverter_${String(inverter.id || `inverter_${index + 2}`).replace(/[^\w-]+/g, "_")}_voltage`;
       return `
         <div class="box-field pv-string-field">
           <div class="kpi-head">
@@ -4149,6 +4208,15 @@ function createDashboardEditorClass({
           <label>${this._escape(this._t("editor.inverterEnergyEntity", {}, "Inverter kWh counter entity"))}
             <input data-path="inverters.${index}.energy_entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_${this._escape(index + 2)}_energy_total" value="${this._escape(energyEntity)}" autocomplete="off" />
           </label>
+          ${this._renderInverterVoltageInputs({
+            pathPrefix: `inverters.${index}`,
+            fieldPrefix: "",
+            voltageEntity,
+            voltageEntityL1,
+            voltageEntityL2,
+            voltageEntityL3,
+            visibilityBaseKey,
+          })}
           <label>${this._escape(this._t("editor.maxPowerKw"))}
             <input type="number" min="0" step="0.1" data-path="inverters.${index}.max_power_kw" placeholder="10.0" value="${this._escape(maxPowerKw)}" />
           </label>
@@ -4169,6 +4237,35 @@ function createDashboardEditorClass({
         </div>
       </details>
     `;
+  }
+
+  _renderInverterVoltageInputs({
+    pathPrefix,
+    fieldPrefix,
+    voltageEntity = "",
+    voltageEntityL1 = "",
+    voltageEntityL2 = "",
+    voltageEntityL3 = "",
+    visibilityBaseKey,
+  } = {}) {
+    const fieldPath = (field) => {
+      if (fieldPrefix) return `${pathPrefix}.${fieldPrefix}_${field}`;
+      return field === "voltage"
+        ? `${pathPrefix}.voltage_entity`
+        : `${pathPrefix}.voltage_entity_${field.slice(-2)}`;
+    };
+    const voltageFields = [
+      ["voltage", this._t("editor.voltageEntity", {}, "Voltage entity"), "sensor.inverter_voltage", voltageEntity, visibilityBaseKey],
+      ["voltage_l1", this._t("editor.voltageEntityL1", {}, "Voltage L1 entity"), "sensor.inverter_voltage_l1", voltageEntityL1, `${visibilityBaseKey}_l1`],
+      ["voltage_l2", this._t("editor.voltageEntityL2", {}, "Voltage L2 entity"), "sensor.inverter_voltage_l2", voltageEntityL2, `${visibilityBaseKey}_l2`],
+      ["voltage_l3", this._t("editor.voltageEntityL3", {}, "Voltage L3 entity"), "sensor.inverter_voltage_l3", voltageEntityL3, `${visibilityBaseKey}_l3`],
+    ];
+    return voltageFields.map(([field, label, placeholder, value, visibilityKey]) => `
+      <label>${this._escape(label)}
+        <input data-path="${this._escape(fieldPath(field))}" list="ha-solar-dashboard-entities" placeholder="${this._escape(placeholder)}" value="${this._escape(value)}" autocomplete="off" />
+      </label>
+      ${this._renderLabelVisibilityOptions(visibilityKey)}
+    `).join("");
   }
 
   _wallboxPhaseEntityKey(metric) {
@@ -4358,6 +4455,7 @@ function createDashboardEditorClass({
   _renderMaxPowerInput(metric) {
     if (metric.unit !== "power") return "";
     if (metric.key === "pv_roof_power") return "";
+    if (metric.key === "inverter_power") return "";
     const value = this._maxPowerKwValue(metric);
     return `
       <label>${this._escape(this._t("editor.maxPowerKw"))}
@@ -8490,6 +8588,16 @@ class HaSolarDashboardCard extends HTMLElement {
     return pvRoofBaseEnergyEntityId(config);
   }
 
+  _inverterBaseVoltageEntityId(phase = "") {
+    const normalizedPhase = String(phase || "").toLowerCase();
+    if (normalizedPhase) return this.config.entities?.[`inverter_power_voltage_${normalizedPhase}`] || "";
+    return [
+      "inverter_power_voltage",
+      "inverter_power_volt",
+      "inverter_power_volts",
+    ].map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
   _inverterEntries() {
     const labelPrefix = this._t("metrics.inverter_power", {}, "Inverter");
     return buildInverterEntries({
@@ -8499,6 +8607,10 @@ class HaSolarDashboardCard extends HTMLElement {
       maxPowerKw: this.config.max_power_kw?.inverter_power,
       maxPowerW: this.config.max_power_w?.inverter_power,
       maxPower: this.config.max_power?.inverter_power,
+      voltageEntityId: this._inverterBaseVoltageEntityId(),
+      voltageEntityIdL1: this._inverterBaseVoltageEntityId("l1"),
+      voltageEntityIdL2: this._inverterBaseVoltageEntityId("l2"),
+      voltageEntityIdL3: this._inverterBaseVoltageEntityId("l3"),
     }).map((entry, index) => {
       const fallbackLabel = `${labelPrefix} ${index + 1}`;
       const defaultEnglishLabel = `Inverter ${index + 1}`;
@@ -8507,6 +8619,12 @@ class HaSolarDashboardCard extends HTMLElement {
         label: !entry.label || entry.label === defaultEnglishLabel ? fallbackLabel : entry.label,
       };
     });
+  }
+
+  _inverterVoltageDefinitionKey(entry, index, phase = "") {
+    if (entry?.base) return phase ? `inverter_power_voltage_${phase}` : "inverter_power_voltage";
+    const id = String(entry?.id || `inverter_${index + 1}`).replace(/[^\w-]+/g, "_");
+    return phase ? `inverter_${id}_voltage_${phase}` : `inverter_${id}_voltage`;
   }
 
   _hasAdditionalInverters() {
@@ -8713,6 +8831,44 @@ class HaSolarDashboardCard extends HTMLElement {
       }];
     }
     const key = metricSourceKey(metric);
+    if (key === "inverter_power") {
+      const inverterEntries = this._inverterEntries();
+      const hasMultipleInverters = inverterEntries.some((entry) => !entry.base && (entry.powerEntityId || entry.energyEntityId || entry.voltageEntityId || entry.voltageEntityIdL1 || entry.voltageEntityIdL2 || entry.voltageEntityIdL3));
+      return inverterEntries.flatMap((entry, index) => {
+        const label = entry.label || `${this._t("metrics.inverter_power", {}, "Inverter")} ${index + 1}`;
+        const displayPrefix = hasMultipleInverters ? label : "";
+        return [
+          {
+            key: this._inverterVoltageDefinitionKey(entry, index),
+            entityId: entry.voltageEntityId || "",
+            phase: "",
+            label,
+            displayPrefix,
+          },
+          {
+            key: this._inverterVoltageDefinitionKey(entry, index, "l1"),
+            entityId: entry.voltageEntityIdL1 || "",
+            phase: "L1",
+            label: `${label} L1`,
+            displayPrefix: hasMultipleInverters ? `${label} L1` : "L1",
+          },
+          {
+            key: this._inverterVoltageDefinitionKey(entry, index, "l2"),
+            entityId: entry.voltageEntityIdL2 || "",
+            phase: "L2",
+            label: `${label} L2`,
+            displayPrefix: hasMultipleInverters ? `${label} L2` : "L2",
+          },
+          {
+            key: this._inverterVoltageDefinitionKey(entry, index, "l3"),
+            entityId: entry.voltageEntityIdL3 || "",
+            phase: "L3",
+            label: `${label} L3`,
+            displayPrefix: hasMultipleInverters ? `${label} L3` : "L3",
+          },
+        ];
+      });
+    }
     const baseKey = this._metricVoltageEntityKey(metric);
     const aliases = [
       baseKey,
@@ -8755,9 +8911,9 @@ class HaSolarDashboardCard extends HTMLElement {
         metric,
         entityId: definition.entityId,
         volts,
-        label: definition.phase ? `${baseLabel} ${definition.phase}` : baseLabel,
+        label: definition.label || (definition.phase ? `${baseLabel} ${definition.phase}` : baseLabel),
         value,
-        displayValue: definition.phase ? `${definition.phase} ${value}` : value,
+        displayValue: definition.displayPrefix ? `${definition.displayPrefix} ${value}` : definition.phase ? `${definition.phase} ${value}` : value,
       });
     });
     return entries;
@@ -8906,7 +9062,14 @@ class HaSolarDashboardCard extends HTMLElement {
       .flatMap((string) => [string.power_entity, string.energy_entity])
       .filter(Boolean);
     const inverterEntities = normalizeInverters(this.config.inverters || [])
-      .flatMap((inverter) => [inverter.power_entity, inverter.energy_entity])
+      .flatMap((inverter) => [
+        inverter.power_entity,
+        inverter.energy_entity,
+        inverter.voltage_entity,
+        inverter.voltage_entity_l1,
+        inverter.voltage_entity_l2,
+        inverter.voltage_entity_l3,
+      ])
       .filter(Boolean);
     const timestamps = [
       ...Object.values(this.config.entities || {}),

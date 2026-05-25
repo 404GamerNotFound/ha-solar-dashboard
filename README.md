@@ -293,7 +293,7 @@ large_consumers:
 - `entities.battery_cycles_today` (entity id, optional; daily/full cycles used by the Advisor Dashboard to warn about frequent battery cycling)
 - `entities.inverter_power` (entity id)
 - `inverter_display` (`sum`, `values`, or `dominant`, default: `sum`; controls how multiple inverters are shown on the inverter HUD/tile)
-- `inverters` (array, optional; additional inverters after the existing `entities.inverter_power` / `energy_entities.inverter_power.entity` / `max_power_kw.inverter_power` base inverter; each item supports `label`, `power_entity`, `energy_entity`, `max_power_kw`, and `visible`)
+- `inverters` (array, optional; additional inverters after the existing `entities.inverter_power` / `energy_entities.inverter_power.entity` / `max_power_kw.inverter_power` base inverter; each item supports `label`, `power_entity`, `energy_entity`, `voltage_entity`, `voltage_entity_l1`, `voltage_entity_l2`, `voltage_entity_l3`, `max_power_kw`, and `visible`)
 - `entities.wallbox_power` (entity id)
 - `entities.wallbox_phase` (entity id, optional; state can be `Auto`, `1`, `2`, or `3` and is shown as a compact phase badge on the Wallbox HUD and tile)
 - `entities.wallbox_soc` (entity id, optional; vehicle battery SoC shown as a compact `Auto 78%` badge next to the Wallbox phase badge)

@@ -232,10 +232,21 @@ export function createAdvisorEngineMethods({
     });
     if (typeof this._inverterEntries === "function") {
       this._inverterEntries().forEach((entry, index) => {
-        if (entry.base || !entry.powerEntityId) return;
-        add(entry.powerEntityId, entry.label || `Inverter ${index + 1}`, true, {
+        if (entry.base) return;
+        const label = entry.label || `Inverter ${index + 1}`;
+        add(entry.powerEntityId, label, true, {
           key: `inverters.${entry.id || index}`,
           minActiveWatts: 100,
+        });
+        [
+          [entry.voltageEntityId, "voltage", "Voltage"],
+          [entry.voltageEntityIdL1, "voltage_l1", "L1"],
+          [entry.voltageEntityIdL2, "voltage_l2", "L2"],
+          [entry.voltageEntityIdL3, "voltage_l3", "L3"],
+        ].forEach(([entityId, suffix, suffixLabel]) => {
+          add(entityId, `${label} ${suffixLabel}`, true, {
+            key: `inverters.${entry.id || index}.${suffix}`,
+          });
         });
       });
     }

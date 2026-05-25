@@ -67,6 +67,10 @@ function normalizePowerSourceConfig(raw, index, {
     label: String(source.label || source.name || `${fallbackLabel} ${sequence}`).trim(),
     power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
     energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.kwh || source.energy || source.counter || source.meter || "").trim(),
+    voltage_entity: String(source.voltage_entity || source.voltageEntity || source.voltage || source.voltage_meter || "").trim(),
+    voltage_entity_l1: String(source.voltage_entity_l1 || source.voltageEntityL1 || source.voltage_l1 || source.voltageL1 || "").trim(),
+    voltage_entity_l2: String(source.voltage_entity_l2 || source.voltageEntityL2 || source.voltage_l2 || source.voltageL2 || "").trim(),
+    voltage_entity_l3: String(source.voltage_entity_l3 || source.voltageEntityL3 || source.voltage_l3 || source.voltageL3 || "").trim(),
     max_power_kw: maxPowerKw,
     visible: source.enabled === false ? false : source.visible !== false,
   };
@@ -82,7 +86,7 @@ function normalizePowerSourceConfigs(configs, normalizeItem) {
       : [];
   return rawList
     .map((item, index) => normalizeItem(item, index))
-    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.label);
+    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.voltage_entity || item.voltage_entity_l1 || item.voltage_entity_l2 || item.voltage_entity_l3 || item.label);
 }
 
 function normalizePvRoofStringConfig(raw, index) {
@@ -122,6 +126,10 @@ function buildPowerSourceEntries({
   maxPowerKw,
   maxPowerW,
   maxPower,
+  voltageEntityId = "",
+  voltageEntityIdL1 = "",
+  voltageEntityIdL2 = "",
+  voltageEntityIdL3 = "",
   baseId = "item_1",
   baseLabel = "Item 1",
   normalizeConfigs = (items) => items,
@@ -136,6 +144,10 @@ function buildPowerSourceEntries({
     label: baseLabel,
     powerEntityId: powerEntityId || "",
     energyEntityId: energyEntityId || "",
+    voltageEntityId: voltageEntityId || "",
+    voltageEntityIdL1: voltageEntityIdL1 || "",
+    voltageEntityIdL2: voltageEntityIdL2 || "",
+    voltageEntityIdL3: voltageEntityIdL3 || "",
     maxPowerWatts: baseMaxPower,
     base: true,
     visible: true,
@@ -147,11 +159,15 @@ function buildPowerSourceEntries({
       label: config.label || `${fallbackLabel} ${index + 2}`,
       powerEntityId: config.power_entity || "",
       energyEntityId: config.energy_entity || "",
+      voltageEntityId: config.voltage_entity || "",
+      voltageEntityIdL1: config.voltage_entity_l1 || "",
+      voltageEntityIdL2: config.voltage_entity_l2 || "",
+      voltageEntityIdL3: config.voltage_entity_l3 || "",
       maxPowerWatts: parsePowerLimitWatts(config.max_power_kw, "kw"),
       base: false,
       visible: true,
     }))
-    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.maxPowerWatts);
+    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.voltageEntityId || entry.voltageEntityIdL1 || entry.voltageEntityIdL2 || entry.voltageEntityIdL3 || entry.maxPowerWatts);
   return [baseEntry, ...extraEntries];
 }
 
@@ -185,6 +201,10 @@ export function buildInverterEntries({
   maxPowerKw,
   maxPowerW,
   maxPower,
+  voltageEntityId = "",
+  voltageEntityIdL1 = "",
+  voltageEntityIdL2 = "",
+  voltageEntityIdL3 = "",
 } = {}) {
   return buildPowerSourceEntries({
     configs: inverters,
@@ -193,6 +213,10 @@ export function buildInverterEntries({
     maxPowerKw,
     maxPowerW,
     maxPower,
+    voltageEntityId,
+    voltageEntityIdL1,
+    voltageEntityIdL2,
+    voltageEntityIdL3,
     baseId: "inverter_1",
     baseLabel: "Inverter 1",
     normalizeConfigs: normalizeInverters,

@@ -252,12 +252,14 @@ function createAdvisorEngineMethods({
       .map((metric) => {
         const warning = this._metricWarning(metric);
         if (!warning) return undefined;
+        const sensorDiagnostic = ["missing", "unavailable", "offline"].includes(warning.type);
         return {
           type: "warning",
           priority: 100,
           title: this._metricLabel(metric, this._currentVariant),
           text: warning.label,
           diagnostic: true,
+          diagnosticKind: sensorDiagnostic ? "sensor" : warning.type,
         };
       })
       .filter(Boolean);
@@ -392,6 +394,7 @@ function createAdvisorEngineMethods({
         value: duration,
         reason: this._t("advisor.reasonSensor", {}, "A configured entity is stale, unavailable, or inconsistent."),
         diagnostic: true,
+        diagnosticKind: "sensor",
       }
       : {
         id: `sensor-stale:${stale.map((item) => item.entityId).join("|")}`,
@@ -403,6 +406,7 @@ function createAdvisorEngineMethods({
         reason: this._t("advisor.reasonSensor", {}, "A configured entity is stale, unavailable, or inconsistent."),
         details,
         diagnostic: true,
+        diagnosticKind: "sensor",
       };
   },
 
@@ -542,6 +546,7 @@ function createAdvisorEngineMethods({
       add(voltageAlert.type, voltageAlert.type === "critical" ? 99 : 94, this._t("advisor.grid", {}, "Grid"), voltageAlert.label, voltageAlert.value, {
         id: `voltage:${voltageAlert.entityId}`,
         diagnostic: true,
+        diagnosticKind: "grid-voltage",
         reason: this._t("advisor.reasonSensor", {}, "A configured entity is stale, unavailable, or inconsistent."),
         signals: this._advisorSignalDetails(snapshot, ["grid", "pv", "battery", "price"]),
         details: [`${voltageAlert.label}: ${voltageAlert.value}`, `${voltageAlert.metric ? this._metricLabel(voltageAlert.metric, this._currentVariant) : voltageAlert.entityId}: ${voltageAlert.entityId}`],
@@ -560,9 +565,11 @@ function createAdvisorEngineMethods({
       add("setup", 38, this._t("advisor.consumption", {}, "Load"), this._t("advisor.configureConsumption", {}, "Add a house consumption sensor to improve autarky and load analysis."));
     }
 
-    if (items.some((item) => item.type === "warning")) {
+    if (items.some((item) => item.type === "warning" && item.diagnosticKind === "sensor")) {
       add("warning", 95, this._t("advisor.status", {}, "Status"), this._t("advisor.checkSensors", {}, "Check unavailable or missing sensors so the energy balance stays reliable."), "", {
         id: "advisor:sensor-check",
+        diagnostic: true,
+        diagnosticKind: "sensor",
         reason: this._t("advisor.reasonSensor", {}, "A configured entity is stale, unavailable, or inconsistent."),
         signals: this._advisorSignalDetails(snapshot, ["pv", "grid", "battery"]),
       });

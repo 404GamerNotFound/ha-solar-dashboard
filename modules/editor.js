@@ -321,6 +321,7 @@ export function createDashboardEditorClass({
       "entities.battery_level": "sensor.battery_level",
       "entities.inverter_power": "sensor.wechselrichter_power",
       "entities.wallbox_power": "sensor.wallbox_power",
+      "entities.water_meter": "sensor.water_meter",
       "entities.pv_total_power": "sensor.pv_total_power",
       "entities.import_export_power": "sensor.grid_power",
     };
@@ -396,10 +397,18 @@ export function createDashboardEditorClass({
       include: [{ terms: ["voltage", "volt", "spannung"], weight: 28 }],
       exclude: ["power", "leistung", "energy", "kwh", "soc", "temperature", "temperatur"],
     };
+    const volumeTarget = {
+      domains: ["sensor"],
+      deviceClasses: ["water"],
+      units: ["m³", "m3", "l"],
+      include: [{ terms: ["water", "wasser", "meter", "counter", "zaehler", "zahler"], weight: 24 }],
+      exclude: ["power", "leistung", "energy", "kwh", "gas", "strom", "grid", "netz"],
+    };
     const pvTerms = { terms: ["pv", "solar", "photovoltaic", "photovoltaik"], weight: 36 };
     const gridTerms = { terms: ["grid", "netz", "meter", "utility", "power meter", "smart meter"], weight: 28 };
     const wallboxTerms = { terms: ["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], weight: 34 };
     const batteryTerms = { terms: ["battery", "batterie", "speicher", "akku"], weight: 34 };
+    const waterTerms = { terms: ["water", "wasser", "water meter", "wasserzaehler", "wasserzahler"], weight: 38 };
 
     return [
       { path: "weather_entity", domains: ["weather"], include: [{ terms: ["weather", "wetter", "home", "haus"], weight: 14 }], threshold: 35 },
@@ -454,6 +463,7 @@ export function createDashboardEditorClass({
       { path: "entities.house_consumption_power", ...powerTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...powerTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 56 },
       { path: "entities.house_consumption_power_voltage", ...voltageTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...voltageTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox", ...voltageTarget.exclude], threshold: 58 },
       { path: "energy_entities.house_consumption_power.entity", ...energyTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], block: ["power", "leistung"], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 32 }, ...energyTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 58 },
+      { path: "entities.water_meter", ...volumeTarget, required: [["water", "wasser", "water meter", "wasserzaehler", "wasserzahler"]], include: [waterTerms, { terms: ["meter", "counter", "zaehler", "zahler", "total", "gesamt"], weight: 22 }, ...volumeTarget.include], threshold: 54 },
     ];
   }
 
@@ -526,6 +536,7 @@ export function createDashboardEditorClass({
       if (onePath && hasCurrent && String(current) === suggestion.entityId) return;
       this._setPath(next, suggestion.path.split("."), suggestion.entityId);
       if (suggestion.path.startsWith("entities.wallbox2_")) this._setPath(next, ["visible_boxes", "wallbox2_power"], true);
+      if (suggestion.path === "entities.water_meter") this._setPath(next, ["visible_boxes", "water_meter"], true);
       if (suggestion.path === "entities.import_export_power" || suggestion.path === "entities.import_power" || suggestion.path === "entities.export_power") {
         this._setPath(next, ["visible_boxes", "import_export_power"], true);
         next.show_grid_status_tile = true;
@@ -947,6 +958,7 @@ export function createDashboardEditorClass({
     const metricUnit = this._config?.units?.[metric.key];
     if (metricUnit !== undefined && String(metricUnit).trim() !== "") return String(metricUnit);
     if (metric.unit === "power") return String(this._config?.units?.power || "auto");
+    if (metric.unit === "volume") return String(this._config?.units?.volume || "m³");
     return String(this._config?.units?.[metric.unit] || "");
   }
 
@@ -959,7 +971,13 @@ export function createDashboardEditorClass({
         ["kW", "kW"],
         ["kWh", "kWh"],
       ]
-      : [["%", "%"]];
+      : metric.unit === "volume"
+        ? [
+          ["m³", "m³"],
+          ["auto", this._t("editor.auto")],
+          ["L", "L"],
+        ]
+        : [["%", "%"]];
     const hasSelected = baseOptions.some(([value]) => value.toLowerCase() === selected.toLowerCase());
     const options = [
       ...(hasSelected || !selected ? [] : [[selected, selected]]),

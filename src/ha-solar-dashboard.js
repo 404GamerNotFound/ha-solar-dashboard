@@ -19,12 +19,15 @@ import {
   formatPowerValue,
   formatRemainingChargeTimeValue,
   formatValue,
+  formatVolumeValue,
   formatVoltageValue,
   formatWithUnit,
   isEnergyUnit,
   isPowerUnit,
+  isVolumeUnit,
   normalizeUnit,
   numericState,
+  valueAsCubicMeters,
   valueAsKwh,
   valueAsVolts,
   valueAsWatts,
@@ -264,6 +267,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 49, top: 66 },
       inverter_power: { left: 53, top: 72 },
       wallbox_power: { left: 23, top: 57 },
+      water_meter: { left: 84, top: 72 },
       import_export_power: { left: 82, top: 83 },
     },
   },
@@ -278,6 +282,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 49, top: 73 },
       inverter_power: { left: 37, top: 56 },
       wallbox_power: { left: 27, top: 66 },
+      water_meter: { left: 84, top: 72 },
       import_export_power: { left: 82, top: 82 },
     },
   },
@@ -292,6 +297,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 33, top: 61 },
       inverter_power: { left: 34, top: 51 },
       wallbox_power: { left: 44, top: 66 },
+      water_meter: { left: 84, top: 72 },
       import_export_power: { left: 82, top: 82 },
     },
   },
@@ -306,6 +312,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 35, top: 65 },
       inverter_power: { left: 35, top: 72 },
       wallbox_power: { left: 21, top: 59 },
+      water_meter: { left: 84, top: 72 },
       import_export_power: { left: 82, top: 82 },
     },
   },
@@ -318,6 +325,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 42, top: 70 },
       inverter_power: { left: 52, top: 58 },
       pv_total_power: { left: 62, top: 58 },
+      water_meter: { left: 84, top: 72 },
       import_export_power: { left: 82, top: 82 },
     },
     visible_boxes: {
@@ -348,6 +356,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 40, top: 66 },
       inverter_power: { left: 54, top: 69 },
       wallbox_power: { left: 25, top: 59 },
+      water_meter: { left: 84, top: 72 },
       import_export_power: { left: 82, top: 82 },
     },
   },
@@ -362,6 +371,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 43, top: 71 },
       inverter_power: { left: 58, top: 58 },
       wallbox_power: { left: 25, top: 57 },
+      water_meter: { left: 84, top: 72 },
       import_export_power: { left: 82, top: 82 },
     },
   },
@@ -376,6 +386,7 @@ const HOUSE_VARIANTS = {
       battery_level: { left: 41, top: 66 },
       inverter_power: { left: 55, top: 56 },
       wallbox_power: { left: 25, top: 60 },
+      water_meter: { left: 84, top: 72 },
       import_export_power: { left: 82, top: 82 },
     },
   },
@@ -555,6 +566,12 @@ class HaSolarDashboardCard extends HTMLElement {
       dynamic_tile_colors: true,
       daylight_entity: "sun.sun",
       weather_entity: "",
+      units: {
+        power: "auto",
+        battery: "%",
+        volume: "m³",
+        water_meter: "m³",
+      },
       labels: {},
       label_visibility: {},
       energy_entities: {},
@@ -573,6 +590,7 @@ class HaSolarDashboardCard extends HTMLElement {
         inverter_power: true,
         wallbox_power: true,
         wallbox2_power: false,
+        water_meter: false,
         import_export_power: true,
       },
       entities: {
@@ -618,6 +636,7 @@ class HaSolarDashboardCard extends HTMLElement {
         wallbox2_connected: "",
         wallbox2_charging_enabled: "",
         wallbox2_remaining_time: "",
+        water_meter: "",
         electricity_price: "",
         pv_total_power: "sensor.pv_total_power",
         pv_total_power_voltage: "",
@@ -686,7 +705,7 @@ class HaSolarDashboardCard extends HTMLElement {
       power_display_mode: "auto_kw",
       power_decimals: 2,
       energy_range: energyRange,
-      units: { power: "auto", battery: "%" },
+      units: { power: "auto", battery: "%", volume: "m³" },
       entities: {},
       positions: {},
       visible_boxes: {},
@@ -706,6 +725,7 @@ class HaSolarDashboardCard extends HTMLElement {
       units: {
         power: "auto",
         battery: "%",
+        volume: "m³",
         ...(config.units || {}),
       },
       entities: {
@@ -867,16 +887,27 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricEnergySource(metric, range = this._currentEnergyRange()) {
-    if (!metric || metric.overlay || metric.customKpi || metric.gridStatus || metric.unit !== "power") return "";
+    if (!metric || metric.overlay || metric.customKpi || metric.gridStatus) return "";
     const normalizedRange = this._normalizeEnergyRange(range);
     if (!normalizedRange || normalizedRange === "live") return "";
+    if (metric.unit === "volume") {
+      const entityId = this.config.entities?.[metricSourceKey(metric)] || "";
+      return entityId ? {
+        entityId,
+        mode: normalizedRange === "total" ? "direct" : "counter",
+        range: normalizedRange,
+        kind: "volume",
+        defaultUnit: this._volumeTargetUnit(metric),
+      } : "";
+    }
+    if (metric.unit !== "power") return "";
     if (metric.largeConsumer) {
       const counterEntityId = this._largeConsumerEnergyEntityId(metric);
-      return counterEntityId ? { entityId: counterEntityId, mode: normalizedRange === "total" ? "direct" : "counter", range: normalizedRange } : "";
+      return counterEntityId ? { entityId: counterEntityId, mode: normalizedRange === "total" ? "direct" : "counter", range: normalizedRange, kind: "energy", defaultUnit: "kWh" } : "";
     }
     const config = this._energyEntityConfig(metric.key);
     const counterEntityId = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
-    if (counterEntityId) return { entityId: counterEntityId, mode: normalizedRange === "total" ? "direct" : "counter", range: normalizedRange };
+    if (counterEntityId) return { entityId: counterEntityId, mode: normalizedRange === "total" ? "direct" : "counter", range: normalizedRange, kind: "energy", defaultUnit: "kWh" };
     return "";
   }
 
@@ -885,7 +916,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _isMetricEnergyMode(metric) {
-    return this._currentEnergyRange() !== "live" && Boolean(this._metricEnergyEntityId(metric));
+    return metric?.unit === "power" && this._currentEnergyRange() !== "live" && Boolean(this._metricEnergyEntityId(metric));
   }
 
   _getEntityValue(entityId, fallback = "0") {
@@ -988,7 +1019,7 @@ class HaSolarDashboardCard extends HTMLElement {
       return this._largeConsumerPowerEntityId(metric);
     }
     if (isImportExportMetric(metric)) return this._gridPrimaryEntityId();
-    if (!metric.gridStatus && this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
+    if (!metric.gridStatus && this._currentEnergyRange() !== "live" && ["power", "volume"].includes(metric.unit)) return this._metricEnergyEntityId(metric);
     return this.config.entities?.[metricSourceKey(metric)] || "";
   }
 
@@ -1121,12 +1152,16 @@ class HaSolarDashboardCard extends HTMLElement {
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") {
       return this._formatEnergyRangeReading(metric);
     }
+    if (this._currentEnergyRange() !== "live" && metric.unit === "volume") {
+      return this._formatEnergyRangeReading(metric);
+    }
     const entityId = this._metricEntityId(metric);
     const fallbackValue = entityId ? undefined : metric.largeConsumer ? "" : "0";
     const value = this._getEntityValue(entityId, fallbackValue);
     const unit = this._unitForMetric(metric);
     const entityUnit = this._getEntityUnit(entityId);
     if (metric.unit === "power") return this._formatPowerValue(value, unit, entityUnit);
+    if (metric.unit === "volume") return this._formatVolumeValue(value, entityUnit, this._volumeTargetUnit(metric));
     return this._formatWithUnit(value, unit);
   }
 
@@ -1535,8 +1570,16 @@ class HaSolarDashboardCard extends HTMLElement {
     return isPowerUnit(unit);
   }
 
+  _isVolumeUnit(unit) {
+    return isVolumeUnit(unit);
+  }
+
   _valueAsWatts(value, unit) {
     return valueAsWatts(value, unit);
+  }
+
+  _valueAsCubicMeters(value, unit) {
+    return valueAsCubicMeters(value, unit);
   }
 
   _valueAsVolts(value, unit) {
@@ -1553,6 +1596,15 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _formatEnergyValue(rawValue, entityUnit, targetUnit = "kWh") {
     return formatEnergyValue(rawValue, entityUnit, targetUnit);
+  }
+
+  _volumeTargetUnit(metric) {
+    const unit = this._unitForMetric(metric);
+    return unit || "m³";
+  }
+
+  _formatVolumeValue(rawValue, entityUnit, targetUnit = "m³") {
+    return formatVolumeValue(rawValue, entityUnit, targetUnit);
   }
 
   _energyRangeMinutes(range) {
@@ -1595,36 +1647,42 @@ class HaSolarDashboardCard extends HTMLElement {
     this._updateReadings();
   }
 
-  _energyRangeCacheKey(entityId, range) {
+  _energyRangeCacheKey(entityId, range, kind = "energy") {
     const bucket = this._cacheBucket(this._cacheBucketMsForMinutes(this._energyRangeMinutes(range)));
-    return `${entityId}|${range}|${bucket}`;
+    return `${entityId}|${range}|${kind}|${bucket}`;
   }
 
   _energyRangeConsumptionInfoForSource(source) {
     const range = this._normalizeEnergyRange(source?.range) || this._currentEnergyRange();
     if (!source?.entityId) return undefined;
+    const kind = source.kind || "energy";
+    const defaultUnit = source.defaultUnit || (kind === "volume" ? "m³" : "kWh");
     if (source.mode === "direct" || range === "total") {
+      const entityUnit = this._getEntityUnit(source.entityId) || defaultUnit;
       const value = this._getEntityValue(source.entityId, undefined);
-      const amount = this._valueAsKwh(value, this._getEntityUnit(source.entityId));
+      const amount = kind === "volume"
+        ? numericState(value)
+        : this._valueAsKwh(value, entityUnit);
       return {
         amount,
-        unit: this._getEntityUnit(source.entityId) || "kWh",
+        unit: kind === "volume" ? entityUnit : "kWh",
         entityId: source.entityId,
         mode: "direct",
+        kind,
       };
     }
 
     const minutes = this._energyRangeMinutes(range);
     if (!Number.isFinite(minutes)) return undefined;
     if (this._hass?.states && !this._getEntity(source.entityId)) {
-      return { error: true, amount: undefined, unit: "kWh", entityId: source.entityId, mode: "counter" };
+      return { error: true, amount: undefined, unit: defaultUnit, entityId: source.entityId, mode: "counter", kind };
     }
 
-    const key = this._energyRangeCacheKey(source.entityId, range);
+    const key = this._energyRangeCacheKey(source.entityId, range, kind);
     const cached = this._energyRangeCache?.get(key);
     if (cached) return cached;
-    this._requestEnergyRangeConsumption(source.entityId, minutes, key);
-    return { loading: true, amount: undefined, unit: this._getEntityUnit(source.entityId) || "kWh", entityId: source.entityId, mode: "counter" };
+    this._requestEnergyRangeConsumption(source.entityId, minutes, key, source);
+    return { loading: true, amount: undefined, unit: this._getEntityUnit(source.entityId) || defaultUnit, entityId: source.entityId, mode: "counter", kind };
   }
 
   _energyRangeConsumptionInfo(metric) {
@@ -1632,18 +1690,23 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._energyRangeConsumptionInfoForSource(this._metricEnergySource(metric, range));
   }
 
-  _requestEnergyRangeConsumption(entityId, minutes, key) {
+  _requestEnergyRangeConsumption(entityId, minutes, key, source = {}) {
     if (!this._hass?.callApi || this._energyRangeLoading?.has(key)) return;
     const requestToken = this._asyncRequestToken || 0;
+    const kind = source.kind || "energy";
+    const defaultUnit = source.defaultUnit || (kind === "volume" ? "m³" : "kWh");
     this._energyRangeLoading.add(key);
-    this._loadCounterConsumption(entityId, minutes, "kWh")
+    this._loadCounterConsumption(entityId, minutes, defaultUnit)
       .then((info) => {
         if (!this._isActiveRequest(requestToken)) return;
-        this._setCacheEntry(this._energyRangeCache, key, { ...info, entityId, mode: "counter" }, MAX_COUNTER_CACHE_ENTRIES);
+        const normalizedInfo = kind === "energy"
+          ? { ...info, amount: this._valueAsKwh(info.amount, info.unit), unit: "kWh" }
+          : info;
+        this._setCacheEntry(this._energyRangeCache, key, { ...normalizedInfo, entityId, mode: "counter", kind }, MAX_COUNTER_CACHE_ENTRIES);
       })
       .catch(() => {
         if (!this._isActiveRequest(requestToken)) return;
-        this._setCacheEntry(this._energyRangeCache, key, { error: true, amount: undefined, unit: this._getEntityUnit(entityId) || "kWh", entityId, mode: "counter" }, MAX_COUNTER_CACHE_ENTRIES);
+        this._setCacheEntry(this._energyRangeCache, key, { error: true, amount: undefined, unit: this._getEntityUnit(entityId) || defaultUnit, entityId, mode: "counter", kind }, MAX_COUNTER_CACHE_ENTRIES);
       })
       .finally(() => {
         if (!this._isActiveRequest(requestToken)) return;
@@ -1657,6 +1720,9 @@ class HaSolarDashboardCard extends HTMLElement {
     if (!info) return "—";
     if (info.loading) return "…";
     if (info.error || !Number.isFinite(info.amount)) return "—";
+    if (info.kind === "volume" || metric.unit === "volume") {
+      return this._formatVolumeValue(info.amount, info.unit || "m³", this._volumeTargetUnit(metric));
+    }
     return this._formatEnergyValue(info.amount, "kWh", "kWh");
   }
 
@@ -1706,12 +1772,18 @@ class HaSolarDashboardCard extends HTMLElement {
       const info = this._energyRangeConsumptionInfo(metric);
       return Number.isFinite(info?.amount) ? info.amount : undefined;
     }
+    if (this._currentEnergyRange() !== "live" && metric.unit === "volume") {
+      const info = this._energyRangeConsumptionInfo(metric);
+      const cubicMeters = this._valueAsCubicMeters(info?.amount, info?.unit || "m³");
+      return Number.isFinite(cubicMeters) ? cubicMeters : undefined;
+    }
     const entityId = this._metricEntityId(metric);
     const value = this._getEntityValue(entityId, undefined);
     if (value === undefined || value === null || value === "unknown" || value === "unavailable") return undefined;
     const entityUnit = this._getEntityUnit(entityId);
     if (this._isMetricEnergyMode(metric)) return this._valueAsKwh(value, entityUnit);
     if (metric.unit === "power") return this._valueAsWatts(value, entityUnit);
+    if (metric.unit === "volume") return this._valueAsCubicMeters(value, entityUnit);
     const number = numericState(value);
     return Number.isFinite(number) ? number : undefined;
   }
@@ -2560,6 +2632,7 @@ class HaSolarDashboardCard extends HTMLElement {
       formatValue: (value) => this._formatValue(value),
       isMetricEnergyMode: (item) => this._isMetricEnergyMode(item),
       valueAsKwh: (value, unit) => this._valueAsKwh(value, unit),
+      valueAsCubicMeters: (value, unit) => this._valueAsCubicMeters(value, unit),
       valueAsWatts: (value, unit) => this._valueAsWatts(value, unit),
       numericState,
       isPowerUnit: (unit) => this._isPowerUnit(unit),
@@ -2577,6 +2650,7 @@ class HaSolarDashboardCard extends HTMLElement {
       const unit = this._getEntityUnit(this._metricEntityId(metric)) || "m³";
       return `${Number(value).toFixed(2)} ${unit}`;
     }
+    if (metric.unit === "volume") return this._formatVolumeValue(value, "m³", this._volumeTargetUnit(metric));
     if (metric.unit === "power") return this._formatPowerValue(value, this._unitForMetric(metric), "W");
     if (metric.key === "battery_level") return this._formatWithUnit(Math.round(value), this._unitForMetric(metric));
     const unit = this._unitForMetric(metric);

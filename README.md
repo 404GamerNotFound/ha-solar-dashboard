@@ -30,6 +30,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
   - Optional second EV charger power
   - PV Total (summary tile below the image)
   - Optional house consumption power
+  - Optional water meter in `m³`
   - Optional import/export power
 - Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
 - Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
@@ -57,7 +58,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Free X/Y positioning for every overlay box
 - Localized card and editor labels based on the Home Assistant language (`en`, `de`, `es`, `fr`, `pl`)
 - Registered for Home Assistant's card picker with a live preview
-- Built-in setup wizard in the card editor that detects likely Home Assistant entities for PV, battery, inverter, wallbox, grid import/export, house consumption, weather, and kWh counters
+- Built-in setup wizard in the card editor that detects likely Home Assistant entities for PV, battery, inverter, wallbox, grid import/export, house consumption, water, weather, and kWh counters
 - Dark glass style matching the provided design
 
 ## Installation (HACS)
@@ -119,6 +120,7 @@ entities:
   wallbox2_remaining_time: sensor.wallbox_2_verbleibende_ladezeit
   pv_total_power: sensor.pv_gesamt_leistung
   house_consumption_power: sensor.hausverbrauch_leistung
+  water_meter: sensor.wasserzaehler
   # Option A: one signed entity; positive = import, negative = export
   import_export_power: sensor.netzbezug_einspeisung
   # Option B: separate entities; used when the signed entity is empty
@@ -127,10 +129,12 @@ entities:
 visible_boxes:
   wallbox_power: false
   wallbox2_power: false
+  water_meter: true
 labels:
   pv_roof_power: PV Dach
   battery_level: Speicher
   wallbox_power: Wallbox Garage
+  water_meter: Water
   import_export_power: Grid
   import_export_import: Import
   import_export_export: Export
@@ -164,12 +168,16 @@ positions:
   pv_roof_power:
     left: 64
     top: 28
+  water_meter:
+    left: 84
+    top: 72
 weather_entity: weather.home
 image: /local/solar/house_night.png
 day_image: /local/solar/house_day.png
 units:
   power: auto
   battery: "%"
+  water_meter: m³
 power_display_mode: auto_kw
 power_decimals: 2
 grid_neutral_threshold: 25
@@ -265,7 +273,7 @@ large_consumers:
 - `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
 - `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
-- `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, `wallbox2_power`, and `import_export_power`)
+- `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, `wallbox2_power`, `water_meter`, and `import_export_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
 - `labels.<entity_key>` (string, optional; custom label for HUD boxes and summary tiles, for example `PV Dach`, `Speicher` or `Wallbox Garage`)
 - `labels.import_export_import` / `labels.import_export_export` / `labels.import_export_neutral` (strings, optional; custom direction labels for the import/export display, for example `Grid import`, `Feed-in`, and `Self-sufficient`)
@@ -275,6 +283,7 @@ large_consumers:
 - `entities.pv_shed_power` (entity id)
 - `entities.pv_total_power` (entity id; shown as `PV Total` in the summary boxes below the image)
 - `entities.house_consumption_power` (entity id, optional; shown as `Consumption` in the summary boxes below the image)
+- `entities.water_meter` (entity id, optional; cumulative water meter shown as a HUD box and summary tile in `m³`; when the value-range selector is enabled, `1h`, `24h`, `1 month`, and `1 year` show consumption from Home Assistant history, while `Total` shows the current meter value)
 - `entities.battery_level` (entity id)
 - `entities.battery_flow_power` (entity id, optional; signed battery power or energy shown on the battery HUD, positive values mean charging/incoming and negative values mean discharging/outgoing; the badge follows the entity unit)
 - `entities.battery_charge_power` / `entities.battery_discharge_power` (entity ids, optional; separate incoming/outgoing battery power or energy values, used when `battery_flow_power` is not configured; the badge follows the entity unit)
@@ -301,6 +310,7 @@ large_consumers:
 - `entities.import_power` / `entities.export_power` (entity ids, optional; separate positive import and export sensors, used when `entities.import_export_power` is empty; aliases `grid_import_power`, `grid_export_power`, `import_export_import_power`, and `import_export_export_power` are also accepted)
 - `units.power` (string, default: `auto`; power values are shown in `W` below `1000 W` and in `kW` with two decimals from `1000 W`)
 - `units.battery` (string, default: `%`)
+- `units.volume` / `units.water_meter` (string, default: `m³`; water values are displayed in cubic meters by default, even when the entity reports liters)
 - `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`; `auto` respects Home Assistant units such as `W`, `kW`, and `kWh`)
 - `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)

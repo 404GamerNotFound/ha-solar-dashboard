@@ -286,6 +286,7 @@
   "metrics.pv_roof_power": "Roof PV",
   "metrics.pv_shed_power": "Shed PV",
   "metrics.pv_total_power": "PV Total",
+  "metrics.water_meter": "Water",
   "metrics.wallbox_power": "EV Charger",
   "metrics.wallbox2_power": "EV Charger 2",
   "overlay.heatpump": "Heat pump",

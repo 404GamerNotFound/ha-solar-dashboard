@@ -286,6 +286,7 @@
   "metrics.pv_roof_power": "FV tejado",
   "metrics.pv_shed_power": "FV cobertizo",
   "metrics.pv_total_power": "FV total",
+  "metrics.water_meter": "Agua",
   "metrics.wallbox_power": "Cargador VE",
   "metrics.wallbox2_power": "Cargador VE 2",
   "overlay.heatpump": "Bomba de calor",

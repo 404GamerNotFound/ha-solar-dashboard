@@ -30,6 +30,16 @@ export function isPowerUnit(unit) {
   return ["w", "kw", "mw"].includes(normalizeUnit(unit));
 }
 
+function normalizeVolumeUnit(unit) {
+  return normalizeUnit(unit)
+    .replace(/\s+/g, "")
+    .replace(/³/g, "3");
+}
+
+export function isVolumeUnit(unit) {
+  return ["m3", "cbm", "l", "liter", "litre", "liters", "litres", "ml"].includes(normalizeVolumeUnit(unit));
+}
+
 export function valueAsWatts(value, unit) {
   const numericValue = numericState(value);
   if (!Number.isFinite(numericValue)) return undefined;
@@ -57,6 +67,23 @@ export function valueAsKwh(value, unit) {
   return numericValue;
 }
 
+export function valueAsCubicMeters(value, unit) {
+  const numericValue = numericState(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const normalizedUnit = normalizeVolumeUnit(unit);
+  if (["l", "liter", "litre", "liters", "litres"].includes(normalizedUnit)) return numericValue / 1000;
+  if (normalizedUnit === "ml") return numericValue / 1000000;
+  return numericValue;
+}
+
+function formatTrimmedNumber(value, decimals) {
+  if (!Number.isFinite(value)) return undefined;
+  return value
+    .toFixed(decimals)
+    .replace(/(\.\d*?)0+$/, "$1")
+    .replace(/\.$/, "");
+}
+
 export function formatWithUnit(rawValue, unit, unavailable = "—") {
   const value = formatValue(rawValue, unavailable);
   if (value === unavailable) return value;
@@ -82,6 +109,33 @@ export function formatEnergyValue(rawValue, entityUnit, targetUnit = "kWh", unav
     if (kwhValue !== undefined) return `${kwhValue.toFixed(2)} kWh`;
   }
   return `${value} ${targetUnit || entityUnit || "kWh"}`;
+}
+
+export function formatVolumeValue(rawValue, entityUnit, targetUnit = "m³", unavailable = "—") {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+  const normalizedTargetUnit = normalizeVolumeUnit(targetUnit);
+  const cubicMeters = valueAsCubicMeters(rawValue, entityUnit);
+
+  if (normalizedTargetUnit === "l") {
+    if (cubicMeters !== undefined) return `${formatTrimmedNumber(cubicMeters * 1000, cubicMeters >= 1 ? 0 : 1)} L`;
+    return `${value} L`;
+  }
+
+  if (!targetUnit || normalizedTargetUnit === "auto") {
+    const displayUnit = entityUnit || "m³";
+    return `${value} ${displayUnit}`;
+  }
+
+  if (["m3", "cbm"].includes(normalizedTargetUnit)) {
+    if (cubicMeters !== undefined) {
+      const decimals = Math.abs(cubicMeters) >= 100 ? 1 : 3;
+      return `${formatTrimmedNumber(cubicMeters, decimals)} m³`;
+    }
+    return `${value} m³`;
+  }
+
+  return `${value} ${targetUnit || entityUnit || "m³"}`;
 }
 
 export function formatPowerValue(rawValue, unit, entityUnit, { powerDisplayMode = "auto_kw", unavailable = "—" } = {}) {

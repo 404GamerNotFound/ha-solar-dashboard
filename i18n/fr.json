@@ -286,6 +286,7 @@
   "metrics.pv_roof_power": "PV toiture",
   "metrics.pv_shed_power": "PV abri",
   "metrics.pv_total_power": "PV total",
+  "metrics.water_meter": "Eau",
   "metrics.wallbox_power": "Chargeur VE",
   "metrics.wallbox2_power": "Chargeur VE 2",
   "overlay.heatpump": "Pompe à chaleur",

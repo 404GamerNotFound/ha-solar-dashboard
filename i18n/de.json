@@ -286,6 +286,7 @@
   "metrics.pv_roof_power": "PV Dach",
   "metrics.pv_shed_power": "PV Schuppen",
   "metrics.pv_total_power": "PV Gesamt",
+  "metrics.water_meter": "Wasser",
   "metrics.wallbox_power": "Wallbox",
   "metrics.wallbox2_power": "Wallbox 2",
   "overlay.heatpump": "Wärmepumpe",

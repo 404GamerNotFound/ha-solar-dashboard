@@ -10,6 +10,7 @@ export const METRICS = Object.freeze([
   Object.freeze({ key: "inverter_power", label: "Inverter", unit: "power", color: "blue" }),
   Object.freeze({ key: "wallbox_power", label: "EV Charger", unit: "power", color: "blue" }),
   Object.freeze({ key: "wallbox2_power", label: "EV Charger 2", unit: "power", color: "blue", optional: true }),
+  Object.freeze({ key: "water_meter", label: "Water", unit: "volume", color: "blue", optional: true, tileOrder: 9 }),
   Object.freeze({ key: "import_export_power", label: "Import/Export", unit: "power", color: "blue", optional: true, tile: false }),
 ]);
 

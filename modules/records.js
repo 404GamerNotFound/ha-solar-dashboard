@@ -188,10 +188,13 @@ export function createRecordsDashboardMethods({
       return { time, value };
     },
 
-    _recordCounterPoint(entry, entityId) {
+    _recordCounterPoint(entry, entityId, targetUnit = "m³") {
       const rawValue = entry?.state ?? entry?.s;
       if (this._formatValue(rawValue) === "—") return undefined;
-      const value = numericState?.(rawValue);
+      const entityUnit = entry?.attributes?.unit_of_measurement || this._getEntityUnit(entityId) || targetUnit;
+      const value = targetUnit === "m³" && typeof this._valueAsCubicMeters === "function"
+        ? this._valueAsCubicMeters(rawValue, entityUnit)
+        : numericState?.(rawValue);
       const time = Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || "");
       if (!Number.isFinite(value) || !Number.isFinite(time)) return undefined;
       return { time, value };
@@ -230,9 +233,10 @@ export function createRecordsDashboardMethods({
       const normalizedUnit = String(unit || "").trim() || "m³";
       const number = Number(value);
       if (!Number.isFinite(number)) return `— ${normalizedUnit}`;
+      const decimals = number >= 10 ? 1 : number < 1 ? 3 : 2;
       const formatted = number.toLocaleString(this._language(), {
-        minimumFractionDigits: number >= 10 ? 1 : 2,
-        maximumFractionDigits: number >= 10 ? 1 : 2,
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
       });
       return `${formatted} ${normalizedUnit}`;
     },
@@ -246,7 +250,7 @@ export function createRecordsDashboardMethods({
         .map((entry) => source.type === "energy"
           ? this._recordEnergyPoint(entry, source.entityId)
           : source.type === "counter"
-            ? this._recordCounterPoint(entry, source.entityId)
+            ? this._recordCounterPoint(entry, source.entityId, source.unit)
             : source.type === "boolean"
               ? this._recordBooleanPoint(entry)
               : source.type === "percent"
@@ -294,12 +298,13 @@ export function createRecordsDashboardMethods({
           const key = metric.chartKey || metric.key;
           const metricKey = String(metric.key || "");
           const isGasCounter = metric.overlay === "smoke";
+          const isVolumeCounter = metric.unit === "volume";
           const isPvMetric = metricKey.startsWith("pv_") || metric.overlay === "solar";
           const group = metricKey.includes("wallbox")
             ? "wallbox"
             : metric.largeConsumer
               ? "consumer"
-              : isGasCounter
+              : isGasCounter || isVolumeCounter
                 ? "counter"
                 : isPvMetric
                   ? "pv"
@@ -308,9 +313,9 @@ export function createRecordsDashboardMethods({
             key,
             label: this._metricLabel(metric, variant),
             entityId,
-            type: isGasCounter ? "counter" : "power",
+            type: isGasCounter || isVolumeCounter ? "counter" : "power",
             group,
-            unit: isGasCounter ? this._getEntityUnit(entityId) || this.config.image_overlays?.smoke?.unit || "m³" : "",
+            unit: isGasCounter || isVolumeCounter ? "m³" : "",
             metric,
           }];
           if (group === "wallbox") {

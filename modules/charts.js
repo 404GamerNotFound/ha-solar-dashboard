@@ -19,6 +19,7 @@ export function chartHistoryPoint(metric, entry, {
   formatValue,
   isMetricEnergyMode,
   valueAsKwh,
+  valueAsCubicMeters,
   valueAsWatts,
   numericState,
   isPowerUnit,
@@ -30,9 +31,11 @@ export function chartHistoryPoint(metric, entry, {
   const entityUnit = entry.attributes?.unit_of_measurement || getEntityUnit?.(entityId) || "";
   const numericValue = isMetricEnergyMode?.(metric)
     ? valueAsKwh?.(rawValue, entityUnit)
-    : metric?.unit === "power" || (metric?.overlay === "heatpump" && isPowerUnit?.(entityUnit))
-      ? valueAsWatts?.(rawValue, entityUnit)
-      : numericState?.(rawValue);
+    : metric?.unit === "volume"
+      ? valueAsCubicMeters?.(rawValue, entityUnit)
+      : metric?.unit === "power" || (metric?.overlay === "heatpump" && isPowerUnit?.(entityUnit))
+        ? valueAsWatts?.(rawValue, entityUnit)
+        : numericState?.(rawValue);
   if (!Number.isFinite(numericValue)) return undefined;
   const rawTime = entry.last_changed || entry.last_updated || entry.lu;
   const time = Date.parse(rawTime || "");

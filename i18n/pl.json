@@ -286,6 +286,7 @@
   "metrics.pv_roof_power": "PV dach",
   "metrics.pv_shed_power": "PV szopa",
   "metrics.pv_total_power": "PV łącznie",
+  "metrics.water_meter": "Woda",
   "metrics.wallbox_power": "Ładowarka EV",
   "metrics.wallbox2_power": "Ładowarka EV 2",
   "overlay.heatpump": "Pompa ciepła",

@@ -542,6 +542,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
+      show_environment_sensors: true,
       show_large_consumers: true,
       show_power_flows: false,
       show_status_label: true,
@@ -587,6 +588,7 @@ class HaSolarDashboardCard extends HTMLElement {
       energy_entities: {},
       tile_color_rules: DEFAULT_TILE_COLOR_RULES,
       custom_kpis: [],
+      environment_sensors: [],
       large_consumers: normalizeLargeConsumers([]),
       pv_roof_strings: [],
       inverters: [],
@@ -689,6 +691,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
+      show_environment_sensors: true,
       show_large_consumers: true,
       show_power_flows: false,
       show_status_label: true,
@@ -728,6 +731,7 @@ class HaSolarDashboardCard extends HTMLElement {
       image_overlays: {},
       tile_color_rules: {},
       custom_kpis: [],
+      environment_sensors: [],
       large_consumers: [],
       pv_roof_strings: [],
       inverters: [],
@@ -780,6 +784,7 @@ class HaSolarDashboardCard extends HTMLElement {
         ...(config.tile_color_rules || config.color_rules || {}),
       },
       custom_kpis: this._normalizeCustomKpis(config.custom_kpis || config.kpis || []),
+      environment_sensors: this._normalizeEnvironmentSensors(config.environment_sensors || config.environment_sensor_tiles || []),
       large_consumers: normalizeLargeConsumers(config.large_consumers || config.large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings(config.pv_roof_strings || config.pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay(config.pv_roof_string_display || config.pv_roof_display || "sum"),
@@ -1031,6 +1036,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.chartEntityId) return metric.chartEntityId;
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric.customKpi) return metric.customKpi.entity || "";
+    if (metric.environmentSensor) return metric.environmentSensor.entity || "";
     if (metric.largeConsumer) {
       if (this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
       return this._largeConsumerPowerEntityId(metric);
@@ -1048,6 +1054,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.chartUnit) return metric.chartUnit;
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.unit || "auto";
     if (metric.customKpi) return metric.customKpi.unit;
+    if (metric.environmentSensor) return metric.environmentSensor.unit || "auto";
     if (metric.largeConsumer) return metric.largeConsumer.unit || this.config.units?.power || "auto";
     const metricUnit = this.config.units?.[metric.key];
     if (metricUnit !== undefined && String(metricUnit).trim() !== "") return metricUnit;
@@ -1289,6 +1296,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.gridStatus) return this._formatGridStatusReading();
     if (metric.overlay) return this._formatOverlayReading(metric.overlay);
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
+    if (metric.environmentSensor) return this._formatEnvironmentSensorValue(metric.environmentSensor);
     if (metric.key === "import_export_power") return this._formatGridValueReading();
     if (this._isPvRoofMetric(metric)) {
       const stringReading = this._formatPvRoofStringReading(metric);
@@ -1352,6 +1360,62 @@ class HaSolarDashboardCard extends HTMLElement {
         tileOrder: kpi.position ?? 100 + index,
         tileColumns: kpi.columns ?? 1,
       }));
+  }
+
+  _normalizeEnvironmentSensors(sensors) {
+    const source = Array.isArray(sensors)
+      ? sensors
+      : sensors && typeof sensors === "object"
+        ? Object.entries(sensors).map(([id, sensor]) => (
+          typeof sensor === "string"
+            ? { id, entity: sensor }
+            : { id, ...(sensor || {}) }
+        ))
+        : [];
+    return source
+      .map((sensor, index) => {
+        if (!sensor || typeof sensor !== "object") return undefined;
+        const id = String(sensor.id || sensor.key || sensor.entity || `environment_${index + 1}`).trim().replace(/[^\w-]/g, "_");
+        const position = this._clampNumber(sensor.position ?? sensor.order ?? 300 + index, 300 + index, 0, 999);
+        const columns = Math.round(this._clampNumber(sensor.columns ?? sensor.span ?? 1, 1, 1, 6));
+        return {
+          id,
+          label: String(sensor.label || sensor.name || "").trim(),
+          entity: String(sensor.entity || sensor.entity_id || sensor.sensor || "").trim(),
+          unit: sensor.unit ?? "auto",
+          position,
+          columns,
+          color: this._safeCssColor(sensor.color, "#34d399"),
+          glow: sensor.glow,
+          visible: sensor.visible !== false,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  _environmentSensorLabel(sensor, index = 0) {
+    if (sensor?.label) return sensor.label;
+    const entity = this._getEntity(sensor?.entity);
+    const friendlyName = entity?.attributes?.friendly_name || entity?.attributes?.name;
+    if (friendlyName) return String(friendlyName);
+    return this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
+  }
+
+  _environmentSensorMetrics() {
+    if (this.config.show_environment_sensors === false) return [];
+    return (this.config.environment_sensors || [])
+      .filter((sensor) => sensor.visible !== false && sensor.entity)
+      .map((sensor, index) => ({
+        key: `environment_sensors.${sensor.id || index}`,
+        label: this._environmentSensorLabel(sensor, index),
+        unit: "environment",
+        color: "green",
+        accentColor: sensor.color,
+        environmentSensor: sensor,
+        tileOrder: sensor.position ?? 300 + index,
+        tileColumns: sensor.columns ?? 1,
+      }))
+      .sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
   }
 
   _largeConsumerLabel(consumer, index = 0) {
@@ -1599,6 +1663,19 @@ class HaSolarDashboardCard extends HTMLElement {
 
     const entityUnit = hasEntity ? this._getEntityUnit(kpi.entity) : "";
     const configuredUnit = String(kpi.unit ?? "auto").trim();
+    if (!configuredUnit || configuredUnit.toLowerCase() === "none") return String(roundedValue);
+    if (configuredUnit.toLowerCase() === "auto") return entityUnit ? `${roundedValue} ${entityUnit}` : String(roundedValue);
+    return `${roundedValue} ${configuredUnit}`;
+  }
+
+  _formatEnvironmentSensorValue(sensor) {
+    if (!sensor?.entity) return "—";
+    const rawValue = this._getEntityValue(sensor.entity, undefined);
+    const value = this._formatValue(rawValue);
+    if (value === "—") return value;
+    const roundedValue = this._formatRoundedCustomValue(value);
+    const entityUnit = this._getEntityUnit(sensor.entity);
+    const configuredUnit = String(sensor.unit ?? "auto").trim();
     if (!configuredUnit || configuredUnit.toLowerCase() === "none") return String(roundedValue);
     if (configuredUnit.toLowerCase() === "auto") return entityUnit ? `${roundedValue} ${entityUnit}` : String(roundedValue);
     return `${roundedValue} ${configuredUnit}`;
@@ -1941,6 +2018,11 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.customKpi) {
       const kpi = metric.customKpi;
       const rawValue = kpi.entity ? this._getEntityValue(kpi.entity, undefined) : kpi.value;
+      const number = numericState(rawValue);
+      return Number.isFinite(number) ? number : undefined;
+    }
+    if (metric.environmentSensor) {
+      const rawValue = metric.environmentSensor.entity ? this._getEntityValue(metric.environmentSensor.entity, undefined) : undefined;
       const number = numericState(rawValue);
       return Number.isFinite(number) ? number : undefined;
     }
@@ -2957,6 +3039,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric?.chartEntityId) return metric.chartEntityId;
     if (metric?.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric?.customKpi) return metric.customKpi.entity || "";
+    if (metric?.environmentSensor) return metric.environmentSensor.entity || "";
     if (metric?.largeConsumer) return this._largeConsumerPowerEntityId(metric);
     if (isImportExportMetric(metric)) return this._gridPrimaryEntityId();
     return this.config.entities?.[metricSourceKey(metric)] || "";
@@ -2967,6 +3050,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...TILE_METRICS,
       ...this._visibleOverlayMetrics(),
       ...this._customKpiMetrics(),
+      ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
     ].filter((metric, index, metrics) => {
@@ -3150,7 +3234,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const value = this._metricNumericValue(metric);
     const matchedRule = normalizedRules.find((rule) => this._ruleMatches(rule, value));
     const color = this._safeCssColor(matchedRule?.color, fallbackColor);
-    const glowValue = matchedRule?.glow ?? metric.customKpi?.glow;
+    const glowValue = matchedRule?.glow ?? metric.customKpi?.glow ?? metric.environmentSensor?.glow;
     const glow = glowValue === true
       ? this._hexToRgba(color, 0.34)
       : this._safeCssColor(glowValue, "transparent");
@@ -3189,6 +3273,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _metricEnabled(metric, variant) {
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.enabled === true;
     if (metric.customKpi) return metric.customKpi.visible !== false;
+    if (metric.environmentSensor) return metric.environmentSensor.visible !== false && Boolean(metric.environmentSensor.entity);
     const configured = this.config.visible_boxes?.[metric.key];
     if (configured !== undefined) return configured !== false;
     if (metric.key === "import_export_power") return this._hasGridPowerSource();
@@ -3245,6 +3330,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.chartLabel) return metric.chartLabel;
     if (metric.overlay) return this._overlayLabel(metric.overlay);
     if (metric.customKpi) return metric.customKpi.label || metric.label;
+    if (metric.environmentSensor) return metric.label || this._environmentSensorLabel(metric.environmentSensor);
     if (metric.largeConsumer) return metric.label || this._largeConsumerLabel(metric.largeConsumer);
     if (metric.key === "import_export_power") {
       const status = this._gridStatusInfo();
@@ -3841,6 +3927,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const activeView = this._currentViewMode();
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
     const visibleTileMetrics = this._visibleTileMetrics(state.variant);
+    const environmentMetrics = this._environmentSensorMetrics();
     const largeConsumerMetrics = this._largeConsumerMetrics();
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
@@ -3896,7 +3983,16 @@ class HaSolarDashboardCard extends HTMLElement {
       `;
     };
     const gridHtml = visibleTileMetrics.map(renderTile).join("");
+    const environmentHtml = environmentMetrics.map(renderTile).join("");
     const largeConsumerHtml = largeConsumerMetrics.map(renderTile).join("");
+    const environmentSectionHtml = this.config.show_environment_sensors !== false && environmentMetrics.length > 0
+      ? `
+        <section class="tile-section environment-sensor-section">
+          <div class="tile-section-title">${this._escape(this._t("environment.sectionTitle", {}, "Environment"))}</div>
+          <div class="grid environment-sensor-grid">${environmentHtml}</div>
+        </section>
+      `
+      : "";
     const largeConsumerSectionHtml = this.config.show_large_consumers !== false && largeConsumerMetrics.length > 0
       ? `
         <section class="tile-section large-consumer-section">
@@ -3925,7 +4021,7 @@ class HaSolarDashboardCard extends HTMLElement {
               ? recordsDashboardHtml
               : `
             <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
-            ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${largeConsumerSectionHtml}` : ""}
+            ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${environmentSectionHtml}${largeConsumerSectionHtml}` : ""}
           `}
       </ha-card>
       ${this._renderChartOverlay()}
@@ -3942,6 +4038,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
+      ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
     ];
 

@@ -244,6 +244,7 @@ function createAdvisorEngineMethods({
     const metrics = [
       ...this._visibleMetrics(variant),
       ...this._visibleTileMetrics(variant).filter((metric) => metric.customKpi),
+      ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._visibleOverlayMetrics(),
@@ -1146,6 +1147,7 @@ function createAdvisorViewMethods() {
       [this._t("advisor.selfConsumption", {}, "Self-use"), this._advisorMetricValue(snapshot.selfConsumptionPercent, percentFormatter)],
       [this._t("advisor.autarky", {}, "Autarky"), this._advisorMetricValue(snapshot.autarkyPercent, percentFormatter)],
       ...this._customKpiMetrics().map((metric) => [this._metricLabel(metric), this._formatReading(metric), this._accentStyle(metric)]),
+      ...this._environmentSensorMetrics().map((metric) => [this._metricLabel(metric), this._formatReading(metric), this._accentStyle(metric)]),
     ];
     const metricHtml = metrics.map(([label, value, style = ""]) => `
       <div class="advisor-metric" style="${this._escape(style)}">
@@ -3321,6 +3323,7 @@ function createDashboardEditorClass({
       energy_entities: {},
       image_overlays: {},
       custom_kpis: [],
+      environment_sensors: [],
       large_consumers: [],
       pv_roof_strings: [],
       pv_roof_string_display: "sum",
@@ -3344,6 +3347,7 @@ function createDashboardEditorClass({
       custom_kpis: Array.isArray((config || {}).custom_kpis || (config || {}).kpis)
         ? [...(((config || {}).custom_kpis || (config || {}).kpis))]
         : [],
+      environment_sensors: this._normalizeEnvironmentSensors((config || {}).environment_sensors || (config || {}).environment_sensor_tiles || []),
       large_consumers: normalizeLargeConsumers((config || {}).large_consumers || (config || {}).large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings((config || {}).pv_roof_strings || (config || {}).pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay((config || {}).pv_roof_string_display || (config || {}).pv_roof_display || "sum"),
@@ -3472,6 +3476,61 @@ function createDashboardEditorClass({
     const next = this._cloneConfig(this._config || {});
     next.custom_kpis = Array.isArray(next.custom_kpis) ? next.custom_kpis : [];
     next.custom_kpis.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _normalizeEnvironmentSensors(sensors) {
+    const source = Array.isArray(sensors)
+      ? sensors
+      : sensors && typeof sensors === "object"
+        ? Object.entries(sensors).map(([id, sensor]) => (
+          typeof sensor === "string"
+            ? { id, entity: sensor }
+            : { id, ...(sensor || {}) }
+        ))
+        : [];
+    return source
+      .map((sensor, index) => {
+        if (!sensor || typeof sensor !== "object") return undefined;
+        return {
+          id: String(sensor.id || sensor.key || sensor.entity || `environment_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
+          label: String(sensor.label || sensor.name || "").trim(),
+          entity: String(sensor.entity || sensor.entity_id || sensor.sensor || "").trim(),
+          unit: sensor.unit ?? "auto",
+          position: Number.isFinite(Number(sensor.position ?? sensor.order)) ? Number(sensor.position ?? sensor.order) : 300 + index,
+          columns: Number.isFinite(Number(sensor.columns ?? sensor.span)) ? Number(sensor.columns ?? sensor.span) : 1,
+          color: sensor.color || "#34d399",
+          visible: sensor.visible !== false,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  _addEnvironmentSensor() {
+    const next = this._cloneConfig(this._config || {});
+    next.environment_sensors = this._normalizeEnvironmentSensors(next.environment_sensors || []);
+    const index = next.environment_sensors.length;
+    next.environment_sensors.push({
+      id: `environment_${Date.now()}`,
+      label: "",
+      entity: "",
+      unit: "auto",
+      position: 300 + index,
+      columns: 1,
+      color: "#34d399",
+      visible: true,
+    });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeEnvironmentSensor(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.environment_sensors = this._normalizeEnvironmentSensors(next.environment_sensors || []);
+    next.environment_sensors.splice(index, 1);
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -4701,6 +4760,45 @@ function createDashboardEditorClass({
     `;
   }
 
+  _renderEnvironmentSensorField(sensor, index) {
+    const label = sensor?.label || "";
+    const entity = sensor?.entity || sensor?.entity_id || "";
+    const unit = sensor?.unit ?? "auto";
+    const position = Number.isFinite(Number(sensor?.position ?? sensor?.order)) ? Number(sensor.position ?? sensor.order) : 300 + index;
+    const columns = Number.isFinite(Number(sensor?.columns ?? sensor?.span)) ? Number(sensor.columns ?? sensor.span) : 1;
+    const color = sensor?.color || "#34d399";
+    const visible = sensor?.visible !== false;
+    const fallbackLabel = this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
+
+    return `
+      <div class="box-field environment-field">
+        <div class="kpi-head">
+          <strong>${this._escape(label || fallbackLabel)}</strong>
+          <button type="button" data-action="remove-environment-sensor" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
+        </div>
+        <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.visible" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShow", { label: label || fallbackLabel }, `Show ${label || fallbackLabel} tile`))}</label>
+        <label>${this._escape(this._t("editor.environmentLabel", {}, "Sensor label"))}
+          <input data-path="environment_sensors.${index}.label" placeholder="${this._escape(fallbackLabel)}" value="${this._escape(label)}" />
+        </label>
+        <label>${this._escape(this._t("editor.environmentEntity", {}, "Sensor entity"))}
+          <input data-path="environment_sensors.${index}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.indoor_temperature" value="${this._escape(entity)}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.environmentUnit", {}, "Unit override"))}
+          <input data-path="environment_sensors.${index}.unit" placeholder="auto" value="${this._escape(unit)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiPosition"))} (${this._escape(position)})
+          <input type="number" min="0" max="999" step="1" data-path="environment_sensors.${index}.position" value="${this._escape(position)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiColumns"))} (${this._escape(columns)})
+          <input type="range" min="1" max="6" step="1" data-path="environment_sensors.${index}.columns" value="${this._escape(columns)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiColor"))}
+          <input data-path="environment_sensors.${index}.color" placeholder="#34d399" value="${this._escape(color)}" />
+        </label>
+      </div>
+    `;
+  }
+
   _largeConsumerLabel(consumer, index = 0) {
     return largeConsumerLabel(consumer, index, (key, params, fallback) => this._t(key, params, fallback));
   }
@@ -4819,6 +4917,9 @@ function createDashboardEditorClass({
       .join("");
     const customKpis = Array.isArray(this._config.custom_kpis) ? this._config.custom_kpis : [];
     const customKpiFields = customKpis.map((kpi, index) => this._renderCustomKpiField(kpi, index)).join("");
+    const environmentSensors = this._normalizeEnvironmentSensors(this._config.environment_sensors || []);
+    this._config.environment_sensors = environmentSensors;
+    const environmentSensorFields = environmentSensors.map((sensor, index) => this._renderEnvironmentSensorField(sensor, index)).join("");
     this._config.pv_roof_string_display = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
     this._config.pv_roof_strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
     this._config.inverter_display = normalizeInverterDisplay(this._config.inverter_display);
@@ -4854,6 +4955,7 @@ function createDashboardEditorClass({
           <label class="inline"><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_environment_sensors" ${this._config.show_environment_sensors !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnvironmentSensors", {}, "Show environment sensor tiles"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
@@ -4905,6 +5007,10 @@ function createDashboardEditorClass({
     const kpiSettingsHtml = `
       <div class="grid">${customKpiFields}</div>
       <div class="action-row"><button type="button" data-action="add-kpi">${this._escape(this._t("editor.kpiAdd"))}</button></div>
+    `;
+    const environmentSettingsHtml = `
+      <div class="grid">${environmentSensorFields}</div>
+      <div class="action-row"><button type="button" data-action="add-environment-sensor">${this._escape(this._t("editor.environmentAdd", {}, "Add tile"))}</button></div>
     `;
     const largeConsumerSettingsHtml = `
       <div class="grid">${largeConsumerFields}</div>
@@ -4976,6 +5082,7 @@ function createDashboardEditorClass({
         ${renderEditorSection("boxes", this._t("editor.sectionBoxes", {}, "Boxes, live/kWh entities, unit, and position"), boxSettingsHtml)}
         ${renderEditorSection("overlays", this._t("editor.sectionOverlays", {}, "Image overlays"), overlaySettingsHtml)}
         ${renderEditorSection("kpis", this._t("editor.sectionKpis", {}, "Custom KPI tiles"), kpiSettingsHtml)}
+        ${renderEditorSection("environment-sensors", this._t("editor.sectionEnvironmentSensors", {}, "Environment sensors"), environmentSettingsHtml)}
         ${renderEditorSection("large-consumers", this._t("editor.sectionLargeConsumers", {}, "Additional large consumers"), largeConsumerSettingsHtml)}
       </div>
     `;
@@ -4995,6 +5102,8 @@ function createDashboardEditorClass({
         const target = event.currentTarget;
         if (target.dataset.action === "add-kpi") this._addCustomKpi();
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
+        if (target.dataset.action === "add-environment-sensor") this._addEnvironmentSensor();
+        if (target.dataset.action === "remove-environment-sensor") this._removeEnvironmentSensor(Number(target.dataset.index));
         if (target.dataset.action === "add-pv-roof-string") this._addPvRoofString();
         if (target.dataset.action === "remove-pv-roof-string") this._removePvRoofString(Number(target.dataset.index));
         if (target.dataset.action === "add-inverter") this._addInverter();
@@ -5702,6 +5811,11 @@ const I18N = {
     "editor.importLabel": "Import label",
     "editor.exportLabel": "Export label",
     "editor.neutralLabel": "Self-sufficient label",
+    "editor.environmentAdd": "Add tile",
+    "editor.environmentEntity": "Sensor entity",
+    "editor.environmentLabel": "Sensor label",
+    "editor.environmentShow": "Show {label} tile",
+    "editor.environmentUnit": "Unit override",
     "editor.kpiAdd": "Add tile",
     "editor.kpiColor": "Color",
     "editor.kpiColumns": "Tile width",
@@ -5774,11 +5888,13 @@ const I18N = {
     "editor.sectionAppearance": "Display and limits",
     "editor.sectionGeneral": "General settings",
     "editor.sectionKpis": "Custom KPI tiles",
+    "editor.sectionEnvironmentSensors": "Environment sensors",
     "editor.sectionLargeConsumers": "Additional large consumers",
     "editor.sectionOverlays": "Image overlays",
     "editor.showBox": "Show {label}",
     "editor.showEnergyRangeSelector": "Show Live/1h/24h/month/year/total selector",
     "editor.showHouseSelector": "Show house selector",
+    "editor.showEnvironmentSensors": "Show environment sensor tiles",
     "editor.showLargeConsumers": "Show large consumers in house view",
     "editor.showGridStatusTile": "Show grid status tile",
     "editor.showMetricTiles": "Show metric boxes below image",
@@ -5821,6 +5937,8 @@ const I18N = {
     "consumer.sectionTitle": "Additional Large Consumers",
     "consumer.space_heater": "Fan heater",
     "consumer.washing_machine": "Washing machine",
+    "environment.sectionTitle": "Environment",
+    "environment.sensor": "Environment {index}",
     "house.apartment_building": "Apartment Building",
     "house.apartment_building_balcony_solar": "Apartment Building Balcony Solar",
     "house.bungalow": "Bungalow",
@@ -6117,6 +6235,11 @@ const I18N = {
     "editor.importLabel": "Bezugs-Label",
     "editor.exportLabel": "Einspeise-Label",
     "editor.neutralLabel": "Autark-Label",
+    "editor.environmentAdd": "Kachel hinzufügen",
+    "editor.environmentEntity": "Sensor-Entität",
+    "editor.environmentLabel": "Sensor-Label",
+    "editor.environmentShow": "{label}-Kachel anzeigen",
+    "editor.environmentUnit": "Einheit überschreiben",
     "editor.kpiAdd": "Kachel hinzufügen",
     "editor.kpiColor": "Farbe",
     "editor.kpiColumns": "Kachelbreite",
@@ -6189,11 +6312,13 @@ const I18N = {
     "editor.sectionAppearance": "Anzeige und Grenzwerte",
     "editor.sectionGeneral": "Allgemeine Einstellungen",
     "editor.sectionKpis": "Eigene KPI-Kacheln",
+    "editor.sectionEnvironmentSensors": "Umweltsensoren",
     "editor.sectionLargeConsumers": "Weitere große Verbraucher",
     "editor.sectionOverlays": "Bild-Overlays",
     "editor.showBox": "{label} anzeigen",
     "editor.showEnergyRangeSelector": "Live-/1h-/24h-/Monat-/Jahr-/Gesamt-Auswahl anzeigen",
     "editor.showHouseSelector": "Hausauswahl anzeigen",
+    "editor.showEnvironmentSensors": "Umweltsensor-Kacheln anzeigen",
     "editor.showLargeConsumers": "Große Verbraucher in der Hausansicht anzeigen",
     "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
     "editor.showMetricTiles": "Messwertboxen unter dem Bild anzeigen",
@@ -6236,6 +6361,8 @@ const I18N = {
     "consumer.sectionTitle": "Weitere große Verbraucher",
     "consumer.space_heater": "Heizlüfter",
     "consumer.washing_machine": "Waschmaschine",
+    "environment.sectionTitle": "Umgebung",
+    "environment.sensor": "Umgebung {index}",
     "house.apartment_building": "Mehrfamilienhaus",
     "house.apartment_building_balcony_solar": "Mehrfamilienhaus Balkonsolar",
     "house.bungalow": "Bungalow",
@@ -6532,6 +6659,11 @@ const I18N = {
     "editor.importLabel": "Etiqueta de importación",
     "editor.exportLabel": "Etiqueta de exportación",
     "editor.neutralLabel": "Etiqueta de autosuficiencia",
+    "editor.environmentAdd": "Añadir mosaico",
+    "editor.environmentEntity": "Entidad del sensor",
+    "editor.environmentLabel": "Etiqueta del sensor",
+    "editor.environmentShow": "Mostrar mosaico de {label}",
+    "editor.environmentUnit": "Sobrescribir unidad",
     "editor.kpiAdd": "Añadir mosaico",
     "editor.kpiColor": "Color",
     "editor.kpiColumns": "Ancho del mosaico",
@@ -6604,11 +6736,13 @@ const I18N = {
     "editor.sectionAppearance": "Visualización y límites",
     "editor.sectionGeneral": "Ajustes generales",
     "editor.sectionKpis": "Mosaicos KPI personalizados",
+    "editor.sectionEnvironmentSensors": "Sensores ambientales",
     "editor.sectionLargeConsumers": "Otros grandes consumidores",
     "editor.sectionOverlays": "Superposiciones de imagen",
     "editor.showBox": "Mostrar {label}",
     "editor.showEnergyRangeSelector": "Mostrar selector en vivo/1h/24h/mes/año/total",
     "editor.showHouseSelector": "Mostrar selector de casa",
+    "editor.showEnvironmentSensors": "Mostrar mosaicos de sensores ambientales",
     "editor.showLargeConsumers": "Mostrar grandes consumidores en la vista de casa",
     "editor.showGridStatusTile": "Mostrar mosaico de red",
     "editor.showMetricTiles": "Mostrar cajas de métricas bajo la imagen",
@@ -6651,6 +6785,8 @@ const I18N = {
     "consumer.sectionTitle": "Otros grandes consumidores",
     "consumer.space_heater": "Calefactor",
     "consumer.washing_machine": "Lavadora",
+    "environment.sectionTitle": "Ambiente",
+    "environment.sensor": "Ambiente {index}",
     "house.apartment_building": "Edificio de apartamentos",
     "house.apartment_building_balcony_solar": "Edificio de apartamentos con solar de balcón",
     "house.bungalow": "Bungaló",
@@ -6947,6 +7083,11 @@ const I18N = {
     "editor.importLabel": "Libellé import",
     "editor.exportLabel": "Libellé export",
     "editor.neutralLabel": "Libellé autonomie",
+    "editor.environmentAdd": "Ajouter une tuile",
+    "editor.environmentEntity": "Entité du capteur",
+    "editor.environmentLabel": "Libellé du capteur",
+    "editor.environmentShow": "Afficher la tuile {label}",
+    "editor.environmentUnit": "Remplacer l'unité",
     "editor.kpiAdd": "Ajouter une tuile",
     "editor.kpiColor": "Couleur",
     "editor.kpiColumns": "Largeur de tuile",
@@ -7019,11 +7160,13 @@ const I18N = {
     "editor.sectionAppearance": "Affichage et limites",
     "editor.sectionGeneral": "Paramètres généraux",
     "editor.sectionKpis": "Tuiles KPI personnalisées",
+    "editor.sectionEnvironmentSensors": "Capteurs d'environnement",
     "editor.sectionLargeConsumers": "Autres gros consommateurs",
     "editor.sectionOverlays": "Superpositions d'image",
     "editor.showBox": "Afficher {label}",
     "editor.showEnergyRangeSelector": "Afficher le sélecteur direct/1h/24h/mois/an/total",
     "editor.showHouseSelector": "Afficher le sélecteur de maison",
+    "editor.showEnvironmentSensors": "Afficher les tuiles de capteurs d'environnement",
     "editor.showLargeConsumers": "Afficher les gros consommateurs dans la vue maison",
     "editor.showGridStatusTile": "Afficher la tuile réseau",
     "editor.showMetricTiles": "Afficher les boîtes de mesure sous l'image",
@@ -7066,6 +7209,8 @@ const I18N = {
     "consumer.sectionTitle": "Autres gros consommateurs",
     "consumer.space_heater": "Chauffage soufflant",
     "consumer.washing_machine": "Lave-linge",
+    "environment.sectionTitle": "Environnement",
+    "environment.sensor": "Environnement {index}",
     "house.apartment_building": "Immeuble d'appartements",
     "house.apartment_building_balcony_solar": "Immeuble avec solaire de balcon",
     "house.bungalow": "Bungalow",
@@ -7362,6 +7507,11 @@ const I18N = {
     "editor.importLabel": "Etykieta importu",
     "editor.exportLabel": "Etykieta eksportu",
     "editor.neutralLabel": "Etykieta samowystarczalności",
+    "editor.environmentAdd": "Dodaj kafelek",
+    "editor.environmentEntity": "Encja czujnika",
+    "editor.environmentLabel": "Etykieta czujnika",
+    "editor.environmentShow": "Pokaż kafelek {label}",
+    "editor.environmentUnit": "Nadpisanie jednostki",
     "editor.kpiAdd": "Dodaj kafelek",
     "editor.kpiColor": "Kolor",
     "editor.kpiColumns": "Szerokość kafelka",
@@ -7434,11 +7584,13 @@ const I18N = {
     "editor.sectionAppearance": "Wyświetlanie i limity",
     "editor.sectionGeneral": "Ustawienia ogólne",
     "editor.sectionKpis": "Własne kafelki KPI",
+    "editor.sectionEnvironmentSensors": "Czujniki środowiskowe",
     "editor.sectionLargeConsumers": "Dodatkowe duże odbiorniki",
     "editor.sectionOverlays": "Nakładki obrazu",
     "editor.showBox": "Pokaż {label}",
     "editor.showEnergyRangeSelector": "Pokaż wybór na żywo/1h/24h/miesiąc/rok/łącznie",
     "editor.showHouseSelector": "Pokaż wybór domu",
+    "editor.showEnvironmentSensors": "Pokaż kafelki czujników środowiskowych",
     "editor.showLargeConsumers": "Pokaż duże odbiorniki w widoku domu",
     "editor.showGridStatusTile": "Pokaż kafelek sieci",
     "editor.showMetricTiles": "Pokaż pola metryk pod obrazem",
@@ -7481,6 +7633,8 @@ const I18N = {
     "consumer.sectionTitle": "Dodatkowe duże odbiorniki",
     "consumer.space_heater": "Termowentylator",
     "consumer.washing_machine": "Pralka",
+    "environment.sectionTitle": "Środowisko",
+    "environment.sensor": "Środowisko {index}",
     "house.apartment_building": "Budynek wielorodzinny",
     "house.apartment_building_balcony_solar": "Budynek wielorodzinny z fotowoltaiką balkonową",
     "house.bungalow": "Bungalow",
@@ -7974,6 +8128,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
+      show_environment_sensors: true,
       show_large_consumers: true,
       show_power_flows: false,
       show_status_label: true,
@@ -8019,6 +8174,7 @@ class HaSolarDashboardCard extends HTMLElement {
       energy_entities: {},
       tile_color_rules: DEFAULT_TILE_COLOR_RULES,
       custom_kpis: [],
+      environment_sensors: [],
       large_consumers: normalizeLargeConsumers([]),
       pv_roof_strings: [],
       inverters: [],
@@ -8121,6 +8277,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_house_selector: true,
       show_energy_range_selector: false,
       show_metric_tiles: true,
+      show_environment_sensors: true,
       show_large_consumers: true,
       show_power_flows: false,
       show_status_label: true,
@@ -8160,6 +8317,7 @@ class HaSolarDashboardCard extends HTMLElement {
       image_overlays: {},
       tile_color_rules: {},
       custom_kpis: [],
+      environment_sensors: [],
       large_consumers: [],
       pv_roof_strings: [],
       inverters: [],
@@ -8212,6 +8370,7 @@ class HaSolarDashboardCard extends HTMLElement {
         ...(config.tile_color_rules || config.color_rules || {}),
       },
       custom_kpis: this._normalizeCustomKpis(config.custom_kpis || config.kpis || []),
+      environment_sensors: this._normalizeEnvironmentSensors(config.environment_sensors || config.environment_sensor_tiles || []),
       large_consumers: normalizeLargeConsumers(config.large_consumers || config.large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings(config.pv_roof_strings || config.pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay(config.pv_roof_string_display || config.pv_roof_display || "sum"),
@@ -8463,6 +8622,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.chartEntityId) return metric.chartEntityId;
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric.customKpi) return metric.customKpi.entity || "";
+    if (metric.environmentSensor) return metric.environmentSensor.entity || "";
     if (metric.largeConsumer) {
       if (this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
       return this._largeConsumerPowerEntityId(metric);
@@ -8480,6 +8640,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.chartUnit) return metric.chartUnit;
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.unit || "auto";
     if (metric.customKpi) return metric.customKpi.unit;
+    if (metric.environmentSensor) return metric.environmentSensor.unit || "auto";
     if (metric.largeConsumer) return metric.largeConsumer.unit || this.config.units?.power || "auto";
     const metricUnit = this.config.units?.[metric.key];
     if (metricUnit !== undefined && String(metricUnit).trim() !== "") return metricUnit;
@@ -8721,6 +8882,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.gridStatus) return this._formatGridStatusReading();
     if (metric.overlay) return this._formatOverlayReading(metric.overlay);
     if (metric.customKpi) return this._formatCustomKpiValue(metric.customKpi);
+    if (metric.environmentSensor) return this._formatEnvironmentSensorValue(metric.environmentSensor);
     if (metric.key === "import_export_power") return this._formatGridValueReading();
     if (this._isPvRoofMetric(metric)) {
       const stringReading = this._formatPvRoofStringReading(metric);
@@ -8784,6 +8946,62 @@ class HaSolarDashboardCard extends HTMLElement {
         tileOrder: kpi.position ?? 100 + index,
         tileColumns: kpi.columns ?? 1,
       }));
+  }
+
+  _normalizeEnvironmentSensors(sensors) {
+    const source = Array.isArray(sensors)
+      ? sensors
+      : sensors && typeof sensors === "object"
+        ? Object.entries(sensors).map(([id, sensor]) => (
+          typeof sensor === "string"
+            ? { id, entity: sensor }
+            : { id, ...(sensor || {}) }
+        ))
+        : [];
+    return source
+      .map((sensor, index) => {
+        if (!sensor || typeof sensor !== "object") return undefined;
+        const id = String(sensor.id || sensor.key || sensor.entity || `environment_${index + 1}`).trim().replace(/[^\w-]/g, "_");
+        const position = this._clampNumber(sensor.position ?? sensor.order ?? 300 + index, 300 + index, 0, 999);
+        const columns = Math.round(this._clampNumber(sensor.columns ?? sensor.span ?? 1, 1, 1, 6));
+        return {
+          id,
+          label: String(sensor.label || sensor.name || "").trim(),
+          entity: String(sensor.entity || sensor.entity_id || sensor.sensor || "").trim(),
+          unit: sensor.unit ?? "auto",
+          position,
+          columns,
+          color: this._safeCssColor(sensor.color, "#34d399"),
+          glow: sensor.glow,
+          visible: sensor.visible !== false,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  _environmentSensorLabel(sensor, index = 0) {
+    if (sensor?.label) return sensor.label;
+    const entity = this._getEntity(sensor?.entity);
+    const friendlyName = entity?.attributes?.friendly_name || entity?.attributes?.name;
+    if (friendlyName) return String(friendlyName);
+    return this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
+  }
+
+  _environmentSensorMetrics() {
+    if (this.config.show_environment_sensors === false) return [];
+    return (this.config.environment_sensors || [])
+      .filter((sensor) => sensor.visible !== false && sensor.entity)
+      .map((sensor, index) => ({
+        key: `environment_sensors.${sensor.id || index}`,
+        label: this._environmentSensorLabel(sensor, index),
+        unit: "environment",
+        color: "green",
+        accentColor: sensor.color,
+        environmentSensor: sensor,
+        tileOrder: sensor.position ?? 300 + index,
+        tileColumns: sensor.columns ?? 1,
+      }))
+      .sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
   }
 
   _largeConsumerLabel(consumer, index = 0) {
@@ -9031,6 +9249,19 @@ class HaSolarDashboardCard extends HTMLElement {
 
     const entityUnit = hasEntity ? this._getEntityUnit(kpi.entity) : "";
     const configuredUnit = String(kpi.unit ?? "auto").trim();
+    if (!configuredUnit || configuredUnit.toLowerCase() === "none") return String(roundedValue);
+    if (configuredUnit.toLowerCase() === "auto") return entityUnit ? `${roundedValue} ${entityUnit}` : String(roundedValue);
+    return `${roundedValue} ${configuredUnit}`;
+  }
+
+  _formatEnvironmentSensorValue(sensor) {
+    if (!sensor?.entity) return "—";
+    const rawValue = this._getEntityValue(sensor.entity, undefined);
+    const value = this._formatValue(rawValue);
+    if (value === "—") return value;
+    const roundedValue = this._formatRoundedCustomValue(value);
+    const entityUnit = this._getEntityUnit(sensor.entity);
+    const configuredUnit = String(sensor.unit ?? "auto").trim();
     if (!configuredUnit || configuredUnit.toLowerCase() === "none") return String(roundedValue);
     if (configuredUnit.toLowerCase() === "auto") return entityUnit ? `${roundedValue} ${entityUnit}` : String(roundedValue);
     return `${roundedValue} ${configuredUnit}`;
@@ -9373,6 +9604,11 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.customKpi) {
       const kpi = metric.customKpi;
       const rawValue = kpi.entity ? this._getEntityValue(kpi.entity, undefined) : kpi.value;
+      const number = numericState(rawValue);
+      return Number.isFinite(number) ? number : undefined;
+    }
+    if (metric.environmentSensor) {
+      const rawValue = metric.environmentSensor.entity ? this._getEntityValue(metric.environmentSensor.entity, undefined) : undefined;
       const number = numericState(rawValue);
       return Number.isFinite(number) ? number : undefined;
     }
@@ -10389,6 +10625,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric?.chartEntityId) return metric.chartEntityId;
     if (metric?.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric?.customKpi) return metric.customKpi.entity || "";
+    if (metric?.environmentSensor) return metric.environmentSensor.entity || "";
     if (metric?.largeConsumer) return this._largeConsumerPowerEntityId(metric);
     if (isImportExportMetric(metric)) return this._gridPrimaryEntityId();
     return this.config.entities?.[metricSourceKey(metric)] || "";
@@ -10399,6 +10636,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...TILE_METRICS,
       ...this._visibleOverlayMetrics(),
       ...this._customKpiMetrics(),
+      ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
     ].filter((metric, index, metrics) => {
@@ -10582,7 +10820,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const value = this._metricNumericValue(metric);
     const matchedRule = normalizedRules.find((rule) => this._ruleMatches(rule, value));
     const color = this._safeCssColor(matchedRule?.color, fallbackColor);
-    const glowValue = matchedRule?.glow ?? metric.customKpi?.glow;
+    const glowValue = matchedRule?.glow ?? metric.customKpi?.glow ?? metric.environmentSensor?.glow;
     const glow = glowValue === true
       ? this._hexToRgba(color, 0.34)
       : this._safeCssColor(glowValue, "transparent");
@@ -10621,6 +10859,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _metricEnabled(metric, variant) {
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.enabled === true;
     if (metric.customKpi) return metric.customKpi.visible !== false;
+    if (metric.environmentSensor) return metric.environmentSensor.visible !== false && Boolean(metric.environmentSensor.entity);
     const configured = this.config.visible_boxes?.[metric.key];
     if (configured !== undefined) return configured !== false;
     if (metric.key === "import_export_power") return this._hasGridPowerSource();
@@ -10677,6 +10916,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.chartLabel) return metric.chartLabel;
     if (metric.overlay) return this._overlayLabel(metric.overlay);
     if (metric.customKpi) return metric.customKpi.label || metric.label;
+    if (metric.environmentSensor) return metric.label || this._environmentSensorLabel(metric.environmentSensor);
     if (metric.largeConsumer) return metric.label || this._largeConsumerLabel(metric.largeConsumer);
     if (metric.key === "import_export_power") {
       const status = this._gridStatusInfo();
@@ -11273,6 +11513,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const activeView = this._currentViewMode();
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
     const visibleTileMetrics = this._visibleTileMetrics(state.variant);
+    const environmentMetrics = this._environmentSensorMetrics();
     const largeConsumerMetrics = this._largeConsumerMetrics();
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
@@ -11328,7 +11569,16 @@ class HaSolarDashboardCard extends HTMLElement {
       `;
     };
     const gridHtml = visibleTileMetrics.map(renderTile).join("");
+    const environmentHtml = environmentMetrics.map(renderTile).join("");
     const largeConsumerHtml = largeConsumerMetrics.map(renderTile).join("");
+    const environmentSectionHtml = this.config.show_environment_sensors !== false && environmentMetrics.length > 0
+      ? `
+        <section class="tile-section environment-sensor-section">
+          <div class="tile-section-title">${this._escape(this._t("environment.sectionTitle", {}, "Environment"))}</div>
+          <div class="grid environment-sensor-grid">${environmentHtml}</div>
+        </section>
+      `
+      : "";
     const largeConsumerSectionHtml = this.config.show_large_consumers !== false && largeConsumerMetrics.length > 0
       ? `
         <section class="tile-section large-consumer-section">
@@ -11544,7 +11794,7 @@ class HaSolarDashboardCard extends HTMLElement {
               ? recordsDashboardHtml
               : `
             <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
-            ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${largeConsumerSectionHtml}` : ""}
+            ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${environmentSectionHtml}${largeConsumerSectionHtml}` : ""}
           `}
       </ha-card>
       ${this._renderChartOverlay()}
@@ -11561,6 +11811,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
+      ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
     ];
 

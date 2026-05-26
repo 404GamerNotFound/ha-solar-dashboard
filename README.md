@@ -53,6 +53,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Dedicated Advisor Dashboard with live status, PV/grid/load/battery KPIs, custom KPI values, autarky/self-consumption estimates, sensor diagnostics, and multiple prioritized recommendations for surplus, grid import, battery state, EV charging, heat pump use, flexible appliances, and unusual PV/load situations
 - Warning states highlight unavailable/offline sensors and low battery levels
 - Configurable KPI tiles below the image, including custom labels, entities or static values, units, color, sort position, and tile width
+- Separate environment sensor tiles for values like indoor temperature, hot water temperature, outdoor temperature, pressure, or air quality, using the entity unit by default
 - Optional "Additional Large Consumers" tiles for washing machine, dishwasher, fan heater, dryer, domestic hot water heat pump, and one custom device; their power and kWh counter entities feed extra Advisor recommendations
 - Custom standard and daylight images
 - Free X/Y positioning for every overlay box
@@ -90,6 +91,7 @@ house: single_family_home
 view_mode: house
 show_view_selector: true
 show_house_selector: true
+show_environment_sensors: true
 entities:
   pv_roof_power: sensor.pv_dach_leistung
   pv_shed_power: sensor.pv_schuppen_leistung
@@ -231,6 +233,22 @@ custom_kpis:
     position: 102
     columns: 2
     color: "#1f8fff"
+environment_sensors:
+  - label: Indoor
+    entity: sensor.indoor_temperature
+    unit: auto
+    position: 300
+    color: "#34d399"
+  - label: Hot water
+    entity: sensor.hot_water_temperature
+    unit: auto
+    position: 301
+    color: "#fb923c"
+  - label: Air quality
+    entity: sensor.air_quality
+    unit: auto
+    position: 302
+    color: "#a78bfa"
 large_consumers:
   - id: washing_machine
     power_entity: sensor.washing_machine_power
@@ -257,6 +275,7 @@ large_consumers:
 - `show_house_selector` (boolean, default: `true`)
 - `show_energy_range_selector` (boolean, default: `false`; shows the `Live` / `1h` / `24h` / `1 month` / `1 year` / `Total` selector in the header when enabled)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)
+- `show_environment_sensors` (boolean, default: `true`; shows/hides the separate environment sensor tile section)
 - `show_status_label` (boolean, default: `true`; shows/hides the subtle bottom-right image label with last update and optional weather status)
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
 - `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` or split import/export entities are configured)
@@ -340,6 +359,12 @@ large_consumers:
 - `custom_kpis[].columns` (number, default: `1`, range: `1`-`6`; controls tile width on desktop, capped to `2` on mobile)
 - `custom_kpis[].color` (CSS color, default: `#1f8fff`)
 - `kpis[]` (legacy-friendly alias for `custom_kpis[]`)
+- `environment_sensors[]` (array, optional; adds a separate "Environment" tile section below the normal summary/KPI tiles for arbitrary Home Assistant sensor values such as temperature, pressure, humidity, CO₂, PM2.5, or AQI)
+- `environment_sensors[].label` (string, optional; tile title; when omitted the entity friendly name is used)
+- `environment_sensors[].entity` (entity id; Home Assistant sensor used as the tile value)
+- `environment_sensors[].unit` (string, default: `auto`; `auto` uses the entity unit, `none` hides the unit, any other value overrides the displayed unit)
+- `environment_sensors[].visible` (boolean, default: `true`; hides that environment tile when `false`)
+- `environment_sensors[].position`, `environment_sensors[].columns`, `environment_sensors[].color` follow the same behavior as custom KPI tile positioning, width, and color.
 - `large_consumers[]` (array, optional; configures the separate "Additional Large Consumers" tile section below the normal/KPI tiles and enables dedicated Advisor tips)
 - `large_consumers[].id` (string; built-in slots include `washing_machine`, `dishwasher`, `space_heater`, `dryer`, `dhw_heatpump`, and `custom_1`)
 - `large_consumers[].label` (string, optional; display name, especially useful for `custom_1`)

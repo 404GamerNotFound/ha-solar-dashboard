@@ -151,6 +151,7 @@ export function createAdvisorEngineMethods({
     const metrics = [
       ...this._visibleMetrics(variant),
       ...this._visibleTileMetrics(variant).filter((metric) => metric.customKpi),
+      ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._visibleOverlayMetrics(),

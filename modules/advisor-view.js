@@ -30,6 +30,7 @@ export function createAdvisorViewMethods() {
       [this._t("advisor.selfConsumption", {}, "Self-use"), this._advisorMetricValue(snapshot.selfConsumptionPercent, percentFormatter)],
       [this._t("advisor.autarky", {}, "Autarky"), this._advisorMetricValue(snapshot.autarkyPercent, percentFormatter)],
       ...this._customKpiMetrics().map((metric) => [this._metricLabel(metric), this._formatReading(metric), this._accentStyle(metric)]),
+      ...this._environmentSensorMetrics().map((metric) => [this._metricLabel(metric), this._formatReading(metric), this._accentStyle(metric)]),
     ];
     const metricHtml = metrics.map(([label, value, style = ""]) => `
       <div class="advisor-metric" style="${this._escape(style)}">

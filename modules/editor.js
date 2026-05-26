@@ -45,6 +45,7 @@ export function createDashboardEditorClass({
       energy_entities: {},
       image_overlays: {},
       custom_kpis: [],
+      environment_sensors: [],
       large_consumers: [],
       pv_roof_strings: [],
       pv_roof_string_display: "sum",
@@ -68,6 +69,7 @@ export function createDashboardEditorClass({
       custom_kpis: Array.isArray((config || {}).custom_kpis || (config || {}).kpis)
         ? [...(((config || {}).custom_kpis || (config || {}).kpis))]
         : [],
+      environment_sensors: this._normalizeEnvironmentSensors((config || {}).environment_sensors || (config || {}).environment_sensor_tiles || []),
       large_consumers: normalizeLargeConsumers((config || {}).large_consumers || (config || {}).large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings((config || {}).pv_roof_strings || (config || {}).pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay((config || {}).pv_roof_string_display || (config || {}).pv_roof_display || "sum"),
@@ -196,6 +198,61 @@ export function createDashboardEditorClass({
     const next = this._cloneConfig(this._config || {});
     next.custom_kpis = Array.isArray(next.custom_kpis) ? next.custom_kpis : [];
     next.custom_kpis.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _normalizeEnvironmentSensors(sensors) {
+    const source = Array.isArray(sensors)
+      ? sensors
+      : sensors && typeof sensors === "object"
+        ? Object.entries(sensors).map(([id, sensor]) => (
+          typeof sensor === "string"
+            ? { id, entity: sensor }
+            : { id, ...(sensor || {}) }
+        ))
+        : [];
+    return source
+      .map((sensor, index) => {
+        if (!sensor || typeof sensor !== "object") return undefined;
+        return {
+          id: String(sensor.id || sensor.key || sensor.entity || `environment_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
+          label: String(sensor.label || sensor.name || "").trim(),
+          entity: String(sensor.entity || sensor.entity_id || sensor.sensor || "").trim(),
+          unit: sensor.unit ?? "auto",
+          position: Number.isFinite(Number(sensor.position ?? sensor.order)) ? Number(sensor.position ?? sensor.order) : 300 + index,
+          columns: Number.isFinite(Number(sensor.columns ?? sensor.span)) ? Number(sensor.columns ?? sensor.span) : 1,
+          color: sensor.color || "#34d399",
+          visible: sensor.visible !== false,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  _addEnvironmentSensor() {
+    const next = this._cloneConfig(this._config || {});
+    next.environment_sensors = this._normalizeEnvironmentSensors(next.environment_sensors || []);
+    const index = next.environment_sensors.length;
+    next.environment_sensors.push({
+      id: `environment_${Date.now()}`,
+      label: "",
+      entity: "",
+      unit: "auto",
+      position: 300 + index,
+      columns: 1,
+      color: "#34d399",
+      visible: true,
+    });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeEnvironmentSensor(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.environment_sensors = this._normalizeEnvironmentSensors(next.environment_sensors || []);
+    next.environment_sensors.splice(index, 1);
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -1425,6 +1482,45 @@ export function createDashboardEditorClass({
     `;
   }
 
+  _renderEnvironmentSensorField(sensor, index) {
+    const label = sensor?.label || "";
+    const entity = sensor?.entity || sensor?.entity_id || "";
+    const unit = sensor?.unit ?? "auto";
+    const position = Number.isFinite(Number(sensor?.position ?? sensor?.order)) ? Number(sensor.position ?? sensor.order) : 300 + index;
+    const columns = Number.isFinite(Number(sensor?.columns ?? sensor?.span)) ? Number(sensor.columns ?? sensor.span) : 1;
+    const color = sensor?.color || "#34d399";
+    const visible = sensor?.visible !== false;
+    const fallbackLabel = this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
+
+    return `
+      <div class="box-field environment-field">
+        <div class="kpi-head">
+          <strong>${this._escape(label || fallbackLabel)}</strong>
+          <button type="button" data-action="remove-environment-sensor" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
+        </div>
+        <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.visible" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShow", { label: label || fallbackLabel }, `Show ${label || fallbackLabel} tile`))}</label>
+        <label>${this._escape(this._t("editor.environmentLabel", {}, "Sensor label"))}
+          <input data-path="environment_sensors.${index}.label" placeholder="${this._escape(fallbackLabel)}" value="${this._escape(label)}" />
+        </label>
+        <label>${this._escape(this._t("editor.environmentEntity", {}, "Sensor entity"))}
+          <input data-path="environment_sensors.${index}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.indoor_temperature" value="${this._escape(entity)}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.environmentUnit", {}, "Unit override"))}
+          <input data-path="environment_sensors.${index}.unit" placeholder="auto" value="${this._escape(unit)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiPosition"))} (${this._escape(position)})
+          <input type="number" min="0" max="999" step="1" data-path="environment_sensors.${index}.position" value="${this._escape(position)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiColumns"))} (${this._escape(columns)})
+          <input type="range" min="1" max="6" step="1" data-path="environment_sensors.${index}.columns" value="${this._escape(columns)}" />
+        </label>
+        <label>${this._escape(this._t("editor.kpiColor"))}
+          <input data-path="environment_sensors.${index}.color" placeholder="#34d399" value="${this._escape(color)}" />
+        </label>
+      </div>
+    `;
+  }
+
   _largeConsumerLabel(consumer, index = 0) {
     return largeConsumerLabel(consumer, index, (key, params, fallback) => this._t(key, params, fallback));
   }
@@ -1543,6 +1639,9 @@ export function createDashboardEditorClass({
       .join("");
     const customKpis = Array.isArray(this._config.custom_kpis) ? this._config.custom_kpis : [];
     const customKpiFields = customKpis.map((kpi, index) => this._renderCustomKpiField(kpi, index)).join("");
+    const environmentSensors = this._normalizeEnvironmentSensors(this._config.environment_sensors || []);
+    this._config.environment_sensors = environmentSensors;
+    const environmentSensorFields = environmentSensors.map((sensor, index) => this._renderEnvironmentSensorField(sensor, index)).join("");
     this._config.pv_roof_string_display = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
     this._config.pv_roof_strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
     this._config.inverter_display = normalizeInverterDisplay(this._config.inverter_display);
@@ -1578,6 +1677,7 @@ export function createDashboardEditorClass({
           <label class="inline"><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_environment_sensors" ${this._config.show_environment_sensors !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnvironmentSensors", {}, "Show environment sensor tiles"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
@@ -1630,6 +1730,10 @@ export function createDashboardEditorClass({
       <div class="grid">${customKpiFields}</div>
       <div class="action-row"><button type="button" data-action="add-kpi">${this._escape(this._t("editor.kpiAdd"))}</button></div>
     `;
+    const environmentSettingsHtml = `
+      <div class="grid">${environmentSensorFields}</div>
+      <div class="action-row"><button type="button" data-action="add-environment-sensor">${this._escape(this._t("editor.environmentAdd", {}, "Add tile"))}</button></div>
+    `;
     const largeConsumerSettingsHtml = `
       <div class="grid">${largeConsumerFields}</div>
       <div class="action-row"><button type="button" data-action="add-large-consumer">${this._escape(this._t("editor.consumerAddCustom", {}, "Add custom large consumer"))}</button></div>
@@ -1646,6 +1750,7 @@ export function createDashboardEditorClass({
         ${renderEditorSection("boxes", this._t("editor.sectionBoxes", {}, "Boxes, live/kWh entities, unit, and position"), boxSettingsHtml)}
         ${renderEditorSection("overlays", this._t("editor.sectionOverlays", {}, "Image overlays"), overlaySettingsHtml)}
         ${renderEditorSection("kpis", this._t("editor.sectionKpis", {}, "Custom KPI tiles"), kpiSettingsHtml)}
+        ${renderEditorSection("environment-sensors", this._t("editor.sectionEnvironmentSensors", {}, "Environment sensors"), environmentSettingsHtml)}
         ${renderEditorSection("large-consumers", this._t("editor.sectionLargeConsumers", {}, "Additional large consumers"), largeConsumerSettingsHtml)}
       </div>
     `;
@@ -1665,6 +1770,8 @@ export function createDashboardEditorClass({
         const target = event.currentTarget;
         if (target.dataset.action === "add-kpi") this._addCustomKpi();
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
+        if (target.dataset.action === "add-environment-sensor") this._addEnvironmentSensor();
+        if (target.dataset.action === "remove-environment-sensor") this._removeEnvironmentSensor(Number(target.dataset.index));
         if (target.dataset.action === "add-pv-roof-string") this._addPvRoofString();
         if (target.dataset.action === "remove-pv-roof-string") this._removePvRoofString(Number(target.dataset.index));
         if (target.dataset.action === "add-inverter") this._addInverter();

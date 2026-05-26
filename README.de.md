@@ -37,6 +37,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Eigenes Advisor Dashboard mit Live-Status, PV-/Netz-/Last-/Batterie-Kennzahlen, eigenen KPI-Werten, Autarkie-/Eigenverbrauchsschätzung, Sensor-Diagnosen und mehreren priorisierten Empfehlungen bei Überschuss, Netzbezug, Batteriestand, Wallbox-Laden, Wärmepumpe, flexiblen Haushaltsverbrauchern und auffälliger PV-/Lastsituation
 - Warnzustände für nicht verfügbare/offline Sensoren und niedrigen Batteriestand
 - Frei definierbare KPI-Kacheln unter dem Bild, z. B. CO₂ gespart heute, Autarkiegrad oder spezifischer Ertrag
+- Eigene Umgebungs-Kachelebene für Sensorwerte wie Innentemperatur, Warmwasser, Außentemperatur, Luftdruck oder Luftqualität; standardmäßig wird die Einheit der Entität verwendet
 - Variante `apartment_building_balcony_solar` für Balkonsolar mit PV-Leistung, Batterie und Wechselrichter
 - Dezentes Statuslabel im Bild mit letzter Aktualisierung und optionalem Wetterstatus
 - Optionale Wetterbilder per `weather_entity`, zum Beispiel `_sunny`, `_rainy`, `_cloudy`, `_snowy` oder `_thunderstorm`

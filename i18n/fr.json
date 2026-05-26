@@ -164,6 +164,8 @@
   "editor.environmentEntity": "Entité du capteur",
   "editor.environmentLabel": "Libellé du capteur",
   "editor.environmentShow": "Afficher la tuile {label}",
+  "editor.environmentShowFooter": "Afficher la boîte dans le pied",
+  "editor.environmentShowImage": "Afficher la boîte dans l'image",
   "editor.environmentUnit": "Remplacer l'unité",
   "editor.kpiAdd": "Ajouter une tuile",
   "editor.kpiColor": "Couleur",

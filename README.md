@@ -364,6 +364,9 @@ large_consumers:
 - `environment_sensors[].entity` (entity id; Home Assistant sensor used as the tile value)
 - `environment_sensors[].unit` (string, default: `auto`; `auto` uses the entity unit, `none` hides the unit, any other value overrides the displayed unit)
 - `environment_sensors[].visible` (boolean, default: `true`; hides that environment tile when `false`)
+- `environment_sensors[].show_footer` (boolean, default: `true`; shows the sensor as a tile in the Environment footer section)
+- `environment_sensors[].show_image` (boolean, default: `false`; shows the sensor as a HUD box on the house image)
+- `environment_sensors[].left` / `environment_sensors[].top` (number, default: `50`; percentage position for the optional image HUD box)
 - `environment_sensors[].position`, `environment_sensors[].columns`, `environment_sensors[].color` follow the same behavior as custom KPI tile positioning, width, and color.
 - `large_consumers[]` (array, optional; configures the separate "Additional Large Consumers" tile section below the normal/KPI tiles and enables dedicated Advisor tips)
 - `large_consumers[].id` (string; built-in slots include `washing_machine`, `dishwasher`, `space_heater`, `dryer`, `dhw_heatpump`, and `custom_1`)

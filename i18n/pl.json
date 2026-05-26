@@ -164,6 +164,8 @@
   "editor.environmentEntity": "Encja czujnika",
   "editor.environmentLabel": "Etykieta czujnika",
   "editor.environmentShow": "Pokaż kafelek {label}",
+  "editor.environmentShowFooter": "Pokaż pole w stopce",
+  "editor.environmentShowImage": "Pokaż pole na obrazie",
   "editor.environmentUnit": "Nadpisanie jednostki",
   "editor.kpiAdd": "Dodaj kafelek",
   "editor.kpiColor": "Kolor",

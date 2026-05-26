@@ -164,6 +164,8 @@
   "editor.environmentEntity": "Sensor entity",
   "editor.environmentLabel": "Sensor label",
   "editor.environmentShow": "Show {label} tile",
+  "editor.environmentShowFooter": "Show box in footer",
+  "editor.environmentShowImage": "Show box in image",
   "editor.environmentUnit": "Unit override",
   "editor.kpiAdd": "Add tile",
   "editor.kpiColor": "Color",

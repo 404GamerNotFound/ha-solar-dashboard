@@ -146,7 +146,7 @@ export function createDashboardEditorClass({
     this._setPath(next, parts, nextValue);
     this._config = next;
     this._dispatchConfig(next);
-    if (path === "house") this._render();
+    if (path === "house" || (parts[0] === "environment_sensors" && lastPart === "show_image")) this._render();
   }
 
   _setPath(target, parts, value) {
@@ -223,8 +223,12 @@ export function createDashboardEditorClass({
           unit: sensor.unit ?? "auto",
           position: Number.isFinite(Number(sensor.position ?? sensor.order)) ? Number(sensor.position ?? sensor.order) : 300 + index,
           columns: Number.isFinite(Number(sensor.columns ?? sensor.span)) ? Number(sensor.columns ?? sensor.span) : 1,
+          left: Number.isFinite(Number(sensor.left ?? sensor.x)) ? Number(sensor.left ?? sensor.x) : 50,
+          top: Number.isFinite(Number(sensor.top ?? sensor.y)) ? Number(sensor.top ?? sensor.y) : 50,
           color: sensor.color || "#34d399",
           visible: sensor.visible !== false,
+          show_footer: sensor.show_footer ?? sensor.footer ?? true,
+          show_image: sensor.show_image ?? sensor.image ?? false,
         };
       })
       .filter(Boolean);
@@ -241,8 +245,12 @@ export function createDashboardEditorClass({
       unit: "auto",
       position: 300 + index,
       columns: 1,
+      left: 50,
+      top: 50,
       color: "#34d399",
       visible: true,
+      show_footer: true,
+      show_image: false,
     });
     this._config = next;
     this._dispatchConfig(next);
@@ -1488,9 +1496,23 @@ export function createDashboardEditorClass({
     const unit = sensor?.unit ?? "auto";
     const position = Number.isFinite(Number(sensor?.position ?? sensor?.order)) ? Number(sensor.position ?? sensor.order) : 300 + index;
     const columns = Number.isFinite(Number(sensor?.columns ?? sensor?.span)) ? Number(sensor.columns ?? sensor.span) : 1;
+    const left = Number.isFinite(Number(sensor?.left ?? sensor?.x)) ? Number(sensor.left ?? sensor.x) : 50;
+    const top = Number.isFinite(Number(sensor?.top ?? sensor?.y)) ? Number(sensor.top ?? sensor.y) : 50;
     const color = sensor?.color || "#34d399";
     const visible = sensor?.visible !== false;
+    const showFooter = sensor?.show_footer !== false;
+    const showImage = sensor?.show_image === true;
     const fallbackLabel = this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
+    const imagePositionHtml = showImage
+      ? `
+        <label>${this._escape(this._t("editor.xPosition"))} (${this._escape(left)})
+          <input type="range" min="0" max="100" step="1" data-path="environment_sensors.${index}.left" value="${this._escape(left)}" />
+        </label>
+        <label>${this._escape(this._t("editor.yPosition"))} (${this._escape(top)})
+          <input type="range" min="0" max="100" step="1" data-path="environment_sensors.${index}.top" value="${this._escape(top)}" />
+        </label>
+      `
+      : "";
 
     return `
       <div class="box-field environment-field">
@@ -1499,6 +1521,8 @@ export function createDashboardEditorClass({
           <button type="button" data-action="remove-environment-sensor" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
         </div>
         <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.visible" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShow", { label: label || fallbackLabel }, `Show ${label || fallbackLabel} tile`))}</label>
+        <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.show_footer" ${showFooter ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShowFooter", {}, "Show box in footer"))}</label>
+        <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.show_image" ${showImage ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShowImage", {}, "Show box in image"))}</label>
         <label>${this._escape(this._t("editor.environmentLabel", {}, "Sensor label"))}
           <input data-path="environment_sensors.${index}.label" placeholder="${this._escape(fallbackLabel)}" value="${this._escape(label)}" />
         </label>
@@ -1517,6 +1541,7 @@ export function createDashboardEditorClass({
         <label>${this._escape(this._t("editor.kpiColor"))}
           <input data-path="environment_sensors.${index}.color" placeholder="#34d399" value="${this._escape(color)}" />
         </label>
+        ${imagePositionHtml}
       </div>
     `;
   }

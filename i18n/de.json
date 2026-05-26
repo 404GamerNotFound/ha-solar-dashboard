@@ -164,6 +164,8 @@
   "editor.environmentEntity": "Sensor-Entität",
   "editor.environmentLabel": "Sensor-Label",
   "editor.environmentShow": "{label}-Kachel anzeigen",
+  "editor.environmentShowFooter": "Box im Footer anzeigen",
+  "editor.environmentShowImage": "Box im Bild anzeigen",
   "editor.environmentUnit": "Einheit überschreiben",
   "editor.kpiAdd": "Kachel hinzufügen",
   "editor.kpiColor": "Farbe",

@@ -164,6 +164,8 @@
   "editor.environmentEntity": "Entidad del sensor",
   "editor.environmentLabel": "Etiqueta del sensor",
   "editor.environmentShow": "Mostrar mosaico de {label}",
+  "editor.environmentShowFooter": "Mostrar caja en el pie",
+  "editor.environmentShowImage": "Mostrar caja en la imagen",
   "editor.environmentUnit": "Sobrescribir unidad",
   "editor.kpiAdd": "Añadir mosaico",
   "editor.kpiColor": "Color",

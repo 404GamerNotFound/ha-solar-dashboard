@@ -3424,7 +3424,7 @@ function createDashboardEditorClass({
     this._setPath(next, parts, nextValue);
     this._config = next;
     this._dispatchConfig(next);
-    if (path === "house") this._render();
+    if (path === "house" || (parts[0] === "environment_sensors" && lastPart === "show_image")) this._render();
   }
 
   _setPath(target, parts, value) {
@@ -3501,8 +3501,12 @@ function createDashboardEditorClass({
           unit: sensor.unit ?? "auto",
           position: Number.isFinite(Number(sensor.position ?? sensor.order)) ? Number(sensor.position ?? sensor.order) : 300 + index,
           columns: Number.isFinite(Number(sensor.columns ?? sensor.span)) ? Number(sensor.columns ?? sensor.span) : 1,
+          left: Number.isFinite(Number(sensor.left ?? sensor.x)) ? Number(sensor.left ?? sensor.x) : 50,
+          top: Number.isFinite(Number(sensor.top ?? sensor.y)) ? Number(sensor.top ?? sensor.y) : 50,
           color: sensor.color || "#34d399",
           visible: sensor.visible !== false,
+          show_footer: sensor.show_footer ?? sensor.footer ?? true,
+          show_image: sensor.show_image ?? sensor.image ?? false,
         };
       })
       .filter(Boolean);
@@ -3519,8 +3523,12 @@ function createDashboardEditorClass({
       unit: "auto",
       position: 300 + index,
       columns: 1,
+      left: 50,
+      top: 50,
       color: "#34d399",
       visible: true,
+      show_footer: true,
+      show_image: false,
     });
     this._config = next;
     this._dispatchConfig(next);
@@ -4766,9 +4774,23 @@ function createDashboardEditorClass({
     const unit = sensor?.unit ?? "auto";
     const position = Number.isFinite(Number(sensor?.position ?? sensor?.order)) ? Number(sensor.position ?? sensor.order) : 300 + index;
     const columns = Number.isFinite(Number(sensor?.columns ?? sensor?.span)) ? Number(sensor.columns ?? sensor.span) : 1;
+    const left = Number.isFinite(Number(sensor?.left ?? sensor?.x)) ? Number(sensor.left ?? sensor.x) : 50;
+    const top = Number.isFinite(Number(sensor?.top ?? sensor?.y)) ? Number(sensor.top ?? sensor.y) : 50;
     const color = sensor?.color || "#34d399";
     const visible = sensor?.visible !== false;
+    const showFooter = sensor?.show_footer !== false;
+    const showImage = sensor?.show_image === true;
     const fallbackLabel = this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
+    const imagePositionHtml = showImage
+      ? `
+        <label>${this._escape(this._t("editor.xPosition"))} (${this._escape(left)})
+          <input type="range" min="0" max="100" step="1" data-path="environment_sensors.${index}.left" value="${this._escape(left)}" />
+        </label>
+        <label>${this._escape(this._t("editor.yPosition"))} (${this._escape(top)})
+          <input type="range" min="0" max="100" step="1" data-path="environment_sensors.${index}.top" value="${this._escape(top)}" />
+        </label>
+      `
+      : "";
 
     return `
       <div class="box-field environment-field">
@@ -4777,6 +4799,8 @@ function createDashboardEditorClass({
           <button type="button" data-action="remove-environment-sensor" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
         </div>
         <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.visible" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShow", { label: label || fallbackLabel }, `Show ${label || fallbackLabel} tile`))}</label>
+        <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.show_footer" ${showFooter ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShowFooter", {}, "Show box in footer"))}</label>
+        <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.show_image" ${showImage ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShowImage", {}, "Show box in image"))}</label>
         <label>${this._escape(this._t("editor.environmentLabel", {}, "Sensor label"))}
           <input data-path="environment_sensors.${index}.label" placeholder="${this._escape(fallbackLabel)}" value="${this._escape(label)}" />
         </label>
@@ -4795,6 +4819,7 @@ function createDashboardEditorClass({
         <label>${this._escape(this._t("editor.kpiColor"))}
           <input data-path="environment_sensors.${index}.color" placeholder="#34d399" value="${this._escape(color)}" />
         </label>
+        ${imagePositionHtml}
       </div>
     `;
   }
@@ -5815,6 +5840,8 @@ const I18N = {
     "editor.environmentEntity": "Sensor entity",
     "editor.environmentLabel": "Sensor label",
     "editor.environmentShow": "Show {label} tile",
+    "editor.environmentShowFooter": "Show box in footer",
+    "editor.environmentShowImage": "Show box in image",
     "editor.environmentUnit": "Unit override",
     "editor.kpiAdd": "Add tile",
     "editor.kpiColor": "Color",
@@ -6239,6 +6266,8 @@ const I18N = {
     "editor.environmentEntity": "Sensor-Entität",
     "editor.environmentLabel": "Sensor-Label",
     "editor.environmentShow": "{label}-Kachel anzeigen",
+    "editor.environmentShowFooter": "Box im Footer anzeigen",
+    "editor.environmentShowImage": "Box im Bild anzeigen",
     "editor.environmentUnit": "Einheit überschreiben",
     "editor.kpiAdd": "Kachel hinzufügen",
     "editor.kpiColor": "Farbe",
@@ -6663,6 +6692,8 @@ const I18N = {
     "editor.environmentEntity": "Entidad del sensor",
     "editor.environmentLabel": "Etiqueta del sensor",
     "editor.environmentShow": "Mostrar mosaico de {label}",
+    "editor.environmentShowFooter": "Mostrar caja en el pie",
+    "editor.environmentShowImage": "Mostrar caja en la imagen",
     "editor.environmentUnit": "Sobrescribir unidad",
     "editor.kpiAdd": "Añadir mosaico",
     "editor.kpiColor": "Color",
@@ -7087,6 +7118,8 @@ const I18N = {
     "editor.environmentEntity": "Entité du capteur",
     "editor.environmentLabel": "Libellé du capteur",
     "editor.environmentShow": "Afficher la tuile {label}",
+    "editor.environmentShowFooter": "Afficher la boîte dans le pied",
+    "editor.environmentShowImage": "Afficher la boîte dans l'image",
     "editor.environmentUnit": "Remplacer l'unité",
     "editor.kpiAdd": "Ajouter une tuile",
     "editor.kpiColor": "Couleur",
@@ -7511,6 +7544,8 @@ const I18N = {
     "editor.environmentEntity": "Encja czujnika",
     "editor.environmentLabel": "Etykieta czujnika",
     "editor.environmentShow": "Pokaż kafelek {label}",
+    "editor.environmentShowFooter": "Pokaż pole w stopce",
+    "editor.environmentShowImage": "Pokaż pole na obrazie",
     "editor.environmentUnit": "Nadpisanie jednostki",
     "editor.kpiAdd": "Dodaj kafelek",
     "editor.kpiColor": "Kolor",
@@ -8964,6 +8999,8 @@ class HaSolarDashboardCard extends HTMLElement {
         const id = String(sensor.id || sensor.key || sensor.entity || `environment_${index + 1}`).trim().replace(/[^\w-]/g, "_");
         const position = this._clampNumber(sensor.position ?? sensor.order ?? 300 + index, 300 + index, 0, 999);
         const columns = Math.round(this._clampNumber(sensor.columns ?? sensor.span ?? 1, 1, 1, 6));
+        const left = this._clampNumber(sensor.left ?? sensor.x, 50, 0, 100);
+        const top = this._clampNumber(sensor.top ?? sensor.y, 50, 0, 100);
         return {
           id,
           label: String(sensor.label || sensor.name || "").trim(),
@@ -8971,9 +9008,13 @@ class HaSolarDashboardCard extends HTMLElement {
           unit: sensor.unit ?? "auto",
           position,
           columns,
+          left,
+          top,
           color: this._safeCssColor(sensor.color, "#34d399"),
           glow: sensor.glow,
           visible: sensor.visible !== false,
+          show_footer: sensor.show_footer ?? sensor.footer ?? true,
+          show_image: sensor.show_image ?? sensor.image ?? false,
         };
       })
       .filter(Boolean);
@@ -8987,10 +9028,15 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
   }
 
-  _environmentSensorMetrics() {
+  _environmentSensorMetrics({ placement = "" } = {}) {
     if (this.config.show_environment_sensors === false) return [];
     return (this.config.environment_sensors || [])
       .filter((sensor) => sensor.visible !== false && sensor.entity)
+      .filter((sensor) => {
+        if (placement === "footer") return sensor.show_footer !== false;
+        if (placement === "image") return sensor.show_image === true;
+        return sensor.show_footer !== false || sensor.show_image === true;
+      })
       .map((sensor, index) => ({
         key: `environment_sensors.${sensor.id || index}`,
         label: this._environmentSensorLabel(sensor, index),
@@ -10428,6 +10474,7 @@ class HaSolarDashboardCard extends HTMLElement {
     return [
       ...this._visibleHudMetrics(variant),
       ...this._visibleTileMetrics(variant),
+      ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
     ].filter((metric, index, metrics) => {
       if (!this._metricEntityId(metric)) return false;
@@ -10906,10 +10953,14 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _visibleHudMetrics(variant) {
-    return this._visibleMetrics(variant).filter((metric) => {
+    const baseMetrics = this._visibleMetrics(variant).filter((metric) => {
       if (metric.hud !== false) return true;
       return Boolean(variant?.positions?.[metric.key]) || this.config.visible_boxes?.[metric.key] === true;
     });
+    return [
+      ...baseMetrics,
+      ...this._environmentSensorMetrics({ placement: "image" }),
+    ];
   }
 
   _metricLabel(metric, variant) {
@@ -10931,6 +10982,15 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricPosition(variant, key) {
+    if (String(key || "").startsWith("environment_sensors.")) {
+      const metric = this._environmentSensorMetrics({ placement: "image" }).find((item) => item.key === key)
+        || this._environmentSensorMetrics().find((item) => item.key === key);
+      return {
+        left: metric?.environmentSensor?.left ?? 50,
+        top: metric?.environmentSensor?.top ?? 50,
+      };
+    }
+
     if (key === "wallbox2_power") {
       const configured = this.config.positions[key];
       if (configured?.left !== undefined || configured?.top !== undefined) {
@@ -11513,7 +11573,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const activeView = this._currentViewMode();
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
     const visibleTileMetrics = this._visibleTileMetrics(state.variant);
-    const environmentMetrics = this._environmentSensorMetrics();
+    const environmentMetrics = this._environmentSensorMetrics({ placement: "footer" });
     const largeConsumerMetrics = this._largeConsumerMetrics();
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
@@ -11609,7 +11669,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .image-overlay-wrap { position:absolute; z-index:1; width:10%; transform:translate(-50%,var(--overlay-translate-y,-50%)); transform-origin:center bottom; pointer-events:none; user-select:none; }
         .image-overlay { display:block; width:100%; height:auto; transform:scaleX(var(--overlay-scale-x,1)); transform-origin:center bottom; filter:drop-shadow(0 8px 12px rgba(0,0,0,.24)); }
         .image-overlay-smoke { opacity:.78; filter:blur(.15px); mix-blend-mode:screen; }
-        .overlay-reading { position:absolute; left:calc(100% + 7px); top:50%; transform:translateY(-50%); display:grid; gap:1px; min-width:64px; max-width:118px; border-radius:9px; border:1px solid color-mix(in srgb,var(--tile-accent,#f3f6ff) 42%,rgba(255,255,255,.2)); background:rgba(8,16,38,.72); color:var(--tile-accent,#f3f6ff); font-size:.76rem; line-height:1.15; font-weight:800; padding:5px 7px; box-shadow:0 8px 20px rgba(0,0,0,.28); backdrop-filter:blur(4px); overflow-wrap:anywhere; }
+        .overlay-reading { position:absolute; left:calc(100% + 7px); top:50%; transform:translateY(-50%) scale(var(--hud-box-scale)); transform-origin:left center; display:grid; gap:1px; min-width:64px; max-width:118px; border-radius:9px; border:1px solid color-mix(in srgb,var(--tile-accent,#f3f6ff) 42%,rgba(255,255,255,.2)); background:rgba(8,16,38,.72); color:var(--tile-accent,#f3f6ff); font-size:.76rem; line-height:1.15; font-weight:800; padding:5px 7px; box-shadow:0 8px 20px rgba(0,0,0,.28); backdrop-filter:blur(4px); overflow-wrap:anywhere; }
         .overlay-reading-label { color:var(--text-muted); font-size:.64rem; font-weight:700; }
         .overlay-reading-value { color:var(--tile-accent,#f3f6ff); }
         .image-overlay-wrap-smoke .overlay-reading { --tile-accent:#ffc233; left:68%; top:88%; }

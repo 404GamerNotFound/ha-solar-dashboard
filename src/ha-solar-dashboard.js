@@ -1378,6 +1378,8 @@ class HaSolarDashboardCard extends HTMLElement {
         const id = String(sensor.id || sensor.key || sensor.entity || `environment_${index + 1}`).trim().replace(/[^\w-]/g, "_");
         const position = this._clampNumber(sensor.position ?? sensor.order ?? 300 + index, 300 + index, 0, 999);
         const columns = Math.round(this._clampNumber(sensor.columns ?? sensor.span ?? 1, 1, 1, 6));
+        const left = this._clampNumber(sensor.left ?? sensor.x, 50, 0, 100);
+        const top = this._clampNumber(sensor.top ?? sensor.y, 50, 0, 100);
         return {
           id,
           label: String(sensor.label || sensor.name || "").trim(),
@@ -1385,9 +1387,13 @@ class HaSolarDashboardCard extends HTMLElement {
           unit: sensor.unit ?? "auto",
           position,
           columns,
+          left,
+          top,
           color: this._safeCssColor(sensor.color, "#34d399"),
           glow: sensor.glow,
           visible: sensor.visible !== false,
+          show_footer: sensor.show_footer ?? sensor.footer ?? true,
+          show_image: sensor.show_image ?? sensor.image ?? false,
         };
       })
       .filter(Boolean);
@@ -1401,10 +1407,15 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
   }
 
-  _environmentSensorMetrics() {
+  _environmentSensorMetrics({ placement = "" } = {}) {
     if (this.config.show_environment_sensors === false) return [];
     return (this.config.environment_sensors || [])
       .filter((sensor) => sensor.visible !== false && sensor.entity)
+      .filter((sensor) => {
+        if (placement === "footer") return sensor.show_footer !== false;
+        if (placement === "image") return sensor.show_image === true;
+        return sensor.show_footer !== false || sensor.show_image === true;
+      })
       .map((sensor, index) => ({
         key: `environment_sensors.${sensor.id || index}`,
         label: this._environmentSensorLabel(sensor, index),
@@ -2842,6 +2853,7 @@ class HaSolarDashboardCard extends HTMLElement {
     return [
       ...this._visibleHudMetrics(variant),
       ...this._visibleTileMetrics(variant),
+      ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
     ].filter((metric, index, metrics) => {
       if (!this._metricEntityId(metric)) return false;
@@ -3320,10 +3332,14 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _visibleHudMetrics(variant) {
-    return this._visibleMetrics(variant).filter((metric) => {
+    const baseMetrics = this._visibleMetrics(variant).filter((metric) => {
       if (metric.hud !== false) return true;
       return Boolean(variant?.positions?.[metric.key]) || this.config.visible_boxes?.[metric.key] === true;
     });
+    return [
+      ...baseMetrics,
+      ...this._environmentSensorMetrics({ placement: "image" }),
+    ];
   }
 
   _metricLabel(metric, variant) {
@@ -3345,6 +3361,15 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricPosition(variant, key) {
+    if (String(key || "").startsWith("environment_sensors.")) {
+      const metric = this._environmentSensorMetrics({ placement: "image" }).find((item) => item.key === key)
+        || this._environmentSensorMetrics().find((item) => item.key === key);
+      return {
+        left: metric?.environmentSensor?.left ?? 50,
+        top: metric?.environmentSensor?.top ?? 50,
+      };
+    }
+
     if (key === "wallbox2_power") {
       const configured = this.config.positions[key];
       if (configured?.left !== undefined || configured?.top !== undefined) {
@@ -3927,7 +3952,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const activeView = this._currentViewMode();
     const visibleHudMetrics = this._visibleHudMetrics(state.variant);
     const visibleTileMetrics = this._visibleTileMetrics(state.variant);
-    const environmentMetrics = this._environmentSensorMetrics();
+    const environmentMetrics = this._environmentSensorMetrics({ placement: "footer" });
     const largeConsumerMetrics = this._largeConsumerMetrics();
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);

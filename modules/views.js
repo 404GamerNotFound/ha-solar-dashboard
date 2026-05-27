@@ -1,8 +1,10 @@
 export const CHART_DASHBOARD_VIEW = "charts";
 export const RECORDS_DASHBOARD_VIEW = "records";
+export const FLOORPLAN_DASHBOARD_VIEW = "floorplan";
 
 export const VIEW_MODE_OPTIONS = Object.freeze([
   Object.freeze({ key: "house", labelKey: "view.house", label: "House View", icon: "house" }),
+  Object.freeze({ key: FLOORPLAN_DASHBOARD_VIEW, labelKey: "view.floorplan", label: "Floorplan", icon: "floorplan" }),
   Object.freeze({ key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard", icon: "advisor" }),
   Object.freeze({ key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart" }),
   Object.freeze({ key: RECORDS_DASHBOARD_VIEW, labelKey: "view.records", label: "Records", icon: "records" }),
@@ -13,6 +15,10 @@ const VIEW_MODE_ALIASES = Object.freeze({
   haus: "house",
   house_view: "house",
   building: "house",
+  grundriss: FLOORPLAN_DASHBOARD_VIEW,
+  floor_plan: FLOORPLAN_DASHBOARD_VIEW,
+  floorplan_view: FLOORPLAN_DASHBOARD_VIEW,
+  plan: FLOORPLAN_DASHBOARD_VIEW,
   advisor_dashboard: "advisor",
   advisor_view: "advisor",
   adviser: "advisor",
@@ -50,6 +56,17 @@ const VIEW_MODE_ICONS = Object.freeze({
       <path d="M18.36 5.64 19.78 4.22"></path>
       <path d="M9 12.5 11 14.5 15.5 9.5"></path>
       <circle cx="12" cy="12" r="5"></circle>
+    </svg>
+  `,
+  floorplan: `
+    <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 20V4h16v16Z"></path>
+      <path d="M4 10h7"></path>
+      <path d="M14 4v7"></path>
+      <path d="M11 10v10"></path>
+      <path d="M11 15h9"></path>
+      <path d="M7 20v-4"></path>
+      <path d="M16 15v-4"></path>
     </svg>
   `,
   chart: `

@@ -5,7 +5,7 @@ ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 8
 .house-select,.energy-range-select,.view-mode-toggle { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
 .house-select,.energy-range-select { max-width:170px; padding:0 30px 0 10px; }
 .energy-range-select { max-width:110px; }
-.view-mode-toggle { display:grid; grid-template-columns:repeat(4,42px); width:max-content; max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
+.view-mode-toggle { display:grid; grid-template-columns:repeat(5,42px); width:max-content; max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
 .view-mode-button { min-width:0; min-height:28px; border:0; border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.82rem; font-weight:800; line-height:1.1; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
 .view-mode-icon { width:17px; height:17px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .view-mode-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -182,5 +182,21 @@ ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 8
 .record-card-head span { flex:0 0 auto; max-width:45%; color:var(--text-muted); font-size:.68rem; line-height:1.2; text-align:right; overflow-wrap:anywhere; }
 .record-card-value { color:#facc15; font-size:1.22rem; line-height:1.1; font-weight:900; overflow-wrap:anywhere; }
 .record-card code { min-width:0; color:rgba(243,246,255,.68); font-size:.66rem; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; border-radius:6px; padding:3px 5px; background:rgba(255,255,255,.06); }
+.floorplan-dashboard { display:grid; gap:12px; min-width:0; }
+.floorplan-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-width:0; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:linear-gradient(135deg,rgba(15,23,42,.76),rgba(8,13,28,.68)); }
+.floorplan-head h2 { margin:2px 0 0; color:var(--text-main); font-size:1.02rem; line-height:1.25; overflow-wrap:anywhere; }
+.floorplan-head span { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:rgba(255,255,255,.08); color:var(--text-main); font-size:.7rem; line-height:1.1; font-weight:800; }
+.floorplan-canvas { position:relative; min-width:0; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(8,13,28,.68); overflow:hidden; }
+.floorplan-canvas svg { display:block; width:100%; height:auto; min-height:320px; }
+.floorplan-background { fill:rgba(10,18,34,.94); }
+.floorplan-grid-line { stroke:rgba(255,255,255,.07); stroke-width:.18; vector-effect:non-scaling-stroke; }
+.floorplan-room rect { fill:color-mix(in srgb,var(--room-color,#1f8fff) 12%,rgba(255,255,255,.04)); stroke:color-mix(in srgb,var(--room-color,#1f8fff) 46%,rgba(255,255,255,.2)); stroke-width:.45; vector-effect:non-scaling-stroke; }
+.floorplan-room text { fill:rgba(243,246,255,.78); font-size:2.3px; font-weight:800; pointer-events:none; }
+.floorplan-wall { stroke:var(--wall-color,#dbeafe); stroke-width:var(--wall-width,1.2); stroke-linecap:round; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 4px rgba(255,255,255,.18)); }
+.floorplan-sensor circle { fill:var(--sensor-color,#34d399); stroke:rgba(255,255,255,.82); stroke-width:.45; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 5px var(--sensor-color,#34d399)); }
+.floorplan-sensor-card { display:grid; gap:1px; min-width:0; max-width:100%; padding:3px 5px; border-radius:6px; border:1px solid color-mix(in srgb,var(--sensor-color,#34d399) 44%,rgba(255,255,255,.16)); background:rgba(8,16,38,.76); color:var(--text-main); font:600 3px/1.15 system-ui,sans-serif; box-sizing:border-box; overflow:hidden; }
+.floorplan-sensor-card span { color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.floorplan-sensor-card strong { color:var(--sensor-color,#34d399); font-size:3.4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.floorplan-empty { position:absolute; inset:0; display:grid; place-items:center; padding:18px; color:var(--text-muted); text-align:center; font-size:.86rem; pointer-events:none; }
 @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} .record-loading-item{grid-template-columns:1fr;align-items:start;gap:2px;} }
 @media (min-width:701px){ .hide-desktop{display:none!important;} }

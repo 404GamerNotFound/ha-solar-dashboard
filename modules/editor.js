@@ -46,6 +46,12 @@ export function createDashboardEditorClass({
       image_overlays: {},
       custom_kpis: [],
       environment_sensors: [],
+      floorplan: {
+        show_grid: true,
+        rooms: [],
+        walls: [],
+        sensors: [],
+      },
       large_consumers: [],
       pv_roof_strings: [],
       pv_roof_string_display: "sum",
@@ -70,6 +76,7 @@ export function createDashboardEditorClass({
         ? [...(((config || {}).custom_kpis || (config || {}).kpis))]
         : [],
       environment_sensors: this._normalizeEnvironmentSensors((config || {}).environment_sensors || (config || {}).environment_sensor_tiles || []),
+      floorplan: this._normalizeFloorplan((config || {}).floorplan || {}),
       large_consumers: normalizeLargeConsumers((config || {}).large_consumers || (config || {}).large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings((config || {}).pv_roof_strings || (config || {}).pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay((config || {}).pv_roof_string_display || (config || {}).pv_roof_display || "sum"),
@@ -122,7 +129,7 @@ export function createDashboardEditorClass({
   }
 
   _activeTab() {
-    const allowed = new Set(["setup", "energy", "devices", "environment", "layout", "appearance", "advisor", "advanced"]);
+    const allowed = new Set(["setup", "energy", "devices", "environment", "floorplan", "layout", "appearance", "advisor", "advanced"]);
     return allowed.has(this._activeEditorTab) ? this._activeEditorTab : "setup";
   }
 
@@ -154,6 +161,15 @@ export function createDashboardEditorClass({
     return entityIds.filter((entityId) => entityId && !this._entityExists(entityId)).length;
   }
 
+  _safeCssColor(color, fallback = "") {
+    const value = String(color || "").trim();
+    if (!value) return fallback;
+    if (/^#[0-9a-f]{3,8}$/i.test(value)) return value;
+    if (/^(rgb|rgba|hsl|hsla)\([\d\s.,%/-]+\)$/i.test(value)) return value;
+    if (/^[a-z]+$/i.test(value)) return value;
+    return fallback;
+  }
+
   _statusText({ configured = 0, total = 0, hidden = 0, missing = 0, advanced = false } = {}) {
     const parts = [];
     if (total > 0) {
@@ -173,6 +189,7 @@ export function createDashboardEditorClass({
     if (path === "house" || path === "image" || path === "day_image") return true;
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
+    if (root === "floorplan") return true;
     if (root === "environment_sensors") {
       return ["visible", "show_image", "left", "top", "label", "color"].includes(lastPart);
     }
@@ -198,7 +215,7 @@ export function createDashboardEditorClass({
       "grid_voltage_warning_threshold",
       "grid_voltage_critical_threshold",
     ]);
-    const numericProps = new Set(["left", "top", "width", "position", "columns"]);
+    const numericProps = new Set(["left", "top", "width", "height", "position", "columns", "x", "y", "x1", "y1", "x2", "y2"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
     this._setPath(next, parts, nextValue);
@@ -290,6 +307,149 @@ export function createDashboardEditorClass({
         };
       })
       .filter(Boolean);
+  }
+
+  _normalizeFloorplan(floorplan = {}) {
+    const source = floorplan && typeof floorplan === "object" ? floorplan : {};
+    const rooms = Array.isArray(source.rooms) ? source.rooms : [];
+    const walls = Array.isArray(source.walls) ? source.walls : [];
+    const sensors = Array.isArray(source.sensors) ? source.sensors : [];
+    return {
+      show_grid: source.show_grid !== false,
+      rooms: rooms
+        .map((room, index) => {
+          if (!room || typeof room !== "object") return undefined;
+          return {
+            id: String(room.id || room.key || `room_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
+            label: String(room.label || room.name || this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`)).trim(),
+            x: Number.isFinite(Number(room.x)) ? Number(room.x) : 10 + index * 4,
+            y: Number.isFinite(Number(room.y)) ? Number(room.y) : 10 + index * 4,
+            width: Number.isFinite(Number(room.width ?? room.w)) ? Number(room.width ?? room.w) : 24,
+            height: Number.isFinite(Number(room.height ?? room.h)) ? Number(room.height ?? room.h) : 18,
+            color: this._safeCssColor(room.color, "#1f8fff"),
+          };
+        })
+        .filter(Boolean),
+      walls: walls
+        .map((wall, index) => {
+          if (!wall || typeof wall !== "object") return undefined;
+          return {
+            id: String(wall.id || wall.key || `wall_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
+            x1: Number.isFinite(Number(wall.x1 ?? wall.from_x)) ? Number(wall.x1 ?? wall.from_x) : 12,
+            y1: Number.isFinite(Number(wall.y1 ?? wall.from_y)) ? Number(wall.y1 ?? wall.from_y) : 12,
+            x2: Number.isFinite(Number(wall.x2 ?? wall.to_x)) ? Number(wall.x2 ?? wall.to_x) : 36,
+            y2: Number.isFinite(Number(wall.y2 ?? wall.to_y)) ? Number(wall.y2 ?? wall.to_y) : 12,
+            width: Number.isFinite(Number(wall.width ?? wall.stroke_width)) ? Number(wall.width ?? wall.stroke_width) : 1.2,
+            color: this._safeCssColor(wall.color, "#dbeafe"),
+          };
+        })
+        .filter(Boolean),
+      sensors: sensors
+        .map((sensor, index) => {
+          if (!sensor || typeof sensor !== "object") return undefined;
+          return {
+            id: String(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor || `sensor_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
+            label: String(sensor.label || sensor.name || "").trim(),
+            entity: String(sensor.entity || sensor.entity_id || "").trim(),
+            environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
+            unit: sensor.unit ?? "auto",
+            x: Number.isFinite(Number(sensor.x ?? sensor.left)) ? Number(sensor.x ?? sensor.left) : 50,
+            y: Number.isFinite(Number(sensor.y ?? sensor.top)) ? Number(sensor.y ?? sensor.top) : 35,
+            color: this._safeCssColor(sensor.color, "#34d399"),
+            visible: sensor.visible !== false,
+          };
+        })
+        .filter(Boolean),
+    };
+  }
+
+  _floorplanTool() {
+    const allowed = new Set(["room", "wall", "sensor"]);
+    return allowed.has(this._floorplanToolMode) ? this._floorplanToolMode : "room";
+  }
+
+  _setFloorplanTool(tool) {
+    this._floorplanToolMode = tool || "room";
+    this._render();
+  }
+
+  _floorplanItems(floorplan = this._normalizeFloorplan(this._config.floorplan || {})) {
+    return [
+      ...floorplan.rooms.map((room, index) => ({ key: `room:${index}`, type: "room", index, item: room, label: room.label || this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`) })),
+      ...floorplan.walls.map((wall, index) => ({ key: `wall:${index}`, type: "wall", index, item: wall, label: this._t("floorplan.wall", { index: index + 1 }, `Wall ${index + 1}`) })),
+      ...floorplan.sensors.map((sensor, index) => ({ key: `sensor:${index}`, type: "sensor", index, item: sensor, label: sensor.label || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`) })),
+    ];
+  }
+
+  _selectedFloorplanItem(floorplan = this._normalizeFloorplan(this._config.floorplan || {})) {
+    const items = this._floorplanItems(floorplan);
+    if (!items.length) return undefined;
+    const selected = items.find((item) => item.key === this._selectedFloorplanItemKey) || items[0];
+    this._selectedFloorplanItemKey = selected.key;
+    return selected;
+  }
+
+  _addFloorplanItem(type = this._floorplanTool(), x = 50, y = 35) {
+    const next = this._cloneConfig(this._config || {});
+    next.floorplan = this._normalizeFloorplan(next.floorplan || {});
+    const clampedX = Math.max(0, Math.min(100, Number(x) || 50));
+    const clampedY = Math.max(0, Math.min(70, Number(y) || 35));
+    if (type === "wall") {
+      const index = next.floorplan.walls.length;
+      next.floorplan.walls.push({
+        id: `wall_${Date.now()}`,
+        x1: Math.max(0, clampedX - 10),
+        y1: clampedY,
+        x2: Math.min(100, clampedX + 10),
+        y2: clampedY,
+        width: 1.2,
+        color: "#dbeafe",
+      });
+      this._selectedFloorplanItemKey = `wall:${index}`;
+    } else if (type === "sensor") {
+      const index = next.floorplan.sensors.length;
+      const firstEnvironmentSensor = this._normalizeEnvironmentSensors(next.environment_sensors || [])[0];
+      next.floorplan.sensors.push({
+        id: `sensor_${Date.now()}`,
+        label: "",
+        entity: "",
+        environment_sensor: firstEnvironmentSensor?.id || "",
+        unit: "auto",
+        x: clampedX,
+        y: clampedY,
+        color: firstEnvironmentSensor?.color || "#34d399",
+        visible: true,
+      });
+      this._selectedFloorplanItemKey = `sensor:${index}`;
+    } else {
+      const index = next.floorplan.rooms.length;
+      next.floorplan.rooms.push({
+        id: `room_${Date.now()}`,
+        label: this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`),
+        x: Math.max(0, clampedX - 12),
+        y: Math.max(0, clampedY - 9),
+        width: 24,
+        height: 18,
+        color: "#1f8fff",
+      });
+      this._selectedFloorplanItemKey = `room:${index}`;
+    }
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeSelectedFloorplanItem() {
+    const selected = this._selectedFloorplanItem();
+    if (!selected) return;
+    const next = this._cloneConfig(this._config || {});
+    next.floorplan = this._normalizeFloorplan(next.floorplan || {});
+    const collection = selected.type === "room" ? "rooms" : selected.type === "wall" ? "walls" : "sensors";
+    next.floorplan[collection].splice(selected.index, 1);
+    this._selectedFloorplanItemKey = "";
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
   }
 
   _environmentSensorTemplates() {
@@ -1789,6 +1949,136 @@ export function createDashboardEditorClass({
     return items.find((item) => item.key === this._selectedLayoutItemKey) || items[0];
   }
 
+  _renderFloorplanEditor() {
+    const floorplan = this._normalizeFloorplan(this._config.floorplan || {});
+    this._config.floorplan = floorplan;
+    const selected = this._selectedFloorplanItem(floorplan);
+    const activeTool = this._floorplanTool();
+    const grid = floorplan.show_grid !== false
+      ? Array.from({ length: 11 }, (_item, index) => index * 10).map((x) => `<line class="floorplan-editor-gridline" x1="${x}" y1="0" x2="${x}" y2="70"></line>`).join("")
+        + Array.from({ length: 8 }, (_item, index) => index * 10).map((y) => `<line class="floorplan-editor-gridline" x1="0" y1="${y}" x2="100" y2="${y}"></line>`).join("")
+      : "";
+    const rooms = floorplan.rooms.map((room, index) => {
+      const key = `room:${index}`;
+      return `
+        <g class="floorplan-editor-room${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" style="--room-color:${this._escape(room.color)}">
+          <rect x="${this._escape(room.x)}" y="${this._escape(room.y)}" width="${this._escape(room.width)}" height="${this._escape(room.height)}" rx="1.2"></rect>
+          <text x="${this._escape(room.x + 1.5)}" y="${this._escape(room.y + 4)}">${this._escape(room.label)}</text>
+        </g>
+      `;
+    }).join("");
+    const walls = floorplan.walls.map((wall, index) => {
+      const key = `wall:${index}`;
+      return `<line class="floorplan-editor-wall${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" x1="${this._escape(wall.x1)}" y1="${this._escape(wall.y1)}" x2="${this._escape(wall.x2)}" y2="${this._escape(wall.y2)}" style="--wall-color:${this._escape(wall.color)};--wall-width:${this._escape(wall.width)}"></line>`;
+    }).join("");
+    const sensors = floorplan.sensors.map((sensor, index) => {
+      const key = `sensor:${index}`;
+      const linked = this._normalizeEnvironmentSensors(this._config.environment_sensors || []).find((item) => item.id === sensor.environment_sensor);
+      const label = sensor.label || linked?.label || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`);
+      const color = sensor.color || linked?.color || "#34d399";
+      return `
+        <g class="floorplan-editor-sensor${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})" style="--sensor-color:${this._escape(color)}">
+          <circle r="1.9"></circle>
+          <text x="2.8" y=".9">${this._escape(label)}</text>
+        </g>
+      `;
+    }).join("");
+    const toolButtons = [
+      ["room", this._t("editor.floorplanToolRoom", {}, "Room")],
+      ["wall", this._t("editor.floorplanToolWall", {}, "Wall")],
+      ["sensor", this._t("editor.floorplanToolSensor", {}, "Sensor")],
+    ].map(([tool, label]) => `
+      <button type="button" class="${tool === activeTool ? "active" : ""}" data-floorplan-tool="${this._escape(tool)}" aria-pressed="${tool === activeTool ? "true" : "false"}">${this._escape(label)}</button>
+    `).join("");
+    const environmentOptions = [
+      `<option value="">${this._escape(this._t("editor.floorplanCustomEntity", {}, "Custom entity"))}</option>`,
+      ...this._normalizeEnvironmentSensors(this._config.environment_sensors || []).map((sensor, index) => {
+        const label = sensor.label || this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
+        return `<option value="${this._escape(sensor.id)}"${selected?.item?.environment_sensor === sensor.id ? " selected" : ""}>${this._escape(label)}</option>`;
+      }),
+    ].join("");
+    const selectedControls = selected
+      ? (() => {
+        const collection = selected.type === "room" ? "rooms" : selected.type === "wall" ? "walls" : "sensors";
+        const path = `floorplan.${collection}.${selected.index}`;
+        if (selected.type === "room") {
+          const room = selected.item;
+          return `
+            <div class="layout-controls">
+              <strong>${this._escape(this._t("editor.floorplanSelected", {}, "Selected element"))}: ${this._escape(this._t("editor.floorplanToolRoom", {}, "Room"))}</strong>
+              <label>${this._labelText(this._t("editor.floorplanLabel", {}, "Label"))}<input data-path="${path}.label" value="${this._escape(room.label)}" /></label>
+              <label>${this._labelText(`X (${room.x})`)}<input type="range" min="0" max="100" step="1" data-path="${path}.x" value="${this._escape(room.x)}" /></label>
+              <label>${this._labelText(`Y (${room.y})`)}<input type="range" min="0" max="70" step="1" data-path="${path}.y" value="${this._escape(room.y)}" /></label>
+              <label>${this._labelText(`${this._t("editor.floorplanWidth", {}, "Width")} (${room.width})`)}<input type="range" min="3" max="100" step="1" data-path="${path}.width" value="${this._escape(room.width)}" /></label>
+              <label>${this._labelText(`${this._t("editor.floorplanHeight", {}, "Height")} (${room.height})`)}<input type="range" min="3" max="70" step="1" data-path="${path}.height" value="${this._escape(room.height)}" /></label>
+              <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}<input data-path="${path}.color" value="${this._escape(room.color)}" /></label>
+              <button type="button" data-action="remove-floorplan-item">${this._escape(this._t("editor.floorplanDelete", {}, "Delete selected"))}</button>
+            </div>
+          `;
+        }
+        if (selected.type === "wall") {
+          const wall = selected.item;
+          return `
+            <div class="layout-controls">
+              <strong>${this._escape(this._t("editor.floorplanSelected", {}, "Selected element"))}: ${this._escape(this._t("editor.floorplanToolWall", {}, "Wall"))}</strong>
+              <label>${this._labelText(`X1 (${wall.x1})`)}<input type="range" min="0" max="100" step="1" data-path="${path}.x1" value="${this._escape(wall.x1)}" /></label>
+              <label>${this._labelText(`Y1 (${wall.y1})`)}<input type="range" min="0" max="70" step="1" data-path="${path}.y1" value="${this._escape(wall.y1)}" /></label>
+              <label>${this._labelText(`X2 (${wall.x2})`)}<input type="range" min="0" max="100" step="1" data-path="${path}.x2" value="${this._escape(wall.x2)}" /></label>
+              <label>${this._labelText(`Y2 (${wall.y2})`)}<input type="range" min="0" max="70" step="1" data-path="${path}.y2" value="${this._escape(wall.y2)}" /></label>
+              <label>${this._labelText(`${this._t("editor.overlaySize", {}, "Size")} (${wall.width})`)}<input type="range" min="0.2" max="5" step="0.1" data-path="${path}.width" value="${this._escape(wall.width)}" /></label>
+              <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}<input data-path="${path}.color" value="${this._escape(wall.color)}" /></label>
+              <button type="button" data-action="remove-floorplan-item">${this._escape(this._t("editor.floorplanDelete", {}, "Delete selected"))}</button>
+            </div>
+          `;
+        }
+        const sensor = selected.item;
+        return `
+          <div class="layout-controls">
+            <strong>${this._escape(this._t("editor.floorplanSelected", {}, "Selected element"))}: ${this._escape(this._t("editor.floorplanToolSensor", {}, "Sensor"))}</strong>
+            <label class="inline"><input type="checkbox" data-path="${path}.visible" ${sensor.visible !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._t("editor.floorplanToolSensor", {}, "Sensor") }, "Show sensor"))}</label>
+            <label>${this._labelText(this._t("editor.floorplanSensorSource", {}, "Sensor source"))}<select data-path="${path}.environment_sensor">${environmentOptions}</select></label>
+            <label>${this._labelText(this._t("editor.floorplanLabel", {}, "Label"))}<input data-path="${path}.label" value="${this._escape(sensor.label)}" /></label>
+            <label>${this._labelText(this._t("editor.floorplanEntity", {}, "Entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}<input data-path="${path}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.living_room_temperature" value="${this._escape(sensor.entity)}" autocomplete="off" /></label>
+            <label>${this._labelText(this._t("editor.environmentUnit", {}, "Display unit"), this._t("editor.helpUnitAuto", {}, "Use Auto to display the unit reported by the Home Assistant entity."))}<input data-path="${path}.unit" placeholder="auto" value="${this._escape(sensor.unit)}" /></label>
+            <label>${this._labelText(`X (${sensor.x})`)}<input type="range" min="0" max="100" step="1" data-path="${path}.x" value="${this._escape(sensor.x)}" /></label>
+            <label>${this._labelText(`Y (${sensor.y})`)}<input type="range" min="0" max="70" step="1" data-path="${path}.y" value="${this._escape(sensor.y)}" /></label>
+            <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}<input data-path="${path}.color" value="${this._escape(sensor.color)}" /></label>
+            <button type="button" data-action="remove-floorplan-item">${this._escape(this._t("editor.floorplanDelete", {}, "Delete selected"))}</button>
+          </div>
+        `;
+      })()
+      : `<div class="layout-empty">${this._escape(this._t("editor.floorplanEmpty", {}, "Click the grid to create the selected element."))}</div>`;
+    return `
+      <section class="editor-card floorplan-editor-card">
+        <div class="editor-card-head">
+          <div>
+            <strong>${this._escape(this._t("editor.sectionFloorplan", {}, "Floorplan editor"))}</strong>
+            <span>${this._escape(this._t("editor.floorplanHelp", {}, "Choose a tool, click the grid to place it, then refine the selected element."))}</span>
+          </div>
+          <span class="section-status">${this._escape(this._statusText({ configured: floorplan.rooms.length + floorplan.walls.length + floorplan.sensors.length }))}</span>
+        </div>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="floorplan.show_grid" ${floorplan.show_grid !== false ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanShowGrid", {}, "Show grid"))}</label>
+        </div>
+        <div class="floorplan-tool-row" role="group" aria-label="${this._escape(this._t("editor.floorplanTools", {}, "Floorplan tools"))}">
+          ${toolButtons}
+        </div>
+        <div class="layout-editor floorplan-editor">
+          <div class="floorplan-editor-preview">
+            <svg data-floorplan-canvas viewBox="0 0 100 70" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${this._escape(this._t("editor.sectionFloorplan", {}, "Floorplan editor"))}">
+              <rect class="floorplan-editor-bg" x="0" y="0" width="100" height="70" rx="1.5"></rect>
+              ${grid}
+              ${rooms}
+              ${walls}
+              ${sensors}
+            </svg>
+          </div>
+          ${selectedControls}
+        </div>
+      </section>
+    `;
+  }
+
   _renderLayoutEditor() {
     const items = this._layoutItems();
     const selected = this._selectedLayoutItem(items);
@@ -1855,6 +2145,8 @@ export function createDashboardEditorClass({
     const environmentSensors = this._normalizeEnvironmentSensors(this._config.environment_sensors || []);
     this._config.environment_sensors = environmentSensors;
     const environmentSensorFields = environmentSensors.map((sensor, index) => this._renderEnvironmentSensorField(sensor, index)).join("");
+    const floorplan = this._normalizeFloorplan(this._config.floorplan || {});
+    this._config.floorplan = floorplan;
     this._config.pv_roof_string_display = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
     this._config.pv_roof_strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
     this._config.inverter_display = normalizeInverterDisplay(this._config.inverter_display);
@@ -1867,6 +2159,11 @@ export function createDashboardEditorClass({
     const overlayCount = IMAGE_OVERLAY_KEYS.filter((key) => this._config.image_overlays?.[key]?.enabled === true).length;
     const environmentConfigured = environmentSensors.filter((sensor) => sensor.entity).length;
     const environmentMissing = this._missingEntityCount(environmentSensors.map((sensor) => sensor.entity));
+    const floorplanElementCount = floorplan.rooms.length + floorplan.walls.length + floorplan.sensors.length;
+    const floorplanMissing = this._missingEntityCount(floorplan.sensors.map((sensor) => {
+      if (sensor.entity) return sensor.entity;
+      return environmentSensors.find((item) => item.id === sensor.environment_sensor)?.entity || "";
+    }));
     const largeConsumerConfigured = largeConsumers.filter((consumer) => consumer.power_entity || consumer.energy_entity).length;
     const customKpiConfigured = customKpis.filter((kpi) => kpi.entity || kpi.value).length;
     const renderEditorCard = (title, status, content) => `
@@ -1992,6 +2289,12 @@ export function createDashboardEditorClass({
         content: renderEditorCard(this._t("editor.sectionEnvironmentSensors", {}, "Environment sensors"), this._statusText({ configured: environmentConfigured, total: environmentSensors.length, missing: environmentMissing }), environmentSettingsHtml),
       },
       {
+        key: "floorplan",
+        label: this._t("editor.tabFloorplan", {}, "Floorplan"),
+        status: this._statusText({ configured: floorplanElementCount, missing: floorplanMissing }),
+        content: this._renderFloorplanEditor(),
+      },
+      {
         key: "layout",
         label: this._t("editor.tabLayout", {}, "Layout"),
         status: this._statusText({ configured: this._layoutItems().length }),
@@ -2057,6 +2360,7 @@ export function createDashboardEditorClass({
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
         if (target.dataset.action === "add-environment-sensor") this._addEnvironmentSensor(target.dataset.template || "custom");
         if (target.dataset.action === "remove-environment-sensor") this._removeEnvironmentSensor(Number(target.dataset.index));
+        if (target.dataset.action === "remove-floorplan-item") this._removeSelectedFloorplanItem();
         if (target.dataset.action === "add-pv-roof-string") this._addPvRoofString();
         if (target.dataset.action === "remove-pv-roof-string") this._removePvRoofString(Number(target.dataset.index));
         if (target.dataset.action === "add-inverter") this._addInverter();
@@ -2070,6 +2374,28 @@ export function createDashboardEditorClass({
     this.shadowRoot.querySelectorAll("button[data-editor-tab]").forEach((button) => {
       button.addEventListener("click", (event) => this._setActiveTab(event.currentTarget.dataset.editorTab));
     });
+    this.shadowRoot.querySelectorAll("button[data-floorplan-tool]").forEach((button) => {
+      button.addEventListener("click", (event) => this._setFloorplanTool(event.currentTarget.dataset.floorplanTool));
+    });
+    this.shadowRoot.querySelectorAll("[data-floorplan-select]").forEach((element) => {
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._selectedFloorplanItemKey = event.currentTarget.dataset.floorplanSelect;
+        this._render();
+      });
+    });
+    const floorplanCanvas = this.shadowRoot.querySelector("[data-floorplan-canvas]");
+    if (floorplanCanvas) {
+      floorplanCanvas.addEventListener("click", (event) => {
+        if (event.target.closest?.("[data-floorplan-select]")) return;
+        const rect = floorplanCanvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const x = ((event.clientX - rect.left) / rect.width) * 100;
+        const y = ((event.clientY - rect.top) / rect.height) * 70;
+        this._addFloorplanItem(this._floorplanTool(), x, y);
+      });
+    }
     this.shadowRoot.querySelectorAll("[data-layout-key]").forEach((button) => {
       button.addEventListener("click", (event) => {
         this._selectedLayoutItemKey = event.currentTarget.dataset.layoutKey;

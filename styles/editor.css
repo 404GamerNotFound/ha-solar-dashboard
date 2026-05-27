@@ -34,6 +34,22 @@ button:hover:not(:disabled){border-color:var(--primary-color,#1f8fff)}
 .layout-marker.active{outline:2px solid color-mix(in srgb,var(--layout-color,#1f8fff) 84%,#fff);outline-offset:2px}
 .layout-controls{display:grid;gap:8px;min-width:0}
 .layout-empty{font-size:13px;color:var(--secondary-text-color,#9ca3af);padding:10px;border:1px dashed var(--divider-color,#4b5563);border-radius:8px}
+.floorplan-tool-row{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.floorplan-tool-row button{font-weight:800}
+.floorplan-tool-row button.active{border-color:var(--primary-color,#1f8fff);background:color-mix(in srgb,var(--primary-color,#1f8fff) 18%,var(--card-background-color,#111827));box-shadow:inset 3px 0 0 var(--primary-color,#1f8fff)}
+.floorplan-editor-preview{position:relative;min-width:0;aspect-ratio:10/7;overflow:hidden;border-radius:10px;border:1px solid var(--divider-color,#4b5563);background:#0a1222}
+.floorplan-editor-preview svg{display:block;width:100%;height:100%;cursor:crosshair}
+.floorplan-editor-bg{fill:rgba(10,18,34,.94)}
+.floorplan-editor-gridline{stroke:rgba(255,255,255,.08);stroke-width:.18;vector-effect:non-scaling-stroke}
+.floorplan-editor-room,.floorplan-editor-wall,.floorplan-editor-sensor{cursor:pointer}
+.floorplan-editor-room rect{fill:color-mix(in srgb,var(--room-color,#1f8fff) 12%,rgba(255,255,255,.04));stroke:color-mix(in srgb,var(--room-color,#1f8fff) 48%,rgba(255,255,255,.2));stroke-width:.5;vector-effect:non-scaling-stroke}
+.floorplan-editor-room text,.floorplan-editor-sensor text{fill:rgba(243,246,255,.82);font-size:2.3px;font-weight:800;pointer-events:none}
+.floorplan-editor-wall{stroke:var(--wall-color,#dbeafe);stroke-width:var(--wall-width,1.2);stroke-linecap:round;vector-effect:non-scaling-stroke}
+.floorplan-editor-sensor circle{fill:var(--sensor-color,#34d399);stroke:rgba(255,255,255,.86);stroke-width:.45;vector-effect:non-scaling-stroke}
+.floorplan-editor-room.active rect,.floorplan-editor-wall.active,.floorplan-editor-sensor.active circle{filter:drop-shadow(0 0 5px var(--primary-color,#1f8fff))}
+.floorplan-editor-room.active rect{stroke:#fff}
+.floorplan-editor-wall.active{stroke:#fff}
+.floorplan-editor-sensor.active circle{stroke:#fff}
 .editor-section summary{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;font-weight:800;list-style:none}
 .editor-section summary::-webkit-details-marker{display:none}
 .editor-section summary::after{content:"▾";font-size:12px;color:var(--secondary-text-color,#9ca3af);transition:transform .18s ease}

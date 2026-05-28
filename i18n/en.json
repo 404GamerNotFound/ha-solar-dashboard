@@ -280,6 +280,7 @@
   "editor.layoutTypeEnvironment": "Environment",
   "editor.sectionFloorplan": "Floorplan editor",
   "editor.floorplanHelp": "Choose a tool, click the grid to place it, then refine the selected element.",
+  "editor.showFloorplan": "Show floorplan",
   "editor.floorplanShowGrid": "Show grid",
   "editor.floorplanTools": "Floorplan tools",
   "editor.floorplanToolRoom": "Room",

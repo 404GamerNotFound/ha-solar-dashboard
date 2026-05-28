@@ -3341,6 +3341,7 @@ function createDashboardEditorClass({
       image_overlays: {},
       custom_kpis: [],
       environment_sensors: [],
+      show_floorplan: true,
       floorplan: {
         show_grid: true,
         rooms: [],
@@ -3484,6 +3485,7 @@ function createDashboardEditorClass({
     if (path === "house" || path === "image" || path === "day_image") return true;
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
+    if (root === "show_floorplan") return true;
     if (root === "floorplan") return true;
     if (root === "environment_sensors") {
       return ["visible", "show_image", "left", "top", "label", "color"].includes(lastPart);
@@ -5369,11 +5371,18 @@ function createDashboardEditorClass({
       const key = `sensor:${index}`;
       const linked = this._normalizeEnvironmentSensors(this._config.environment_sensors || []).find((item) => item.id === sensor.environment_sensor);
       const label = sensor.label || linked?.label || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`);
+      const entityId = linked?.entity || sensor.entity || "";
+      const stateObj = this._hass?.states?.[entityId];
+      const configuredUnit = String(sensor.unit || linked?.unit || "auto");
+      const unit = configuredUnit && configuredUnit !== "auto" ? configuredUnit : stateObj?.attributes?.unit_of_measurement || "";
+      const value = stateObj ? `${stateObj.state}${unit ? ` ${unit}` : ""}` : "-";
       const color = sensor.color || linked?.color || "#34d399";
       return `
         <g class="floorplan-editor-sensor${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})" style="--sensor-color:${this._escape(color)}">
-          <circle r="1.9"></circle>
-          <text x="2.8" y=".9">${this._escape(label)}</text>
+          <circle r="1.7"></circle>
+          <rect class="floorplan-sensor-box" x="2.7" y="-5.3" width="20.5" height="9" rx="1.2"></rect>
+          <text class="floorplan-sensor-label" x="4.2" y="-1.9">${this._escape(label)}</text>
+          <text class="floorplan-sensor-value" x="4.2" y="2.5">${this._escape(value)}</text>
         </g>
       `;
     }).join("");
@@ -5452,6 +5461,7 @@ function createDashboardEditorClass({
           <span class="section-status">${this._escape(this._statusText({ configured: floorplan.rooms.length + floorplan.walls.length + floorplan.sensors.length }))}</span>
         </div>
         <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_floorplan" ${this._config.show_floorplan !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showFloorplan", {}, "Show floorplan"))}</label>
           <label class="inline"><input type="checkbox" data-path="floorplan.show_grid" ${floorplan.show_grid !== false ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanShowGrid", {}, "Show grid"))}</label>
         </div>
         <div class="floorplan-tool-row" role="group" aria-label="${this._escape(this._t("editor.floorplanTools", {}, "Floorplan tools"))}">
@@ -5527,8 +5537,12 @@ function createDashboardEditorClass({
     const houseOptions = Object.entries(HOUSE_VARIANTS)
       .map(([key, value]) => `<option value="${this._escape(key)}"${key === house ? " selected" : ""}>${this._escape(this._houseLabel(key, value))}</option>`)
       .join("");
-    const viewMode = this._normalizeViewMode(this._config.view_mode) || "house";
+    const configuredViewMode = this._config.show_floorplan === false && this._config.view_mode === "floorplan"
+      ? "house"
+      : this._config.view_mode;
+    const viewMode = this._normalizeViewMode(configuredViewMode) || "house";
     const viewModeOptions = VIEW_MODE_OPTIONS
+      .filter((option) => option.key !== "floorplan" || this._config.show_floorplan !== false)
       .map((option) => `<option value="${this._escape(option.key)}"${option.key === viewMode ? " selected" : ""}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`)
       .join("");
     const entityOptions = this._entityOptions()
@@ -5776,9 +5790,12 @@ function createDashboardEditorClass({
         .floorplan-editor-gridline{stroke:rgba(255,255,255,.08);stroke-width:.18;vector-effect:non-scaling-stroke}
         .floorplan-editor-room,.floorplan-editor-wall,.floorplan-editor-sensor{cursor:move}
         .floorplan-editor-room rect{fill:color-mix(in srgb,var(--room-color,#1f8fff) 12%,rgba(255,255,255,.04));stroke:color-mix(in srgb,var(--room-color,#1f8fff) 48%,rgba(255,255,255,.2));stroke-width:.5;vector-effect:non-scaling-stroke}
-        .floorplan-editor-room text,.floorplan-editor-sensor text{fill:rgba(243,246,255,.82);font-size:2.3px;font-weight:800;pointer-events:none}
+        .floorplan-editor-room text{fill:rgba(243,246,255,.82);font-size:2.3px;font-weight:800;pointer-events:none}
         .floorplan-editor-wall{stroke:var(--wall-color,#dbeafe);stroke-width:var(--wall-width,1.2);stroke-linecap:round;vector-effect:non-scaling-stroke}
-        .floorplan-editor-sensor circle{fill:var(--sensor-color,#34d399);stroke:rgba(255,255,255,.86);stroke-width:.45;vector-effect:non-scaling-stroke}
+        .floorplan-editor-sensor circle{fill:var(--sensor-color,#34d399);stroke:rgba(255,255,255,.86);stroke-width:.45;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 5px var(--sensor-color,#34d399))}
+        .floorplan-editor-sensor .floorplan-sensor-box{fill:rgba(8,16,38,.76);stroke:color-mix(in srgb,var(--sensor-color,#34d399) 44%,rgba(255,255,255,.16));stroke-width:.28;vector-effect:non-scaling-stroke}
+        .floorplan-editor-sensor .floorplan-sensor-label{fill:var(--secondary-text-color,#94a3b8);font-size:2.35px;font-weight:700;pointer-events:none}
+        .floorplan-editor-sensor .floorplan-sensor-value{fill:var(--sensor-color,#34d399);font-size:3.05px;font-weight:900;pointer-events:none}
         .floorplan-editor-room.active rect,.floorplan-editor-wall.active,.floorplan-editor-sensor.active circle{filter:drop-shadow(0 0 5px var(--primary-color,#1f8fff))}
         .floorplan-editor-room.active rect{stroke:#fff}
         .floorplan-editor-wall.active{stroke:#fff}
@@ -6782,6 +6799,7 @@ const I18N = {
     "editor.layoutTypeEnvironment": "Environment",
     "editor.sectionFloorplan": "Floorplan editor",
     "editor.floorplanHelp": "Choose a tool, click the grid to place it, then refine the selected element.",
+    "editor.showFloorplan": "Show floorplan",
     "editor.floorplanShowGrid": "Show grid",
     "editor.floorplanTools": "Floorplan tools",
     "editor.floorplanToolRoom": "Room",
@@ -7273,6 +7291,7 @@ const I18N = {
     "editor.layoutTypeEnvironment": "Umgebung",
     "editor.sectionFloorplan": "Grundriss-Editor",
     "editor.floorplanHelp": "Wähle ein Werkzeug, klicke ins Raster und passe danach das ausgewählte Element an.",
+    "editor.showFloorplan": "Grundriss anzeigen",
     "editor.floorplanShowGrid": "Raster anzeigen",
     "editor.floorplanTools": "Grundriss-Werkzeuge",
     "editor.floorplanToolRoom": "Raum",
@@ -7764,6 +7783,7 @@ const I18N = {
     "editor.layoutTypeEnvironment": "Ambiente",
     "editor.sectionFloorplan": "Editor de plano",
     "editor.floorplanHelp": "Elige una herramienta, haz clic en la cuadrícula y luego ajusta el elemento seleccionado.",
+    "editor.showFloorplan": "Mostrar plano",
     "editor.floorplanShowGrid": "Mostrar cuadrícula",
     "editor.floorplanTools": "Herramientas de plano",
     "editor.floorplanToolRoom": "Habitación",
@@ -8255,6 +8275,7 @@ const I18N = {
     "editor.layoutTypeEnvironment": "Environnement",
     "editor.sectionFloorplan": "Éditeur de plan",
     "editor.floorplanHelp": "Choisissez un outil, cliquez dans la grille, puis ajustez l'élément sélectionné.",
+    "editor.showFloorplan": "Afficher le plan",
     "editor.floorplanShowGrid": "Afficher la grille",
     "editor.floorplanTools": "Outils de plan",
     "editor.floorplanToolRoom": "Pièce",
@@ -8746,6 +8767,7 @@ const I18N = {
     "editor.layoutTypeEnvironment": "Środowisko",
     "editor.sectionFloorplan": "Edytor planu",
     "editor.floorplanHelp": "Wybierz narzędzie, kliknij siatkę, a następnie dopasuj wybrany element.",
+    "editor.showFloorplan": "Pokaż plan",
     "editor.floorplanShowGrid": "Pokaż siatkę",
     "editor.floorplanTools": "Narzędzia planu",
     "editor.floorplanToolRoom": "Pomieszczenie",
@@ -9316,6 +9338,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_metric_tiles: true,
       show_environment_sensors: true,
       show_large_consumers: true,
+      show_floorplan: true,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -9471,6 +9494,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_metric_tiles: true,
       show_environment_sensors: true,
       show_large_consumers: true,
+      show_floorplan: true,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -9679,7 +9703,12 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _currentViewMode() {
-    return this._normalizeViewMode(this._selectedViewMode || this.config?.view_mode) || "house";
+    const viewMode = this._normalizeViewMode(this._selectedViewMode || this.config?.view_mode) || "house";
+    return viewMode === FLOORPLAN_DASHBOARD_VIEW && this.config?.show_floorplan === false ? "house" : viewMode;
+  }
+
+  _viewModeOptions() {
+    return VIEW_MODE_OPTIONS.filter((option) => option.key !== FLOORPLAN_DASHBOARD_VIEW || this.config?.show_floorplan !== false);
   }
 
   _currentEnergyRange() {
@@ -12392,7 +12421,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderViewSelector() {
     if (this.config.show_view_selector !== true) return "";
     const activeView = this._currentViewMode();
-    const buttons = VIEW_MODE_OPTIONS
+    const buttons = this._viewModeOptions()
       .map((option) => {
         const active = option.key === activeView;
         const label = this._t(option.labelKey, {}, option.label);
@@ -13161,8 +13190,8 @@ class HaSolarDashboardCard extends HTMLElement {
         .floorplan-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-width:0; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:linear-gradient(135deg,rgba(15,23,42,.76),rgba(8,13,28,.68)); }
         .floorplan-head h2 { margin:2px 0 0; color:var(--text-main); font-size:1.02rem; line-height:1.25; overflow-wrap:anywhere; }
         .floorplan-head span { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:rgba(255,255,255,.08); color:var(--text-main); font-size:.7rem; line-height:1.1; font-weight:800; }
-        .floorplan-canvas { position:relative; min-width:0; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(8,13,28,.68); overflow:hidden; }
-        .floorplan-canvas svg { display:block; width:100%; height:auto; min-height:320px; }
+        .floorplan-canvas { position:relative; min-width:0; aspect-ratio:10/7; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(8,13,28,.68); overflow:hidden; }
+        .floorplan-canvas svg { display:block; width:100%; height:100%; min-height:0; }
         .floorplan-background { fill:rgba(10,18,34,.94); }
         .floorplan-grid-line { stroke:rgba(255,255,255,.07); stroke-width:.18; vector-effect:non-scaling-stroke; }
         .floorplan-room rect { fill:color-mix(in srgb,var(--room-color,#1f8fff) 12%,rgba(255,255,255,.04)); stroke:color-mix(in srgb,var(--room-color,#1f8fff) 46%,rgba(255,255,255,.2)); stroke-width:.45; vector-effect:non-scaling-stroke; }

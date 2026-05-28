@@ -46,6 +46,7 @@ export function createDashboardEditorClass({
       image_overlays: {},
       custom_kpis: [],
       environment_sensors: [],
+      show_floorplan: true,
       floorplan: {
         show_grid: true,
         rooms: [],
@@ -189,6 +190,7 @@ export function createDashboardEditorClass({
     if (path === "house" || path === "image" || path === "day_image") return true;
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
+    if (root === "show_floorplan") return true;
     if (root === "floorplan") return true;
     if (root === "environment_sensors") {
       return ["visible", "show_image", "left", "top", "label", "color"].includes(lastPart);
@@ -2074,11 +2076,18 @@ export function createDashboardEditorClass({
       const key = `sensor:${index}`;
       const linked = this._normalizeEnvironmentSensors(this._config.environment_sensors || []).find((item) => item.id === sensor.environment_sensor);
       const label = sensor.label || linked?.label || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`);
+      const entityId = linked?.entity || sensor.entity || "";
+      const stateObj = this._hass?.states?.[entityId];
+      const configuredUnit = String(sensor.unit || linked?.unit || "auto");
+      const unit = configuredUnit && configuredUnit !== "auto" ? configuredUnit : stateObj?.attributes?.unit_of_measurement || "";
+      const value = stateObj ? `${stateObj.state}${unit ? ` ${unit}` : ""}` : "-";
       const color = sensor.color || linked?.color || "#34d399";
       return `
         <g class="floorplan-editor-sensor${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})" style="--sensor-color:${this._escape(color)}">
-          <circle r="1.9"></circle>
-          <text x="2.8" y=".9">${this._escape(label)}</text>
+          <circle r="1.7"></circle>
+          <rect class="floorplan-sensor-box" x="2.7" y="-5.3" width="20.5" height="9" rx="1.2"></rect>
+          <text class="floorplan-sensor-label" x="4.2" y="-1.9">${this._escape(label)}</text>
+          <text class="floorplan-sensor-value" x="4.2" y="2.5">${this._escape(value)}</text>
         </g>
       `;
     }).join("");
@@ -2157,6 +2166,7 @@ export function createDashboardEditorClass({
           <span class="section-status">${this._escape(this._statusText({ configured: floorplan.rooms.length + floorplan.walls.length + floorplan.sensors.length }))}</span>
         </div>
         <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_floorplan" ${this._config.show_floorplan !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showFloorplan", {}, "Show floorplan"))}</label>
           <label class="inline"><input type="checkbox" data-path="floorplan.show_grid" ${floorplan.show_grid !== false ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanShowGrid", {}, "Show grid"))}</label>
         </div>
         <div class="floorplan-tool-row" role="group" aria-label="${this._escape(this._t("editor.floorplanTools", {}, "Floorplan tools"))}">
@@ -2232,8 +2242,12 @@ export function createDashboardEditorClass({
     const houseOptions = Object.entries(HOUSE_VARIANTS)
       .map(([key, value]) => `<option value="${this._escape(key)}"${key === house ? " selected" : ""}>${this._escape(this._houseLabel(key, value))}</option>`)
       .join("");
-    const viewMode = this._normalizeViewMode(this._config.view_mode) || "house";
+    const configuredViewMode = this._config.show_floorplan === false && this._config.view_mode === "floorplan"
+      ? "house"
+      : this._config.view_mode;
+    const viewMode = this._normalizeViewMode(configuredViewMode) || "house";
     const viewModeOptions = VIEW_MODE_OPTIONS
+      .filter((option) => option.key !== "floorplan" || this._config.show_floorplan !== false)
       .map((option) => `<option value="${this._escape(option.key)}"${option.key === viewMode ? " selected" : ""}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`)
       .join("");
     const entityOptions = this._entityOptions()

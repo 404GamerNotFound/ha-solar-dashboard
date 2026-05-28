@@ -545,6 +545,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_metric_tiles: true,
       show_environment_sensors: true,
       show_large_consumers: true,
+      show_floorplan: true,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -700,6 +701,7 @@ class HaSolarDashboardCard extends HTMLElement {
       show_metric_tiles: true,
       show_environment_sensors: true,
       show_large_consumers: true,
+      show_floorplan: true,
       show_power_flows: false,
       show_status_label: true,
       show_weather_status: false,
@@ -908,7 +910,12 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _currentViewMode() {
-    return this._normalizeViewMode(this._selectedViewMode || this.config?.view_mode) || "house";
+    const viewMode = this._normalizeViewMode(this._selectedViewMode || this.config?.view_mode) || "house";
+    return viewMode === FLOORPLAN_DASHBOARD_VIEW && this.config?.show_floorplan === false ? "house" : viewMode;
+  }
+
+  _viewModeOptions() {
+    return VIEW_MODE_OPTIONS.filter((option) => option.key !== FLOORPLAN_DASHBOARD_VIEW || this.config?.show_floorplan !== false);
   }
 
   _currentEnergyRange() {
@@ -3621,7 +3628,7 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderViewSelector() {
     if (this.config.show_view_selector !== true) return "";
     const activeView = this._currentViewMode();
-    const buttons = VIEW_MODE_OPTIONS
+    const buttons = this._viewModeOptions()
       .map((option) => {
         const active = option.key === activeView;
         const label = this._t(option.labelKey, {}, option.label);

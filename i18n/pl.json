@@ -280,6 +280,7 @@
   "editor.layoutTypeEnvironment": "Środowisko",
   "editor.sectionFloorplan": "Edytor planu",
   "editor.floorplanHelp": "Wybierz narzędzie, kliknij siatkę, a następnie dopasuj wybrany element.",
+  "editor.showFloorplan": "Pokaż plan",
   "editor.floorplanShowGrid": "Pokaż siatkę",
   "editor.floorplanTools": "Narzędzia planu",
   "editor.floorplanToolRoom": "Pomieszczenie",

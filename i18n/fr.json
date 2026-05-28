@@ -280,6 +280,7 @@
   "editor.layoutTypeEnvironment": "Environnement",
   "editor.sectionFloorplan": "Éditeur de plan",
   "editor.floorplanHelp": "Choisissez un outil, cliquez dans la grille, puis ajustez l'élément sélectionné.",
+  "editor.showFloorplan": "Afficher le plan",
   "editor.floorplanShowGrid": "Afficher la grille",
   "editor.floorplanTools": "Outils de plan",
   "editor.floorplanToolRoom": "Pièce",

@@ -280,6 +280,7 @@
   "editor.layoutTypeEnvironment": "Ambiente",
   "editor.sectionFloorplan": "Editor de plano",
   "editor.floorplanHelp": "Elige una herramienta, haz clic en la cuadrícula y luego ajusta el elemento seleccionado.",
+  "editor.showFloorplan": "Mostrar plano",
   "editor.floorplanShowGrid": "Mostrar cuadrícula",
   "editor.floorplanTools": "Herramientas de plano",
   "editor.floorplanToolRoom": "Habitación",

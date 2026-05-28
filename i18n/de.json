@@ -280,6 +280,7 @@
   "editor.layoutTypeEnvironment": "Umgebung",
   "editor.sectionFloorplan": "Grundriss-Editor",
   "editor.floorplanHelp": "Wähle ein Werkzeug, klicke ins Raster und passe danach das ausgewählte Element an.",
+  "editor.showFloorplan": "Grundriss anzeigen",
   "editor.floorplanShowGrid": "Raster anzeigen",
   "editor.floorplanTools": "Grundriss-Werkzeuge",
   "editor.floorplanToolRoom": "Raum",

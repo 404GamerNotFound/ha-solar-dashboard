@@ -49,9 +49,8 @@ button:hover:not(:disabled){border-color:var(--primary-color,#1f8fff)}
 .floorplan-editor-room text{fill:rgba(243,246,255,.82);font-size:2.3px;font-weight:800;pointer-events:none}
 .floorplan-editor-wall{stroke:var(--wall-color,#dbeafe);stroke-width:var(--wall-width,1.2);stroke-linecap:round;vector-effect:non-scaling-stroke}
 .floorplan-editor-sensor circle{fill:var(--sensor-color,#34d399);stroke:rgba(255,255,255,.86);stroke-width:.45;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 5px var(--sensor-color,#34d399))}
-.floorplan-editor-sensor .floorplan-sensor-box{fill:rgba(8,16,38,.76);stroke:color-mix(in srgb,var(--sensor-color,#34d399) 44%,rgba(255,255,255,.16));stroke-width:.28;vector-effect:non-scaling-stroke}
-.floorplan-editor-sensor .floorplan-sensor-label{fill:var(--secondary-text-color,#94a3b8);font-size:2.35px;font-weight:700;pointer-events:none}
-.floorplan-editor-sensor .floorplan-sensor-value{fill:var(--sensor-color,#34d399);font-size:3.05px;font-weight:900;pointer-events:none}
+.floorplan-editor-sensor .floorplan-sensor-label{fill:var(--secondary-text-color,#94a3b8);font-size:2.35px;font-weight:700;pointer-events:none;paint-order:stroke;stroke:rgba(8,13,28,.74);stroke-width:.45px;stroke-linejoin:round}
+.floorplan-editor-sensor .floorplan-sensor-value{fill:var(--sensor-color,#34d399);font-size:var(--sensor-font-size,3.05px);font-weight:900;pointer-events:none;paint-order:stroke;stroke:rgba(8,13,28,.78);stroke-width:.55px;stroke-linejoin:round}
 .floorplan-editor-room.active rect,.floorplan-editor-wall.active,.floorplan-editor-sensor.active circle{filter:drop-shadow(0 0 5px var(--primary-color,#1f8fff))}
 .floorplan-editor-room.active rect{stroke:#fff}
 .floorplan-editor-wall.active{stroke:#fff}

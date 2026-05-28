@@ -3512,7 +3512,7 @@ function createDashboardEditorClass({
       "grid_voltage_warning_threshold",
       "grid_voltage_critical_threshold",
     ]);
-    const numericProps = new Set(["left", "top", "width", "height", "position", "columns", "x", "y", "x1", "y1", "x2", "y2"]);
+    const numericProps = new Set(["left", "top", "width", "height", "position", "columns", "x", "y", "x1", "y1", "x2", "y2", "font_size"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
     this._setPath(next, parts, nextValue);
@@ -3654,6 +3654,8 @@ function createDashboardEditorClass({
             y: Number.isFinite(Number(sensor.y ?? sensor.top)) ? Number(sensor.y ?? sensor.top) : 35,
             color: this._safeCssColor(sensor.color, "#34d399"),
             visible: sensor.visible !== false,
+            show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
+            font_size: clampConfigNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
           };
         })
         .filter(Boolean),
@@ -3716,6 +3718,8 @@ function createDashboardEditorClass({
         y: clampedY,
         color: firstEnvironmentSensor?.color || "#34d399",
         visible: true,
+        show_label: true,
+        font_size: 3.05,
       });
       this._selectedFloorplanItemKey = `sensor:${index}`;
     } else {
@@ -5377,12 +5381,20 @@ function createDashboardEditorClass({
       const unit = configuredUnit && configuredUnit !== "auto" ? configuredUnit : stateObj?.attributes?.unit_of_measurement || "";
       const value = stateObj ? `${stateObj.state}${unit ? ` ${unit}` : ""}` : "-";
       const color = sensor.color || linked?.color || "#34d399";
+      const fontSize = clampConfigNumber(sensor.font_size, 3.05, 1.4, 8);
+      const labelFontSize = clampConfigNumber(fontSize * 0.77, 2.35, 1.1, 6.2);
+      const labelY = clampConfigNumber(fontSize * -0.62, -1.9, -5, -0.4);
+      const valueY = sensor.show_label !== false
+        ? clampConfigNumber(fontSize * 0.82, 2.5, 1.2, 7)
+        : clampConfigNumber(fontSize * 0.35, 1.1, 0.7, 4);
+      const labelText = sensor.show_label !== false
+        ? `<text class="floorplan-sensor-label" x="4.2" y="${this._escape(labelY)}" style="font-size:${this._escape(labelFontSize)}px">${this._escape(label)}</text>`
+        : "";
       return `
-        <g class="floorplan-editor-sensor${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})" style="--sensor-color:${this._escape(color)}">
+        <g class="floorplan-editor-sensor${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})" style="--sensor-color:${this._escape(color)};--sensor-font-size:${this._escape(fontSize)}px">
           <circle r="1.7"></circle>
-          <rect class="floorplan-sensor-box" x="2.7" y="-5.3" width="20.5" height="9" rx="1.2"></rect>
-          <text class="floorplan-sensor-label" x="4.2" y="-1.9">${this._escape(label)}</text>
-          <text class="floorplan-sensor-value" x="4.2" y="2.5">${this._escape(value)}</text>
+          ${labelText}
+          <text class="floorplan-sensor-value" x="4.2" y="${this._escape(valueY)}" style="font-size:${this._escape(fontSize)}px">${this._escape(value)}</text>
         </g>
       `;
     }).join("");
@@ -5439,10 +5451,12 @@ function createDashboardEditorClass({
           <div class="layout-controls">
             <strong>${this._escape(this._t("editor.floorplanSelected", {}, "Selected element"))}: ${this._escape(this._t("editor.floorplanToolSensor", {}, "Sensor"))}</strong>
             <label class="inline"><input type="checkbox" data-path="${path}.visible" ${sensor.visible !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._t("editor.floorplanToolSensor", {}, "Sensor") }, "Show sensor"))}</label>
+            <label class="inline"><input type="checkbox" data-path="${path}.show_label" ${sensor.show_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanShowSensorLabel", {}, "Show label"))}</label>
             <label>${this._labelText(this._t("editor.floorplanSensorSource", {}, "Sensor source"))}<select data-path="${path}.environment_sensor">${environmentOptions}</select></label>
             <label>${this._labelText(this._t("editor.floorplanLabel", {}, "Label"))}<input data-path="${path}.label" value="${this._escape(sensor.label)}" /></label>
             <label>${this._labelText(this._t("editor.floorplanEntity", {}, "Entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}<input data-path="${path}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.living_room_temperature" value="${this._escape(sensor.entity)}" autocomplete="off" /></label>
             <label>${this._labelText(this._t("editor.environmentUnit", {}, "Display unit"), this._t("editor.helpUnitAuto", {}, "Use Auto to display the unit reported by the Home Assistant entity."))}<input data-path="${path}.unit" placeholder="auto" value="${this._escape(sensor.unit)}" /></label>
+            <label>${this._labelText(`${this._t("editor.floorplanFontSize", {}, "Font size")} (${this._formatFloorplanNumber(sensor.font_size)})`)}<input type="range" min="1.4" max="8" step="0.1" data-path="${path}.font_size" value="${this._escape(sensor.font_size)}" /></label>
             <label>${this._labelText(`X (${this._formatFloorplanNumber(sensor.x)})`)}<input type="range" min="0" max="100" step="0.1" data-path="${path}.x" value="${this._escape(sensor.x)}" /></label>
             <label>${this._labelText(`Y (${this._formatFloorplanNumber(sensor.y)})`)}<input type="range" min="0" max="70" step="0.1" data-path="${path}.y" value="${this._escape(sensor.y)}" /></label>
             <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}<input data-path="${path}.color" value="${this._escape(sensor.color)}" /></label>
@@ -5537,9 +5551,10 @@ function createDashboardEditorClass({
     const houseOptions = Object.entries(HOUSE_VARIANTS)
       .map(([key, value]) => `<option value="${this._escape(key)}"${key === house ? " selected" : ""}>${this._escape(this._houseLabel(key, value))}</option>`)
       .join("");
-    const configuredViewMode = this._config.show_floorplan === false && this._config.view_mode === "floorplan"
+    const normalizedConfiguredViewMode = this._normalizeViewMode(this._config.view_mode);
+    const configuredViewMode = this._config.show_floorplan === false && normalizedConfiguredViewMode === "floorplan"
       ? "house"
-      : this._config.view_mode;
+      : normalizedConfiguredViewMode;
     const viewMode = this._normalizeViewMode(configuredViewMode) || "house";
     const viewModeOptions = VIEW_MODE_OPTIONS
       .filter((option) => option.key !== "floorplan" || this._config.show_floorplan !== false)
@@ -5793,9 +5808,8 @@ function createDashboardEditorClass({
         .floorplan-editor-room text{fill:rgba(243,246,255,.82);font-size:2.3px;font-weight:800;pointer-events:none}
         .floorplan-editor-wall{stroke:var(--wall-color,#dbeafe);stroke-width:var(--wall-width,1.2);stroke-linecap:round;vector-effect:non-scaling-stroke}
         .floorplan-editor-sensor circle{fill:var(--sensor-color,#34d399);stroke:rgba(255,255,255,.86);stroke-width:.45;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 5px var(--sensor-color,#34d399))}
-        .floorplan-editor-sensor .floorplan-sensor-box{fill:rgba(8,16,38,.76);stroke:color-mix(in srgb,var(--sensor-color,#34d399) 44%,rgba(255,255,255,.16));stroke-width:.28;vector-effect:non-scaling-stroke}
-        .floorplan-editor-sensor .floorplan-sensor-label{fill:var(--secondary-text-color,#94a3b8);font-size:2.35px;font-weight:700;pointer-events:none}
-        .floorplan-editor-sensor .floorplan-sensor-value{fill:var(--sensor-color,#34d399);font-size:3.05px;font-weight:900;pointer-events:none}
+        .floorplan-editor-sensor .floorplan-sensor-label{fill:var(--secondary-text-color,#94a3b8);font-size:2.35px;font-weight:700;pointer-events:none;paint-order:stroke;stroke:rgba(8,13,28,.74);stroke-width:.45px;stroke-linejoin:round}
+        .floorplan-editor-sensor .floorplan-sensor-value{fill:var(--sensor-color,#34d399);font-size:var(--sensor-font-size,3.05px);font-weight:900;pointer-events:none;paint-order:stroke;stroke:rgba(8,13,28,.78);stroke-width:.55px;stroke-linejoin:round}
         .floorplan-editor-room.active rect,.floorplan-editor-wall.active,.floorplan-editor-sensor.active circle{filter:drop-shadow(0 0 5px var(--primary-color,#1f8fff))}
         .floorplan-editor-room.active rect{stroke:#fff}
         .floorplan-editor-wall.active{stroke:#fff}
@@ -6813,6 +6827,8 @@ const I18N = {
     "editor.floorplanCustomEntity": "Custom entity",
     "editor.floorplanSensorSource": "Sensor source",
     "editor.floorplanEntity": "Entity",
+    "editor.floorplanShowSensorLabel": "Show label",
+    "editor.floorplanFontSize": "Font size",
     "editor.floorplanEmpty": "Click the grid to create the selected element.",
     "editor.helpHomeAssistantSensor": "Choose the Home Assistant entity that provides this value.",
     "editor.helpUnitAuto": "Use Auto to display the unit reported by the Home Assistant entity. Choose another value only when you want to override it.",
@@ -7305,6 +7321,8 @@ const I18N = {
     "editor.floorplanCustomEntity": "Eigene Entität",
     "editor.floorplanSensorSource": "Sensorquelle",
     "editor.floorplanEntity": "Entität",
+    "editor.floorplanShowSensorLabel": "Label anzeigen",
+    "editor.floorplanFontSize": "Schriftgröße",
     "editor.floorplanEmpty": "Klicke ins Raster, um das ausgewählte Element zu erstellen.",
     "editor.helpHomeAssistantSensor": "Wähle die Home-Assistant-Entität, die diesen Wert liefert.",
     "editor.helpUnitAuto": "Mit Auto wird die Einheit der Home-Assistant-Entität verwendet. Wähle eine andere Einheit nur, wenn du sie überschreiben möchtest.",
@@ -7797,6 +7815,8 @@ const I18N = {
     "editor.floorplanCustomEntity": "Entidad personalizada",
     "editor.floorplanSensorSource": "Fuente del sensor",
     "editor.floorplanEntity": "Entidad",
+    "editor.floorplanShowSensorLabel": "Mostrar etiqueta",
+    "editor.floorplanFontSize": "Tamaño de fuente",
     "editor.floorplanEmpty": "Haz clic en la cuadrícula para crear el elemento seleccionado.",
     "editor.helpHomeAssistantSensor": "Elige la entidad de Home Assistant que proporciona este valor.",
     "editor.helpUnitAuto": "Usa Auto para mostrar la unidad reportada por Home Assistant. Elige otra unidad solo si quieres sobrescribirla.",
@@ -8289,6 +8309,8 @@ const I18N = {
     "editor.floorplanCustomEntity": "Entité personnalisée",
     "editor.floorplanSensorSource": "Source du capteur",
     "editor.floorplanEntity": "Entité",
+    "editor.floorplanShowSensorLabel": "Afficher le libellé",
+    "editor.floorplanFontSize": "Taille du texte",
     "editor.floorplanEmpty": "Cliquez dans la grille pour créer l'élément sélectionné.",
     "editor.helpHomeAssistantSensor": "Choisissez l'entité Home Assistant qui fournit cette valeur.",
     "editor.helpUnitAuto": "Utilisez Auto pour afficher l'unité fournie par Home Assistant. Choisissez une autre unité seulement si vous voulez la remplacer.",
@@ -8781,6 +8803,8 @@ const I18N = {
     "editor.floorplanCustomEntity": "Własna encja",
     "editor.floorplanSensorSource": "Źródło czujnika",
     "editor.floorplanEntity": "Encja",
+    "editor.floorplanShowSensorLabel": "Pokaż etykietę",
+    "editor.floorplanFontSize": "Rozmiar tekstu",
     "editor.floorplanEmpty": "Kliknij siatkę, aby utworzyć wybrany element.",
     "editor.helpHomeAssistantSensor": "Wybierz encję Home Assistant, która dostarcza tę wartość.",
     "editor.helpUnitAuto": "Użyj Auto, aby wyświetlić jednostkę zgłaszaną przez Home Assistant. Wybierz inną tylko wtedy, gdy chcesz ją nadpisać.",
@@ -10291,6 +10315,8 @@ class HaSolarDashboardCard extends HTMLElement {
             y: this._clampNumber(sensor.y ?? sensor.top, 35, 0, 70),
             color: this._safeCssColor(sensor.color, "#34d399"),
             visible: sensor.visible !== false,
+            show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
+            font_size: this._clampNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
           };
         })
         .filter(Boolean),
@@ -10346,13 +10372,21 @@ class HaSolarDashboardCard extends HTMLElement {
         const source = this._floorplanSensorSource(sensor, index);
         const value = this._floorplanSensorValue(sensor, index);
         const title = source.entity ? `${source.label}: ${value} (${source.entity})` : source.label;
+        const fontSize = this._clampNumber(sensor.font_size, 3.05, 1.4, 8);
+        const labelFontSize = this._clampNumber(fontSize * 0.77, 2.35, 1.1, 6.2);
+        const labelY = this._clampNumber(fontSize * -0.62, -1.9, -5, -0.4);
+        const valueY = sensor.show_label !== false
+          ? this._clampNumber(fontSize * 0.82, 2.5, 1.2, 7)
+          : this._clampNumber(fontSize * 0.35, 1.1, 0.7, 4);
+        const labelText = sensor.show_label !== false
+          ? `<text class="floorplan-sensor-label" x="4.2" y="${this._escape(labelY)}" style="font-size:${this._escape(labelFontSize)}px" data-floorplan-sensor-label="${this._escape(sensor.id)}">${this._escape(source.label)}</text>`
+          : "";
         return `
-          <g class="floorplan-sensor" data-floorplan-sensor="${this._escape(sensor.id)}" style="--sensor-color:${this._escape(source.color)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})">
+          <g class="floorplan-sensor" data-floorplan-sensor="${this._escape(sensor.id)}" style="--sensor-color:${this._escape(source.color)};--sensor-font-size:${this._escape(fontSize)}px" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})">
             <title>${this._escape(title)}</title>
             <circle r="1.7"></circle>
-            <rect class="floorplan-sensor-box" x="2.7" y="-5.3" width="20.5" height="9" rx="1.2"></rect>
-            <text class="floorplan-sensor-label" x="4.2" y="-1.9" data-floorplan-sensor-label="${this._escape(sensor.id)}">${this._escape(source.label)}</text>
-            <text class="floorplan-sensor-value" x="4.2" y="2.5" data-floorplan-sensor-value="${this._escape(sensor.id)}">${this._escape(value)}</text>
+            ${labelText}
+            <text class="floorplan-sensor-value" x="4.2" y="${this._escape(valueY)}" style="font-size:${this._escape(fontSize)}px" data-floorplan-sensor-value="${this._escape(sensor.id)}">${this._escape(value)}</text>
           </g>
         `;
       })
@@ -10397,6 +10431,7 @@ class HaSolarDashboardCard extends HTMLElement {
       });
       this.shadowRoot.querySelectorAll(`[data-floorplan-sensor="${this._escape(sensor.id)}"]`).forEach((element) => {
         element.style.setProperty("--sensor-color", source.color);
+        element.style.setProperty("--sensor-font-size", `${this._clampNumber(sensor.font_size, 3.05, 1.4, 8)}px`);
       });
     });
   }
@@ -12421,7 +12456,8 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderViewSelector() {
     if (this.config.show_view_selector !== true) return "";
     const activeView = this._currentViewMode();
-    const buttons = this._viewModeOptions()
+    const viewOptions = this._viewModeOptions();
+    const buttons = viewOptions
       .map((option) => {
         const active = option.key === activeView;
         const label = this._t(option.labelKey, {}, option.label);
@@ -12444,6 +12480,7 @@ class HaSolarDashboardCard extends HTMLElement {
       class: "view-mode-toggle",
       role: "group",
       "aria-label": this._t("aria.viewSelector", {}, "Select dashboard view"),
+      style: `--view-mode-count:${viewOptions.length}`,
     }, rawHtml(buttons));
   }
 
@@ -13009,7 +13046,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .house-select,.energy-range-select,.view-mode-toggle { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
         .house-select,.energy-range-select { max-width:170px; padding:0 30px 0 10px; }
         .energy-range-select { max-width:110px; }
-        .view-mode-toggle { display:grid; grid-template-columns:repeat(5,42px); width:max-content; max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
+        .view-mode-toggle { display:grid; grid-template-columns:repeat(var(--view-mode-count,5),42px); width:max-content; max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
         .view-mode-button { min-width:0; min-height:28px; border:0; border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.82rem; font-weight:800; line-height:1.1; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
         .view-mode-icon { width:17px; height:17px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
         .view-mode-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -13198,11 +13235,10 @@ class HaSolarDashboardCard extends HTMLElement {
         .floorplan-room text { fill:rgba(243,246,255,.78); font-size:2.3px; font-weight:800; pointer-events:none; }
         .floorplan-wall { stroke:var(--wall-color,#dbeafe); stroke-width:var(--wall-width,1.2); stroke-linecap:round; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 4px rgba(255,255,255,.18)); }
         .floorplan-sensor circle { fill:var(--sensor-color,#34d399); stroke:rgba(255,255,255,.82); stroke-width:.45; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 5px var(--sensor-color,#34d399)); }
-        .floorplan-sensor-box { fill:rgba(8,16,38,.76); stroke:color-mix(in srgb,var(--sensor-color,#34d399) 44%,rgba(255,255,255,.16)); stroke-width:.28; vector-effect:non-scaling-stroke; }
-        .floorplan-sensor-label { fill:var(--text-muted); font-size:2.35px; font-weight:700; pointer-events:none; }
-        .floorplan-sensor-value { fill:var(--sensor-color,#34d399); font-size:3.05px; font-weight:900; pointer-events:none; }
+        .floorplan-sensor-label { fill:var(--text-muted); font-size:2.35px; font-weight:700; pointer-events:none; paint-order:stroke; stroke:rgba(8,13,28,.74); stroke-width:.45px; stroke-linejoin:round; }
+        .floorplan-sensor-value { fill:var(--sensor-color,#34d399); font-size:var(--sensor-font-size,3.05px); font-weight:900; pointer-events:none; paint-order:stroke; stroke:rgba(8,13,28,.78); stroke-width:.55px; stroke-linejoin:round; }
         .floorplan-empty { position:absolute; inset:0; display:grid; place-items:center; padding:18px; color:var(--text-muted); text-align:center; font-size:.86rem; pointer-events:none; }
-        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} .record-loading-item{grid-template-columns:1fr;align-items:start;gap:2px;} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .view-mode-toggle{grid-template-columns:repeat(var(--view-mode-count,5),minmax(0,1fr));} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} .record-loading-item{grid-template-columns:1fr;align-items:start;gap:2px;} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <style>

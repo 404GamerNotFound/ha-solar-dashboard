@@ -294,6 +294,8 @@
   "editor.floorplanCustomEntity": "Custom entity",
   "editor.floorplanSensorSource": "Sensor source",
   "editor.floorplanEntity": "Entity",
+  "editor.floorplanShowSensorLabel": "Show label",
+  "editor.floorplanFontSize": "Font size",
   "editor.floorplanEmpty": "Click the grid to create the selected element.",
   "editor.helpHomeAssistantSensor": "Choose the Home Assistant entity that provides this value.",
   "editor.helpUnitAuto": "Use Auto to display the unit reported by the Home Assistant entity. Choose another value only when you want to override it.",

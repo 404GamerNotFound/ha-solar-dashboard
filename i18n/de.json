@@ -294,6 +294,8 @@
   "editor.floorplanCustomEntity": "Eigene Entität",
   "editor.floorplanSensorSource": "Sensorquelle",
   "editor.floorplanEntity": "Entität",
+  "editor.floorplanShowSensorLabel": "Label anzeigen",
+  "editor.floorplanFontSize": "Schriftgröße",
   "editor.floorplanEmpty": "Klicke ins Raster, um das ausgewählte Element zu erstellen.",
   "editor.helpHomeAssistantSensor": "Wähle die Home-Assistant-Entität, die diesen Wert liefert.",
   "editor.helpUnitAuto": "Mit Auto wird die Einheit der Home-Assistant-Entität verwendet. Wähle eine andere Einheit nur, wenn du sie überschreiben möchtest.",

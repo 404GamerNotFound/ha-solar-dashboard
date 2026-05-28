@@ -1498,6 +1498,8 @@ class HaSolarDashboardCard extends HTMLElement {
             y: this._clampNumber(sensor.y ?? sensor.top, 35, 0, 70),
             color: this._safeCssColor(sensor.color, "#34d399"),
             visible: sensor.visible !== false,
+            show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
+            font_size: this._clampNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
           };
         })
         .filter(Boolean),
@@ -1553,13 +1555,21 @@ class HaSolarDashboardCard extends HTMLElement {
         const source = this._floorplanSensorSource(sensor, index);
         const value = this._floorplanSensorValue(sensor, index);
         const title = source.entity ? `${source.label}: ${value} (${source.entity})` : source.label;
+        const fontSize = this._clampNumber(sensor.font_size, 3.05, 1.4, 8);
+        const labelFontSize = this._clampNumber(fontSize * 0.77, 2.35, 1.1, 6.2);
+        const labelY = this._clampNumber(fontSize * -0.62, -1.9, -5, -0.4);
+        const valueY = sensor.show_label !== false
+          ? this._clampNumber(fontSize * 0.82, 2.5, 1.2, 7)
+          : this._clampNumber(fontSize * 0.35, 1.1, 0.7, 4);
+        const labelText = sensor.show_label !== false
+          ? `<text class="floorplan-sensor-label" x="4.2" y="${this._escape(labelY)}" style="font-size:${this._escape(labelFontSize)}px" data-floorplan-sensor-label="${this._escape(sensor.id)}">${this._escape(source.label)}</text>`
+          : "";
         return `
-          <g class="floorplan-sensor" data-floorplan-sensor="${this._escape(sensor.id)}" style="--sensor-color:${this._escape(source.color)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})">
+          <g class="floorplan-sensor" data-floorplan-sensor="${this._escape(sensor.id)}" style="--sensor-color:${this._escape(source.color)};--sensor-font-size:${this._escape(fontSize)}px" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})">
             <title>${this._escape(title)}</title>
             <circle r="1.7"></circle>
-            <rect class="floorplan-sensor-box" x="2.7" y="-5.3" width="20.5" height="9" rx="1.2"></rect>
-            <text class="floorplan-sensor-label" x="4.2" y="-1.9" data-floorplan-sensor-label="${this._escape(sensor.id)}">${this._escape(source.label)}</text>
-            <text class="floorplan-sensor-value" x="4.2" y="2.5" data-floorplan-sensor-value="${this._escape(sensor.id)}">${this._escape(value)}</text>
+            ${labelText}
+            <text class="floorplan-sensor-value" x="4.2" y="${this._escape(valueY)}" style="font-size:${this._escape(fontSize)}px" data-floorplan-sensor-value="${this._escape(sensor.id)}">${this._escape(value)}</text>
           </g>
         `;
       })
@@ -1604,6 +1614,7 @@ class HaSolarDashboardCard extends HTMLElement {
       });
       this.shadowRoot.querySelectorAll(`[data-floorplan-sensor="${this._escape(sensor.id)}"]`).forEach((element) => {
         element.style.setProperty("--sensor-color", source.color);
+        element.style.setProperty("--sensor-font-size", `${this._clampNumber(sensor.font_size, 3.05, 1.4, 8)}px`);
       });
     });
   }
@@ -3628,7 +3639,8 @@ class HaSolarDashboardCard extends HTMLElement {
   _renderViewSelector() {
     if (this.config.show_view_selector !== true) return "";
     const activeView = this._currentViewMode();
-    const buttons = this._viewModeOptions()
+    const viewOptions = this._viewModeOptions();
+    const buttons = viewOptions
       .map((option) => {
         const active = option.key === activeView;
         const label = this._t(option.labelKey, {}, option.label);
@@ -3651,6 +3663,7 @@ class HaSolarDashboardCard extends HTMLElement {
       class: "view-mode-toggle",
       role: "group",
       "aria-label": this._t("aria.viewSelector", {}, "Select dashboard view"),
+      style: `--view-mode-count:${viewOptions.length}`,
     }, rawHtml(buttons));
   }
 

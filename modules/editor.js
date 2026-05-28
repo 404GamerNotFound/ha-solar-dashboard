@@ -217,7 +217,7 @@ export function createDashboardEditorClass({
       "grid_voltage_warning_threshold",
       "grid_voltage_critical_threshold",
     ]);
-    const numericProps = new Set(["left", "top", "width", "height", "position", "columns", "x", "y", "x1", "y1", "x2", "y2"]);
+    const numericProps = new Set(["left", "top", "width", "height", "position", "columns", "x", "y", "x1", "y1", "x2", "y2", "font_size"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
     this._setPath(next, parts, nextValue);
@@ -359,6 +359,8 @@ export function createDashboardEditorClass({
             y: Number.isFinite(Number(sensor.y ?? sensor.top)) ? Number(sensor.y ?? sensor.top) : 35,
             color: this._safeCssColor(sensor.color, "#34d399"),
             visible: sensor.visible !== false,
+            show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
+            font_size: clampConfigNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
           };
         })
         .filter(Boolean),
@@ -421,6 +423,8 @@ export function createDashboardEditorClass({
         y: clampedY,
         color: firstEnvironmentSensor?.color || "#34d399",
         visible: true,
+        show_label: true,
+        font_size: 3.05,
       });
       this._selectedFloorplanItemKey = `sensor:${index}`;
     } else {
@@ -2082,12 +2086,20 @@ export function createDashboardEditorClass({
       const unit = configuredUnit && configuredUnit !== "auto" ? configuredUnit : stateObj?.attributes?.unit_of_measurement || "";
       const value = stateObj ? `${stateObj.state}${unit ? ` ${unit}` : ""}` : "-";
       const color = sensor.color || linked?.color || "#34d399";
+      const fontSize = clampConfigNumber(sensor.font_size, 3.05, 1.4, 8);
+      const labelFontSize = clampConfigNumber(fontSize * 0.77, 2.35, 1.1, 6.2);
+      const labelY = clampConfigNumber(fontSize * -0.62, -1.9, -5, -0.4);
+      const valueY = sensor.show_label !== false
+        ? clampConfigNumber(fontSize * 0.82, 2.5, 1.2, 7)
+        : clampConfigNumber(fontSize * 0.35, 1.1, 0.7, 4);
+      const labelText = sensor.show_label !== false
+        ? `<text class="floorplan-sensor-label" x="4.2" y="${this._escape(labelY)}" style="font-size:${this._escape(labelFontSize)}px">${this._escape(label)}</text>`
+        : "";
       return `
-        <g class="floorplan-editor-sensor${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})" style="--sensor-color:${this._escape(color)}">
+        <g class="floorplan-editor-sensor${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})" style="--sensor-color:${this._escape(color)};--sensor-font-size:${this._escape(fontSize)}px">
           <circle r="1.7"></circle>
-          <rect class="floorplan-sensor-box" x="2.7" y="-5.3" width="20.5" height="9" rx="1.2"></rect>
-          <text class="floorplan-sensor-label" x="4.2" y="-1.9">${this._escape(label)}</text>
-          <text class="floorplan-sensor-value" x="4.2" y="2.5">${this._escape(value)}</text>
+          ${labelText}
+          <text class="floorplan-sensor-value" x="4.2" y="${this._escape(valueY)}" style="font-size:${this._escape(fontSize)}px">${this._escape(value)}</text>
         </g>
       `;
     }).join("");
@@ -2144,10 +2156,12 @@ export function createDashboardEditorClass({
           <div class="layout-controls">
             <strong>${this._escape(this._t("editor.floorplanSelected", {}, "Selected element"))}: ${this._escape(this._t("editor.floorplanToolSensor", {}, "Sensor"))}</strong>
             <label class="inline"><input type="checkbox" data-path="${path}.visible" ${sensor.visible !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._t("editor.floorplanToolSensor", {}, "Sensor") }, "Show sensor"))}</label>
+            <label class="inline"><input type="checkbox" data-path="${path}.show_label" ${sensor.show_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanShowSensorLabel", {}, "Show label"))}</label>
             <label>${this._labelText(this._t("editor.floorplanSensorSource", {}, "Sensor source"))}<select data-path="${path}.environment_sensor">${environmentOptions}</select></label>
             <label>${this._labelText(this._t("editor.floorplanLabel", {}, "Label"))}<input data-path="${path}.label" value="${this._escape(sensor.label)}" /></label>
             <label>${this._labelText(this._t("editor.floorplanEntity", {}, "Entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}<input data-path="${path}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.living_room_temperature" value="${this._escape(sensor.entity)}" autocomplete="off" /></label>
             <label>${this._labelText(this._t("editor.environmentUnit", {}, "Display unit"), this._t("editor.helpUnitAuto", {}, "Use Auto to display the unit reported by the Home Assistant entity."))}<input data-path="${path}.unit" placeholder="auto" value="${this._escape(sensor.unit)}" /></label>
+            <label>${this._labelText(`${this._t("editor.floorplanFontSize", {}, "Font size")} (${this._formatFloorplanNumber(sensor.font_size)})`)}<input type="range" min="1.4" max="8" step="0.1" data-path="${path}.font_size" value="${this._escape(sensor.font_size)}" /></label>
             <label>${this._labelText(`X (${this._formatFloorplanNumber(sensor.x)})`)}<input type="range" min="0" max="100" step="0.1" data-path="${path}.x" value="${this._escape(sensor.x)}" /></label>
             <label>${this._labelText(`Y (${this._formatFloorplanNumber(sensor.y)})`)}<input type="range" min="0" max="70" step="0.1" data-path="${path}.y" value="${this._escape(sensor.y)}" /></label>
             <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}<input data-path="${path}.color" value="${this._escape(sensor.color)}" /></label>
@@ -2242,9 +2256,10 @@ export function createDashboardEditorClass({
     const houseOptions = Object.entries(HOUSE_VARIANTS)
       .map(([key, value]) => `<option value="${this._escape(key)}"${key === house ? " selected" : ""}>${this._escape(this._houseLabel(key, value))}</option>`)
       .join("");
-    const configuredViewMode = this._config.show_floorplan === false && this._config.view_mode === "floorplan"
+    const normalizedConfiguredViewMode = this._normalizeViewMode(this._config.view_mode);
+    const configuredViewMode = this._config.show_floorplan === false && normalizedConfiguredViewMode === "floorplan"
       ? "house"
-      : this._config.view_mode;
+      : normalizedConfiguredViewMode;
     const viewMode = this._normalizeViewMode(configuredViewMode) || "house";
     const viewModeOptions = VIEW_MODE_OPTIONS
       .filter((option) => option.key !== "floorplan" || this._config.show_floorplan !== false)

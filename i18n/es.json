@@ -294,6 +294,8 @@
   "editor.floorplanCustomEntity": "Entidad personalizada",
   "editor.floorplanSensorSource": "Fuente del sensor",
   "editor.floorplanEntity": "Entidad",
+  "editor.floorplanShowSensorLabel": "Mostrar etiqueta",
+  "editor.floorplanFontSize": "Tamaño de fuente",
   "editor.floorplanEmpty": "Haz clic en la cuadrícula para crear el elemento seleccionado.",
   "editor.helpHomeAssistantSensor": "Elige la entidad de Home Assistant que proporciona este valor.",
   "editor.helpUnitAuto": "Usa Auto para mostrar la unidad reportada por Home Assistant. Elige otra unidad solo si quieres sobrescribirla.",

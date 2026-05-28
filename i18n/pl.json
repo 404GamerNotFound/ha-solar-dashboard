@@ -294,6 +294,8 @@
   "editor.floorplanCustomEntity": "Własna encja",
   "editor.floorplanSensorSource": "Źródło czujnika",
   "editor.floorplanEntity": "Encja",
+  "editor.floorplanShowSensorLabel": "Pokaż etykietę",
+  "editor.floorplanFontSize": "Rozmiar tekstu",
   "editor.floorplanEmpty": "Kliknij siatkę, aby utworzyć wybrany element.",
   "editor.helpHomeAssistantSensor": "Wybierz encję Home Assistant, która dostarcza tę wartość.",
   "editor.helpUnitAuto": "Użyj Auto, aby wyświetlić jednostkę zgłaszaną przez Home Assistant. Wybierz inną tylko wtedy, gdy chcesz ją nadpisać.",

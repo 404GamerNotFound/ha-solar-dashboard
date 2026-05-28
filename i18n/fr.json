@@ -294,6 +294,8 @@
   "editor.floorplanCustomEntity": "Entité personnalisée",
   "editor.floorplanSensorSource": "Source du capteur",
   "editor.floorplanEntity": "Entité",
+  "editor.floorplanShowSensorLabel": "Afficher le libellé",
+  "editor.floorplanFontSize": "Taille du texte",
   "editor.floorplanEmpty": "Cliquez dans la grille pour créer l'élément sélectionné.",
   "editor.helpHomeAssistantSensor": "Choisissez l'entité Home Assistant qui fournit cette valeur.",
   "editor.helpUnitAuto": "Utilisez Auto pour afficher l'unité fournie par Home Assistant. Choisissez une autre unité seulement si vous voulez la remplacer.",

@@ -392,8 +392,8 @@ export function createDashboardEditorClass({
   _addFloorplanItem(type = this._floorplanTool(), x = 50, y = 35) {
     const next = this._cloneConfig(this._config || {});
     next.floorplan = this._normalizeFloorplan(next.floorplan || {});
-    const clampedX = Math.max(0, Math.min(100, Number(x) || 50));
-    const clampedY = Math.max(0, Math.min(70, Number(y) || 35));
+    const clampedX = this._roundFloorplanNumber(Math.max(0, Math.min(100, Number(x) || 50)));
+    const clampedY = this._roundFloorplanNumber(Math.max(0, Math.min(70, Number(y) || 35)));
     if (type === "wall") {
       const index = next.floorplan.walls.length;
       next.floorplan.walls.push({
@@ -447,6 +447,105 @@ export function createDashboardEditorClass({
     const collection = selected.type === "room" ? "rooms" : selected.type === "wall" ? "walls" : "sensors";
     next.floorplan[collection].splice(selected.index, 1);
     this._selectedFloorplanItemKey = "";
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _floorplanPointFromEvent(svg, event) {
+    const rect = svg?.getBoundingClientRect?.();
+    if (!rect?.width || !rect.height) return { x: 50, y: 35 };
+    return {
+      x: this._roundFloorplanNumber(Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100))),
+      y: this._roundFloorplanNumber(Math.max(0, Math.min(70, ((event.clientY - rect.top) / rect.height) * 70))),
+    };
+  }
+
+  _roundFloorplanNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.round(number * 10) / 10 : 0;
+  }
+
+  _formatFloorplanNumber(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return String(value ?? "");
+    return Number.isInteger(number) ? String(number) : number.toFixed(1);
+  }
+
+  _floorplanItemByKey(floorplan, key) {
+    const [type, rawIndex] = String(key || "").split(":");
+    const index = Number(rawIndex);
+    if (!Number.isInteger(index)) return undefined;
+    const collection = type === "room" ? "rooms" : type === "wall" ? "walls" : type === "sensor" ? "sensors" : "";
+    const item = collection ? floorplan?.[collection]?.[index] : undefined;
+    return item ? { type, collection, index, item } : undefined;
+  }
+
+  _floorplanDragCoordinates(drag, point) {
+    if (!drag) return undefined;
+    if (drag.type === "room") {
+      const width = Number(drag.item.width) || 24;
+      const height = Number(drag.item.height) || 18;
+      return {
+        x: this._roundFloorplanNumber(Math.max(0, Math.min(100 - width, point.x - drag.offsetX))),
+        y: this._roundFloorplanNumber(Math.max(0, Math.min(70 - height, point.y - drag.offsetY))),
+      };
+    }
+    if (drag.type === "wall") {
+      const dx = Number(drag.item.x2) - Number(drag.item.x1);
+      const dy = Number(drag.item.y2) - Number(drag.item.y1);
+      let x1 = point.x - drag.offsetX;
+      let y1 = point.y - drag.offsetY;
+      let x2 = x1 + dx;
+      let y2 = y1 + dy;
+      const shiftX = Math.min(0, x1, x2) || Math.max(0, x1 - 100, x2 - 100);
+      const shiftY = Math.min(0, y1, y2) || Math.max(0, y1 - 70, y2 - 70);
+      x1 -= shiftX;
+      x2 -= shiftX;
+      y1 -= shiftY;
+      y2 -= shiftY;
+      return {
+        x1: this._roundFloorplanNumber(x1),
+        y1: this._roundFloorplanNumber(y1),
+        x2: this._roundFloorplanNumber(x2),
+        y2: this._roundFloorplanNumber(y2),
+      };
+    }
+    return {
+      x: this._roundFloorplanNumber(Math.max(0, Math.min(100, point.x - drag.offsetX))),
+      y: this._roundFloorplanNumber(Math.max(0, Math.min(70, point.y - drag.offsetY))),
+    };
+  }
+
+  _applyFloorplanDragPreview(drag, coordinates) {
+    if (!drag?.element || !coordinates) return;
+    if (drag.type === "room") {
+      const rect = drag.element.querySelector("rect");
+      const text = drag.element.querySelector("text");
+      rect?.setAttribute("x", coordinates.x);
+      rect?.setAttribute("y", coordinates.y);
+      text?.setAttribute("x", coordinates.x + 1.5);
+      text?.setAttribute("y", coordinates.y + 4);
+      return;
+    }
+    if (drag.type === "wall") {
+      drag.element.setAttribute("x1", coordinates.x1);
+      drag.element.setAttribute("y1", coordinates.y1);
+      drag.element.setAttribute("x2", coordinates.x2);
+      drag.element.setAttribute("y2", coordinates.y2);
+      return;
+    }
+    drag.element.setAttribute("transform", `translate(${coordinates.x} ${coordinates.y})`);
+  }
+
+  _commitFloorplanDrag(drag, coordinates) {
+    if (!drag || !coordinates) return;
+    const next = this._cloneConfig(this._config || {});
+    next.floorplan = this._normalizeFloorplan(next.floorplan || {});
+    const target = this._floorplanItemByKey(next.floorplan, drag.key);
+    if (!target) return;
+    Object.assign(target.item, coordinates);
+    this._selectedFloorplanItemKey = drag.key;
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -2007,10 +2106,10 @@ export function createDashboardEditorClass({
             <div class="layout-controls">
               <strong>${this._escape(this._t("editor.floorplanSelected", {}, "Selected element"))}: ${this._escape(this._t("editor.floorplanToolRoom", {}, "Room"))}</strong>
               <label>${this._labelText(this._t("editor.floorplanLabel", {}, "Label"))}<input data-path="${path}.label" value="${this._escape(room.label)}" /></label>
-              <label>${this._labelText(`X (${room.x})`)}<input type="range" min="0" max="100" step="1" data-path="${path}.x" value="${this._escape(room.x)}" /></label>
-              <label>${this._labelText(`Y (${room.y})`)}<input type="range" min="0" max="70" step="1" data-path="${path}.y" value="${this._escape(room.y)}" /></label>
-              <label>${this._labelText(`${this._t("editor.floorplanWidth", {}, "Width")} (${room.width})`)}<input type="range" min="3" max="100" step="1" data-path="${path}.width" value="${this._escape(room.width)}" /></label>
-              <label>${this._labelText(`${this._t("editor.floorplanHeight", {}, "Height")} (${room.height})`)}<input type="range" min="3" max="70" step="1" data-path="${path}.height" value="${this._escape(room.height)}" /></label>
+              <label>${this._labelText(`X (${this._formatFloorplanNumber(room.x)})`)}<input type="range" min="0" max="100" step="0.1" data-path="${path}.x" value="${this._escape(room.x)}" /></label>
+              <label>${this._labelText(`Y (${this._formatFloorplanNumber(room.y)})`)}<input type="range" min="0" max="70" step="0.1" data-path="${path}.y" value="${this._escape(room.y)}" /></label>
+              <label>${this._labelText(`${this._t("editor.floorplanWidth", {}, "Width")} (${this._formatFloorplanNumber(room.width)})`)}<input type="range" min="3" max="100" step="0.1" data-path="${path}.width" value="${this._escape(room.width)}" /></label>
+              <label>${this._labelText(`${this._t("editor.floorplanHeight", {}, "Height")} (${this._formatFloorplanNumber(room.height)})`)}<input type="range" min="3" max="70" step="0.1" data-path="${path}.height" value="${this._escape(room.height)}" /></label>
               <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}<input data-path="${path}.color" value="${this._escape(room.color)}" /></label>
               <button type="button" data-action="remove-floorplan-item">${this._escape(this._t("editor.floorplanDelete", {}, "Delete selected"))}</button>
             </div>
@@ -2021,11 +2120,11 @@ export function createDashboardEditorClass({
           return `
             <div class="layout-controls">
               <strong>${this._escape(this._t("editor.floorplanSelected", {}, "Selected element"))}: ${this._escape(this._t("editor.floorplanToolWall", {}, "Wall"))}</strong>
-              <label>${this._labelText(`X1 (${wall.x1})`)}<input type="range" min="0" max="100" step="1" data-path="${path}.x1" value="${this._escape(wall.x1)}" /></label>
-              <label>${this._labelText(`Y1 (${wall.y1})`)}<input type="range" min="0" max="70" step="1" data-path="${path}.y1" value="${this._escape(wall.y1)}" /></label>
-              <label>${this._labelText(`X2 (${wall.x2})`)}<input type="range" min="0" max="100" step="1" data-path="${path}.x2" value="${this._escape(wall.x2)}" /></label>
-              <label>${this._labelText(`Y2 (${wall.y2})`)}<input type="range" min="0" max="70" step="1" data-path="${path}.y2" value="${this._escape(wall.y2)}" /></label>
-              <label>${this._labelText(`${this._t("editor.overlaySize", {}, "Size")} (${wall.width})`)}<input type="range" min="0.2" max="5" step="0.1" data-path="${path}.width" value="${this._escape(wall.width)}" /></label>
+              <label>${this._labelText(`X1 (${this._formatFloorplanNumber(wall.x1)})`)}<input type="range" min="0" max="100" step="0.1" data-path="${path}.x1" value="${this._escape(wall.x1)}" /></label>
+              <label>${this._labelText(`Y1 (${this._formatFloorplanNumber(wall.y1)})`)}<input type="range" min="0" max="70" step="0.1" data-path="${path}.y1" value="${this._escape(wall.y1)}" /></label>
+              <label>${this._labelText(`X2 (${this._formatFloorplanNumber(wall.x2)})`)}<input type="range" min="0" max="100" step="0.1" data-path="${path}.x2" value="${this._escape(wall.x2)}" /></label>
+              <label>${this._labelText(`Y2 (${this._formatFloorplanNumber(wall.y2)})`)}<input type="range" min="0" max="70" step="0.1" data-path="${path}.y2" value="${this._escape(wall.y2)}" /></label>
+              <label>${this._labelText(`${this._t("editor.overlaySize", {}, "Size")} (${this._formatFloorplanNumber(wall.width)})`)}<input type="range" min="0.2" max="5" step="0.1" data-path="${path}.width" value="${this._escape(wall.width)}" /></label>
               <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}<input data-path="${path}.color" value="${this._escape(wall.color)}" /></label>
               <button type="button" data-action="remove-floorplan-item">${this._escape(this._t("editor.floorplanDelete", {}, "Delete selected"))}</button>
             </div>
@@ -2040,8 +2139,8 @@ export function createDashboardEditorClass({
             <label>${this._labelText(this._t("editor.floorplanLabel", {}, "Label"))}<input data-path="${path}.label" value="${this._escape(sensor.label)}" /></label>
             <label>${this._labelText(this._t("editor.floorplanEntity", {}, "Entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}<input data-path="${path}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.living_room_temperature" value="${this._escape(sensor.entity)}" autocomplete="off" /></label>
             <label>${this._labelText(this._t("editor.environmentUnit", {}, "Display unit"), this._t("editor.helpUnitAuto", {}, "Use Auto to display the unit reported by the Home Assistant entity."))}<input data-path="${path}.unit" placeholder="auto" value="${this._escape(sensor.unit)}" /></label>
-            <label>${this._labelText(`X (${sensor.x})`)}<input type="range" min="0" max="100" step="1" data-path="${path}.x" value="${this._escape(sensor.x)}" /></label>
-            <label>${this._labelText(`Y (${sensor.y})`)}<input type="range" min="0" max="70" step="1" data-path="${path}.y" value="${this._escape(sensor.y)}" /></label>
+            <label>${this._labelText(`X (${this._formatFloorplanNumber(sensor.x)})`)}<input type="range" min="0" max="100" step="0.1" data-path="${path}.x" value="${this._escape(sensor.x)}" /></label>
+            <label>${this._labelText(`Y (${this._formatFloorplanNumber(sensor.y)})`)}<input type="range" min="0" max="70" step="0.1" data-path="${path}.y" value="${this._escape(sensor.y)}" /></label>
             <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}<input data-path="${path}.color" value="${this._escape(sensor.color)}" /></label>
             <button type="button" data-action="remove-floorplan-item">${this._escape(this._t("editor.floorplanDelete", {}, "Delete selected"))}</button>
           </div>
@@ -2378,21 +2477,86 @@ export function createDashboardEditorClass({
       button.addEventListener("click", (event) => this._setFloorplanTool(event.currentTarget.dataset.floorplanTool));
     });
     this.shadowRoot.querySelectorAll("[data-floorplan-select]").forEach((element) => {
+      element.addEventListener("pointerdown", (event) => {
+        const floorplanCanvas = this.shadowRoot.querySelector("[data-floorplan-canvas]");
+        const floorplan = this._normalizeFloorplan(this._config.floorplan || {});
+        const key = event.currentTarget.dataset.floorplanSelect;
+        const selected = this._floorplanItemByKey(floorplan, key);
+        if (!floorplanCanvas || !selected) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const point = this._floorplanPointFromEvent(floorplanCanvas, event);
+        const item = selected.item;
+        this._selectedFloorplanItemKey = key;
+        this._floorplanDrag = {
+          key,
+          type: selected.type,
+          item: { ...item },
+          element: event.currentTarget,
+          pointerId: event.pointerId,
+          offsetX: selected.type === "wall" ? point.x - Number(item.x1) : point.x - Number(item.x || 0),
+          offsetY: selected.type === "wall" ? point.y - Number(item.y1) : point.y - Number(item.y || 0),
+          moved: false,
+          lastCoordinates: undefined,
+        };
+        try {
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+        } catch (_err) {
+          // Pointer capture is optional; drag still works through the SVG listener.
+        }
+      });
       element.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (this._floorplanSuppressElementClick) {
+          this._floorplanSuppressElementClick = false;
+          return;
+        }
         this._selectedFloorplanItemKey = event.currentTarget.dataset.floorplanSelect;
         this._render();
       });
     });
     const floorplanCanvas = this.shadowRoot.querySelector("[data-floorplan-canvas]");
     if (floorplanCanvas) {
+      floorplanCanvas.addEventListener("pointermove", (event) => {
+        const drag = this._floorplanDrag;
+        if (!drag) return;
+        event.preventDefault();
+        const point = this._floorplanPointFromEvent(floorplanCanvas, event);
+        const coordinates = this._floorplanDragCoordinates(drag, point);
+        if (!coordinates) return;
+        drag.moved = true;
+        drag.lastCoordinates = coordinates;
+        this._applyFloorplanDragPreview(drag, coordinates);
+      });
+      const finishDrag = (event) => {
+        const drag = this._floorplanDrag;
+        if (!drag) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this._floorplanDrag = undefined;
+        if (drag.moved && drag.lastCoordinates) {
+          this._floorplanSuppressCanvasClick = true;
+          this._floorplanSuppressElementClick = true;
+          window.setTimeout(() => {
+            this._floorplanSuppressCanvasClick = false;
+            this._floorplanSuppressElementClick = false;
+          }, 0);
+          this._commitFloorplanDrag(drag, drag.lastCoordinates);
+          return;
+        }
+        this._selectedFloorplanItemKey = drag.key;
+      };
+      floorplanCanvas.addEventListener("pointerup", finishDrag);
+      floorplanCanvas.addEventListener("pointercancel", finishDrag);
       floorplanCanvas.addEventListener("click", (event) => {
+        if (this._floorplanSuppressCanvasClick) {
+          this._floorplanSuppressCanvasClick = false;
+          return;
+        }
         if (event.target.closest?.("[data-floorplan-select]")) return;
-        const rect = floorplanCanvas.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
-        const x = ((event.clientX - rect.left) / rect.width) * 100;
-        const y = ((event.clientY - rect.top) / rect.height) * 70;
+        if (event.target !== floorplanCanvas && !event.target.classList?.contains("floorplan-editor-bg") && !event.target.classList?.contains("floorplan-editor-gridline")) return;
+        const { x, y } = this._floorplanPointFromEvent(floorplanCanvas, event);
         this._addFloorplanItem(this._floorplanTool(), x, y);
       });
     }

@@ -1550,12 +1550,9 @@ class HaSolarDashboardCard extends HTMLElement {
           <g class="floorplan-sensor" data-floorplan-sensor="${this._escape(sensor.id)}" style="--sensor-color:${this._escape(source.color)}" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})">
             <title>${this._escape(title)}</title>
             <circle r="1.7"></circle>
-            <foreignObject x="2.6" y="-5.4" width="26" height="10">
-              <div xmlns="http://www.w3.org/1999/xhtml" class="floorplan-sensor-card">
-                <span data-floorplan-sensor-label="${this._escape(sensor.id)}">${this._escape(source.label)}</span>
-                <strong data-floorplan-sensor-value="${this._escape(sensor.id)}">${this._escape(value)}</strong>
-              </div>
-            </foreignObject>
+            <rect class="floorplan-sensor-box" x="2.7" y="-5.3" width="20.5" height="9" rx="1.2"></rect>
+            <text class="floorplan-sensor-label" x="4.2" y="-1.9" data-floorplan-sensor-label="${this._escape(sensor.id)}">${this._escape(source.label)}</text>
+            <text class="floorplan-sensor-value" x="4.2" y="2.5" data-floorplan-sensor-value="${this._escape(sensor.id)}">${this._escape(value)}</text>
           </g>
         `;
       })

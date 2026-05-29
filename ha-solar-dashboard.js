@@ -3343,10 +3343,10 @@ function createDashboardEditorClass({
       environment_sensors: [],
       show_floorplan: true,
       floorplan: {
+        mode: "editor",
         show_grid: true,
-        rooms: [],
-        walls: [],
-        sensors: [],
+        active_floor: "level_1",
+        floors: [{ id: "level_1", label: this._floorplanFloorLabel(0), image: "", rooms: [], walls: [], sensors: [] }],
       },
       large_consumers: [],
       pv_roof_strings: [],
@@ -3516,8 +3516,12 @@ function createDashboardEditorClass({
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
     this._setPath(next, parts, nextValue);
-    if (parts[0] === "floorplan" && parts[1] === "sensors") {
-      const sensor = next.floorplan?.sensors?.[Number(parts[2])];
+    if (parts[0] === "floorplan") {
+      const sensor = parts[1] === "sensors"
+        ? next.floorplan?.sensors?.[Number(parts[2])]
+        : parts[1] === "floors" && parts[3] === "sensors"
+          ? next.floorplan?.floors?.[Number(parts[2])]?.sensors?.[Number(parts[4])]
+          : undefined;
       if (sensor && lastPart === "environment_sensor") {
         const linked = this._normalizeEnvironmentSensors(next.environment_sensors || []).find((item) => item.id === nextValue);
         if (linked) {
@@ -3620,62 +3624,105 @@ function createDashboardEditorClass({
       .filter(Boolean);
   }
 
+  _normalizeFloorplanMode(value = "editor") {
+    const mode = String(value || "").trim().toLowerCase();
+    return ["image", "picture", "bild"].includes(mode) ? "image" : "editor";
+  }
+
+  _floorplanFloorLabel(index = 0) {
+    return this._t("floorplan.level", { index: index + 1 }, `Level ${index + 1}`);
+  }
+
+  _normalizeFloorplanRoom(room, index = 0) {
+    if (!room || typeof room !== "object") return undefined;
+    return {
+      id: String(room.id || room.key || `room_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
+      label: String(room.label || room.name || this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`)).trim(),
+      x: Number.isFinite(Number(room.x)) ? Number(room.x) : 10 + index * 4,
+      y: Number.isFinite(Number(room.y)) ? Number(room.y) : 10 + index * 4,
+      width: Number.isFinite(Number(room.width ?? room.w)) ? Number(room.width ?? room.w) : 24,
+      height: Number.isFinite(Number(room.height ?? room.h)) ? Number(room.height ?? room.h) : 18,
+      color: this._safeCssColor(room.color, "#1f8fff"),
+    };
+  }
+
+  _normalizeFloorplanWall(wall, index = 0) {
+    if (!wall || typeof wall !== "object") return undefined;
+    return {
+      id: String(wall.id || wall.key || `wall_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
+      x1: Number.isFinite(Number(wall.x1 ?? wall.from_x)) ? Number(wall.x1 ?? wall.from_x) : 12,
+      y1: Number.isFinite(Number(wall.y1 ?? wall.from_y)) ? Number(wall.y1 ?? wall.from_y) : 12,
+      x2: Number.isFinite(Number(wall.x2 ?? wall.to_x)) ? Number(wall.x2 ?? wall.to_x) : 36,
+      y2: Number.isFinite(Number(wall.y2 ?? wall.to_y)) ? Number(wall.y2 ?? wall.to_y) : 12,
+      width: Number.isFinite(Number(wall.width ?? wall.stroke_width)) ? Number(wall.width ?? wall.stroke_width) : 1.2,
+      color: this._safeCssColor(wall.color, "#dbeafe"),
+    };
+  }
+
+  _normalizeFloorplanSensor(sensor, index = 0) {
+    if (!sensor || typeof sensor !== "object") return undefined;
+    const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
+    return {
+      id: String(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor || `sensor_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
+      label: String(sensor.label || sensor.name || "").trim(),
+      entity: String(sensor.entity || sensor.entity_id || "").trim(),
+      environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
+      type,
+      unit: sensor.unit ?? "auto",
+      x: Number.isFinite(Number(sensor.x ?? sensor.left)) ? Number(sensor.x ?? sensor.left) : 50,
+      y: Number.isFinite(Number(sensor.y ?? sensor.top)) ? Number(sensor.y ?? sensor.top) : 35,
+      color: this._safeCssColor(sensor.color, this._floorplanSensorTypeColor(type) || "#34d399"),
+      visible: sensor.visible !== false,
+      show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
+      font_size: clampConfigNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
+    };
+  }
+
+  _normalizeFloorplanFloor(floor = {}, index = 0) {
+    const source = floor && typeof floor === "object" ? floor : {};
+    return {
+      id: String(source.id || source.key || `level_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
+      label: String(source.label || source.name || this._floorplanFloorLabel(index)).trim(),
+      image: String(source.image || source.image_path || source.background_image || "").trim(),
+      rooms: (Array.isArray(source.rooms) ? source.rooms : []).map((room, roomIndex) => this._normalizeFloorplanRoom(room, roomIndex)).filter(Boolean),
+      walls: (Array.isArray(source.walls) ? source.walls : []).map((wall, wallIndex) => this._normalizeFloorplanWall(wall, wallIndex)).filter(Boolean),
+      sensors: (Array.isArray(source.sensors) ? source.sensors : []).map((sensor, sensorIndex) => this._normalizeFloorplanSensor(sensor, sensorIndex)).filter(Boolean),
+    };
+  }
+
   _normalizeFloorplan(floorplan = {}) {
     const source = floorplan && typeof floorplan === "object" ? floorplan : {};
-    const rooms = Array.isArray(source.rooms) ? source.rooms : [];
-    const walls = Array.isArray(source.walls) ? source.walls : [];
-    const sensors = Array.isArray(source.sensors) ? source.sensors : [];
-    return {
-      show_grid: source.show_grid !== false,
-      rooms: rooms
-        .map((room, index) => {
-          if (!room || typeof room !== "object") return undefined;
-          return {
-            id: String(room.id || room.key || `room_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
-            label: String(room.label || room.name || this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`)).trim(),
-            x: Number.isFinite(Number(room.x)) ? Number(room.x) : 10 + index * 4,
-            y: Number.isFinite(Number(room.y)) ? Number(room.y) : 10 + index * 4,
-            width: Number.isFinite(Number(room.width ?? room.w)) ? Number(room.width ?? room.w) : 24,
-            height: Number.isFinite(Number(room.height ?? room.h)) ? Number(room.height ?? room.h) : 18,
-            color: this._safeCssColor(room.color, "#1f8fff"),
-          };
-        })
-        .filter(Boolean),
-      walls: walls
-        .map((wall, index) => {
-          if (!wall || typeof wall !== "object") return undefined;
-          return {
-            id: String(wall.id || wall.key || `wall_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
-            x1: Number.isFinite(Number(wall.x1 ?? wall.from_x)) ? Number(wall.x1 ?? wall.from_x) : 12,
-            y1: Number.isFinite(Number(wall.y1 ?? wall.from_y)) ? Number(wall.y1 ?? wall.from_y) : 12,
-            x2: Number.isFinite(Number(wall.x2 ?? wall.to_x)) ? Number(wall.x2 ?? wall.to_x) : 36,
-            y2: Number.isFinite(Number(wall.y2 ?? wall.to_y)) ? Number(wall.y2 ?? wall.to_y) : 12,
-            width: Number.isFinite(Number(wall.width ?? wall.stroke_width)) ? Number(wall.width ?? wall.stroke_width) : 1.2,
-            color: this._safeCssColor(wall.color, "#dbeafe"),
-          };
-        })
-        .filter(Boolean),
-      sensors: sensors
-        .map((sensor, index) => {
-          if (!sensor || typeof sensor !== "object") return undefined;
-          const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
-          return {
-            id: String(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor || `sensor_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
-            label: String(sensor.label || sensor.name || "").trim(),
-            entity: String(sensor.entity || sensor.entity_id || "").trim(),
-            environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
-            type,
-            unit: sensor.unit ?? "auto",
-            x: Number.isFinite(Number(sensor.x ?? sensor.left)) ? Number(sensor.x ?? sensor.left) : 50,
-            y: Number.isFinite(Number(sensor.y ?? sensor.top)) ? Number(sensor.y ?? sensor.top) : 35,
-            color: this._safeCssColor(sensor.color, this._floorplanSensorTypeColor(type) || "#34d399"),
-            visible: sensor.visible !== false,
-            show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
-            font_size: clampConfigNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
-          };
-        })
-        .filter(Boolean),
+    const mode = this._normalizeFloorplanMode(source.mode || source.type || source.source || source.layout_type || "editor");
+    const fallbackFloor = {
+      id: source.active_floor || source.activeFloor || source.floor_id || "level_1",
+      label: source.floor_label || source.label || this._floorplanFloorLabel(0),
+      image: source.image || source.image_path || source.background_image || "",
+      rooms: Array.isArray(source.rooms) ? source.rooms : [],
+      walls: Array.isArray(source.walls) ? source.walls : [],
+      sensors: Array.isArray(source.sensors) ? source.sensors : [],
     };
+    const floors = (Array.isArray(source.floors) && source.floors.length > 0 ? source.floors : [fallbackFloor])
+      .map((floor, index) => this._normalizeFloorplanFloor(floor, index))
+      .filter(Boolean);
+    const normalizedFloors = floors.length ? floors : [this._normalizeFloorplanFloor(fallbackFloor, 0)];
+    const requestedActiveFloor = String(source.active_floor || source.activeFloor || source.selected_floor || normalizedFloors[0].id || "level_1");
+    const activeFloor = normalizedFloors.find((floor) => floor.id === requestedActiveFloor) || normalizedFloors[0];
+    return {
+      mode,
+      show_grid: source.show_grid !== false,
+      active_floor: activeFloor.id,
+      floors: normalizedFloors,
+      image: normalizedFloors[0].image,
+      rooms: normalizedFloors[0].rooms,
+      walls: normalizedFloors[0].walls,
+      sensors: normalizedFloors[0].sensors,
+    };
+  }
+
+  _activeFloorplanFloor(floorplan = this._normalizeFloorplan(this._config.floorplan || {})) {
+    const floors = Array.isArray(floorplan.floors) && floorplan.floors.length > 0 ? floorplan.floors : [floorplan];
+    const index = Math.max(0, floors.findIndex((floor) => floor.id === floorplan.active_floor));
+    return { floor: floors[index] || floors[0], index: index >= 0 ? index : 0 };
   }
 
   _floorplanTool() {
@@ -3707,11 +3754,13 @@ function createDashboardEditorClass({
   _addFloorplanItem(type = this._floorplanTool(), x = 50, y = 35) {
     const next = this._cloneConfig(this._config || {});
     next.floorplan = this._normalizeFloorplan(next.floorplan || {});
+    const { floor } = this._activeFloorplanFloor(next.floorplan);
+    const itemType = next.floorplan.mode === "image" ? "sensor" : type;
     const clampedX = this._roundFloorplanNumber(Math.max(0, Math.min(100, Number(x) || 50)));
     const clampedY = this._roundFloorplanNumber(Math.max(0, Math.min(70, Number(y) || 35)));
-    if (type === "wall") {
-      const index = next.floorplan.walls.length;
-      next.floorplan.walls.push({
+    if (itemType === "wall") {
+      const index = floor.walls.length;
+      floor.walls.push({
         id: `wall_${Date.now()}`,
         x1: Math.max(0, clampedX - 10),
         y1: clampedY,
@@ -3721,9 +3770,9 @@ function createDashboardEditorClass({
         color: "#dbeafe",
       });
       this._selectedFloorplanItemKey = `wall:${index}`;
-    } else if (type === "sensor") {
-      const index = next.floorplan.sensors.length;
-      next.floorplan.sensors.push({
+    } else if (itemType === "sensor") {
+      const index = floor.sensors.length;
+      floor.sensors.push({
         id: `sensor_${Date.now()}`,
         label: "",
         entity: "",
@@ -3739,8 +3788,8 @@ function createDashboardEditorClass({
       });
       this._selectedFloorplanItemKey = `sensor:${index}`;
     } else {
-      const index = next.floorplan.rooms.length;
-      next.floorplan.rooms.push({
+      const index = floor.rooms.length;
+      floor.rooms.push({
         id: `room_${Date.now()}`,
         label: this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`),
         x: Math.max(0, clampedX - 12),
@@ -3757,16 +3806,69 @@ function createDashboardEditorClass({
   }
 
   _removeSelectedFloorplanItem() {
-    const selected = this._selectedFloorplanItem();
+    const floorplan = this._normalizeFloorplan(this._config.floorplan || {});
+    const { floor } = this._activeFloorplanFloor(floorplan);
+    const selected = this._selectedFloorplanItem(floor);
     if (!selected) return;
     const next = this._cloneConfig(this._config || {});
     next.floorplan = this._normalizeFloorplan(next.floorplan || {});
+    const { floor: nextFloor } = this._activeFloorplanFloor(next.floorplan);
     const collection = selected.type === "room" ? "rooms" : selected.type === "wall" ? "walls" : "sensors";
-    next.floorplan[collection].splice(selected.index, 1);
+    nextFloor[collection].splice(selected.index, 1);
     this._selectedFloorplanItemKey = "";
     this._config = next;
     this._dispatchConfig(next);
     this._render();
+  }
+
+  _setFloorplanFloor(floorId) {
+    const next = this._cloneConfig(this._config || {});
+    next.floorplan = this._normalizeFloorplan(next.floorplan || {});
+    const target = next.floorplan.floors.find((floor) => floor.id === floorId);
+    if (!target) return;
+    next.floorplan.active_floor = target.id;
+    const legacyFloor = next.floorplan.floors[0] || target;
+    next.floorplan.image = legacyFloor.image;
+    next.floorplan.rooms = legacyFloor.rooms;
+    next.floorplan.walls = legacyFloor.walls;
+    next.floorplan.sensors = legacyFloor.sensors;
+    this._selectedFloorplanItemKey = "";
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _addFloorplanFloor() {
+    const next = this._cloneConfig(this._config || {});
+    next.floorplan = this._normalizeFloorplan(next.floorplan || {});
+    const index = next.floorplan.floors.length;
+    const floor = this._normalizeFloorplanFloor({
+      id: `level_${Date.now()}`,
+      label: this._floorplanFloorLabel(index),
+      image: "",
+      rooms: [],
+      walls: [],
+      sensors: [],
+    }, index);
+    next.floorplan.floors.push(floor);
+    next.floorplan.active_floor = floor.id;
+    const legacyFloor = next.floorplan.floors[0] || floor;
+    next.floorplan.image = legacyFloor.image;
+    next.floorplan.rooms = legacyFloor.rooms;
+    next.floorplan.walls = legacyFloor.walls;
+    next.floorplan.sensors = legacyFloor.sensors;
+    this._selectedFloorplanItemKey = "";
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _floorplanImageUrl(path = "") {
+    const value = String(path || "").trim();
+    if (!value) return "";
+    if (/^(https?:|data:|blob:|\/)/i.test(value)) return value;
+    if (/^local\//i.test(value)) return `/${value}`;
+    return assetUrl(value);
   }
 
   _floorplanPointFromEvent(svg, event) {
@@ -3859,7 +3961,8 @@ function createDashboardEditorClass({
     if (!drag || !coordinates) return;
     const next = this._cloneConfig(this._config || {});
     next.floorplan = this._normalizeFloorplan(next.floorplan || {});
-    const target = this._floorplanItemByKey(next.floorplan, drag.key);
+    const { floor } = this._activeFloorplanFloor(next.floorplan);
+    const target = this._floorplanItemByKey(floor, drag.key);
     if (!target) return;
     Object.assign(target.item, coordinates);
     this._selectedFloorplanItemKey = drag.key;
@@ -5406,13 +5509,20 @@ function createDashboardEditorClass({
   _renderFloorplanEditor() {
     const floorplan = this._normalizeFloorplan(this._config.floorplan || {});
     this._config.floorplan = floorplan;
-    const selected = this._selectedFloorplanItem(floorplan);
-    const activeTool = this._floorplanTool();
-    const grid = floorplan.show_grid !== false
+    const { floor: activeFloor, index: floorIndex } = this._activeFloorplanFloor(floorplan);
+    const selectableFloor = floorplan.mode === "image" ? { ...activeFloor, rooms: [], walls: [] } : activeFloor;
+    const selected = this._selectedFloorplanItem(selectableFloor);
+    const activeTool = floorplan.mode === "image" ? "sensor" : this._floorplanTool();
+    const imageSrc = this._floorplanImageUrl(activeFloor.image);
+    const grid = floorplan.mode === "editor" && floorplan.show_grid !== false
       ? Array.from({ length: 11 }, (_item, index) => index * 10).map((x) => `<line class="floorplan-editor-gridline" x1="${x}" y1="0" x2="${x}" y2="70"></line>`).join("")
         + Array.from({ length: 8 }, (_item, index) => index * 10).map((y) => `<line class="floorplan-editor-gridline" x1="0" y1="${y}" x2="100" y2="${y}"></line>`).join("")
       : "";
-    const rooms = floorplan.rooms.map((room, index) => {
+    const background = `
+      <rect class="floorplan-editor-bg" x="0" y="0" width="100" height="70" rx="1.5"></rect>
+      ${floorplan.mode === "image" && imageSrc ? `<image class="floorplan-editor-image" href="${this._escape(imageSrc)}" x="0" y="0" width="100" height="70" preserveAspectRatio="xMidYMid slice"></image>` : ""}
+    `;
+    const rooms = floorplan.mode === "editor" ? activeFloor.rooms.map((room, index) => {
       const key = `room:${index}`;
       return `
         <g class="floorplan-editor-room${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" style="--room-color:${this._escape(room.color)}">
@@ -5420,12 +5530,12 @@ function createDashboardEditorClass({
           <text x="${this._escape(room.x + 1.5)}" y="${this._escape(room.y + 4)}">${this._escape(room.label)}</text>
         </g>
       `;
-    }).join("");
-    const walls = floorplan.walls.map((wall, index) => {
+    }).join("") : "";
+    const walls = floorplan.mode === "editor" ? activeFloor.walls.map((wall, index) => {
       const key = `wall:${index}`;
       return `<line class="floorplan-editor-wall${selected?.key === key ? " active" : ""}" data-floorplan-select="${this._escape(key)}" x1="${this._escape(wall.x1)}" y1="${this._escape(wall.y1)}" x2="${this._escape(wall.x2)}" y2="${this._escape(wall.y2)}" style="--wall-color:${this._escape(wall.color)};--wall-width:${this._escape(wall.width)}"></line>`;
-    }).join("");
-    const sensors = floorplan.sensors.map((sensor, index) => {
+    }).join("") : "";
+    const sensors = activeFloor.sensors.map((sensor, index) => {
       const key = `sensor:${index}`;
       const linked = this._normalizeEnvironmentSensors(this._config.environment_sensors || []).find((item) => item.id === sensor.environment_sensor);
       const label = sensor.label || linked?.label || this._floorplanSensorTypeLabel(sensor.type) || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`);
@@ -5452,11 +5562,13 @@ function createDashboardEditorClass({
         </g>
       `;
     }).join("");
-    const toolButtons = [
+    const toolButtons = (floorplan.mode === "image" ? [
+      ["sensor", this._t("editor.floorplanToolSensor", {}, "Sensor")],
+    ] : [
       ["room", this._t("editor.floorplanToolRoom", {}, "Room")],
       ["wall", this._t("editor.floorplanToolWall", {}, "Wall")],
       ["sensor", this._t("editor.floorplanToolSensor", {}, "Sensor")],
-    ].map(([tool, label]) => `
+    ]).map(([tool, label]) => `
       <button type="button" class="${tool === activeTool ? "active" : ""}" data-floorplan-tool="${this._escape(tool)}" aria-pressed="${tool === activeTool ? "true" : "false"}">${this._escape(label)}</button>
     `).join("");
     const environmentOptions = [
@@ -5468,10 +5580,23 @@ function createDashboardEditorClass({
         return `<option value="${this._escape(sensor.id)}"${selected?.item?.environment_sensor === sensor.id ? " selected" : ""}>${this._escape(`${label}${suffix}`)}</option>`;
       }),
     ].join("");
+    const floorTabs = floorplan.floors.map((floor) => `
+      <button type="button" class="${floor.id === activeFloor.id ? "active" : ""}" data-floorplan-floor="${this._escape(floor.id)}" aria-pressed="${floor.id === activeFloor.id ? "true" : "false"}">${this._escape(floor.label)}</button>
+    `).join("");
+    const imageSettings = floorplan.mode === "image"
+      ? `
+        <div class="floorplan-image-settings">
+          <label>${this._labelText(this._t("editor.floorplanImagePath", {}, "Image path"), this._t("editor.helpFloorplanImagePath", {}, "Store the image in Home Assistant under /config/www/ and enter it as /local/..., for example /local/floorplan/level-1.png. Full https:// URLs are also supported."))}
+            <input data-path="floorplan.floors.${floorIndex}.image" placeholder="/local/floorplan/level-1.png" value="${this._escape(activeFloor.image)}" autocomplete="off" />
+          </label>
+          <p class="field-note">${this._escape(this._t("editor.floorplanImagePathHelp", {}, "Example: copy eg.png to /config/www/floorplan/eg.png, then enter /local/floorplan/eg.png here. You can also use a complete https:// image URL."))}</p>
+        </div>
+      `
+      : "";
     const selectedControls = selected
       ? (() => {
         const collection = selected.type === "room" ? "rooms" : selected.type === "wall" ? "walls" : "sensors";
-        const path = `floorplan.${collection}.${selected.index}`;
+        const path = `floorplan.floors.${floorIndex}.${collection}.${selected.index}`;
         if (selected.type === "room") {
           const room = selected.item;
           return `
@@ -5527,6 +5652,10 @@ function createDashboardEditorClass({
         `;
       })()
       : `<div class="layout-empty">${this._escape(this._t("editor.floorplanEmpty", {}, "Click the grid to create the selected element."))}</div>`;
+    const activeFloorElementCount = activeFloor.rooms.length + activeFloor.walls.length + activeFloor.sensors.length;
+    const imageEmpty = floorplan.mode === "image" && !imageSrc
+      ? `<div class="floorplan-image-empty">${this._escape(this._t("floorplan.imageEmpty", {}, "Enter an image path for this level."))}</div>`
+      : "";
     return `
       <section class="editor-card floorplan-editor-card">
         <div class="editor-card-head">
@@ -5534,24 +5663,37 @@ function createDashboardEditorClass({
             <strong>${this._escape(this._t("editor.sectionFloorplan", {}, "Floorplan editor"))}</strong>
             <span>${this._escape(this._t("editor.floorplanHelp", {}, "Choose a tool, click the grid to place it, then refine the selected element."))}</span>
           </div>
-          <span class="section-status">${this._escape(this._statusText({ configured: floorplan.rooms.length + floorplan.walls.length + floorplan.sensors.length }))}</span>
+          <span class="section-status">${this._escape(this._statusText({ configured: activeFloorElementCount }))}</span>
         </div>
         <div class="checkbox-grid">
           <label class="inline"><input type="checkbox" data-path="show_floorplan" ${this._config.show_floorplan !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showFloorplan", {}, "Show floorplan"))}</label>
-          <label class="inline"><input type="checkbox" data-path="floorplan.show_grid" ${floorplan.show_grid !== false ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanShowGrid", {}, "Show grid"))}</label>
+          ${floorplan.mode === "editor" ? `<label class="inline"><input type="checkbox" data-path="floorplan.show_grid" ${floorplan.show_grid !== false ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanShowGrid", {}, "Show grid"))}</label>` : ""}
         </div>
+        <div class="checkbox-grid" role="radiogroup" aria-label="${this._escape(this._t("editor.floorplanMode", {}, "Floorplan type"))}">
+          <label class="inline"><input type="radio" name="floorplan-mode" data-path="floorplan.mode" value="editor" ${floorplan.mode === "editor" ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanModeEditor", {}, "Floorplan editor"))}</label>
+          <label class="inline"><input type="radio" name="floorplan-mode" data-path="floorplan.mode" value="image" ${floorplan.mode === "image" ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanModeImage", {}, "Image"))}</label>
+        </div>
+        <div class="floorplan-floor-row">
+          <div class="floorplan-floor-tabs" role="group" aria-label="${this._escape(this._t("editor.floorplanFloors", {}, "Levels"))}">
+            ${floorTabs}
+            <button type="button" data-action="add-floorplan-floor">${this._escape(this._t("editor.floorplanAddFloor", {}, "+ Add level"))}</button>
+          </div>
+          <label>${this._labelText(this._t("editor.floorplanFloorLabel", {}, "Level name"))}<input data-path="floorplan.floors.${floorIndex}.label" value="${this._escape(activeFloor.label)}" /></label>
+        </div>
+        ${imageSettings}
         <div class="floorplan-tool-row" role="group" aria-label="${this._escape(this._t("editor.floorplanTools", {}, "Floorplan tools"))}">
           ${toolButtons}
         </div>
         <div class="layout-editor floorplan-editor">
           <div class="floorplan-editor-preview">
             <svg data-floorplan-canvas viewBox="0 0 100 70" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${this._escape(this._t("editor.sectionFloorplan", {}, "Floorplan editor"))}">
-              <rect class="floorplan-editor-bg" x="0" y="0" width="100" height="70" rx="1.5"></rect>
+              ${background}
               ${grid}
               ${rooms}
               ${walls}
               ${sensors}
             </svg>
+            ${imageEmpty}
           </div>
           ${selectedControls}
         </div>
@@ -5644,8 +5786,8 @@ function createDashboardEditorClass({
     const overlayCount = IMAGE_OVERLAY_KEYS.filter((key) => this._config.image_overlays?.[key]?.enabled === true).length;
     const environmentConfigured = environmentSensors.filter((sensor) => sensor.entity).length;
     const environmentMissing = this._missingEntityCount(environmentSensors.map((sensor) => sensor.entity));
-    const floorplanElementCount = floorplan.rooms.length + floorplan.walls.length + floorplan.sensors.length;
-    const floorplanMissing = this._missingEntityCount(floorplan.sensors.map((sensor) => {
+    const floorplanElementCount = (floorplan.floors || []).reduce((total, floor) => total + floor.rooms.length + floor.walls.length + floor.sensors.length, 0);
+    const floorplanMissing = this._missingEntityCount((floorplan.floors || []).flatMap((floor) => floor.sensors).map((sensor) => {
       if (sensor.entity) return sensor.entity;
       return environmentSensors.find((item) => item.id === sensor.environment_sensor)?.entity || "";
     }));
@@ -5845,6 +5987,7 @@ function createDashboardEditorClass({
         .section-status{flex:0 0 auto;max-width:48%;border-radius:999px;padding:4px 7px;background:color-mix(in srgb,var(--primary-color,#1f8fff) 12%,var(--secondary-background-color,#1f2937));color:var(--secondary-text-color,#cbd5e1);font-size:11px;font-weight:800;line-height:1.1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .field-label-text{display:inline-flex;align-items:center;gap:5px;min-width:0}
         .field-help{display:inline-grid;place-items:center;width:16px;height:16px;flex:0 0 auto;border-radius:999px;background:color-mix(in srgb,var(--primary-color,#1f8fff) 18%,var(--secondary-background-color,#1f2937));color:var(--primary-color,#60a5fa);font-size:11px;font-weight:900;cursor:help}
+        .field-note{margin:0;color:var(--secondary-text-color,#9ca3af);font-size:12px;line-height:1.35}
         .template-row{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
         .template-row button{border-color:color-mix(in srgb,var(--template-color,#34d399) 44%,var(--divider-color,#4b5563));box-shadow:inset 3px 0 0 var(--template-color,#34d399);font-weight:700}
         .layout-editor{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(220px,.7fr);gap:10px;align-items:start;min-width:0}
@@ -5858,12 +6001,18 @@ function createDashboardEditorClass({
         .floorplan-tool-row{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
         .floorplan-tool-row button{font-weight:800}
         .floorplan-tool-row button.active{border-color:var(--primary-color,#1f8fff);background:color-mix(in srgb,var(--primary-color,#1f8fff) 18%,var(--card-background-color,#111827));box-shadow:inset 3px 0 0 var(--primary-color,#1f8fff)}
+        .floorplan-floor-row,.floorplan-image-settings{display:grid;gap:8px;min-width:0}
+        .floorplan-floor-tabs{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+        .floorplan-floor-tabs button{font-weight:800}
+        .floorplan-floor-tabs button.active{border-color:var(--primary-color,#1f8fff);background:color-mix(in srgb,var(--primary-color,#1f8fff) 18%,var(--card-background-color,#111827));box-shadow:inset 3px 0 0 var(--primary-color,#1f8fff)}
         .floorplan-editor{grid-template-columns:minmax(0,1fr)}
         .floorplan-editor-preview{position:relative;min-width:0;aspect-ratio:10/7;overflow:hidden;border-radius:10px;border:1px solid var(--divider-color,#4b5563);background:#0a1222}
         .floorplan-editor-preview svg{display:block;width:100%;height:100%;cursor:crosshair}
         .floorplan-editor .layout-controls{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px;border:1px solid var(--divider-color,#4b5563);border-radius:8px;background:var(--secondary-background-color,rgba(31,41,55,.48))}
         .floorplan-editor .layout-controls strong,.floorplan-editor .layout-controls button{grid-column:1/-1}
         .floorplan-editor-bg{fill:rgba(10,18,34,.94)}
+        .floorplan-editor-image{pointer-events:auto}
+        .floorplan-image-empty{position:absolute;inset:0;display:grid;place-items:center;padding:18px;color:var(--secondary-text-color,#9ca3af);text-align:center;font-size:13px;pointer-events:none}
         .floorplan-editor-gridline{stroke:rgba(255,255,255,.08);stroke-width:.18;vector-effect:non-scaling-stroke}
         .floorplan-editor-room,.floorplan-editor-wall,.floorplan-editor-sensor{cursor:move}
         .floorplan-editor-room rect{fill:color-mix(in srgb,var(--room-color,#1f8fff) 12%,rgba(255,255,255,.04));stroke:color-mix(in srgb,var(--room-color,#1f8fff) 48%,rgba(255,255,255,.2));stroke-width:.5;vector-effect:non-scaling-stroke}
@@ -5944,6 +6093,7 @@ function createDashboardEditorClass({
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
         if (target.dataset.action === "add-environment-sensor") this._addEnvironmentSensor(target.dataset.template || "custom");
         if (target.dataset.action === "remove-environment-sensor") this._removeEnvironmentSensor(Number(target.dataset.index));
+        if (target.dataset.action === "add-floorplan-floor") this._addFloorplanFloor();
         if (target.dataset.action === "remove-floorplan-item") this._removeSelectedFloorplanItem();
         if (target.dataset.action === "add-pv-roof-string") this._addPvRoofString();
         if (target.dataset.action === "remove-pv-roof-string") this._removePvRoofString(Number(target.dataset.index));
@@ -5961,12 +6111,16 @@ function createDashboardEditorClass({
     this.shadowRoot.querySelectorAll("button[data-floorplan-tool]").forEach((button) => {
       button.addEventListener("click", (event) => this._setFloorplanTool(event.currentTarget.dataset.floorplanTool));
     });
+    this.shadowRoot.querySelectorAll("button[data-floorplan-floor]").forEach((button) => {
+      button.addEventListener("click", (event) => this._setFloorplanFloor(event.currentTarget.dataset.floorplanFloor));
+    });
     this.shadowRoot.querySelectorAll("[data-floorplan-select]").forEach((element) => {
       element.addEventListener("pointerdown", (event) => {
         const floorplanCanvas = this.shadowRoot.querySelector("[data-floorplan-canvas]");
         const floorplan = this._normalizeFloorplan(this._config.floorplan || {});
+        const { floor } = this._activeFloorplanFloor(floorplan);
         const key = event.currentTarget.dataset.floorplanSelect;
-        const selected = this._floorplanItemByKey(floorplan, key);
+        const selected = this._floorplanItemByKey(floor, key);
         if (!floorplanCanvas || !selected) return;
         event.preventDefault();
         event.stopPropagation();
@@ -6040,7 +6194,7 @@ function createDashboardEditorClass({
           return;
         }
         if (event.target.closest?.("[data-floorplan-select]")) return;
-        if (event.target !== floorplanCanvas && !event.target.classList?.contains("floorplan-editor-bg") && !event.target.classList?.contains("floorplan-editor-gridline")) return;
+        if (event.target !== floorplanCanvas && !event.target.classList?.contains("floorplan-editor-bg") && !event.target.classList?.contains("floorplan-editor-gridline") && !event.target.classList?.contains("floorplan-editor-image")) return;
         const { x, y } = this._floorplanPointFromEvent(floorplanCanvas, event);
         this._addFloorplanItem(this._floorplanTool(), x, y);
       });
@@ -6886,6 +7040,13 @@ const I18N = {
     "editor.floorplanWidth": "Width",
     "editor.floorplanHeight": "Height",
     "editor.floorplanDelete": "Delete selected",
+    "editor.floorplanMode": "Floorplan type",
+    "editor.floorplanModeEditor": "Floorplan editor",
+    "editor.floorplanModeImage": "Image",
+    "editor.floorplanFloors": "Levels",
+    "editor.floorplanAddFloor": "+ Add level",
+    "editor.floorplanFloorLabel": "Level name",
+    "editor.floorplanImagePath": "Image path",
     "editor.floorplanCustomEntity": "Use own entity",
     "editor.floorplanSensorType": "Sensor type",
     "editor.floorplanSensorSource": "Use environment sensor",
@@ -6893,6 +7054,8 @@ const I18N = {
     "editor.floorplanShowSensorLabel": "Show label",
     "editor.floorplanFontSize": "Font size",
     "editor.floorplanEmpty": "Click the grid to create the selected element.",
+    "editor.floorplanImagePathHelp": "Example: copy level-1.png to /config/www/floorplan/level-1.png and enter /local/floorplan/level-1.png here. You can also use a complete https:// image URL.",
+    "editor.helpFloorplanImagePath": "Store the image in Home Assistant under /config/www/ and enter it as /local/..., for example /local/floorplan/level-1.png. Full https:// URLs are also supported.",
     "editor.helpFloorplanSensorSource": "Optional: reuse a sensor from the Environment tab. Leave this on own entity to choose a Home Assistant entity directly below.",
     "editor.helpHomeAssistantSensor": "Choose the Home Assistant entity that provides this value.",
     "editor.helpUnitAuto": "Use Auto to display the unit reported by the Home Assistant entity. Choose another value only when you want to override it.",
@@ -6950,7 +7113,9 @@ const I18N = {
     "environment.templateCustom": "Custom",
     "floorplan.counts": "{rooms} rooms · {sensors} sensors",
     "floorplan.empty": "Create rooms, walls, and sensors in the card editor.",
+    "floorplan.imageEmpty": "Enter an image path for this level.",
     "floorplan.label": "Floorplan",
+    "floorplan.level": "Level {index}",
     "floorplan.room": "Room {index}",
     "floorplan.sensor": "Sensor {index}",
     "floorplan.title": "Home floorplan",
@@ -7383,6 +7548,13 @@ const I18N = {
     "editor.floorplanWidth": "Breite",
     "editor.floorplanHeight": "Höhe",
     "editor.floorplanDelete": "Auswahl löschen",
+    "editor.floorplanMode": "Grundrissart",
+    "editor.floorplanModeEditor": "Grundriss-Editor",
+    "editor.floorplanModeImage": "Bild",
+    "editor.floorplanFloors": "Etagen",
+    "editor.floorplanAddFloor": "+ Ebene hinzufügen",
+    "editor.floorplanFloorLabel": "Ebenenname",
+    "editor.floorplanImagePath": "Bildpfad",
     "editor.floorplanCustomEntity": "Eigene Entität verwenden",
     "editor.floorplanSensorType": "Sensortyp",
     "editor.floorplanSensorSource": "Umgebungssensor übernehmen",
@@ -7390,6 +7562,8 @@ const I18N = {
     "editor.floorplanShowSensorLabel": "Label anzeigen",
     "editor.floorplanFontSize": "Schriftgröße",
     "editor.floorplanEmpty": "Klicke ins Raster, um das ausgewählte Element zu erstellen.",
+    "editor.floorplanImagePathHelp": "Beispiel: Kopiere eg.png nach /config/www/grundriss/eg.png und trage hier /local/grundriss/eg.png ein. Alternativ kannst du eine vollständige https://-Bild-URL verwenden.",
+    "editor.helpFloorplanImagePath": "Lege das Bild in Home Assistant unter /config/www/ ab und gib es als /local/... an, zum Beispiel /local/grundriss/ebene-1.png. Vollständige https://-URLs werden ebenfalls unterstützt.",
     "editor.helpFloorplanSensorSource": "Optional: Einen Sensor aus dem Tab Umgebung wiederverwenden. Bei Eigene Entität kannst du unten direkt eine Home-Assistant-Entität wählen.",
     "editor.helpHomeAssistantSensor": "Wähle die Home-Assistant-Entität, die diesen Wert liefert.",
     "editor.helpUnitAuto": "Mit Auto wird die Einheit der Home-Assistant-Entität verwendet. Wähle eine andere Einheit nur, wenn du sie überschreiben möchtest.",
@@ -7447,7 +7621,9 @@ const I18N = {
     "environment.templateCustom": "Eigene",
     "floorplan.counts": "{rooms} Räume · {sensors} Sensoren",
     "floorplan.empty": "Erstelle Räume, Wände und Sensoren im Karteneditor.",
+    "floorplan.imageEmpty": "Trage für diese Ebene einen Bildpfad ein.",
     "floorplan.label": "Grundriss",
+    "floorplan.level": "Ebene {index}",
     "floorplan.room": "Raum {index}",
     "floorplan.sensor": "Sensor {index}",
     "floorplan.title": "Hausgrundriss",
@@ -7880,6 +8056,13 @@ const I18N = {
     "editor.floorplanWidth": "Ancho",
     "editor.floorplanHeight": "Alto",
     "editor.floorplanDelete": "Eliminar seleccionado",
+    "editor.floorplanMode": "Tipo de plano",
+    "editor.floorplanModeEditor": "Editor de plano",
+    "editor.floorplanModeImage": "Imagen",
+    "editor.floorplanFloors": "Niveles",
+    "editor.floorplanAddFloor": "+ Añadir nivel",
+    "editor.floorplanFloorLabel": "Nombre del nivel",
+    "editor.floorplanImagePath": "Ruta de la imagen",
     "editor.floorplanCustomEntity": "Usar entidad propia",
     "editor.floorplanSensorType": "Tipo de sensor",
     "editor.floorplanSensorSource": "Usar sensor ambiental",
@@ -7887,6 +8070,8 @@ const I18N = {
     "editor.floorplanShowSensorLabel": "Mostrar etiqueta",
     "editor.floorplanFontSize": "Tamaño de fuente",
     "editor.floorplanEmpty": "Haz clic en la cuadrícula para crear el elemento seleccionado.",
+    "editor.floorplanImagePathHelp": "Ejemplo: copia planta-baja.png a /config/www/plano/planta-baja.png e introduce aquí /local/plano/planta-baja.png. También puedes usar una URL de imagen https:// completa.",
+    "editor.helpFloorplanImagePath": "Guarda la imagen en Home Assistant bajo /config/www/ e introdúcela como /local/..., por ejemplo /local/plano/nivel-1.png. También se admiten URL https:// completas.",
     "editor.helpFloorplanSensorSource": "Opcional: reutiliza un sensor de la pestaña Ambiente. Déjalo en entidad propia para elegir una entidad de Home Assistant directamente abajo.",
     "editor.helpHomeAssistantSensor": "Elige la entidad de Home Assistant que proporciona este valor.",
     "editor.helpUnitAuto": "Usa Auto para mostrar la unidad reportada por Home Assistant. Elige otra unidad solo si quieres sobrescribirla.",
@@ -7944,7 +8129,9 @@ const I18N = {
     "environment.templateCustom": "Personalizado",
     "floorplan.counts": "{rooms} habitaciones · {sensors} sensores",
     "floorplan.empty": "Crea habitaciones, paredes y sensores en el editor de la tarjeta.",
+    "floorplan.imageEmpty": "Introduce una ruta de imagen para este nivel.",
     "floorplan.label": "Plano",
+    "floorplan.level": "Nivel {index}",
     "floorplan.room": "Habitación {index}",
     "floorplan.sensor": "Sensor {index}",
     "floorplan.title": "Plano de la casa",
@@ -8377,6 +8564,13 @@ const I18N = {
     "editor.floorplanWidth": "Largeur",
     "editor.floorplanHeight": "Hauteur",
     "editor.floorplanDelete": "Supprimer la sélection",
+    "editor.floorplanMode": "Type de plan",
+    "editor.floorplanModeEditor": "Éditeur de plan",
+    "editor.floorplanModeImage": "Image",
+    "editor.floorplanFloors": "Niveaux",
+    "editor.floorplanAddFloor": "+ Ajouter un niveau",
+    "editor.floorplanFloorLabel": "Nom du niveau",
+    "editor.floorplanImagePath": "Chemin de l'image",
     "editor.floorplanCustomEntity": "Utiliser une entité propre",
     "editor.floorplanSensorType": "Type de capteur",
     "editor.floorplanSensorSource": "Utiliser un capteur environnement",
@@ -8384,6 +8578,8 @@ const I18N = {
     "editor.floorplanShowSensorLabel": "Afficher le libellé",
     "editor.floorplanFontSize": "Taille du texte",
     "editor.floorplanEmpty": "Cliquez dans la grille pour créer l'élément sélectionné.",
+    "editor.floorplanImagePathHelp": "Exemple : copiez rdc.png dans /config/www/plan/rdc.png puis saisissez /local/plan/rdc.png ici. Vous pouvez aussi utiliser une URL d'image https:// complète.",
+    "editor.helpFloorplanImagePath": "Stockez l'image dans Home Assistant sous /config/www/ et saisissez-la sous la forme /local/..., par exemple /local/plan/niveau-1.png. Les URL https:// complètes sont aussi prises en charge.",
     "editor.helpFloorplanSensorSource": "Optionnel : réutilisez un capteur de l'onglet Environnement. Laissez sur entité propre pour choisir directement une entité Home Assistant ci-dessous.",
     "editor.helpHomeAssistantSensor": "Choisissez l'entité Home Assistant qui fournit cette valeur.",
     "editor.helpUnitAuto": "Utilisez Auto pour afficher l'unité fournie par Home Assistant. Choisissez une autre unité seulement si vous voulez la remplacer.",
@@ -8441,7 +8637,9 @@ const I18N = {
     "environment.templateCustom": "Personnalisé",
     "floorplan.counts": "{rooms} pièces · {sensors} capteurs",
     "floorplan.empty": "Créez des pièces, murs et capteurs dans l'éditeur de carte.",
+    "floorplan.imageEmpty": "Saisissez un chemin d'image pour ce niveau.",
     "floorplan.label": "Plan",
+    "floorplan.level": "Niveau {index}",
     "floorplan.room": "Pièce {index}",
     "floorplan.sensor": "Capteur {index}",
     "floorplan.title": "Plan de la maison",
@@ -8874,6 +9072,13 @@ const I18N = {
     "editor.floorplanWidth": "Szerokość",
     "editor.floorplanHeight": "Wysokość",
     "editor.floorplanDelete": "Usuń wybrane",
+    "editor.floorplanMode": "Typ planu",
+    "editor.floorplanModeEditor": "Edytor planu",
+    "editor.floorplanModeImage": "Obraz",
+    "editor.floorplanFloors": "Poziomy",
+    "editor.floorplanAddFloor": "+ Dodaj poziom",
+    "editor.floorplanFloorLabel": "Nazwa poziomu",
+    "editor.floorplanImagePath": "Ścieżka obrazu",
     "editor.floorplanCustomEntity": "Użyj własnej encji",
     "editor.floorplanSensorType": "Typ czujnika",
     "editor.floorplanSensorSource": "Użyj czujnika środowiska",
@@ -8881,6 +9086,8 @@ const I18N = {
     "editor.floorplanShowSensorLabel": "Pokaż etykietę",
     "editor.floorplanFontSize": "Rozmiar tekstu",
     "editor.floorplanEmpty": "Kliknij siatkę, aby utworzyć wybrany element.",
+    "editor.floorplanImagePathHelp": "Przykład: skopiuj parter.png do /config/www/plan/parter.png i wpisz tutaj /local/plan/parter.png. Możesz też użyć pełnego adresu URL obrazu https://.",
+    "editor.helpFloorplanImagePath": "Zapisz obraz w Home Assistant w /config/www/ i wpisz go jako /local/..., na przykład /local/plan/poziom-1.png. Pełne adresy https:// też są obsługiwane.",
     "editor.helpFloorplanSensorSource": "Opcjonalnie: użyj ponownie czujnika z karty Środowisko. Pozostaw własną encję, aby wybrać poniżej bezpośrednio encję Home Assistant.",
     "editor.helpHomeAssistantSensor": "Wybierz encję Home Assistant, która dostarcza tę wartość.",
     "editor.helpUnitAuto": "Użyj Auto, aby wyświetlić jednostkę zgłaszaną przez Home Assistant. Wybierz inną tylko wtedy, gdy chcesz ją nadpisać.",
@@ -8938,7 +9145,9 @@ const I18N = {
     "environment.templateCustom": "Własny",
     "floorplan.counts": "{rooms} pomieszczeń · {sensors} czujników",
     "floorplan.empty": "Utwórz pomieszczenia, ściany i czujniki w edytorze karty.",
+    "floorplan.imageEmpty": "Wpisz ścieżkę obrazu dla tego poziomu.",
     "floorplan.label": "Plan",
+    "floorplan.level": "Poziom {index}",
     "floorplan.room": "Pomieszczenie {index}",
     "floorplan.sensor": "Czujnik {index}",
     "floorplan.title": "Plan domu",
@@ -9486,10 +9695,10 @@ class HaSolarDashboardCard extends HTMLElement {
       custom_kpis: [],
       environment_sensors: [],
       floorplan: {
+        mode: "editor",
         show_grid: true,
-        rooms: [],
-        walls: [],
-        sensors: [],
+        active_floor: "level_1",
+        floors: [{ id: "level_1", label: "Level 1", image: "", rooms: [], walls: [], sensors: [] }],
       },
       large_consumers: normalizeLargeConsumers([]),
       pv_roof_strings: [],
@@ -9636,10 +9845,10 @@ class HaSolarDashboardCard extends HTMLElement {
       custom_kpis: [],
       environment_sensors: [],
       floorplan: {
+        mode: "editor",
         show_grid: true,
-        rooms: [],
-        walls: [],
-        sensors: [],
+        active_floor: "level_1",
+        floors: [{ id: "level_1", label: "Level 1", image: "", rooms: [], walls: [], sensors: [] }],
       },
       large_consumers: [],
       pv_roof_strings: [],
@@ -10336,6 +10545,72 @@ class HaSolarDashboardCard extends HTMLElement {
     return types[type] || types.indoor;
   }
 
+  _normalizeFloorplanMode(value = "editor") {
+    const mode = String(value || "").trim().toLowerCase();
+    return ["image", "picture", "bild"].includes(mode) ? "image" : "editor";
+  }
+
+  _floorplanFloorLabel(index = 0) {
+    return this._t("floorplan.level", { index: index + 1 }, `Level ${index + 1}`);
+  }
+
+  _normalizeFloorplanRoom(room, index = 0) {
+    if (!room || typeof room !== "object") return undefined;
+    return {
+      id: normalizeConfigId(room.id || room.key, `room_${index + 1}`),
+      label: String(room.label || room.name || this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`)).trim(),
+      x: this._clampNumber(room.x, 10 + index * 4, 0, 100),
+      y: this._clampNumber(room.y, 10 + index * 4, 0, 70),
+      width: this._clampNumber(room.width ?? room.w, 24, 3, 100),
+      height: this._clampNumber(room.height ?? room.h, 18, 3, 70),
+      color: this._safeCssColor(room.color, "#1f8fff"),
+    };
+  }
+
+  _normalizeFloorplanWall(wall, index = 0) {
+    if (!wall || typeof wall !== "object") return undefined;
+    return {
+      id: normalizeConfigId(wall.id || wall.key, `wall_${index + 1}`),
+      x1: this._clampNumber(wall.x1 ?? wall.from_x, 12, 0, 100),
+      y1: this._clampNumber(wall.y1 ?? wall.from_y, 12, 0, 70),
+      x2: this._clampNumber(wall.x2 ?? wall.to_x, 36, 0, 100),
+      y2: this._clampNumber(wall.y2 ?? wall.to_y, 12, 0, 70),
+      width: this._clampNumber(wall.width ?? wall.stroke_width, 1.2, 0.2, 5),
+      color: this._safeCssColor(wall.color, "#dbeafe"),
+    };
+  }
+
+  _normalizeFloorplanSensor(sensor, index = 0) {
+    if (!sensor || typeof sensor !== "object") return undefined;
+    const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
+    return {
+      id: normalizeConfigId(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor, `sensor_${index + 1}`),
+      label: String(sensor.label || sensor.name || "").trim(),
+      entity: String(sensor.entity || sensor.entity_id || "").trim(),
+      environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
+      type,
+      unit: sensor.unit ?? "auto",
+      x: this._clampNumber(sensor.x ?? sensor.left, 50, 0, 100),
+      y: this._clampNumber(sensor.y ?? sensor.top, 35, 0, 70),
+      color: this._safeCssColor(sensor.color, this._floorplanSensorType(type).color),
+      visible: sensor.visible !== false,
+      show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
+      font_size: this._clampNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
+    };
+  }
+
+  _normalizeFloorplanFloor(floor = {}, index = 0) {
+    const source = floor && typeof floor === "object" ? floor : {};
+    return {
+      id: normalizeConfigId(source.id || source.key, `level_${index + 1}`),
+      label: String(source.label || source.name || this._floorplanFloorLabel(index)).trim(),
+      image: String(source.image || source.image_path || source.background_image || "").trim(),
+      rooms: (Array.isArray(source.rooms) ? source.rooms : []).map((room, roomIndex) => this._normalizeFloorplanRoom(room, roomIndex)).filter(Boolean),
+      walls: (Array.isArray(source.walls) ? source.walls : []).map((wall, wallIndex) => this._normalizeFloorplanWall(wall, wallIndex)).filter(Boolean),
+      sensors: (Array.isArray(source.sensors) ? source.sensors : []).map((sensor, sensorIndex) => this._normalizeFloorplanSensor(sensor, sensorIndex)).filter(Boolean),
+    };
+  }
+
   _environmentSensorMetrics({ placement = "" } = {}) {
     if (this.config.show_environment_sensors === false) return [];
     return (this.config.environment_sensors || [])
@@ -10360,60 +10635,46 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _normalizeFloorplan(floorplan = {}) {
     const source = floorplan && typeof floorplan === "object" ? floorplan : {};
-    const rooms = Array.isArray(source.rooms) ? source.rooms : [];
-    const walls = Array.isArray(source.walls) ? source.walls : [];
-    const sensors = Array.isArray(source.sensors) ? source.sensors : [];
-    return {
-      show_grid: source.show_grid !== false,
-      rooms: rooms
-        .map((room, index) => {
-          if (!room || typeof room !== "object") return undefined;
-          return {
-            id: normalizeConfigId(room.id || room.key, `room_${index + 1}`),
-            label: String(room.label || room.name || this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`)).trim(),
-            x: this._clampNumber(room.x, 10 + index * 4, 0, 100),
-            y: this._clampNumber(room.y, 10 + index * 4, 0, 70),
-            width: this._clampNumber(room.width ?? room.w, 24, 3, 100),
-            height: this._clampNumber(room.height ?? room.h, 18, 3, 70),
-            color: this._safeCssColor(room.color, "#1f8fff"),
-          };
-        })
-        .filter(Boolean),
-      walls: walls
-        .map((wall, index) => {
-          if (!wall || typeof wall !== "object") return undefined;
-          return {
-            id: normalizeConfigId(wall.id || wall.key, `wall_${index + 1}`),
-            x1: this._clampNumber(wall.x1 ?? wall.from_x, 12, 0, 100),
-            y1: this._clampNumber(wall.y1 ?? wall.from_y, 12, 0, 70),
-            x2: this._clampNumber(wall.x2 ?? wall.to_x, 36, 0, 100),
-            y2: this._clampNumber(wall.y2 ?? wall.to_y, 12, 0, 70),
-            width: this._clampNumber(wall.width ?? wall.stroke_width, 1.2, 0.2, 5),
-            color: this._safeCssColor(wall.color, "#dbeafe"),
-          };
-        })
-        .filter(Boolean),
-      sensors: sensors
-        .map((sensor, index) => {
-          if (!sensor || typeof sensor !== "object") return undefined;
-          const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
-          return {
-            id: normalizeConfigId(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor, `sensor_${index + 1}`),
-            label: String(sensor.label || sensor.name || "").trim(),
-            entity: String(sensor.entity || sensor.entity_id || "").trim(),
-            environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
-            type,
-            unit: sensor.unit ?? "auto",
-            x: this._clampNumber(sensor.x ?? sensor.left, 50, 0, 100),
-            y: this._clampNumber(sensor.y ?? sensor.top, 35, 0, 70),
-            color: this._safeCssColor(sensor.color, this._floorplanSensorType(type).color),
-            visible: sensor.visible !== false,
-            show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
-            font_size: this._clampNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
-          };
-        })
-        .filter(Boolean),
+    const mode = this._normalizeFloorplanMode(source.mode || source.type || source.source || source.layout_type || "editor");
+    const fallbackFloor = {
+      id: source.active_floor || source.activeFloor || source.floor_id || "level_1",
+      label: source.floor_label || source.label || this._floorplanFloorLabel(0),
+      image: source.image || source.image_path || source.background_image || "",
+      rooms: Array.isArray(source.rooms) ? source.rooms : [],
+      walls: Array.isArray(source.walls) ? source.walls : [],
+      sensors: Array.isArray(source.sensors) ? source.sensors : [],
     };
+    const floors = (Array.isArray(source.floors) && source.floors.length > 0 ? source.floors : [fallbackFloor])
+      .map((floor, index) => this._normalizeFloorplanFloor(floor, index))
+      .filter(Boolean);
+    const normalizedFloors = floors.length ? floors : [this._normalizeFloorplanFloor(fallbackFloor, 0)];
+    const requestedActiveFloor = String(this._activeFloorplanFloorId || source.active_floor || source.activeFloor || source.selected_floor || normalizedFloors[0].id || "level_1");
+    const activeFloor = normalizedFloors.find((floor) => floor.id === requestedActiveFloor) || normalizedFloors[0];
+    return {
+      mode,
+      show_grid: source.show_grid !== false,
+      active_floor: activeFloor.id,
+      floors: normalizedFloors,
+      image: normalizedFloors[0].image,
+      rooms: normalizedFloors[0].rooms,
+      walls: normalizedFloors[0].walls,
+      sensors: normalizedFloors[0].sensors,
+    };
+  }
+
+  _activeFloorplanFloor(floorplan = this._normalizeFloorplan(this.config?.floorplan || {})) {
+    const floors = Array.isArray(floorplan.floors) && floorplan.floors.length > 0 ? floorplan.floors : [floorplan];
+    const requestedFloor = this._activeFloorplanFloorId || floorplan.active_floor;
+    const index = Math.max(0, floors.findIndex((floor) => floor.id === requestedFloor));
+    return { floor: floors[index] || floors[0], index: index >= 0 ? index : 0 };
+  }
+
+  _floorplanImageUrl(path = "") {
+    const value = String(path || "").trim();
+    if (!value) return "";
+    if (/^(https?:|data:|blob:|\/)/i.test(value)) return value;
+    if (/^local\//i.test(value)) return `/${value}`;
+    return assetUrl(value);
   }
 
   _floorplanEnvironmentSensor(id) {
@@ -10445,21 +10706,26 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderFloorplanDashboard() {
-    const floorplan = this.config.floorplan || this._normalizeFloorplan();
-    const grid = floorplan.show_grid !== false
+    const floorplan = this._normalizeFloorplan(this.config.floorplan || {});
+    const { floor: activeFloor } = this._activeFloorplanFloor(floorplan);
+    const imageSrc = this._floorplanImageUrl(activeFloor.image);
+    const grid = floorplan.mode === "editor" && floorplan.show_grid !== false
       ? Array.from({ length: 11 }, (_item, index) => index * 10).map((x) => `<line class="floorplan-grid-line" x1="${x}" y1="0" x2="${x}" y2="70"></line>`).join("")
         + Array.from({ length: 8 }, (_item, index) => index * 10).map((y) => `<line class="floorplan-grid-line" x1="0" y1="${y}" x2="100" y2="${y}"></line>`).join("")
       : "";
-    const rooms = floorplan.rooms.map((room) => `
+    const backgroundImage = floorplan.mode === "image" && imageSrc
+      ? `<image class="floorplan-image" href="${this._escape(imageSrc)}" x="0" y="0" width="100" height="70" preserveAspectRatio="xMidYMid slice"></image>`
+      : "";
+    const rooms = floorplan.mode === "editor" ? activeFloor.rooms.map((room) => `
       <g class="floorplan-room" style="--room-color:${this._escape(room.color)}">
         <rect x="${this._escape(room.x)}" y="${this._escape(room.y)}" width="${this._escape(room.width)}" height="${this._escape(room.height)}" rx="1.4"></rect>
         <text x="${this._escape(room.x + 1.6)}" y="${this._escape(room.y + 4.2)}">${this._escape(room.label)}</text>
       </g>
-    `).join("");
-    const walls = floorplan.walls.map((wall) => `
+    `).join("") : "";
+    const walls = floorplan.mode === "editor" ? activeFloor.walls.map((wall) => `
       <line class="floorplan-wall" x1="${this._escape(wall.x1)}" y1="${this._escape(wall.y1)}" x2="${this._escape(wall.x2)}" y2="${this._escape(wall.y2)}" style="--wall-color:${this._escape(wall.color)};--wall-width:${this._escape(wall.width)}"></line>
-    `).join("");
-    const sensors = floorplan.sensors
+    `).join("") : "";
+    const sensors = activeFloor.sensors
       .filter((sensor) => sensor.visible !== false)
       .map((sensor, index) => {
         const source = this._floorplanSensorSource(sensor, index);
@@ -10484,7 +10750,18 @@ class HaSolarDashboardCard extends HTMLElement {
         `;
       })
       .join("");
-    const empty = floorplan.rooms.length === 0 && floorplan.walls.length === 0 && floorplan.sensors.length === 0
+    const floorTabs = floorplan.floors.length > 1
+      ? `
+        <div class="floorplan-floor-tabs" role="group" aria-label="${this._escape(this._t("editor.floorplanFloors", {}, "Levels"))}">
+          ${floorplan.floors.map((floor) => `
+            <button type="button" class="${floor.id === activeFloor.id ? "active" : ""}" data-floorplan-view-floor="${this._escape(floor.id)}" aria-pressed="${floor.id === activeFloor.id ? "true" : "false"}">${this._escape(floor.label)}</button>
+          `).join("")}
+        </div>
+      `
+      : "";
+    const empty = floorplan.mode === "image" && !imageSrc
+      ? `<div class="floorplan-empty">${this._escape(this._t("floorplan.imageEmpty", {}, "Enter an image path for this level."))}</div>`
+      : activeFloor.rooms.length === 0 && activeFloor.walls.length === 0 && activeFloor.sensors.length === 0
       ? `<div class="floorplan-empty">${this._escape(this._t("floorplan.empty", {}, "Create rooms, walls, and sensors in the card editor."))}</div>`
       : "";
     return `
@@ -10492,13 +10769,15 @@ class HaSolarDashboardCard extends HTMLElement {
         <div class="floorplan-head">
           <div>
             <div class="chart-dashboard-label">${this._escape(this._t("floorplan.label", {}, "Floorplan"))}</div>
-            <h2>${this._escape(this._t("floorplan.title", {}, "Home floorplan"))}</h2>
+            <h2>${this._escape(activeFloor.label || this._t("floorplan.title", {}, "Home floorplan"))}</h2>
           </div>
-          <span>${this._escape(this._t("floorplan.counts", { rooms: floorplan.rooms.length, sensors: floorplan.sensors.length }, `${floorplan.rooms.length} rooms · ${floorplan.sensors.length} sensors`))}</span>
+          <span>${this._escape(this._t("floorplan.counts", { rooms: activeFloor.rooms.length, sensors: activeFloor.sensors.length }, `${activeFloor.rooms.length} rooms · ${activeFloor.sensors.length} sensors`))}</span>
         </div>
+        ${floorTabs}
         <div class="floorplan-canvas">
           <svg viewBox="0 0 100 70" role="img" aria-label="${this._escape(this._t("floorplan.title", {}, "Home floorplan"))}" preserveAspectRatio="xMidYMid meet">
             <rect class="floorplan-background" x="0" y="0" width="100" height="70" rx="1.5"></rect>
+            ${backgroundImage}
             ${grid}
             ${rooms}
             ${walls}
@@ -10511,9 +10790,10 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _updateFloorplanReadings() {
-    const floorplan = this.config?.floorplan;
+    const floorplan = this.config?.floorplan ? this._normalizeFloorplan(this.config.floorplan) : undefined;
     if (!floorplan || this._currentViewMode() !== FLOORPLAN_DASHBOARD_VIEW) return;
-    (floorplan.sensors || []).forEach((sensor, index) => {
+    const { floor } = this._activeFloorplanFloor(floorplan);
+    (floor.sensors || []).forEach((sensor, index) => {
       const source = this._floorplanSensorSource(sensor, index);
       const value = this._floorplanSensorValue(sensor, index);
       this.shadowRoot.querySelectorAll(`[data-floorplan-sensor-label="${this._escape(sensor.id)}"]`).forEach((element) => {
@@ -12942,6 +13222,17 @@ class HaSolarDashboardCard extends HTMLElement {
     this._attachChartDashboardControls();
     this._attachRecordsDashboardControls();
 
+    this.shadowRoot.querySelectorAll("[data-floorplan-view-floor]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const floorId = event.currentTarget.dataset.floorplanViewFloor;
+        if (!floorId || floorId === this._activeFloorplanFloorId) return;
+        this._activeFloorplanFloorId = floorId;
+        this._renderCardShell(this._layoutState());
+      });
+    });
+
     this.shadowRoot.querySelectorAll("[data-chart-close]").forEach((element) => {
       element.addEventListener("click", (event) => {
         event.preventDefault();
@@ -13320,9 +13611,13 @@ class HaSolarDashboardCard extends HTMLElement {
         .floorplan-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-width:0; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:linear-gradient(135deg,rgba(15,23,42,.76),rgba(8,13,28,.68)); }
         .floorplan-head h2 { margin:2px 0 0; color:var(--text-main); font-size:1.02rem; line-height:1.25; overflow-wrap:anywhere; }
         .floorplan-head span { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:rgba(255,255,255,.08); color:var(--text-main); font-size:.7rem; line-height:1.1; font-weight:800; }
+        .floorplan-floor-tabs { display:flex; flex-wrap:wrap; gap:6px; min-width:0; }
+        .floorplan-floor-tabs button { width:auto; min-width:0; border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:7px 10px; background:rgba(255,255,255,.07); color:var(--text-main); font:800 .78rem/1.1 system-ui,sans-serif; cursor:pointer; }
+        .floorplan-floor-tabs button.active { border-color:rgba(56,189,248,.72); background:rgba(14,165,233,.18); box-shadow:inset 3px 0 0 #38bdf8; }
         .floorplan-canvas { position:relative; min-width:0; aspect-ratio:10/7; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(8,13,28,.68); overflow:hidden; }
         .floorplan-canvas svg { display:block; width:100%; height:100%; min-height:0; }
         .floorplan-background { fill:rgba(10,18,34,.94); }
+        .floorplan-image { pointer-events:none; }
         .floorplan-grid-line { stroke:rgba(255,255,255,.07); stroke-width:.18; vector-effect:non-scaling-stroke; }
         .floorplan-room rect { fill:color-mix(in srgb,var(--room-color,#1f8fff) 12%,rgba(255,255,255,.04)); stroke:color-mix(in srgb,var(--room-color,#1f8fff) 46%,rgba(255,255,255,.2)); stroke-width:.45; vector-effect:non-scaling-stroke; }
         .floorplan-room text { fill:rgba(243,246,255,.78); font-size:2.3px; font-weight:800; pointer-events:none; }

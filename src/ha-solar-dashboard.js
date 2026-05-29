@@ -592,10 +592,10 @@ class HaSolarDashboardCard extends HTMLElement {
       custom_kpis: [],
       environment_sensors: [],
       floorplan: {
+        mode: "editor",
         show_grid: true,
-        rooms: [],
-        walls: [],
-        sensors: [],
+        active_floor: "level_1",
+        floors: [{ id: "level_1", label: "Level 1", image: "", rooms: [], walls: [], sensors: [] }],
       },
       large_consumers: normalizeLargeConsumers([]),
       pv_roof_strings: [],
@@ -742,10 +742,10 @@ class HaSolarDashboardCard extends HTMLElement {
       custom_kpis: [],
       environment_sensors: [],
       floorplan: {
+        mode: "editor",
         show_grid: true,
-        rooms: [],
-        walls: [],
-        sensors: [],
+        active_floor: "level_1",
+        floors: [{ id: "level_1", label: "Level 1", image: "", rooms: [], walls: [], sensors: [] }],
       },
       large_consumers: [],
       pv_roof_strings: [],
@@ -1442,6 +1442,72 @@ class HaSolarDashboardCard extends HTMLElement {
     return types[type] || types.indoor;
   }
 
+  _normalizeFloorplanMode(value = "editor") {
+    const mode = String(value || "").trim().toLowerCase();
+    return ["image", "picture", "bild"].includes(mode) ? "image" : "editor";
+  }
+
+  _floorplanFloorLabel(index = 0) {
+    return this._t("floorplan.level", { index: index + 1 }, `Level ${index + 1}`);
+  }
+
+  _normalizeFloorplanRoom(room, index = 0) {
+    if (!room || typeof room !== "object") return undefined;
+    return {
+      id: normalizeConfigId(room.id || room.key, `room_${index + 1}`),
+      label: String(room.label || room.name || this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`)).trim(),
+      x: this._clampNumber(room.x, 10 + index * 4, 0, 100),
+      y: this._clampNumber(room.y, 10 + index * 4, 0, 70),
+      width: this._clampNumber(room.width ?? room.w, 24, 3, 100),
+      height: this._clampNumber(room.height ?? room.h, 18, 3, 70),
+      color: this._safeCssColor(room.color, "#1f8fff"),
+    };
+  }
+
+  _normalizeFloorplanWall(wall, index = 0) {
+    if (!wall || typeof wall !== "object") return undefined;
+    return {
+      id: normalizeConfigId(wall.id || wall.key, `wall_${index + 1}`),
+      x1: this._clampNumber(wall.x1 ?? wall.from_x, 12, 0, 100),
+      y1: this._clampNumber(wall.y1 ?? wall.from_y, 12, 0, 70),
+      x2: this._clampNumber(wall.x2 ?? wall.to_x, 36, 0, 100),
+      y2: this._clampNumber(wall.y2 ?? wall.to_y, 12, 0, 70),
+      width: this._clampNumber(wall.width ?? wall.stroke_width, 1.2, 0.2, 5),
+      color: this._safeCssColor(wall.color, "#dbeafe"),
+    };
+  }
+
+  _normalizeFloorplanSensor(sensor, index = 0) {
+    if (!sensor || typeof sensor !== "object") return undefined;
+    const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
+    return {
+      id: normalizeConfigId(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor, `sensor_${index + 1}`),
+      label: String(sensor.label || sensor.name || "").trim(),
+      entity: String(sensor.entity || sensor.entity_id || "").trim(),
+      environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
+      type,
+      unit: sensor.unit ?? "auto",
+      x: this._clampNumber(sensor.x ?? sensor.left, 50, 0, 100),
+      y: this._clampNumber(sensor.y ?? sensor.top, 35, 0, 70),
+      color: this._safeCssColor(sensor.color, this._floorplanSensorType(type).color),
+      visible: sensor.visible !== false,
+      show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
+      font_size: this._clampNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
+    };
+  }
+
+  _normalizeFloorplanFloor(floor = {}, index = 0) {
+    const source = floor && typeof floor === "object" ? floor : {};
+    return {
+      id: normalizeConfigId(source.id || source.key, `level_${index + 1}`),
+      label: String(source.label || source.name || this._floorplanFloorLabel(index)).trim(),
+      image: String(source.image || source.image_path || source.background_image || "").trim(),
+      rooms: (Array.isArray(source.rooms) ? source.rooms : []).map((room, roomIndex) => this._normalizeFloorplanRoom(room, roomIndex)).filter(Boolean),
+      walls: (Array.isArray(source.walls) ? source.walls : []).map((wall, wallIndex) => this._normalizeFloorplanWall(wall, wallIndex)).filter(Boolean),
+      sensors: (Array.isArray(source.sensors) ? source.sensors : []).map((sensor, sensorIndex) => this._normalizeFloorplanSensor(sensor, sensorIndex)).filter(Boolean),
+    };
+  }
+
   _environmentSensorMetrics({ placement = "" } = {}) {
     if (this.config.show_environment_sensors === false) return [];
     return (this.config.environment_sensors || [])
@@ -1466,60 +1532,46 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _normalizeFloorplan(floorplan = {}) {
     const source = floorplan && typeof floorplan === "object" ? floorplan : {};
-    const rooms = Array.isArray(source.rooms) ? source.rooms : [];
-    const walls = Array.isArray(source.walls) ? source.walls : [];
-    const sensors = Array.isArray(source.sensors) ? source.sensors : [];
-    return {
-      show_grid: source.show_grid !== false,
-      rooms: rooms
-        .map((room, index) => {
-          if (!room || typeof room !== "object") return undefined;
-          return {
-            id: normalizeConfigId(room.id || room.key, `room_${index + 1}`),
-            label: String(room.label || room.name || this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`)).trim(),
-            x: this._clampNumber(room.x, 10 + index * 4, 0, 100),
-            y: this._clampNumber(room.y, 10 + index * 4, 0, 70),
-            width: this._clampNumber(room.width ?? room.w, 24, 3, 100),
-            height: this._clampNumber(room.height ?? room.h, 18, 3, 70),
-            color: this._safeCssColor(room.color, "#1f8fff"),
-          };
-        })
-        .filter(Boolean),
-      walls: walls
-        .map((wall, index) => {
-          if (!wall || typeof wall !== "object") return undefined;
-          return {
-            id: normalizeConfigId(wall.id || wall.key, `wall_${index + 1}`),
-            x1: this._clampNumber(wall.x1 ?? wall.from_x, 12, 0, 100),
-            y1: this._clampNumber(wall.y1 ?? wall.from_y, 12, 0, 70),
-            x2: this._clampNumber(wall.x2 ?? wall.to_x, 36, 0, 100),
-            y2: this._clampNumber(wall.y2 ?? wall.to_y, 12, 0, 70),
-            width: this._clampNumber(wall.width ?? wall.stroke_width, 1.2, 0.2, 5),
-            color: this._safeCssColor(wall.color, "#dbeafe"),
-          };
-        })
-        .filter(Boolean),
-      sensors: sensors
-        .map((sensor, index) => {
-          if (!sensor || typeof sensor !== "object") return undefined;
-          const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
-          return {
-            id: normalizeConfigId(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor, `sensor_${index + 1}`),
-            label: String(sensor.label || sensor.name || "").trim(),
-            entity: String(sensor.entity || sensor.entity_id || "").trim(),
-            environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
-            type,
-            unit: sensor.unit ?? "auto",
-            x: this._clampNumber(sensor.x ?? sensor.left, 50, 0, 100),
-            y: this._clampNumber(sensor.y ?? sensor.top, 35, 0, 70),
-            color: this._safeCssColor(sensor.color, this._floorplanSensorType(type).color),
-            visible: sensor.visible !== false,
-            show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
-            font_size: this._clampNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
-          };
-        })
-        .filter(Boolean),
+    const mode = this._normalizeFloorplanMode(source.mode || source.type || source.source || source.layout_type || "editor");
+    const fallbackFloor = {
+      id: source.active_floor || source.activeFloor || source.floor_id || "level_1",
+      label: source.floor_label || source.label || this._floorplanFloorLabel(0),
+      image: source.image || source.image_path || source.background_image || "",
+      rooms: Array.isArray(source.rooms) ? source.rooms : [],
+      walls: Array.isArray(source.walls) ? source.walls : [],
+      sensors: Array.isArray(source.sensors) ? source.sensors : [],
     };
+    const floors = (Array.isArray(source.floors) && source.floors.length > 0 ? source.floors : [fallbackFloor])
+      .map((floor, index) => this._normalizeFloorplanFloor(floor, index))
+      .filter(Boolean);
+    const normalizedFloors = floors.length ? floors : [this._normalizeFloorplanFloor(fallbackFloor, 0)];
+    const requestedActiveFloor = String(this._activeFloorplanFloorId || source.active_floor || source.activeFloor || source.selected_floor || normalizedFloors[0].id || "level_1");
+    const activeFloor = normalizedFloors.find((floor) => floor.id === requestedActiveFloor) || normalizedFloors[0];
+    return {
+      mode,
+      show_grid: source.show_grid !== false,
+      active_floor: activeFloor.id,
+      floors: normalizedFloors,
+      image: normalizedFloors[0].image,
+      rooms: normalizedFloors[0].rooms,
+      walls: normalizedFloors[0].walls,
+      sensors: normalizedFloors[0].sensors,
+    };
+  }
+
+  _activeFloorplanFloor(floorplan = this._normalizeFloorplan(this.config?.floorplan || {})) {
+    const floors = Array.isArray(floorplan.floors) && floorplan.floors.length > 0 ? floorplan.floors : [floorplan];
+    const requestedFloor = this._activeFloorplanFloorId || floorplan.active_floor;
+    const index = Math.max(0, floors.findIndex((floor) => floor.id === requestedFloor));
+    return { floor: floors[index] || floors[0], index: index >= 0 ? index : 0 };
+  }
+
+  _floorplanImageUrl(path = "") {
+    const value = String(path || "").trim();
+    if (!value) return "";
+    if (/^(https?:|data:|blob:|\/)/i.test(value)) return value;
+    if (/^local\//i.test(value)) return `/${value}`;
+    return assetUrl(value);
   }
 
   _floorplanEnvironmentSensor(id) {
@@ -1551,21 +1603,26 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderFloorplanDashboard() {
-    const floorplan = this.config.floorplan || this._normalizeFloorplan();
-    const grid = floorplan.show_grid !== false
+    const floorplan = this._normalizeFloorplan(this.config.floorplan || {});
+    const { floor: activeFloor } = this._activeFloorplanFloor(floorplan);
+    const imageSrc = this._floorplanImageUrl(activeFloor.image);
+    const grid = floorplan.mode === "editor" && floorplan.show_grid !== false
       ? Array.from({ length: 11 }, (_item, index) => index * 10).map((x) => `<line class="floorplan-grid-line" x1="${x}" y1="0" x2="${x}" y2="70"></line>`).join("")
         + Array.from({ length: 8 }, (_item, index) => index * 10).map((y) => `<line class="floorplan-grid-line" x1="0" y1="${y}" x2="100" y2="${y}"></line>`).join("")
       : "";
-    const rooms = floorplan.rooms.map((room) => `
+    const backgroundImage = floorplan.mode === "image" && imageSrc
+      ? `<image class="floorplan-image" href="${this._escape(imageSrc)}" x="0" y="0" width="100" height="70" preserveAspectRatio="xMidYMid slice"></image>`
+      : "";
+    const rooms = floorplan.mode === "editor" ? activeFloor.rooms.map((room) => `
       <g class="floorplan-room" style="--room-color:${this._escape(room.color)}">
         <rect x="${this._escape(room.x)}" y="${this._escape(room.y)}" width="${this._escape(room.width)}" height="${this._escape(room.height)}" rx="1.4"></rect>
         <text x="${this._escape(room.x + 1.6)}" y="${this._escape(room.y + 4.2)}">${this._escape(room.label)}</text>
       </g>
-    `).join("");
-    const walls = floorplan.walls.map((wall) => `
+    `).join("") : "";
+    const walls = floorplan.mode === "editor" ? activeFloor.walls.map((wall) => `
       <line class="floorplan-wall" x1="${this._escape(wall.x1)}" y1="${this._escape(wall.y1)}" x2="${this._escape(wall.x2)}" y2="${this._escape(wall.y2)}" style="--wall-color:${this._escape(wall.color)};--wall-width:${this._escape(wall.width)}"></line>
-    `).join("");
-    const sensors = floorplan.sensors
+    `).join("") : "";
+    const sensors = activeFloor.sensors
       .filter((sensor) => sensor.visible !== false)
       .map((sensor, index) => {
         const source = this._floorplanSensorSource(sensor, index);
@@ -1590,7 +1647,18 @@ class HaSolarDashboardCard extends HTMLElement {
         `;
       })
       .join("");
-    const empty = floorplan.rooms.length === 0 && floorplan.walls.length === 0 && floorplan.sensors.length === 0
+    const floorTabs = floorplan.floors.length > 1
+      ? `
+        <div class="floorplan-floor-tabs" role="group" aria-label="${this._escape(this._t("editor.floorplanFloors", {}, "Levels"))}">
+          ${floorplan.floors.map((floor) => `
+            <button type="button" class="${floor.id === activeFloor.id ? "active" : ""}" data-floorplan-view-floor="${this._escape(floor.id)}" aria-pressed="${floor.id === activeFloor.id ? "true" : "false"}">${this._escape(floor.label)}</button>
+          `).join("")}
+        </div>
+      `
+      : "";
+    const empty = floorplan.mode === "image" && !imageSrc
+      ? `<div class="floorplan-empty">${this._escape(this._t("floorplan.imageEmpty", {}, "Enter an image path for this level."))}</div>`
+      : activeFloor.rooms.length === 0 && activeFloor.walls.length === 0 && activeFloor.sensors.length === 0
       ? `<div class="floorplan-empty">${this._escape(this._t("floorplan.empty", {}, "Create rooms, walls, and sensors in the card editor."))}</div>`
       : "";
     return `
@@ -1598,13 +1666,15 @@ class HaSolarDashboardCard extends HTMLElement {
         <div class="floorplan-head">
           <div>
             <div class="chart-dashboard-label">${this._escape(this._t("floorplan.label", {}, "Floorplan"))}</div>
-            <h2>${this._escape(this._t("floorplan.title", {}, "Home floorplan"))}</h2>
+            <h2>${this._escape(activeFloor.label || this._t("floorplan.title", {}, "Home floorplan"))}</h2>
           </div>
-          <span>${this._escape(this._t("floorplan.counts", { rooms: floorplan.rooms.length, sensors: floorplan.sensors.length }, `${floorplan.rooms.length} rooms · ${floorplan.sensors.length} sensors`))}</span>
+          <span>${this._escape(this._t("floorplan.counts", { rooms: activeFloor.rooms.length, sensors: activeFloor.sensors.length }, `${activeFloor.rooms.length} rooms · ${activeFloor.sensors.length} sensors`))}</span>
         </div>
+        ${floorTabs}
         <div class="floorplan-canvas">
           <svg viewBox="0 0 100 70" role="img" aria-label="${this._escape(this._t("floorplan.title", {}, "Home floorplan"))}" preserveAspectRatio="xMidYMid meet">
             <rect class="floorplan-background" x="0" y="0" width="100" height="70" rx="1.5"></rect>
+            ${backgroundImage}
             ${grid}
             ${rooms}
             ${walls}
@@ -1617,9 +1687,10 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _updateFloorplanReadings() {
-    const floorplan = this.config?.floorplan;
+    const floorplan = this.config?.floorplan ? this._normalizeFloorplan(this.config.floorplan) : undefined;
     if (!floorplan || this._currentViewMode() !== FLOORPLAN_DASHBOARD_VIEW) return;
-    (floorplan.sensors || []).forEach((sensor, index) => {
+    const { floor } = this._activeFloorplanFloor(floorplan);
+    (floor.sensors || []).forEach((sensor, index) => {
       const source = this._floorplanSensorSource(sensor, index);
       const value = this._floorplanSensorValue(sensor, index);
       this.shadowRoot.querySelectorAll(`[data-floorplan-sensor-label="${this._escape(sensor.id)}"]`).forEach((element) => {
@@ -4047,6 +4118,17 @@ class HaSolarDashboardCard extends HTMLElement {
 
     this._attachChartDashboardControls();
     this._attachRecordsDashboardControls();
+
+    this.shadowRoot.querySelectorAll("[data-floorplan-view-floor]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const floorId = event.currentTarget.dataset.floorplanViewFloor;
+        if (!floorId || floorId === this._activeFloorplanFloorId) return;
+        this._activeFloorplanFloorId = floorId;
+        this._renderCardShell(this._layoutState());
+      });
+    });
 
     this.shadowRoot.querySelectorAll("[data-chart-close]").forEach((element) => {
       element.addEventListener("click", (event) => {

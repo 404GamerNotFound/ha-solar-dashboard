@@ -3516,6 +3516,19 @@ function createDashboardEditorClass({
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
     const nextValue = isCheckbox ? Boolean(value) : shouldBeNumeric ? Number(value) : value;
     this._setPath(next, parts, nextValue);
+    if (parts[0] === "floorplan" && parts[1] === "sensors") {
+      const sensor = next.floorplan?.sensors?.[Number(parts[2])];
+      if (sensor && lastPart === "environment_sensor") {
+        const linked = this._normalizeEnvironmentSensors(next.environment_sensors || []).find((item) => item.id === nextValue);
+        if (linked) {
+          sensor.type = this._environmentSensorDisplayType(linked);
+          if (!sensor.color || sensor.color === "#34d399") sensor.color = linked.color || this._floorplanSensorTypeColor(sensor.type) || "#34d399";
+        }
+      }
+      if (sensor && lastPart === "type" && (!sensor.color || sensor.color === "#34d399")) {
+        sensor.color = this._floorplanSensorTypeColor(nextValue) || "#34d399";
+      }
+    }
     this._config = next;
     this._dispatchConfig(next);
     if (this._shouldRenderAfterInput(path, parts)) this._render();
@@ -3592,6 +3605,7 @@ function createDashboardEditorClass({
           id: String(sensor.id || sensor.key || sensor.entity || `environment_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
           label: String(sensor.label || sensor.name || "").trim(),
           entity: String(sensor.entity || sensor.entity_id || sensor.sensor || "").trim(),
+          type: String(sensor.type || sensor.sensor_type || sensor.kind || "custom").trim() || "custom",
           unit: sensor.unit ?? "auto",
           position: Number.isFinite(Number(sensor.position ?? sensor.order)) ? Number(sensor.position ?? sensor.order) : 300 + index,
           columns: Number.isFinite(Number(sensor.columns ?? sensor.span)) ? Number(sensor.columns ?? sensor.span) : 1,
@@ -3644,15 +3658,17 @@ function createDashboardEditorClass({
       sensors: sensors
         .map((sensor, index) => {
           if (!sensor || typeof sensor !== "object") return undefined;
+          const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
           return {
             id: String(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor || `sensor_${index + 1}`).trim().replace(/[^\w-]/g, "_"),
             label: String(sensor.label || sensor.name || "").trim(),
             entity: String(sensor.entity || sensor.entity_id || "").trim(),
             environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
+            type,
             unit: sensor.unit ?? "auto",
             x: Number.isFinite(Number(sensor.x ?? sensor.left)) ? Number(sensor.x ?? sensor.left) : 50,
             y: Number.isFinite(Number(sensor.y ?? sensor.top)) ? Number(sensor.y ?? sensor.top) : 35,
-            color: this._safeCssColor(sensor.color, "#34d399"),
+            color: this._safeCssColor(sensor.color, this._floorplanSensorTypeColor(type) || "#34d399"),
             visible: sensor.visible !== false,
             show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
             font_size: clampConfigNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
@@ -3707,16 +3723,16 @@ function createDashboardEditorClass({
       this._selectedFloorplanItemKey = `wall:${index}`;
     } else if (type === "sensor") {
       const index = next.floorplan.sensors.length;
-      const firstEnvironmentSensor = this._normalizeEnvironmentSensors(next.environment_sensors || [])[0];
       next.floorplan.sensors.push({
         id: `sensor_${Date.now()}`,
         label: "",
         entity: "",
-        environment_sensor: firstEnvironmentSensor?.id || "",
+        environment_sensor: "",
+        type: "indoor",
         unit: "auto",
         x: clampedX,
         y: clampedY,
-        color: firstEnvironmentSensor?.color || "#34d399",
+        color: "#34d399",
         visible: true,
         show_label: true,
         font_size: 3.05,
@@ -3857,6 +3873,7 @@ function createDashboardEditorClass({
       { key: "indoor", label: this._t("environment.templateIndoor", {}, "Indoor temperature"), color: "#34d399" },
       { key: "outdoor", label: this._t("environment.templateOutdoor", {}, "Outdoor temperature"), color: "#60a5fa" },
       { key: "hot_water", label: this._t("environment.templateHotWater", {}, "Hot water"), color: "#fb923c" },
+      { key: "humidity", label: this._t("environment.templateHumidity", {}, "Humidity"), color: "#22c55e" },
       { key: "pressure", label: this._t("environment.templatePressure", {}, "Pressure"), color: "#a78bfa" },
       { key: "air_quality", label: this._t("environment.templateAirQuality", {}, "Air quality"), color: "#f87171" },
       { key: "custom", label: this._t("environment.templateCustom", {}, "Custom"), color: "#34d399" },
@@ -3865,6 +3882,42 @@ function createDashboardEditorClass({
 
   _environmentSensorTemplate(key = "custom") {
     return this._environmentSensorTemplates().find((template) => template.key === key) || this._environmentSensorTemplates().find((template) => template.key === "custom");
+  }
+
+  _environmentSensorDisplayType(sensor = {}) {
+    const explicitType = String(sensor.type || sensor.sensor_type || sensor.kind || "").trim();
+    const stateObj = this._hass?.states?.[sensor.entity];
+    const haystack = [
+      sensor.id,
+      sensor.label,
+      sensor.entity,
+      stateObj?.attributes?.friendly_name,
+      stateObj?.attributes?.device_class,
+      stateObj?.attributes?.unit_of_measurement,
+    ].filter(Boolean).join(" ").toLowerCase();
+    if (/(wasser|water|warmwasser|hot water|boiler)/.test(haystack)) return "hot_water";
+    if (/(humidity|feuchte|luftfeuchte|humedad|humidité|wilgot)/.test(haystack)) return "humidity";
+    if (/(pressure|druck|luftdruck|presión|pression|ciśn)/.test(haystack)) return "pressure";
+    if (/(air quality|luftqualität|co2|co₂|aqi|pm2|pm10)/.test(haystack)) return "air_quality";
+    if (/(temperature|temperatur|temp|°c|\bc\b)/.test(haystack)) {
+      if (/(outside|outdoor|außen|aussen|extérieur|zewn|exterior)/.test(haystack)) return "outdoor";
+      return "indoor";
+    }
+    return explicitType || "custom";
+  }
+
+  _floorplanSensorTypeLabel(type = "indoor") {
+    return this._environmentSensorTemplate(type)?.label || "";
+  }
+
+  _floorplanSensorTypeColor(type = "indoor") {
+    return this._environmentSensorTemplate(type)?.color || "";
+  }
+
+  _floorplanSensorTypeOptions(selectedType = "indoor") {
+    return this._environmentSensorTemplates().map((template) => `
+      <option value="${this._escape(template.key)}"${template.key === selectedType ? " selected" : ""}>${this._escape(template.label)}</option>
+    `).join("");
   }
 
   _addEnvironmentSensor(templateKey = "custom") {
@@ -3876,6 +3929,7 @@ function createDashboardEditorClass({
       id: `environment_${Date.now()}`,
       label: template?.key === "custom" ? "" : template?.label || "",
       entity: "",
+      type: template?.key || "custom",
       unit: "auto",
       position: 300 + index,
       columns: 1,
@@ -5374,13 +5428,13 @@ function createDashboardEditorClass({
     const sensors = floorplan.sensors.map((sensor, index) => {
       const key = `sensor:${index}`;
       const linked = this._normalizeEnvironmentSensors(this._config.environment_sensors || []).find((item) => item.id === sensor.environment_sensor);
-      const label = sensor.label || linked?.label || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`);
+      const label = sensor.label || linked?.label || this._floorplanSensorTypeLabel(sensor.type) || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`);
       const entityId = linked?.entity || sensor.entity || "";
       const stateObj = this._hass?.states?.[entityId];
       const configuredUnit = String(sensor.unit || linked?.unit || "auto");
       const unit = configuredUnit && configuredUnit !== "auto" ? configuredUnit : stateObj?.attributes?.unit_of_measurement || "";
       const value = stateObj ? `${stateObj.state}${unit ? ` ${unit}` : ""}` : "-";
-      const color = sensor.color || linked?.color || "#34d399";
+      const color = sensor.color || linked?.color || this._floorplanSensorTypeColor(sensor.type) || "#34d399";
       const fontSize = clampConfigNumber(sensor.font_size, 3.05, 1.4, 8);
       const labelFontSize = clampConfigNumber(fontSize * 0.77, 2.35, 1.1, 6.2);
       const labelY = clampConfigNumber(fontSize * -0.62, -1.9, -5, -0.4);
@@ -5406,10 +5460,12 @@ function createDashboardEditorClass({
       <button type="button" class="${tool === activeTool ? "active" : ""}" data-floorplan-tool="${this._escape(tool)}" aria-pressed="${tool === activeTool ? "true" : "false"}">${this._escape(label)}</button>
     `).join("");
     const environmentOptions = [
-      `<option value="">${this._escape(this._t("editor.floorplanCustomEntity", {}, "Custom entity"))}</option>`,
+      `<option value="">${this._escape(this._t("editor.floorplanCustomEntity", {}, "Use own entity"))}</option>`,
       ...this._normalizeEnvironmentSensors(this._config.environment_sensors || []).map((sensor, index) => {
         const label = sensor.label || this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
-        return `<option value="${this._escape(sensor.id)}"${selected?.item?.environment_sensor === sensor.id ? " selected" : ""}>${this._escape(label)}</option>`;
+        const typeLabel = this._floorplanSensorTypeLabel(this._environmentSensorDisplayType(sensor));
+        const suffix = typeLabel ? ` · ${typeLabel}` : "";
+        return `<option value="${this._escape(sensor.id)}"${selected?.item?.environment_sensor === sensor.id ? " selected" : ""}>${this._escape(`${label}${suffix}`)}</option>`;
       }),
     ].join("");
     const selectedControls = selected
@@ -5447,14 +5503,20 @@ function createDashboardEditorClass({
           `;
         }
         const sensor = selected.item;
+        const linked = this._normalizeEnvironmentSensors(this._config.environment_sensors || []).find((item) => item.id === sensor.environment_sensor);
+        const sensorType = sensor.type || (linked ? this._environmentSensorDisplayType(linked) : "") || "indoor";
+        const sensorTypeOptions = this._floorplanSensorTypeOptions(sensorType);
+        const entityValue = linked?.entity || sensor.entity || "";
+        const entityDisabled = linked ? " disabled" : "";
         return `
           <div class="layout-controls">
             <strong>${this._escape(this._t("editor.floorplanSelected", {}, "Selected element"))}: ${this._escape(this._t("editor.floorplanToolSensor", {}, "Sensor"))}</strong>
             <label class="inline"><input type="checkbox" data-path="${path}.visible" ${sensor.visible !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._t("editor.floorplanToolSensor", {}, "Sensor") }, "Show sensor"))}</label>
             <label class="inline"><input type="checkbox" data-path="${path}.show_label" ${sensor.show_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.floorplanShowSensorLabel", {}, "Show label"))}</label>
-            <label>${this._labelText(this._t("editor.floorplanSensorSource", {}, "Sensor source"))}<select data-path="${path}.environment_sensor">${environmentOptions}</select></label>
+            <label>${this._labelText(this._t("editor.floorplanSensorType", {}, "Sensor type"))}<select data-path="${path}.type">${sensorTypeOptions}</select></label>
+            <label>${this._labelText(this._t("editor.floorplanSensorSource", {}, "Use environment sensor"), this._t("editor.helpFloorplanSensorSource", {}, "Optional: reuse a sensor from the Environment tab. Leave this on own entity to choose a Home Assistant entity directly below."))}<select data-path="${path}.environment_sensor">${environmentOptions}</select></label>
             <label>${this._labelText(this._t("editor.floorplanLabel", {}, "Label"))}<input data-path="${path}.label" value="${this._escape(sensor.label)}" /></label>
-            <label>${this._labelText(this._t("editor.floorplanEntity", {}, "Entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}<input data-path="${path}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.living_room_temperature" value="${this._escape(sensor.entity)}" autocomplete="off" /></label>
+            <label>${this._labelText(this._t("editor.floorplanEntity", {}, "Entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}<input data-path="${path}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.living_room_temperature" value="${this._escape(entityValue)}" autocomplete="off"${entityDisabled} /></label>
             <label>${this._labelText(this._t("editor.environmentUnit", {}, "Display unit"), this._t("editor.helpUnitAuto", {}, "Use Auto to display the unit reported by the Home Assistant entity."))}<input data-path="${path}.unit" placeholder="auto" value="${this._escape(sensor.unit)}" /></label>
             <label>${this._labelText(`${this._t("editor.floorplanFontSize", {}, "Font size")} (${this._formatFloorplanNumber(sensor.font_size)})`)}<input type="range" min="1.4" max="8" step="0.1" data-path="${path}.font_size" value="${this._escape(sensor.font_size)}" /></label>
             <label>${this._labelText(`X (${this._formatFloorplanNumber(sensor.x)})`)}<input type="range" min="0" max="100" step="0.1" data-path="${path}.x" value="${this._escape(sensor.x)}" /></label>
@@ -6824,12 +6886,14 @@ const I18N = {
     "editor.floorplanWidth": "Width",
     "editor.floorplanHeight": "Height",
     "editor.floorplanDelete": "Delete selected",
-    "editor.floorplanCustomEntity": "Custom entity",
-    "editor.floorplanSensorSource": "Sensor source",
+    "editor.floorplanCustomEntity": "Use own entity",
+    "editor.floorplanSensorType": "Sensor type",
+    "editor.floorplanSensorSource": "Use environment sensor",
     "editor.floorplanEntity": "Entity",
     "editor.floorplanShowSensorLabel": "Show label",
     "editor.floorplanFontSize": "Font size",
     "editor.floorplanEmpty": "Click the grid to create the selected element.",
+    "editor.helpFloorplanSensorSource": "Optional: reuse a sensor from the Environment tab. Leave this on own entity to choose a Home Assistant entity directly below.",
     "editor.helpHomeAssistantSensor": "Choose the Home Assistant entity that provides this value.",
     "editor.helpUnitAuto": "Use Auto to display the unit reported by the Home Assistant entity. Choose another value only when you want to override it.",
     "editor.helpEnergyCounter": "Optional cumulative energy counter used for 1h, 24h, month, year, and total views.",
@@ -6880,6 +6944,7 @@ const I18N = {
     "environment.templateIndoor": "Indoor temperature",
     "environment.templateOutdoor": "Outdoor temperature",
     "environment.templateHotWater": "Hot water",
+    "environment.templateHumidity": "Humidity",
     "environment.templatePressure": "Pressure",
     "environment.templateAirQuality": "Air quality",
     "environment.templateCustom": "Custom",
@@ -7318,12 +7383,14 @@ const I18N = {
     "editor.floorplanWidth": "Breite",
     "editor.floorplanHeight": "Höhe",
     "editor.floorplanDelete": "Auswahl löschen",
-    "editor.floorplanCustomEntity": "Eigene Entität",
-    "editor.floorplanSensorSource": "Sensorquelle",
+    "editor.floorplanCustomEntity": "Eigene Entität verwenden",
+    "editor.floorplanSensorType": "Sensortyp",
+    "editor.floorplanSensorSource": "Umgebungssensor übernehmen",
     "editor.floorplanEntity": "Entität",
     "editor.floorplanShowSensorLabel": "Label anzeigen",
     "editor.floorplanFontSize": "Schriftgröße",
     "editor.floorplanEmpty": "Klicke ins Raster, um das ausgewählte Element zu erstellen.",
+    "editor.helpFloorplanSensorSource": "Optional: Einen Sensor aus dem Tab Umgebung wiederverwenden. Bei Eigene Entität kannst du unten direkt eine Home-Assistant-Entität wählen.",
     "editor.helpHomeAssistantSensor": "Wähle die Home-Assistant-Entität, die diesen Wert liefert.",
     "editor.helpUnitAuto": "Mit Auto wird die Einheit der Home-Assistant-Entität verwendet. Wähle eine andere Einheit nur, wenn du sie überschreiben möchtest.",
     "editor.helpEnergyCounter": "Optionaler kumulativer Energiezähler für 1h, 24h, Monat, Jahr und Gesamtansicht.",
@@ -7374,6 +7441,7 @@ const I18N = {
     "environment.templateIndoor": "Innentemperatur",
     "environment.templateOutdoor": "Außentemperatur",
     "environment.templateHotWater": "Warmwasser",
+    "environment.templateHumidity": "Luftfeuchtigkeit",
     "environment.templatePressure": "Druck",
     "environment.templateAirQuality": "Luftqualität",
     "environment.templateCustom": "Eigene",
@@ -7812,12 +7880,14 @@ const I18N = {
     "editor.floorplanWidth": "Ancho",
     "editor.floorplanHeight": "Alto",
     "editor.floorplanDelete": "Eliminar seleccionado",
-    "editor.floorplanCustomEntity": "Entidad personalizada",
-    "editor.floorplanSensorSource": "Fuente del sensor",
+    "editor.floorplanCustomEntity": "Usar entidad propia",
+    "editor.floorplanSensorType": "Tipo de sensor",
+    "editor.floorplanSensorSource": "Usar sensor ambiental",
     "editor.floorplanEntity": "Entidad",
     "editor.floorplanShowSensorLabel": "Mostrar etiqueta",
     "editor.floorplanFontSize": "Tamaño de fuente",
     "editor.floorplanEmpty": "Haz clic en la cuadrícula para crear el elemento seleccionado.",
+    "editor.helpFloorplanSensorSource": "Opcional: reutiliza un sensor de la pestaña Ambiente. Déjalo en entidad propia para elegir una entidad de Home Assistant directamente abajo.",
     "editor.helpHomeAssistantSensor": "Elige la entidad de Home Assistant que proporciona este valor.",
     "editor.helpUnitAuto": "Usa Auto para mostrar la unidad reportada por Home Assistant. Elige otra unidad solo si quieres sobrescribirla.",
     "editor.helpEnergyCounter": "Contador acumulado opcional para las vistas 1h, 24h, mes, año y total.",
@@ -7868,6 +7938,7 @@ const I18N = {
     "environment.templateIndoor": "Temperatura interior",
     "environment.templateOutdoor": "Temperatura exterior",
     "environment.templateHotWater": "Agua caliente",
+    "environment.templateHumidity": "Humedad",
     "environment.templatePressure": "Presión",
     "environment.templateAirQuality": "Calidad del aire",
     "environment.templateCustom": "Personalizado",
@@ -8306,12 +8377,14 @@ const I18N = {
     "editor.floorplanWidth": "Largeur",
     "editor.floorplanHeight": "Hauteur",
     "editor.floorplanDelete": "Supprimer la sélection",
-    "editor.floorplanCustomEntity": "Entité personnalisée",
-    "editor.floorplanSensorSource": "Source du capteur",
+    "editor.floorplanCustomEntity": "Utiliser une entité propre",
+    "editor.floorplanSensorType": "Type de capteur",
+    "editor.floorplanSensorSource": "Utiliser un capteur environnement",
     "editor.floorplanEntity": "Entité",
     "editor.floorplanShowSensorLabel": "Afficher le libellé",
     "editor.floorplanFontSize": "Taille du texte",
     "editor.floorplanEmpty": "Cliquez dans la grille pour créer l'élément sélectionné.",
+    "editor.helpFloorplanSensorSource": "Optionnel : réutilisez un capteur de l'onglet Environnement. Laissez sur entité propre pour choisir directement une entité Home Assistant ci-dessous.",
     "editor.helpHomeAssistantSensor": "Choisissez l'entité Home Assistant qui fournit cette valeur.",
     "editor.helpUnitAuto": "Utilisez Auto pour afficher l'unité fournie par Home Assistant. Choisissez une autre unité seulement si vous voulez la remplacer.",
     "editor.helpEnergyCounter": "Compteur d'énergie cumulée optionnel pour les vues 1h, 24h, mois, année et total.",
@@ -8362,6 +8435,7 @@ const I18N = {
     "environment.templateIndoor": "Température intérieure",
     "environment.templateOutdoor": "Température extérieure",
     "environment.templateHotWater": "Eau chaude",
+    "environment.templateHumidity": "Humidité",
     "environment.templatePressure": "Pression",
     "environment.templateAirQuality": "Qualité de l'air",
     "environment.templateCustom": "Personnalisé",
@@ -8800,12 +8874,14 @@ const I18N = {
     "editor.floorplanWidth": "Szerokość",
     "editor.floorplanHeight": "Wysokość",
     "editor.floorplanDelete": "Usuń wybrane",
-    "editor.floorplanCustomEntity": "Własna encja",
-    "editor.floorplanSensorSource": "Źródło czujnika",
+    "editor.floorplanCustomEntity": "Użyj własnej encji",
+    "editor.floorplanSensorType": "Typ czujnika",
+    "editor.floorplanSensorSource": "Użyj czujnika środowiska",
     "editor.floorplanEntity": "Encja",
     "editor.floorplanShowSensorLabel": "Pokaż etykietę",
     "editor.floorplanFontSize": "Rozmiar tekstu",
     "editor.floorplanEmpty": "Kliknij siatkę, aby utworzyć wybrany element.",
+    "editor.helpFloorplanSensorSource": "Opcjonalnie: użyj ponownie czujnika z karty Środowisko. Pozostaw własną encję, aby wybrać poniżej bezpośrednio encję Home Assistant.",
     "editor.helpHomeAssistantSensor": "Wybierz encję Home Assistant, która dostarcza tę wartość.",
     "editor.helpUnitAuto": "Użyj Auto, aby wyświetlić jednostkę zgłaszaną przez Home Assistant. Wybierz inną tylko wtedy, gdy chcesz ją nadpisać.",
     "editor.helpEnergyCounter": "Opcjonalny licznik energii skumulowanej dla widoków 1h, 24h, miesiąc, rok i łącznie.",
@@ -8856,6 +8932,7 @@ const I18N = {
     "environment.templateIndoor": "Temperatura wewnętrzna",
     "environment.templateOutdoor": "Temperatura zewnętrzna",
     "environment.templateHotWater": "Ciepła woda",
+    "environment.templateHumidity": "Wilgotność",
     "environment.templatePressure": "Ciśnienie",
     "environment.templateAirQuality": "Jakość powietrza",
     "environment.templateCustom": "Własny",
@@ -10222,6 +10299,7 @@ class HaSolarDashboardCard extends HTMLElement {
           id,
           label: String(sensor.label || sensor.name || "").trim(),
           entity: String(sensor.entity || sensor.entity_id || sensor.sensor || "").trim(),
+          type: String(sensor.type || sensor.sensor_type || sensor.kind || "custom").trim() || "custom",
           unit: sensor.unit ?? "auto",
           position,
           columns,
@@ -10243,6 +10321,19 @@ class HaSolarDashboardCard extends HTMLElement {
     const friendlyName = entity?.attributes?.friendly_name || entity?.attributes?.name;
     if (friendlyName) return String(friendlyName);
     return this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
+  }
+
+  _floorplanSensorType(type = "indoor") {
+    const types = {
+      indoor: { label: this._t("environment.templateIndoor", {}, "Indoor temperature"), color: "#34d399" },
+      outdoor: { label: this._t("environment.templateOutdoor", {}, "Outdoor temperature"), color: "#60a5fa" },
+      hot_water: { label: this._t("environment.templateHotWater", {}, "Hot water"), color: "#fb923c" },
+      humidity: { label: this._t("environment.templateHumidity", {}, "Humidity"), color: "#22c55e" },
+      pressure: { label: this._t("environment.templatePressure", {}, "Pressure"), color: "#a78bfa" },
+      air_quality: { label: this._t("environment.templateAirQuality", {}, "Air quality"), color: "#f87171" },
+      custom: { label: this._t("environment.templateCustom", {}, "Custom"), color: "#34d399" },
+    };
+    return types[type] || types.indoor;
   }
 
   _environmentSensorMetrics({ placement = "" } = {}) {
@@ -10305,15 +10396,17 @@ class HaSolarDashboardCard extends HTMLElement {
       sensors: sensors
         .map((sensor, index) => {
           if (!sensor || typeof sensor !== "object") return undefined;
+          const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
           return {
             id: normalizeConfigId(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor, `sensor_${index + 1}`),
             label: String(sensor.label || sensor.name || "").trim(),
             entity: String(sensor.entity || sensor.entity_id || "").trim(),
             environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
+            type,
             unit: sensor.unit ?? "auto",
             x: this._clampNumber(sensor.x ?? sensor.left, 50, 0, 100),
             y: this._clampNumber(sensor.y ?? sensor.top, 35, 0, 70),
-            color: this._safeCssColor(sensor.color, "#34d399"),
+            color: this._safeCssColor(sensor.color, this._floorplanSensorType(type).color),
             visible: sensor.visible !== false,
             show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
             font_size: this._clampNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
@@ -10330,10 +10423,10 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _floorplanSensorSource(sensor, index = 0) {
     const linkedSensor = this._floorplanEnvironmentSensor(sensor?.environment_sensor);
-    const label = sensor?.label || (linkedSensor ? this._environmentSensorLabel(linkedSensor, index) : "");
+    const label = sensor?.label || (linkedSensor ? this._environmentSensorLabel(linkedSensor, index) : this._floorplanSensorType(sensor?.type).label);
     const entity = linkedSensor?.entity || sensor?.entity || "";
     const unit = sensor?.unit !== undefined && sensor?.unit !== "" ? sensor.unit : linkedSensor?.unit ?? "auto";
-    const color = sensor?.color || linkedSensor?.color || "#34d399";
+    const color = sensor?.color || linkedSensor?.color || this._floorplanSensorType(sensor?.type).color;
     return {
       label: label || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`),
       entity,

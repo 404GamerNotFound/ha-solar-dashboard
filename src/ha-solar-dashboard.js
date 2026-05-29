@@ -1405,6 +1405,7 @@ class HaSolarDashboardCard extends HTMLElement {
           id,
           label: String(sensor.label || sensor.name || "").trim(),
           entity: String(sensor.entity || sensor.entity_id || sensor.sensor || "").trim(),
+          type: String(sensor.type || sensor.sensor_type || sensor.kind || "custom").trim() || "custom",
           unit: sensor.unit ?? "auto",
           position,
           columns,
@@ -1426,6 +1427,19 @@ class HaSolarDashboardCard extends HTMLElement {
     const friendlyName = entity?.attributes?.friendly_name || entity?.attributes?.name;
     if (friendlyName) return String(friendlyName);
     return this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
+  }
+
+  _floorplanSensorType(type = "indoor") {
+    const types = {
+      indoor: { label: this._t("environment.templateIndoor", {}, "Indoor temperature"), color: "#34d399" },
+      outdoor: { label: this._t("environment.templateOutdoor", {}, "Outdoor temperature"), color: "#60a5fa" },
+      hot_water: { label: this._t("environment.templateHotWater", {}, "Hot water"), color: "#fb923c" },
+      humidity: { label: this._t("environment.templateHumidity", {}, "Humidity"), color: "#22c55e" },
+      pressure: { label: this._t("environment.templatePressure", {}, "Pressure"), color: "#a78bfa" },
+      air_quality: { label: this._t("environment.templateAirQuality", {}, "Air quality"), color: "#f87171" },
+      custom: { label: this._t("environment.templateCustom", {}, "Custom"), color: "#34d399" },
+    };
+    return types[type] || types.indoor;
   }
 
   _environmentSensorMetrics({ placement = "" } = {}) {
@@ -1488,15 +1502,17 @@ class HaSolarDashboardCard extends HTMLElement {
       sensors: sensors
         .map((sensor, index) => {
           if (!sensor || typeof sensor !== "object") return undefined;
+          const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
           return {
             id: normalizeConfigId(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor, `sensor_${index + 1}`),
             label: String(sensor.label || sensor.name || "").trim(),
             entity: String(sensor.entity || sensor.entity_id || "").trim(),
             environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
+            type,
             unit: sensor.unit ?? "auto",
             x: this._clampNumber(sensor.x ?? sensor.left, 50, 0, 100),
             y: this._clampNumber(sensor.y ?? sensor.top, 35, 0, 70),
-            color: this._safeCssColor(sensor.color, "#34d399"),
+            color: this._safeCssColor(sensor.color, this._floorplanSensorType(type).color),
             visible: sensor.visible !== false,
             show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
             font_size: this._clampNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
@@ -1513,10 +1529,10 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _floorplanSensorSource(sensor, index = 0) {
     const linkedSensor = this._floorplanEnvironmentSensor(sensor?.environment_sensor);
-    const label = sensor?.label || (linkedSensor ? this._environmentSensorLabel(linkedSensor, index) : "");
+    const label = sensor?.label || (linkedSensor ? this._environmentSensorLabel(linkedSensor, index) : this._floorplanSensorType(sensor?.type).label);
     const entity = linkedSensor?.entity || sensor?.entity || "";
     const unit = sensor?.unit !== undefined && sensor?.unit !== "" ? sensor.unit : linkedSensor?.unit ?? "auto";
-    const color = sensor?.color || linkedSensor?.color || "#34d399";
+    const color = sensor?.color || linkedSensor?.color || this._floorplanSensorType(sensor?.type).color;
     return {
       label: label || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`),
       entity,

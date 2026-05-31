@@ -58,6 +58,16 @@ export function imagePath(variant, file) {
   return variant?.folder ? `${variant.folder}/${file}` : file;
 }
 
+export function webpImageFile(file) {
+  return String(file || "").replace(/\.png$/i, ".webp");
+}
+
+export function imageFormatFiles(file) {
+  if (!/\.png$/i.test(String(file || ""))) return [file].filter(Boolean);
+  const webpFile = webpImageFile(file);
+  return webpFile && webpFile !== file ? [webpFile, file] : [file];
+}
+
 export function variantImage({
   variant = {},
   isDaylight = false,
@@ -67,10 +77,10 @@ export function variantImage({
 } = {}) {
   const files = weatherImageFiles({ variant, isDaylight, weatherState })
     .map((file) => imagePath(variant, file));
-  const urls = [...new Set(files.flatMap((file) => [
-    remoteImageUrl?.(file),
-    localImageUrl?.(file),
-  ]).filter(Boolean))];
+  const urls = [...new Set(files.flatMap((file) => imageFormatFiles(file).flatMap((candidate) => [
+    remoteImageUrl?.(candidate),
+    localImageUrl?.(candidate),
+  ])).filter(Boolean))];
   const [primaryUrl, ...fallbackUrls] = urls;
   return {
     src: primaryUrl,
@@ -113,6 +123,10 @@ export function createWeatherImageMethods({
 
     _imagePath(variant, file) {
       return imagePath(variant, file);
+    },
+
+    _imageFormatFiles(file) {
+      return imageFormatFiles(file);
     },
 
     _variantImage(variant) {

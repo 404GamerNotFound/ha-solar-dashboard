@@ -88,11 +88,13 @@ function buildEntry() {
   bundled = inlineModuleImport(bundled, "modules/charts.js");
   bundled = inlineModuleImport(bundled, "modules/views.js");
   bundled = inlineModuleImport(bundled, "modules/weather-images.js");
+  bundled = inlineModuleImport(bundled, "modules/tile-renderer.js");
   bundled = inlineModuleImport(bundled, "modules/records.js");
   bundled = inlineModuleImport(bundled, "modules/metrics.js");
   bundled = inlineModuleImport(bundled, "modules/editor.js");
   bundled = inlineModuleImport(bundled, "modules/large-consumers.js");
   bundled = inlineModuleImport(bundled, "modules/wallbox.js");
+  bundled = inlineModuleImport(bundled, "modules/house-variants.js");
 
   bundled = bundled
     .replace("const I18N = {};", bundledI18nSource())

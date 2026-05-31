@@ -2353,6 +2353,16 @@ function imagePath(variant, file) {
   return variant?.folder ? `${variant.folder}/${file}` : file;
 }
 
+function webpImageFile(file) {
+  return String(file || "").replace(/\.png$/i, ".webp");
+}
+
+function imageFormatFiles(file) {
+  if (!/\.png$/i.test(String(file || ""))) return [file].filter(Boolean);
+  const webpFile = webpImageFile(file);
+  return webpFile && webpFile !== file ? [webpFile, file] : [file];
+}
+
 function variantImage({
   variant = {},
   isDaylight = false,
@@ -2362,10 +2372,10 @@ function variantImage({
 } = {}) {
   const files = weatherImageFiles({ variant, isDaylight, weatherState })
     .map((file) => imagePath(variant, file));
-  const urls = [...new Set(files.flatMap((file) => [
-    remoteImageUrl?.(file),
-    localImageUrl?.(file),
-  ]).filter(Boolean))];
+  const urls = [...new Set(files.flatMap((file) => imageFormatFiles(file).flatMap((candidate) => [
+    remoteImageUrl?.(candidate),
+    localImageUrl?.(candidate),
+  ])).filter(Boolean))];
   const [primaryUrl, ...fallbackUrls] = urls;
   return {
     src: primaryUrl,
@@ -2410,6 +2420,10 @@ function createWeatherImageMethods({
       return imagePath(variant, file);
     },
 
+    _imageFormatFiles(file) {
+      return imageFormatFiles(file);
+    },
+
     _variantImage(variant) {
       return variantImage({
         variant,
@@ -2430,6 +2444,53 @@ function createWeatherImageMethods({
       } catch (_err) {
         return "";
       }
+    },
+  };
+}
+
+function createTileRendererMethods() {
+  return {
+    _tileStyle(metric) {
+      const columns = Math.round(this._clampNumber(metric.tileColumns ?? 1, 1, 1, 6));
+      const mobileColumns = Math.min(columns, 2);
+      return `${this._accentStyle(metric)} order:${Number(metric.tileOrder ?? 0)}; --tile-columns:${columns}; --tile-mobile-columns:${mobileColumns};`;
+    },
+
+    _renderTile(metric, variant) {
+      const tooltip = this._metricTooltip(metric, variant);
+      const warning = this._metricWarning(metric);
+      const visibilityClass = metric.overlay ? this._labelVisibilityClass(metric.key, "footer") : "";
+      const valueHtml = metric.key === "battery_level"
+        ? `
+          <div class="tile-value-row">
+            <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
+          </div>
+          ${this._renderBatteryMetaRow(metric, { placement: "footer" })}
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
+        `
+        : this._wallboxPhaseEntityKey(metric)
+        ? `
+          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
+          ${this._renderWallboxPhaseRow(metric, { placement: "footer" })}
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
+        `
+        : this._isPvMetric(metric)
+        ? `
+          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
+          ${this._renderPvMetaRow(metric, { placement: "footer" })}
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
+        `
+        : `
+          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
+        `;
+      return `
+        <div class="tile${this._metricStateClass(metric)}${visibilityClass}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
+          <div class="name" data-label="${metric.key}">${this._escape(this._metricLabel(metric, variant))}</div>
+          ${valueHtml}
+          ${this._renderMetricMeter(metric)}
+        </div>
+      `;
     },
   };
 }
@@ -3295,9 +3356,11 @@ function inverterPhaseVoltageEntityKeys(metric) {
 
 function createDashboardEditorClass({
   ADVISOR_DEFAULTS,
+  DEFAULT_IMAGE_OVERLAYS,
   DEFAULT_TILE_COLOR_RULES,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,
+  PV_LABELS,
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,
@@ -6730,6 +6793,229 @@ function wallboxAdvisorDetails(keys = WALLBOX_POWER_KEYS, {
     .filter((wallbox) => wallbox.hasPowerEntity);
 }
 
+const HOUSE_VARIANTS = {
+  single_family_home: {
+    label: "Single Family Home",
+    folder: "single_family_home",
+    file: "single_family_home.png",
+    dayFile: "single_family_home_day.png",
+    fallbackFiles: ["single_family_home_legacy.png"],
+    positions: {
+      pv_roof_power: { left: 64, top: 28 },
+      pv_shed_power: { left: 14, top: 80 },
+      battery_level: { left: 49, top: 66 },
+      inverter_power: { left: 53, top: 72 },
+      wallbox_power: { left: 23, top: 57 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 83 },
+    },
+  },
+  duplex_house: {
+    label: "Duplex House",
+    folder: "duplex_house",
+    file: "duplex_house.png",
+    dayFile: "duplex_house_day.png",
+    positions: {
+      pv_roof_power: { left: 46, top: 23 },
+      pv_shed_power: { left: 15, top: 80 },
+      battery_level: { left: 49, top: 73 },
+      inverter_power: { left: 37, top: 56 },
+      wallbox_power: { left: 27, top: 66 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  terraced_middle_house: {
+    label: "Terraced Middle House",
+    folder: "terraced_middle_house",
+    file: "terraced_middle_house.png",
+    dayFile: "terraced_middle_house_day.png",
+    positions: {
+      pv_roof_power: { left: 48, top: 18 },
+      pv_shed_power: { left: 80, top: 76 },
+      battery_level: { left: 33, top: 61 },
+      inverter_power: { left: 34, top: 51 },
+      wallbox_power: { left: 44, top: 66 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  apartment_building: {
+    label: "Apartment Building",
+    folder: "apartment_building",
+    file: "apartment_building.png",
+    dayFile: "apartment_building_day.png",
+    positions: {
+      pv_roof_power: { left: 53, top: 17 },
+      pv_shed_power: { left: 16, top: 81 },
+      battery_level: { left: 35, top: 65 },
+      inverter_power: { left: 35, top: 72 },
+      wallbox_power: { left: 21, top: 59 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  apartment_building_balcony_solar: {
+    label: "Apartment Building Balcony Solar",
+    folder: "apartment_building_balcony_solar",
+    file: "apartment_building_balcony_solar.png",
+    dayFile: "apartment_building_balcony_solar_day.png",
+    positions: {
+      battery_level: { left: 42, top: 70 },
+      inverter_power: { left: 52, top: 58 },
+      pv_total_power: { left: 62, top: 58 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+    visible_boxes: {
+      pv_roof_power: false,
+      pv_shed_power: false,
+      wallbox_power: false,
+      wallbox2_power: false,
+      import_export_power: true,
+      battery_level: true,
+      inverter_power: true,
+      pv_total_power: true,
+    },
+    labels: {
+      pv_total_power: "PV Power",
+    },
+    labelKeys: {
+      pv_total_power: "metrics.pv_power",
+    },
+  },
+  bungalow: {
+    label: "Bungalow",
+    folder: "bungalow",
+    file: "bungalow.png",
+    dayFile: "bungalow_day.png",
+    positions: {
+      pv_roof_power: { left: 51, top: 29 },
+      pv_shed_power: { left: 16, top: 80 },
+      battery_level: { left: 40, top: 66 },
+      inverter_power: { left: 54, top: 69 },
+      wallbox_power: { left: 25, top: 59 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  city_villa: {
+    label: "City Villa",
+    folder: "city_villa",
+    file: "city_villa.png",
+    dayFile: "city_villa_day.png",
+    positions: {
+      pv_roof_power: { left: 55, top: 16 },
+      pv_shed_power: { left: 15, top: 80 },
+      battery_level: { left: 43, top: 71 },
+      inverter_power: { left: 58, top: 58 },
+      wallbox_power: { left: 25, top: 57 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  city_villa_pitched_roof: {
+    label: "City Villa with Pitched Roof",
+    folder: "city_villa_pitched_roof",
+    file: "city_villa_pitched_roof.png",
+    dayFile: "city_villa_pitched_roof_day.png",
+    positions: {
+      pv_roof_power: { left: 58, top: 18 },
+      pv_shed_power: { left: 15, top: 80 },
+      battery_level: { left: 41, top: 66 },
+      inverter_power: { left: 55, top: 56 },
+      wallbox_power: { left: 25, top: 60 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+};
+
+const DEFAULT_IMAGE_OVERLAYS = {
+  single_family_home: {
+    smoke: { left: 58, top: 18, width: 9 },
+    heatpump: { left: 82, top: 63, width: 11, orientation: "right" },
+  },
+  duplex_house: {
+    smoke: { left: 52, top: 18, width: 9 },
+    heatpump: { left: 78, top: 66, width: 11, orientation: "right" },
+  },
+  terraced_middle_house: {
+    smoke: { left: 51, top: 16, width: 8 },
+    heatpump: { left: 66, top: 68, width: 10, orientation: "left" },
+  },
+  apartment_building: {
+    smoke: { left: 52, top: 13, width: 8 },
+    heatpump: { left: 79, top: 68, width: 10, orientation: "right" },
+  },
+  apartment_building_balcony_solar: {
+    smoke: { left: 50, top: 13, width: 8 },
+    heatpump: { left: 76, top: 70, width: 10, orientation: "right" },
+  },
+  bungalow: {
+    smoke: { left: 50, top: 25, width: 8 },
+    heatpump: { left: 79, top: 66, width: 11, orientation: "right" },
+  },
+  city_villa: {
+    smoke: { left: 55, top: 15, width: 8 },
+    heatpump: { left: 79, top: 65, width: 10, orientation: "right" },
+  },
+  city_villa_pitched_roof: {
+    smoke: { left: 56, top: 18, width: 8 },
+    heatpump: { left: 78, top: 65, width: 10, orientation: "right" },
+  },
+};
+
+const IMAGE_OVERLAY_KEYS = ["smoke", "heatpump"];
+
+function normalizeHouse(value) {
+  if (!value) return undefined;
+  const normalized = String(value).toLowerCase().trim().replace(/[\s_]+/g, "-");
+  const aliases = {
+    home: "single_family_home",
+    modern: "single_family_home",
+    einfamilienhaus: "single_family_home",
+    "single-family-home": "single_family_home",
+    doppelhaus: "duplex_house",
+    "doppel-haus": "duplex_house",
+    duplex: "duplex_house",
+    "duplex-house": "duplex_house",
+    reihenhaus: "terraced_middle_house",
+    "reihen-haus": "terraced_middle_house",
+    reihenmittelhaus: "terraced_middle_house",
+    "reihen-mittelhaus": "terraced_middle_house",
+    "reihen-mittel-haus": "terraced_middle_house",
+    "terraced-house": "terraced_middle_house",
+    "terraced-middle-house": "terraced_middle_house",
+    mfh: "apartment_building",
+    mehrfamilienhaus: "apartment_building",
+    "mehr-familienhaus": "apartment_building",
+    "mehrfamilien-haus": "apartment_building",
+    "apartment-building": "apartment_building",
+    "mehrfamilienhaus-balkonsolar": "apartment_building_balcony_solar",
+    "mehr-familienhaus-balkonsolar": "apartment_building_balcony_solar",
+    "mehrfamilienhaus-balkon-solar": "apartment_building_balcony_solar",
+    "mehr-familienhaus-balkon-solar": "apartment_building_balcony_solar",
+    balkonsolar: "apartment_building_balcony_solar",
+    "balcony-solar": "apartment_building_balcony_solar",
+    "apartment-building-balcony-solar": "apartment_building_balcony_solar",
+    bungalow: "bungalow",
+    "bungalow-house": "bungalow",
+    villa: "city_villa",
+    stadtvilla: "city_villa",
+    "stadt-villa": "city_villa",
+    "city-villa": "city_villa",
+    stadtvilla_2: "city_villa_pitched_roof",
+    "stadtvilla-2": "city_villa_pitched_roof",
+    "stadtvilla-ohne-flachdach": "city_villa_pitched_roof",
+    stadtvilla_dach: "city_villa_pitched_roof",
+    "stadtvilla-dach": "city_villa_pitched_roof",
+    "city-villa-pitched-roof": "city_villa_pitched_roof",
+  };
+  const key = aliases[normalized] || normalized;
+  return HOUSE_VARIANTS[key] ? key : undefined;
+}
+
 const CARD_TYPE = "ha-solar-dashboard-card";
 const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
 const REPOSITORY_IMAGE_BASE =
@@ -9367,181 +9653,6 @@ function translate(language, key, replacements = {}, fallback = "") {
   return String(template).replace(/\{(\w+)\}/g, (_match, name) => replacements[name] ?? "");
 }
 
-const HOUSE_VARIANTS = {
-  single_family_home: {
-    label: "Single Family Home",
-    folder: "single_family_home",
-    file: "single_family_home.png",
-    dayFile: "single_family_home_day.png",
-    fallbackFiles: ["single_family_home_legacy.png"],
-    positions: {
-      pv_roof_power: { left: 64, top: 28 },
-      pv_shed_power: { left: 14, top: 80 },
-      battery_level: { left: 49, top: 66 },
-      inverter_power: { left: 53, top: 72 },
-      wallbox_power: { left: 23, top: 57 },
-      water_meter: { left: 84, top: 72 },
-      import_export_power: { left: 82, top: 83 },
-    },
-  },
-  duplex_house: {
-    label: "Duplex House",
-    folder: "duplex_house",
-    file: "duplex_house.png",
-    dayFile: "duplex_house_day.png",
-    positions: {
-      pv_roof_power: { left: 46, top: 23 },
-      pv_shed_power: { left: 15, top: 80 },
-      battery_level: { left: 49, top: 73 },
-      inverter_power: { left: 37, top: 56 },
-      wallbox_power: { left: 27, top: 66 },
-      water_meter: { left: 84, top: 72 },
-      import_export_power: { left: 82, top: 82 },
-    },
-  },
-  terraced_middle_house: {
-    label: "Terraced Middle House",
-    folder: "terraced_middle_house",
-    file: "terraced_middle_house.png",
-    dayFile: "terraced_middle_house_day.png",
-    positions: {
-      pv_roof_power: { left: 48, top: 18 },
-      pv_shed_power: { left: 80, top: 76 },
-      battery_level: { left: 33, top: 61 },
-      inverter_power: { left: 34, top: 51 },
-      wallbox_power: { left: 44, top: 66 },
-      water_meter: { left: 84, top: 72 },
-      import_export_power: { left: 82, top: 82 },
-    },
-  },
-  apartment_building: {
-    label: "Apartment Building",
-    folder: "apartment_building",
-    file: "apartment_building.png",
-    dayFile: "apartment_building_day.png",
-    positions: {
-      pv_roof_power: { left: 53, top: 17 },
-      pv_shed_power: { left: 16, top: 81 },
-      battery_level: { left: 35, top: 65 },
-      inverter_power: { left: 35, top: 72 },
-      wallbox_power: { left: 21, top: 59 },
-      water_meter: { left: 84, top: 72 },
-      import_export_power: { left: 82, top: 82 },
-    },
-  },
-  apartment_building_balcony_solar: {
-    label: "Apartment Building Balcony Solar",
-    folder: "apartment_building_balcony_solar",
-    file: "apartment_building_balcony_solar.png",
-    dayFile: "apartment_building_balcony_solar_day.png",
-    positions: {
-      battery_level: { left: 42, top: 70 },
-      inverter_power: { left: 52, top: 58 },
-      pv_total_power: { left: 62, top: 58 },
-      water_meter: { left: 84, top: 72 },
-      import_export_power: { left: 82, top: 82 },
-    },
-    visible_boxes: {
-      pv_roof_power: false,
-      pv_shed_power: false,
-      wallbox_power: false,
-      wallbox2_power: false,
-      import_export_power: true,
-      battery_level: true,
-      inverter_power: true,
-      pv_total_power: true,
-    },
-    labels: {
-      pv_total_power: "PV Power",
-    },
-    labelKeys: {
-      pv_total_power: "metrics.pv_power",
-    },
-  },
-  bungalow: {
-    label: "Bungalow",
-    folder: "bungalow",
-    file: "bungalow.png",
-    dayFile: "bungalow_day.png",
-    positions: {
-      pv_roof_power: { left: 51, top: 29 },
-      pv_shed_power: { left: 16, top: 80 },
-      battery_level: { left: 40, top: 66 },
-      inverter_power: { left: 54, top: 69 },
-      wallbox_power: { left: 25, top: 59 },
-      water_meter: { left: 84, top: 72 },
-      import_export_power: { left: 82, top: 82 },
-    },
-  },
-  city_villa: {
-    label: "City Villa",
-    folder: "city_villa",
-    file: "city_villa.png",
-    dayFile: "city_villa_day.png",
-    positions: {
-      pv_roof_power: { left: 55, top: 16 },
-      pv_shed_power: { left: 15, top: 80 },
-      battery_level: { left: 43, top: 71 },
-      inverter_power: { left: 58, top: 58 },
-      wallbox_power: { left: 25, top: 57 },
-      water_meter: { left: 84, top: 72 },
-      import_export_power: { left: 82, top: 82 },
-    },
-  },
-  city_villa_pitched_roof: {
-    label: "City Villa with Pitched Roof",
-    folder: "city_villa_pitched_roof",
-    file: "city_villa_pitched_roof.png",
-    dayFile: "city_villa_pitched_roof_day.png",
-    positions: {
-      pv_roof_power: { left: 58, top: 18 },
-      pv_shed_power: { left: 15, top: 80 },
-      battery_level: { left: 41, top: 66 },
-      inverter_power: { left: 55, top: 56 },
-      wallbox_power: { left: 25, top: 60 },
-      water_meter: { left: 84, top: 72 },
-      import_export_power: { left: 82, top: 82 },
-    },
-  },
-};
-
-const DEFAULT_IMAGE_OVERLAYS = {
-  single_family_home: {
-    smoke: { left: 58, top: 18, width: 9 },
-    heatpump: { left: 82, top: 63, width: 11, orientation: "right" },
-  },
-  duplex_house: {
-    smoke: { left: 52, top: 18, width: 9 },
-    heatpump: { left: 78, top: 66, width: 11, orientation: "right" },
-  },
-  terraced_middle_house: {
-    smoke: { left: 51, top: 16, width: 8 },
-    heatpump: { left: 66, top: 68, width: 10, orientation: "left" },
-  },
-  apartment_building: {
-    smoke: { left: 52, top: 13, width: 8 },
-    heatpump: { left: 79, top: 68, width: 10, orientation: "right" },
-  },
-  apartment_building_balcony_solar: {
-    smoke: { left: 50, top: 13, width: 8 },
-    heatpump: { left: 76, top: 70, width: 10, orientation: "right" },
-  },
-  bungalow: {
-    smoke: { left: 50, top: 25, width: 8 },
-    heatpump: { left: 79, top: 66, width: 11, orientation: "right" },
-  },
-  city_villa: {
-    smoke: { left: 55, top: 15, width: 8 },
-    heatpump: { left: 79, top: 65, width: 10, orientation: "right" },
-  },
-  city_villa_pitched_roof: {
-    smoke: { left: 56, top: 18, width: 8 },
-    heatpump: { left: 78, top: 65, width: 10, orientation: "right" },
-  },
-};
-
-const IMAGE_OVERLAY_KEYS = ["smoke", "heatpump"];
-
 const PV_LABELS = [
   { suffix: "today_energy", labelKey: "pvLabel.todayEnergy", editorKey: "editor.pvTodayEnergyEntity", source: "entity", unit: "energy" },
   { suffix: "forecast_today", labelKey: "pvLabel.forecastToday", editorKey: "editor.pvForecastTodayEntity", source: "entity", unit: "energy" },
@@ -9561,54 +9672,6 @@ function clampConfigNumber(value, fallback, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, number));
-}
-
-function normalizeHouse(value) {
-  if (!value) return undefined;
-  const normalized = String(value).toLowerCase().trim().replace(/[\s_]+/g, "-");
-  const aliases = {
-    home: "single_family_home",
-    modern: "single_family_home",
-    einfamilienhaus: "single_family_home",
-    "single-family-home": "single_family_home",
-    doppelhaus: "duplex_house",
-    "doppel-haus": "duplex_house",
-    duplex: "duplex_house",
-    "duplex-house": "duplex_house",
-    reihenhaus: "terraced_middle_house",
-    "reihen-haus": "terraced_middle_house",
-    reihenmittelhaus: "terraced_middle_house",
-    "reihen-mittelhaus": "terraced_middle_house",
-    "reihen-mittel-haus": "terraced_middle_house",
-    "terraced-house": "terraced_middle_house",
-    "terraced-middle-house": "terraced_middle_house",
-    mfh: "apartment_building",
-    mehrfamilienhaus: "apartment_building",
-    "mehr-familienhaus": "apartment_building",
-    "mehrfamilien-haus": "apartment_building",
-    "apartment-building": "apartment_building",
-    "mehrfamilienhaus-balkonsolar": "apartment_building_balcony_solar",
-    "mehr-familienhaus-balkonsolar": "apartment_building_balcony_solar",
-    "mehrfamilienhaus-balkon-solar": "apartment_building_balcony_solar",
-    "mehr-familienhaus-balkon-solar": "apartment_building_balcony_solar",
-    balkonsolar: "apartment_building_balcony_solar",
-    "balcony-solar": "apartment_building_balcony_solar",
-    "apartment-building-balcony-solar": "apartment_building_balcony_solar",
-    bungalow: "bungalow",
-    "bungalow-house": "bungalow",
-    villa: "city_villa",
-    stadtvilla: "city_villa",
-    "stadt-villa": "city_villa",
-    "city-villa": "city_villa",
-    stadtvilla_2: "city_villa_pitched_roof",
-    "stadtvilla-2": "city_villa_pitched_roof",
-    "stadtvilla-ohne-flachdach": "city_villa_pitched_roof",
-    stadtvilla_dach: "city_villa_pitched_roof",
-    "stadtvilla-dach": "city_villa_pitched_roof",
-    "city-villa-pitched-roof": "city_villa_pitched_roof",
-  };
-  const key = aliases[normalized] || normalized;
-  return HOUSE_VARIANTS[key] ? key : undefined;
 }
 
 class HaSolarDashboardCard extends HTMLElement {
@@ -10790,19 +10853,20 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _updateFloorplanReadings() {
+    if (!this._domCache) this._refreshDomCache();
     const floorplan = this.config?.floorplan ? this._normalizeFloorplan(this.config.floorplan) : undefined;
     if (!floorplan || this._currentViewMode() !== FLOORPLAN_DASHBOARD_VIEW) return;
     const { floor } = this._activeFloorplanFloor(floorplan);
     (floor.sensors || []).forEach((sensor, index) => {
       const source = this._floorplanSensorSource(sensor, index);
       const value = this._floorplanSensorValue(sensor, index);
-      this.shadowRoot.querySelectorAll(`[data-floorplan-sensor-label="${this._escape(sensor.id)}"]`).forEach((element) => {
+      this._cachedDomElements("floorplanSensorLabels", sensor.id).forEach((element) => {
         if (element.textContent !== source.label) element.textContent = source.label;
       });
-      this.shadowRoot.querySelectorAll(`[data-floorplan-sensor-value="${this._escape(sensor.id)}"]`).forEach((element) => {
+      this._cachedDomElements("floorplanSensorValues", sensor.id).forEach((element) => {
         if (element.textContent !== value) element.textContent = value;
       });
-      this.shadowRoot.querySelectorAll(`[data-floorplan-sensor="${this._escape(sensor.id)}"]`).forEach((element) => {
+      this._cachedDomElements("floorplanSensors", sensor.id).forEach((element) => {
         element.style.setProperty("--sensor-color", source.color);
         element.style.setProperty("--sensor-font-size", `${this._clampNumber(sensor.font_size, 3.05, 1.4, 8)}px`);
       });
@@ -12886,17 +12950,20 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _overlayAssetUrls(key) {
     const file = `${key}.png`;
-    const urls = [this._remoteImageUrl(file)];
-    try {
-      urls.push(assetUrl(file));
-    } catch (_err) {
-      // no local root fallback
-    }
-    try {
-      urls.push(assetUrl(`images/${file}`));
-    } catch (_err) {
-      // no local images fallback
-    }
+    const urls = imageFormatFiles(file).flatMap((candidate) => {
+      const candidates = [this._remoteImageUrl(candidate)];
+      try {
+        candidates.push(assetUrl(candidate));
+      } catch (_err) {
+        // no local root fallback
+      }
+      try {
+        candidates.push(assetUrl(`images/${candidate}`));
+      } catch (_err) {
+        // no local images fallback
+      }
+      return candidates;
+    });
     return [...new Set(urls.filter(Boolean))];
   }
 
@@ -13123,10 +13190,74 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
   }
 
-  _tileStyle(metric) {
-    const columns = Math.round(this._clampNumber(metric.tileColumns ?? 1, 1, 1, 6));
-    const mobileColumns = Math.min(columns, 2);
-    return `${this._accentStyle(metric)} order:${Number(metric.tileOrder ?? 0)}; --tile-columns:${columns}; --tile-mobile-columns:${mobileColumns};`;
+  _addCachedElement(map, key, element) {
+    if (!key || !element) return;
+    const elements = map.get(key);
+    if (elements) elements.push(element);
+    else map.set(key, [element]);
+  }
+
+  _cacheElementsByAttribute(attribute, selector = `[${attribute}]`) {
+    const map = new Map();
+    this.shadowRoot?.querySelectorAll(selector).forEach((element) => {
+      this._addCachedElement(map, element.getAttribute(attribute), element);
+    });
+    return map;
+  }
+
+  _cacheMeterBars() {
+    const map = new Map();
+    this.shadowRoot?.querySelectorAll("[data-meter]").forEach((meter) => {
+      this._addCachedElement(map, meter.getAttribute("data-meter"), meter.querySelector("span"));
+    });
+    return map;
+  }
+
+  _refreshDomCache() {
+    if (!this.shadowRoot) {
+      this._domCache = undefined;
+      return;
+    }
+    const all = (selector) => Array.from(this.shadowRoot.querySelectorAll(selector));
+    this._domCache = {
+      labels: this._cacheElementsByAttribute("data-label"),
+      values: this._cacheElementsByAttribute("data-value"),
+      accents: this._cacheElementsByAttribute("data-accent-key"),
+      tooltips: this._cacheElementsByAttribute("data-tooltip-key"),
+      meters: this._cacheElementsByAttribute("data-meter"),
+      meterBars: this._cacheMeterBars(),
+      phases: this._cacheElementsByAttribute("data-phase"),
+      vehicleSocs: this._cacheElementsByAttribute("data-vehicle-soc"),
+      remainingChargeTimes: this._cacheElementsByAttribute("data-remaining-charge-time"),
+      phaseActions: this._cacheElementsByAttribute("data-phase-action"),
+      voltages: this._cacheElementsByAttribute("data-voltage"),
+      pvLabels: this._cacheElementsByAttribute("data-pv-label"),
+      overlayLabels: this._cacheElementsByAttribute("data-overlay-label"),
+      overlayValues: this._cacheElementsByAttribute("data-overlay-value"),
+      floorplanSensorLabels: this._cacheElementsByAttribute("data-floorplan-sensor-label"),
+      floorplanSensorValues: this._cacheElementsByAttribute("data-floorplan-sensor-value"),
+      floorplanSensors: this._cacheElementsByAttribute("data-floorplan-sensor"),
+      batteryTemperatures: all("[data-battery-temperature]"),
+      batteryVoltages: all("[data-battery-voltage]"),
+      batteryFlows: all("[data-battery-flow]"),
+      batteryFlowLabels: all("[data-battery-flow-label]"),
+      batteryFlowArrows: all(".battery-flow-arrow"),
+      batteryFlowValues: all("[data-battery-flow-value]"),
+      sceneImage: this.shadowRoot.querySelector(".scene-image"),
+      flowOverlay: this.shadowRoot.querySelector("[data-flow-overlay]"),
+      statusLabel: this.shadowRoot.querySelector("[data-status-label]"),
+      voltageAlert: this.shadowRoot.querySelector("[data-grid-voltage-alert]"),
+      advisor: this.shadowRoot.querySelector("[data-energy-advisor]"),
+      chartDashboard: this.shadowRoot.querySelector("[data-chart-dashboard]"),
+      recordsDashboard: this.shadowRoot.querySelector("[data-record-dashboard]"),
+      contentAnchor: this.shadowRoot.querySelector(".scene,[data-energy-advisor],[data-floorplan-dashboard],[data-chart-dashboard],[data-record-dashboard]"),
+      card: this.shadowRoot.querySelector("ha-card"),
+    };
+  }
+
+  _cachedDomElements(cacheKey, value) {
+    if (!this._domCache) this._refreshDomCache();
+    return this._domCache?.[cacheKey]?.get(String(value)) || [];
   }
 
   _attachControls() {
@@ -13365,45 +13496,9 @@ class HaSolarDashboardCard extends HTMLElement {
       this._renderViewSelector(),
       activeView === "house" ? this._renderHouseSelector(state.activeHouse) : "",
     ].filter(Boolean).join("");
-    const renderTile = (metric) => {
-      const tooltip = this._metricTooltip(metric, state.variant);
-      const warning = this._metricWarning(metric);
-      const visibilityClass = metric.overlay ? this._labelVisibilityClass(metric.key, "footer") : "";
-      const valueHtml = metric.key === "battery_level"
-        ? `
-          <div class="tile-value-row">
-            <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
-          </div>
-          ${this._renderBatteryMetaRow(metric, { placement: "footer" })}
-          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
-        `
-        : this._wallboxPhaseEntityKey(metric)
-        ? `
-          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
-          ${this._renderWallboxPhaseRow(metric, { placement: "footer" })}
-          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
-        `
-        : this._isPvMetric(metric)
-        ? `
-          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
-          ${this._renderPvMetaRow(metric, { placement: "footer" })}
-          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
-        `
-        : `
-          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
-          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
-        `;
-      return `
-        <div class="tile${this._metricStateClass(metric)}${visibilityClass}" data-accent-key="${metric.key}" data-tile="${metric.key}" data-tooltip-key="${metric.key}" data-chart-key="${this._escape(this._metricEntityId(metric) ? metric.key : "")}" data-warning="${this._escape(warning?.label || "")}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${this._escape(this._tileStyle(metric))}">
-          <div class="name" data-label="${metric.key}">${this._escape(this._metricLabel(metric, state.variant))}</div>
-          ${valueHtml}
-          ${this._renderMetricMeter(metric)}
-        </div>
-      `;
-    };
-    const gridHtml = visibleTileMetrics.map(renderTile).join("");
-    const environmentHtml = environmentMetrics.map(renderTile).join("");
-    const largeConsumerHtml = largeConsumerMetrics.map(renderTile).join("");
+    const gridHtml = visibleTileMetrics.map((metric) => this._renderTile(metric, state.variant)).join("");
+    const environmentHtml = environmentMetrics.map((metric) => this._renderTile(metric, state.variant)).join("");
+    const largeConsumerHtml = largeConsumerMetrics.map((metric) => this._renderTile(metric, state.variant)).join("");
     const environmentSectionHtml = this.config.show_environment_sensors !== false && environmentMetrics.length > 0
       ? `
         <section class="tile-section environment-sensor-section">
@@ -13655,11 +13750,14 @@ class HaSolarDashboardCard extends HTMLElement {
     `;
 
     this._attachControls();
+    this._refreshDomCache();
     this._syncAdvisorRefreshTimer(activeView === "advisor");
   }
 
   _updateReadings() {
+    if (!this._domCache) this._refreshDomCache();
     const variant = this._currentVariant || this._layoutState().variant;
+    let domCacheChanged = false;
     const liveMetrics = [
       ...TILE_METRICS,
       ...this._visibleOverlayMetrics(),
@@ -13672,35 +13770,36 @@ class HaSolarDashboardCard extends HTMLElement {
     liveMetrics.forEach((metric) => {
       const readingHtml = this._renderMetricValueHtml(metric);
       const label = this._metricLabel(metric, variant);
-      this.shadowRoot.querySelectorAll(`[data-label="${metric.key}"]`).forEach((element) => {
+      this._cachedDomElements("labels", metric.key).forEach((element) => {
         if (element.textContent !== label) element.textContent = label;
       });
-      this.shadowRoot.querySelectorAll(`[data-value="${metric.key}"]`).forEach((element) => {
+      this._cachedDomElements("values", metric.key).forEach((element) => {
         if (element.innerHTML !== readingHtml) element.innerHTML = readingHtml;
       });
       const accent = this._metricAccent(metric);
-      this.shadowRoot.querySelectorAll(`[data-accent-key="${metric.key}"]`).forEach((element) => {
+      this._cachedDomElements("accents", metric.key).forEach((element) => {
         element.style.setProperty("--tile-accent", accent.color);
         element.style.setProperty("--tile-glow", accent.glow);
       });
       const warning = this._metricWarning(metric);
       const tooltip = this._metricTooltip(metric, variant);
-      this.shadowRoot.querySelectorAll(`[data-tooltip-key="${metric.key}"]`).forEach((element) => {
+      this._cachedDomElements("tooltips", metric.key).forEach((element) => {
         element.classList.toggle("is-warning", Boolean(warning));
         element.dataset.warning = warning?.label || "";
         element.setAttribute("title", tooltip);
         element.setAttribute("aria-label", tooltip);
       });
       const meterPercent = this._meterPercent(metric);
-      this.shadowRoot.querySelectorAll(`[data-meter="${metric.key}"]`).forEach((element) => {
-        element.setAttribute("title", this._meterTooltip(metric));
+      const meterTooltip = this._meterTooltip(metric);
+      this._cachedDomElements("meters", metric.key).forEach((element) => {
+        element.setAttribute("title", meterTooltip);
       });
-      this.shadowRoot.querySelectorAll(`[data-meter="${metric.key}"] span`).forEach((element) => {
+      this._cachedDomElements("meterBars", metric.key).forEach((element) => {
         element.style.width = `${(meterPercent ?? 0).toFixed(0)}%`;
       });
       const phaseLabel = this._wallboxPhaseLabel(metric);
       const phaseTitle = phaseLabel ? `${this._t("tooltip.phases", {}, "Phases")}: ${phaseLabel}` : "";
-      this.shadowRoot.querySelectorAll(`[data-phase="${metric.key}"]`).forEach((element) => {
+      this._cachedDomElements("phases", metric.key).forEach((element) => {
         if (element.textContent !== phaseLabel) element.textContent = phaseLabel;
         element.style.display = phaseLabel ? "inline-flex" : "none";
         element.setAttribute("title", phaseTitle);
@@ -13708,7 +13807,7 @@ class HaSolarDashboardCard extends HTMLElement {
       });
       const socLabel = this._wallboxSocLabel(metric);
       const socTitle = socLabel ? `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${socLabel}` : "";
-      this.shadowRoot.querySelectorAll(`[data-vehicle-soc="${metric.key}"]`).forEach((element) => {
+      this._cachedDomElements("vehicleSocs", metric.key).forEach((element) => {
         if (element.textContent !== socLabel) element.textContent = socLabel;
         element.style.display = socLabel ? "inline-flex" : "none";
         element.setAttribute("title", socTitle);
@@ -13716,7 +13815,7 @@ class HaSolarDashboardCard extends HTMLElement {
       });
       const remainingTimeLabel = this._wallboxRemainingTimeLabel(metric);
       const remainingTimeTitle = remainingTimeLabel ? `${this._t("tooltip.remainingChargeTime", {}, "Remaining charge time")}: ${remainingTimeLabel}` : "";
-      this.shadowRoot.querySelectorAll(`[data-remaining-charge-time="${metric.key}"]`).forEach((element) => {
+      this._cachedDomElements("remainingChargeTimes", metric.key).forEach((element) => {
         if (element.textContent !== remainingTimeLabel) element.textContent = remainingTimeLabel;
         element.style.display = remainingTimeLabel ? "inline-flex" : "none";
         element.setAttribute("title", remainingTimeTitle);
@@ -13725,14 +13824,14 @@ class HaSolarDashboardCard extends HTMLElement {
       const phaseAction = this._wallboxPhaseActionInfo(metric);
       const phaseActionLabel = phaseAction?.label || "";
       const phaseActionTitle = phaseActionLabel ? `${this._t("tooltip.phaseChange", {}, "Upcoming phase change")}: ${phaseActionLabel}` : "";
-      this.shadowRoot.querySelectorAll(`[data-phase-action="${metric.key}"]`).forEach((element) => {
+      this._cachedDomElements("phaseActions", metric.key).forEach((element) => {
         if (element.textContent !== phaseActionLabel) element.textContent = phaseActionLabel;
         element.style.display = phaseActionLabel ? "inline-flex" : "none";
         element.setAttribute("title", phaseActionTitle);
         element.setAttribute("aria-label", phaseActionTitle);
       });
       const voltageEntries = new Map(this._metricVoltageEntries(metric, variant).map((entry) => [entry.key, entry]));
-      this.shadowRoot.querySelectorAll(`[data-voltage="${metric.key}"]`).forEach((element) => {
+      this._cachedDomElements("voltages", metric.key).forEach((element) => {
         const entry = voltageEntries.get(element.dataset.voltageKey || this._metricVoltageEntityKey(metric));
         const voltageLabel = entry?.displayValue || "";
         const voltageTitle = entry ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${entry.label} ${entry.value}` : "";
@@ -13745,7 +13844,7 @@ class HaSolarDashboardCard extends HTMLElement {
         PV_LABELS.forEach((label) => {
           const key = this._pvLabelKey(metric, label);
           const text = this._pvLabelText(metric, label);
-          this.shadowRoot.querySelectorAll(`[data-pv-label="${key}"]`).forEach((element) => {
+          this._cachedDomElements("pvLabels", key).forEach((element) => {
             if (element.textContent !== text) element.textContent = text;
             element.style.display = text ? "inline-flex" : "none";
             element.setAttribute("title", text);
@@ -13756,7 +13855,7 @@ class HaSolarDashboardCard extends HTMLElement {
       if (metric.key === "battery_level") {
         const temperatureLabel = this._batteryTemperatureLabel();
         const temperatureTitle = temperatureLabel ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${temperatureLabel}` : "";
-        this.shadowRoot.querySelectorAll("[data-battery-temperature]").forEach((element) => {
+        (this._domCache?.batteryTemperatures || []).forEach((element) => {
           if (element.textContent !== temperatureLabel) element.textContent = temperatureLabel;
           element.style.display = temperatureLabel ? "inline-flex" : "none";
           element.setAttribute("title", temperatureTitle);
@@ -13764,7 +13863,7 @@ class HaSolarDashboardCard extends HTMLElement {
         });
         const batteryVoltageLabel = this._batteryVoltageLabel();
         const batteryVoltageTitle = batteryVoltageLabel ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${batteryVoltageLabel}` : "";
-        this.shadowRoot.querySelectorAll("[data-battery-voltage]").forEach((element) => {
+        (this._domCache?.batteryVoltages || []).forEach((element) => {
           if (element.textContent !== batteryVoltageLabel) element.textContent = batteryVoltageLabel;
           element.style.display = batteryVoltageLabel ? "inline-flex" : "none";
           element.setAttribute("title", batteryVoltageTitle);
@@ -13772,7 +13871,7 @@ class HaSolarDashboardCard extends HTMLElement {
         });
         const flowInfo = this._batteryFlowInfo();
         const flowValue = this._formatBatteryFlowValue(flowInfo);
-        this.shadowRoot.querySelectorAll("[data-battery-flow]").forEach((element) => {
+        (this._domCache?.batteryFlows || []).forEach((element) => {
           element.classList.toggle("charge", flowInfo?.direction === "charge");
           element.classList.toggle("discharge", flowInfo?.direction === "discharge");
           element.style.display = flowValue ? "inline-flex" : "none";
@@ -13780,13 +13879,13 @@ class HaSolarDashboardCard extends HTMLElement {
           element.setAttribute("title", flowValue ? `${directionLabel}: ${flowValue}` : "");
           element.setAttribute("aria-label", flowValue ? `${directionLabel}: ${flowValue}` : "");
         });
-        this.shadowRoot.querySelectorAll("[data-battery-flow-label]").forEach((element) => {
+        (this._domCache?.batteryFlowLabels || []).forEach((element) => {
           element.textContent = flowInfo ? this._batteryFlowDirectionLabel(flowInfo.direction) : "";
         });
-        this.shadowRoot.querySelectorAll(".battery-flow-arrow").forEach((element) => {
+        (this._domCache?.batteryFlowArrows || []).forEach((element) => {
           element.textContent = flowInfo?.direction === "charge" ? "↓" : "↑";
         });
-        this.shadowRoot.querySelectorAll("[data-battery-flow-value]").forEach((element) => {
+        (this._domCache?.batteryFlowValues || []).forEach((element) => {
           element.textContent = flowValue;
         });
       }
@@ -13794,84 +13893,102 @@ class HaSolarDashboardCard extends HTMLElement {
     IMAGE_OVERLAY_KEYS.forEach((key) => {
       const reading = this._formatOverlayReading(key);
       const label = this._overlayLabel(key);
-      this.shadowRoot.querySelectorAll(`[data-overlay-label="${key}"]`).forEach((element) => {
+      this._cachedDomElements("overlayLabels", key).forEach((element) => {
         if (element.textContent !== label) element.textContent = label;
       });
-      this.shadowRoot.querySelectorAll(`[data-overlay-value="${key}"]`).forEach((element) => {
+      this._cachedDomElements("overlayValues", key).forEach((element) => {
         if (element.textContent !== reading) element.textContent = reading;
       });
     });
     const nextFlowHtml = this._renderEnergyFlows(variant);
-    const flowOverlay = this.shadowRoot.querySelector("[data-flow-overlay]");
+    const flowOverlay = this._domCache?.flowOverlay;
     if (flowOverlay && nextFlowHtml && flowOverlay.outerHTML !== nextFlowHtml.trim()) {
       flowOverlay.outerHTML = nextFlowHtml;
+      domCacheChanged = true;
     } else if (flowOverlay && !nextFlowHtml) {
       flowOverlay.remove();
+      domCacheChanged = true;
     } else if (!flowOverlay && nextFlowHtml) {
-      this.shadowRoot.querySelector(".scene-image")?.insertAdjacentHTML("afterend", nextFlowHtml);
+      this._domCache?.sceneImage?.insertAdjacentHTML("afterend", nextFlowHtml);
+      domCacheChanged = true;
     }
     const statusAccent = this._metricAccent(STATUS_METRIC);
-    this.shadowRoot.querySelectorAll(`[data-accent-key="${STATUS_METRIC.key}"]`).forEach((element) => {
+    this._cachedDomElements("accents", STATUS_METRIC.key).forEach((element) => {
       element.style.setProperty("--tile-accent", statusAccent.color);
       element.style.setProperty("--tile-glow", statusAccent.glow);
     });
-    const statusElement = this.shadowRoot.querySelector("[data-status-label]");
+    const statusElement = this._domCache?.statusLabel;
     if (statusElement) {
       const statusLabel = this._statusLabel();
       if (statusElement.textContent !== statusLabel) statusElement.textContent = statusLabel;
     }
     const nextVoltageAlertHtml = this._renderGridVoltageAlert();
-    const voltageAlertElement = this.shadowRoot.querySelector("[data-grid-voltage-alert]");
+    const voltageAlertElement = this._domCache?.voltageAlert;
     if (voltageAlertElement && nextVoltageAlertHtml) {
       const trimmed = nextVoltageAlertHtml.trim();
-      if (voltageAlertElement.outerHTML !== trimmed) voltageAlertElement.outerHTML = trimmed;
+      if (voltageAlertElement.outerHTML !== trimmed) {
+        voltageAlertElement.outerHTML = trimmed;
+        domCacheChanged = true;
+      }
     } else if (voltageAlertElement && !nextVoltageAlertHtml) {
       voltageAlertElement.remove();
+      domCacheChanged = true;
     } else if (!voltageAlertElement && nextVoltageAlertHtml) {
-      const anchor = this.shadowRoot.querySelector(".scene,[data-energy-advisor],[data-floorplan-dashboard],[data-chart-dashboard],[data-record-dashboard]");
+      const anchor = this._domCache?.contentAnchor;
       if (anchor) anchor.insertAdjacentHTML("beforebegin", nextVoltageAlertHtml);
-      else this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextVoltageAlertHtml);
+      else this._domCache?.card?.insertAdjacentHTML("beforeend", nextVoltageAlertHtml);
+      domCacheChanged = true;
     }
     const activeView = this._currentViewMode();
     const nextAdvisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
-    const advisorElement = this.shadowRoot.querySelector("[data-energy-advisor]");
+    const advisorElement = this._domCache?.advisor;
     let advisorChanged = false;
     if (advisorElement && nextAdvisorHtml) {
       advisorElement.outerHTML = nextAdvisorHtml.trim();
       advisorChanged = true;
+      domCacheChanged = true;
     } else if (advisorElement && !nextAdvisorHtml) {
       advisorElement.remove();
+      domCacheChanged = true;
     } else if (!advisorElement && nextAdvisorHtml) {
-      this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextAdvisorHtml);
+      this._domCache?.card?.insertAdjacentHTML("beforeend", nextAdvisorHtml);
       advisorChanged = true;
+      domCacheChanged = true;
     }
     if (advisorChanged) this._attachAdvisorControls();
     const nextChartDashboardHtml = activeView === CHART_DASHBOARD_VIEW ? this._renderChartDashboard(variant) : "";
-    const chartDashboardElement = this.shadowRoot.querySelector("[data-chart-dashboard]");
+    const chartDashboardElement = this._domCache?.chartDashboard;
     let chartDashboardChanged = false;
     if (chartDashboardElement && nextChartDashboardHtml) {
       chartDashboardElement.outerHTML = nextChartDashboardHtml.trim();
       chartDashboardChanged = true;
+      domCacheChanged = true;
     } else if (chartDashboardElement && !nextChartDashboardHtml) {
       chartDashboardElement.remove();
+      domCacheChanged = true;
     } else if (!chartDashboardElement && nextChartDashboardHtml) {
-      this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextChartDashboardHtml);
+      this._domCache?.card?.insertAdjacentHTML("beforeend", nextChartDashboardHtml);
       chartDashboardChanged = true;
+      domCacheChanged = true;
     }
     if (chartDashboardChanged) this._attachChartDashboardControls();
     const nextRecordsDashboardHtml = activeView === RECORDS_DASHBOARD_VIEW ? this._renderRecordsDashboard(variant) : "";
-    const recordsDashboardElement = this.shadowRoot.querySelector("[data-record-dashboard]");
+    const recordsDashboardElement = this._domCache?.recordsDashboard;
     let recordsDashboardChanged = false;
     if (recordsDashboardElement && nextRecordsDashboardHtml) {
       recordsDashboardElement.outerHTML = nextRecordsDashboardHtml.trim();
       recordsDashboardChanged = true;
+      domCacheChanged = true;
     } else if (recordsDashboardElement && !nextRecordsDashboardHtml) {
       recordsDashboardElement.remove();
+      domCacheChanged = true;
     } else if (!recordsDashboardElement && nextRecordsDashboardHtml) {
-      this.shadowRoot.querySelector("ha-card")?.insertAdjacentHTML("beforeend", nextRecordsDashboardHtml);
+      this._domCache?.card?.insertAdjacentHTML("beforeend", nextRecordsDashboardHtml);
       recordsDashboardChanged = true;
+      domCacheChanged = true;
     }
     if (recordsDashboardChanged) this._attachRecordsDashboardControls();
+    if (domCacheChanged) this._refreshDomCache();
     this._updateFloorplanReadings();
   }
 
@@ -13902,6 +14019,7 @@ Object.assign(
     REPOSITORY_IMAGE_BASE,
     assetUrl,
   }),
+  createTileRendererMethods(),
   createRecordsDashboardMethods({
     RECORDS_DEFAULT_DAYS,
     RECORDS_RANGE_OPTIONS,
@@ -13916,9 +14034,11 @@ Object.assign(
 
 const HaSolarDashboardCardEditor = createDashboardEditorClass({
   ADVISOR_DEFAULTS,
+  DEFAULT_IMAGE_OVERLAYS,
   DEFAULT_TILE_COLOR_RULES,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,
+  PV_LABELS,
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,

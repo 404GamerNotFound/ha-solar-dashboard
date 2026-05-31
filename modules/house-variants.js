@@ -1,0 +1,222 @@
+export const HOUSE_VARIANTS = {
+  single_family_home: {
+    label: "Single Family Home",
+    folder: "single_family_home",
+    file: "single_family_home.png",
+    dayFile: "single_family_home_day.png",
+    fallbackFiles: ["single_family_home_legacy.png"],
+    positions: {
+      pv_roof_power: { left: 64, top: 28 },
+      pv_shed_power: { left: 14, top: 80 },
+      battery_level: { left: 49, top: 66 },
+      inverter_power: { left: 53, top: 72 },
+      wallbox_power: { left: 23, top: 57 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 83 },
+    },
+  },
+  duplex_house: {
+    label: "Duplex House",
+    folder: "duplex_house",
+    file: "duplex_house.png",
+    dayFile: "duplex_house_day.png",
+    positions: {
+      pv_roof_power: { left: 46, top: 23 },
+      pv_shed_power: { left: 15, top: 80 },
+      battery_level: { left: 49, top: 73 },
+      inverter_power: { left: 37, top: 56 },
+      wallbox_power: { left: 27, top: 66 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  terraced_middle_house: {
+    label: "Terraced Middle House",
+    folder: "terraced_middle_house",
+    file: "terraced_middle_house.png",
+    dayFile: "terraced_middle_house_day.png",
+    positions: {
+      pv_roof_power: { left: 48, top: 18 },
+      pv_shed_power: { left: 80, top: 76 },
+      battery_level: { left: 33, top: 61 },
+      inverter_power: { left: 34, top: 51 },
+      wallbox_power: { left: 44, top: 66 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  apartment_building: {
+    label: "Apartment Building",
+    folder: "apartment_building",
+    file: "apartment_building.png",
+    dayFile: "apartment_building_day.png",
+    positions: {
+      pv_roof_power: { left: 53, top: 17 },
+      pv_shed_power: { left: 16, top: 81 },
+      battery_level: { left: 35, top: 65 },
+      inverter_power: { left: 35, top: 72 },
+      wallbox_power: { left: 21, top: 59 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  apartment_building_balcony_solar: {
+    label: "Apartment Building Balcony Solar",
+    folder: "apartment_building_balcony_solar",
+    file: "apartment_building_balcony_solar.png",
+    dayFile: "apartment_building_balcony_solar_day.png",
+    positions: {
+      battery_level: { left: 42, top: 70 },
+      inverter_power: { left: 52, top: 58 },
+      pv_total_power: { left: 62, top: 58 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+    visible_boxes: {
+      pv_roof_power: false,
+      pv_shed_power: false,
+      wallbox_power: false,
+      wallbox2_power: false,
+      import_export_power: true,
+      battery_level: true,
+      inverter_power: true,
+      pv_total_power: true,
+    },
+    labels: {
+      pv_total_power: "PV Power",
+    },
+    labelKeys: {
+      pv_total_power: "metrics.pv_power",
+    },
+  },
+  bungalow: {
+    label: "Bungalow",
+    folder: "bungalow",
+    file: "bungalow.png",
+    dayFile: "bungalow_day.png",
+    positions: {
+      pv_roof_power: { left: 51, top: 29 },
+      pv_shed_power: { left: 16, top: 80 },
+      battery_level: { left: 40, top: 66 },
+      inverter_power: { left: 54, top: 69 },
+      wallbox_power: { left: 25, top: 59 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  city_villa: {
+    label: "City Villa",
+    folder: "city_villa",
+    file: "city_villa.png",
+    dayFile: "city_villa_day.png",
+    positions: {
+      pv_roof_power: { left: 55, top: 16 },
+      pv_shed_power: { left: 15, top: 80 },
+      battery_level: { left: 43, top: 71 },
+      inverter_power: { left: 58, top: 58 },
+      wallbox_power: { left: 25, top: 57 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+  city_villa_pitched_roof: {
+    label: "City Villa with Pitched Roof",
+    folder: "city_villa_pitched_roof",
+    file: "city_villa_pitched_roof.png",
+    dayFile: "city_villa_pitched_roof_day.png",
+    positions: {
+      pv_roof_power: { left: 58, top: 18 },
+      pv_shed_power: { left: 15, top: 80 },
+      battery_level: { left: 41, top: 66 },
+      inverter_power: { left: 55, top: 56 },
+      wallbox_power: { left: 25, top: 60 },
+      water_meter: { left: 84, top: 72 },
+      import_export_power: { left: 82, top: 82 },
+    },
+  },
+};
+
+export const DEFAULT_IMAGE_OVERLAYS = {
+  single_family_home: {
+    smoke: { left: 58, top: 18, width: 9 },
+    heatpump: { left: 82, top: 63, width: 11, orientation: "right" },
+  },
+  duplex_house: {
+    smoke: { left: 52, top: 18, width: 9 },
+    heatpump: { left: 78, top: 66, width: 11, orientation: "right" },
+  },
+  terraced_middle_house: {
+    smoke: { left: 51, top: 16, width: 8 },
+    heatpump: { left: 66, top: 68, width: 10, orientation: "left" },
+  },
+  apartment_building: {
+    smoke: { left: 52, top: 13, width: 8 },
+    heatpump: { left: 79, top: 68, width: 10, orientation: "right" },
+  },
+  apartment_building_balcony_solar: {
+    smoke: { left: 50, top: 13, width: 8 },
+    heatpump: { left: 76, top: 70, width: 10, orientation: "right" },
+  },
+  bungalow: {
+    smoke: { left: 50, top: 25, width: 8 },
+    heatpump: { left: 79, top: 66, width: 11, orientation: "right" },
+  },
+  city_villa: {
+    smoke: { left: 55, top: 15, width: 8 },
+    heatpump: { left: 79, top: 65, width: 10, orientation: "right" },
+  },
+  city_villa_pitched_roof: {
+    smoke: { left: 56, top: 18, width: 8 },
+    heatpump: { left: 78, top: 65, width: 10, orientation: "right" },
+  },
+};
+
+export const IMAGE_OVERLAY_KEYS = ["smoke", "heatpump"];
+
+export function normalizeHouse(value) {
+  if (!value) return undefined;
+  const normalized = String(value).toLowerCase().trim().replace(/[\s_]+/g, "-");
+  const aliases = {
+    home: "single_family_home",
+    modern: "single_family_home",
+    einfamilienhaus: "single_family_home",
+    "single-family-home": "single_family_home",
+    doppelhaus: "duplex_house",
+    "doppel-haus": "duplex_house",
+    duplex: "duplex_house",
+    "duplex-house": "duplex_house",
+    reihenhaus: "terraced_middle_house",
+    "reihen-haus": "terraced_middle_house",
+    reihenmittelhaus: "terraced_middle_house",
+    "reihen-mittelhaus": "terraced_middle_house",
+    "reihen-mittel-haus": "terraced_middle_house",
+    "terraced-house": "terraced_middle_house",
+    "terraced-middle-house": "terraced_middle_house",
+    mfh: "apartment_building",
+    mehrfamilienhaus: "apartment_building",
+    "mehr-familienhaus": "apartment_building",
+    "mehrfamilien-haus": "apartment_building",
+    "apartment-building": "apartment_building",
+    "mehrfamilienhaus-balkonsolar": "apartment_building_balcony_solar",
+    "mehr-familienhaus-balkonsolar": "apartment_building_balcony_solar",
+    "mehrfamilienhaus-balkon-solar": "apartment_building_balcony_solar",
+    "mehr-familienhaus-balkon-solar": "apartment_building_balcony_solar",
+    balkonsolar: "apartment_building_balcony_solar",
+    "balcony-solar": "apartment_building_balcony_solar",
+    "apartment-building-balcony-solar": "apartment_building_balcony_solar",
+    bungalow: "bungalow",
+    "bungalow-house": "bungalow",
+    villa: "city_villa",
+    stadtvilla: "city_villa",
+    "stadt-villa": "city_villa",
+    "city-villa": "city_villa",
+    stadtvilla_2: "city_villa_pitched_roof",
+    "stadtvilla-2": "city_villa_pitched_roof",
+    "stadtvilla-ohne-flachdach": "city_villa_pitched_roof",
+    stadtvilla_dach: "city_villa_pitched_roof",
+    "stadtvilla-dach": "city_villa_pitched_roof",
+    "city-villa-pitched-roof": "city_villa_pitched_roof",
+  };
+  const key = aliases[normalized] || normalized;
+  return HOUSE_VARIANTS[key] ? key : undefined;
+}

@@ -1,8 +1,10 @@
 export function createDashboardEditorClass({
   ADVISOR_DEFAULTS,
+  DEFAULT_IMAGE_OVERLAYS,
   DEFAULT_TILE_COLOR_RULES,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,
+  PV_LABELS,
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,

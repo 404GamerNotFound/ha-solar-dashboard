@@ -144,6 +144,10 @@ function validatePackage() {
 
   const source = readText("src/ha-solar-dashboard.js");
   const rootSource = readText("ha-solar-dashboard.js");
+  const packageSource = [
+    source,
+    ...sourceModuleFiles.map((file) => readText(`modules/${file}`)),
+  ].join("\n");
   const literalTranslationKeys = [...source.matchAll(/_t\(\s*["']([^"'`]+)["']/g)]
     .map((match) => match[1])
     .filter((key) => !key.includes("${"));
@@ -158,21 +162,46 @@ function validatePackage() {
   if (rootSource.includes('assetUrl("styles/')) fail("ha-solar-dashboard.js must inline critical CSS for direct HACS loads");
   if (!rootSource.includes('"de": {')) fail("ha-solar-dashboard.js must inline translation dictionaries for direct HACS loads");
 
-  const configuredImages = [...source.matchAll(/\b(?:file|dayFile):\s*"([^"]+)"/g)].map((match) => match[1]);
-  const fallbackImages = [...source.matchAll(/fallbackFiles:\s*\[([^\]]*)\]/g)]
+  const configuredImages = [...packageSource.matchAll(/\b(?:file|dayFile):\s*"([^"]+)"/g)].map((match) => match[1]);
+  const fallbackImages = [...packageSource.matchAll(/fallbackFiles:\s*\[([^\]]*)\]/g)]
     .flatMap((match) => [...match[1].matchAll(/"([^"]+)"/g)].map((fileMatch) => fileMatch[1]));
   const imageFiles = [...new Set([...configuredImages, ...fallbackImages])];
   for (const imageFile of imageFiles) {
     if (!hasImageFile("images", imageFile)) fail(`source image is missing: images/**/${imageFile}`);
   }
 
-  const sourceImageBasenames = listFilesRecursive("images")
-    .filter((file) => file.endsWith(".png"))
-    .map((file) => basename(file));
+  const sourceImageFiles = listFilesRecursive("images").sort();
+  const invalidImageNames = sourceImageFiles.filter((file) => /\s/.test(basename(file)));
+  if (invalidImageNames.length > 0) {
+    fail(`image filenames must not contain whitespace: ${invalidImageNames.join(", ")}`);
+  }
+
+  const sourcePngFiles = sourceImageFiles.filter((file) => file.endsWith(".png"));
+  const sourceImageBasenames = sourcePngFiles.map((file) => basename(file));
   const duplicateSourceNames = sourceImageBasenames.filter((file, index) => sourceImageBasenames.indexOf(file) !== index);
   if (duplicateSourceNames.length > 0) {
     fail(`source image filenames must be unique for release asset compatibility: ${[...new Set(duplicateSourceNames)].join(", ")}`);
   }
+
+  const missingWebpFiles = [];
+  const oversizedWebpFiles = [];
+  const ineffectiveWebpFiles = [];
+  for (const pngFile of sourcePngFiles) {
+    const webpFile = pngFile.replace(/\.png$/i, ".webp");
+    const pngSize = statSync(join(root, pngFile)).size;
+    if (!existsSync(join(root, webpFile))) {
+      missingWebpFiles.push(webpFile);
+      continue;
+    }
+    const webpSize = statSync(join(root, webpFile)).size;
+    if (webpSize >= pngSize) ineffectiveWebpFiles.push(`${webpFile} (${webpSize} >= ${pngSize})`);
+    if (pngSize > 1500 * 1024 && webpSize > 512 * 1024) {
+      oversizedWebpFiles.push(`${webpFile} (${Math.round(webpSize / 1024)} KiB)`);
+    }
+  }
+  if (missingWebpFiles.length > 0) fail(`PNG images must have matching WebP companions: ${missingWebpFiles.join(", ")}`);
+  if (ineffectiveWebpFiles.length > 0) fail(`WebP companions must be smaller than their PNG source: ${ineffectiveWebpFiles.join(", ")}`);
+  if (oversizedWebpFiles.length > 0) fail(`large PNG images must have WebP companions <= 512 KiB: ${oversizedWebpFiles.join(", ")}`);
 }
 
 function validateJavaScript() {

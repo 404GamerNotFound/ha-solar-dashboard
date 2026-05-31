@@ -99,8 +99,12 @@ import {
   viewModeIconSvg,
 } from "../modules/views.js";
 import {
+  clampConfigNumber,
   createConfigNormalizerMethods,
 } from "../modules/config-normalizers.js";
+import {
+  createDashboardEditorClass,
+} from "../modules/editor.js";
 import {
   createWeatherImageMethods,
   imageFormatFiles,
@@ -3930,6 +3934,44 @@ Object.assign(
   }),
 );
 
+const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
+  ADVISOR_DEFAULTS,
+  DEFAULT_IMAGE_OVERLAYS,
+  DEFAULT_TILE_COLOR_RULES,
+  HOUSE_VARIANTS,
+  IMAGE_OVERLAY_KEYS,
+  PV_LABELS,
+  TILE_METRICS,
+  VIEW_MODE_OPTIONS,
+  adjacentWallboxPosition,
+  assetUrl,
+  clampConfigNumber,
+  ensureTranslations,
+  findMetricByKey,
+  inverterPhaseVoltageEntityKeys,
+  isPvMetric,
+  languageFromHass,
+  largeConsumerLabel,
+  metricVoltageEntityKey,
+  normalizeAdvisorConfig,
+  normalizeHouse,
+  normalizeInverterDisplay,
+  normalizeInverters,
+  normalizeLargeConsumers,
+  normalizePvRoofStringDisplay,
+  normalizePvRoofStrings,
+  parsePowerLimitWatts,
+  translate,
+  wallboxChargingEnabledEntityKey,
+  wallboxConnectedEntityKey,
+  wallboxMaxSocEntityKey,
+  wallboxPhaseActionEntityKey,
+  wallboxPhaseEntityKey,
+  wallboxPhaseRemainingEntityKey,
+  wallboxRemainingTimeEntityKey,
+  wallboxSocEntityKey,
+});
+
 const HaSolarDashboardCardEditorLoader = createLazyEditorElementClass({
   editorPanelType: CARD_EDITOR_PANEL_TYPE,
   editorBundleUrl: () => scriptSiblingUrl(CARD_EDITOR_BUNDLE),
@@ -3959,6 +4001,7 @@ function upgradeCustomElement(type, elementClass) {
 }
 
 upgradeCustomElement(CARD_TYPE, HaSolarDashboardCard);
+upgradeCustomElement(CARD_EDITOR_PANEL_TYPE, HaSolarDashboardCardEditorPanel);
 upgradeCustomElement(CARD_EDITOR_TYPE, HaSolarDashboardCardEditorLoader);
 
 window.customCards = window.customCards || [];

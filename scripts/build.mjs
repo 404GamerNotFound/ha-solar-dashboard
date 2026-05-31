@@ -89,6 +89,7 @@ function buildEntry() {
   bundled = inlineModuleImport(bundled, "modules/charts.js");
   bundled = inlineModuleImport(bundled, "modules/views.js");
   bundled = inlineModuleImport(bundled, "modules/config-normalizers.js");
+  bundled = inlineModuleImport(bundled, "modules/editor.js");
   bundled = inlineModuleImport(bundled, "modules/weather-images.js");
   bundled = inlineModuleImport(bundled, "modules/tile-renderer.js");
   bundled = inlineModuleImport(bundled, "modules/floorplan-renderer.js");

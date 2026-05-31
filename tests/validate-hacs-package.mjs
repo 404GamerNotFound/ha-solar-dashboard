@@ -170,8 +170,11 @@ function validatePackage() {
   if (editorBundleSource.includes('assetUrl("styles/')) fail("ha-solar-dashboard-editor.js must inline editor CSS for direct HACS loads");
   if (!rootSource.includes('"de": {')) fail("ha-solar-dashboard.js must inline translation dictionaries for direct HACS loads");
   if (!editorBundleSource.includes('"de": {')) fail("ha-solar-dashboard-editor.js must inline translation dictionaries for direct HACS loads");
-  if (rootSource.includes("function createDashboardEditorClass")) fail("ha-solar-dashboard.js must lazy-load the full editor implementation");
-  if (!rootSource.includes("ha-solar-dashboard-editor.js")) fail("ha-solar-dashboard.js must reference the lazy editor bundle");
+  if (!rootSource.includes("function createDashboardEditorClass")) fail("ha-solar-dashboard.js must inline the full editor implementation for single-file HACS installs");
+  if (!rootSource.includes("upgradeCustomElement(CARD_EDITOR_PANEL_TYPE, HaSolarDashboardCardEditorPanel)")) {
+    fail("ha-solar-dashboard.js must register the embedded editor panel before the lazy editor wrapper");
+  }
+  if (!rootSource.includes("ha-solar-dashboard-editor.js")) fail("ha-solar-dashboard.js must keep the standalone editor bundle fallback reference");
   if (!editorBundleSource.includes("function createDashboardEditorClass")) fail("ha-solar-dashboard-editor.js must contain the full editor implementation");
 
   const configuredImages = [...packageSource.matchAll(/\b(?:file|dayFile):\s*"([^"]+)"/g)].map((match) => match[1]);

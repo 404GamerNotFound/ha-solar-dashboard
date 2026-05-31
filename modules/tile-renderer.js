@@ -30,6 +30,12 @@ export function createTileRendererMethods() {
           ${this._renderPvMetaRow(metric, { placement: "footer" })}
           ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
         `
+        : metric.key === "import_export_power"
+        ? `
+          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
+          ${this._renderGridDailyFinanceRow(metric, { placement: "footer" })}
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
+        `
         : `
           <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
           ${this._renderVoltageMetaRow(metric, { placement: "footer" })}

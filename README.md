@@ -146,6 +146,14 @@ energy_entities:
     entity: sensor.pv_dach_energy_total
   house_consumption_power:
     entity: sensor.house_consumption_total
+  import_power:
+    entity: sensor.netzbezug_energy_total
+  export_power:
+    entity: sensor.netzeinspeisung_energy_total
+grid_import_price: 0.32
+grid_export_price: 0.082
+currency: €
+show_grid_daily_finance: true
 show_grid_status_tile: true
 show_power_flows: false
 advisor_max_suggestions: 8
@@ -297,6 +305,10 @@ large_consumers:
 - `labels.<entity_key>` (string, optional; custom label for HUD boxes and summary tiles, for example `PV Dach`, `Speicher` or `Wallbox Garage`)
 - `labels.import_export_import` / `labels.import_export_export` / `labels.import_export_neutral` (strings, optional; custom direction labels for the import/export display, for example `Grid import`, `Feed-in`, and `Self-sufficient`)
 - `energy_entities.<entity_key>.entity` (entity id, optional; cumulative kWh counter used like the gas meter: `1h`, `24h`, `1 month`, and `1 year` are calculated from Home Assistant history, while `Total` shows the current counter value)
+- `energy_entities.import_power.entity` / `energy_entities.export_power.entity` (entity ids, optional; cumulative grid import/export kWh counters used to calculate today's grid cost and feed-in revenue from local midnight)
+- `grid_import_price` / `grid_export_price` (numbers, optional; price or feed-in tariff per kWh, multiplied with today's import/export kWh counters)
+- `currency` (string, default: `€`; use a symbol such as `€` or an ISO code such as `EUR`)
+- `show_grid_daily_finance` (boolean, default: `true`; shows today's grid costs and feed-in revenue as compact labels on the import/export HUD and tile when counters and prices are configured)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)

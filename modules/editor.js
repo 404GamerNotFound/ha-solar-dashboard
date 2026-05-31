@@ -10,6 +10,7 @@ export function createDashboardEditorClass({
   adjacentWallboxPosition,
   assetUrl,
   clampConfigNumber,
+  createEditorBaseConfig,
   ensureTranslations,
   findMetricByKey,
   inverterPhaseVoltageEntityKeys,
@@ -37,29 +38,9 @@ export function createDashboardEditorClass({
 } = {}) {
   return class HaSolarDashboardCardEditor extends HTMLElement {
   setConfig(config) {
+    const baseConfig = createEditorBaseConfig?.({ floorplanLabel: this._floorplanFloorLabel(0) }) || {};
     this._config = {
-      entities: {},
-      units: {},
-      positions: {},
-      max_power_kw: {},
-      labels: {},
-      label_visibility: {},
-      energy_entities: {},
-      image_overlays: {},
-      custom_kpis: [],
-      environment_sensors: [],
-      show_floorplan: true,
-      floorplan: {
-        mode: "editor",
-        show_grid: true,
-        active_floor: "level_1",
-        floors: [{ id: "level_1", label: this._floorplanFloorLabel(0), image: "", rooms: [], walls: [], sensors: [] }],
-      },
-      large_consumers: [],
-      pv_roof_strings: [],
-      pv_roof_string_display: "sum",
-      inverters: [],
-      inverter_display: "sum",
+      ...baseConfig,
       ...config,
       image_overlays: {
         smoke: {
@@ -218,6 +199,8 @@ export function createDashboardEditorClass({
       "advisor_stale_sensor_critical_minutes",
       "grid_voltage_warning_threshold",
       "grid_voltage_critical_threshold",
+      "grid_import_price",
+      "grid_export_price",
     ]);
     const numericProps = new Set(["left", "top", "width", "height", "position", "columns", "x", "y", "x1", "y1", "x2", "y2", "font_size"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
@@ -1060,6 +1043,8 @@ export function createDashboardEditorClass({
       { path: "entities.import_export_power_voltage", ...voltageTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"]], include: [gridTerms, ...voltageTarget.include], threshold: 58 },
       { path: "entities.import_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "verbrauch netz", "from grid"]], include: [gridTerms, { terms: ["import", "bezug", "purchase", "verbrauch netz", "from grid"], weight: 32 }], exclude: ["export", "einspeis", "feed", "energy", "kwh"], threshold: 62 },
       { path: "entities.export_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["export", "einspeis", "feed", "feedin", "to grid"]], include: [gridTerms, { terms: ["export", "einspeis", "feed", "feedin", "to grid"], weight: 32 }], exclude: ["import", "bezug", "purchase", "energy", "kwh"], threshold: 62 },
+      { path: "energy_entities.import_power.entity", ...energyTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "from grid"]], block: ["power", "leistung"], include: [gridTerms, { terms: ["import", "bezug", "purchase", "from grid", "energy", "kwh", "total"], weight: 32 }], exclude: ["export", "einspeis", "feed"], threshold: 60 },
+      { path: "energy_entities.export_power.entity", ...energyTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["export", "einspeis", "feed", "feedin", "to grid"]], block: ["power", "leistung"], include: [gridTerms, { terms: ["export", "einspeis", "feed", "feedin", "to grid", "energy", "kwh", "total"], weight: 32 }], exclude: ["import", "bezug", "purchase"], threshold: 60 },
       { path: "entities.house_consumption_power", ...powerTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...powerTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 56 },
       { path: "entities.house_consumption_power_voltage", ...voltageTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...voltageTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox", ...voltageTarget.exclude], threshold: 58 },
       { path: "energy_entities.house_consumption_power.entity", ...energyTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], block: ["power", "leistung"], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 32 }, ...energyTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 58 },
@@ -1224,6 +1209,39 @@ export function createDashboardEditorClass({
     `;
   }
 
+  _renderImportExportFinanceInputs(metric) {
+    if (metric.key !== "import_export_power") return "";
+    const importCounter = this._energyEntityConfig({ key: "import_power" });
+    const exportCounter = this._energyEntityConfig({ key: "export_power" });
+    const importCounterValue = importCounter.entity || importCounter.counter || importCounter.kwh_entity || importCounter.kwh || importCounter.meter || "";
+    const exportCounterValue = exportCounter.entity || exportCounter.counter || exportCounter.kwh_entity || exportCounter.kwh || exportCounter.meter || "";
+    return `
+      <details class="pv-labels" open>
+        <summary>${this._escape(this._t("editor.importExportFinance", {}, "Import/export costs"))}</summary>
+        <div class="details-grid">
+          <label>${this._labelText(this._t("editor.importEnergyCounterEntity", {}, "Import energy counter"), this._t("editor.helpImportExportFinance", {}, "Use cumulative kWh counters. The card calculates today's amount from local midnight."))}
+            <input data-path="energy_entities.import_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.grid_import_energy_total" value="${this._escape(importCounterValue)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.exportEnergyCounterEntity", {}, "Export energy counter"), this._t("editor.helpImportExportFinance", {}, "Use cumulative kWh counters. The card calculates today's amount from local midnight."))}
+            <input data-path="energy_entities.export_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.grid_export_energy_total" value="${this._escape(exportCounterValue)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.gridImportPrice", {}, "Grid import price per kWh"))}
+            <input type="number" min="0" step="0.0001" data-path="grid_import_price" value="${this._escape(this._config.grid_import_price ?? "")}" />
+          </label>
+          <label>${this._escape(this._t("editor.gridExportPrice", {}, "Feed-in tariff per kWh"))}
+            <input type="number" min="0" step="0.0001" data-path="grid_export_price" value="${this._escape(this._config.grid_export_price ?? "")}" />
+          </label>
+          <label>${this._escape(this._t("editor.currency", {}, "Currency"))}
+            <input data-path="currency" placeholder="€" value="${this._escape(this._config.currency || "€")}" />
+          </label>
+        </div>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_grid_daily_finance" ${this._config.show_grid_daily_finance !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridDailyFinance", {}, "Show today's costs and revenue labels"))}</label>
+        </div>
+      </details>
+    `;
+  }
+
   _labelVisibility(key) {
     const configured = this._config.label_visibility?.[key] || {};
     return {
@@ -1268,6 +1286,7 @@ export function createDashboardEditorClass({
     if (metric.unit !== "power") return "";
     if (metric.key === "pv_roof_power") return "";
     if (metric.key === "inverter_power") return "";
+    if (metric.key === "import_export_power") return "";
     const config = this._energyEntityConfig(metric);
     const counterValue = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
 
@@ -1832,6 +1851,7 @@ export function createDashboardEditorClass({
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
         ${this._renderLabelInput(metric)}
         ${this._renderImportExportLabelInputs(metric)}
+        ${this._renderImportExportFinanceInputs(metric)}
         ${this._renderEntityInput(metric)}
         ${this._renderVoltageEntityInput(metric)}
         ${this._renderPvLabelInputs(metric)}

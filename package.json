@@ -5,6 +5,7 @@
   "description": "Validation checks for the HA Solar Dashboard HACS dashboard card.",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "i18n:add-key": "node scripts/add-i18n-key.mjs",
     "optimize-images": "node scripts/generate-webp.mjs",
     "test": "node tests/validate-hacs-package.mjs && npm run test:logic",
     "test:logic": "NODE_OPTIONS=--no-warnings node tests/domain-logic.mjs"

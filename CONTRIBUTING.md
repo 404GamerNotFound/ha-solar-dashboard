@@ -32,7 +32,11 @@ This currently runs the HACS/package validation script in `tests/validate-hacs-p
 
 ## Working on the Card
 
-The main card source is `ha-solar-dashboard.js`. The packaged HACS file is `dist/ha-solar-dashboard.js`.
+The maintainable source lives in `src/`, `modules/`, `styles/`, `i18n/`, and `images/`. The root files `ha-solar-dashboard.js` and `ha-solar-dashboard-editor.js` are generated HACS bundles; update them with `npm run build` after changing source files. `dist/ha-solar-dashboard.js` is only a small compatibility loader.
+
+Shared configuration defaults live in `modules/config-schema.js`. History cache lifecycle and counter-history calculations live in `modules/history-service.js`; use those helpers instead of adding ad hoc cache maps or Home Assistant history parsing to the card class. Domain logic that can be tested without Home Assistant should live in a focused module under `modules/`, for example grid flow and grid finance helpers, with coverage in `tests/domain-logic.mjs`.
+
+For new translation keys, prefer `npm run i18n:add-key -- <key> <en> <de> <es> <fr> <pl>` so all supported dictionaries stay aligned before running `npm test`.
 
 When changing user-facing behavior, please check:
 

@@ -39,18 +39,23 @@ function bundledI18nSource() {
   return `const I18N = ${JSON.stringify(dictionaries, null, 2)};`;
 }
 
-function inlineModuleImport(source, modulePath) {
-  const moduleName = modulePath.split("/").pop();
-  const moduleSource = stripModuleExports(readText(modulePath)).trim();
-  const pattern = new RegExp(
-    `^import\\s+\\{[\\s\\S]*?\\}\\s+from\\s+"(?:\\.\\.\\/|\\.\\/)modules\\/${moduleName.replace(".", "\\.")}";\\n+`,
-    "m",
-  );
-  const bundled = source.replace(pattern, `${moduleSource}\n\n`);
-  if (bundled === source) {
-    throw new Error(`Could not inline ${modulePath} import into HACS entry`);
-  }
-  return bundled;
+function normalizeLocalModulePath(importPath) {
+  const normalized = importPath.replace(/\\/g, "/");
+  if (normalized.startsWith("../modules/")) return normalized.slice(3);
+  if (normalized.startsWith("./modules/")) return normalized.slice(2);
+  return "";
+}
+
+function inlineLocalModuleImports(source) {
+  const inlinedModules = new Set();
+  const importPattern = /^import\s+\{[\s\S]*?\}\s+from\s+"((?:\.\.\/|\.\/)modules\/[^"]+\.js)";\n*/gm;
+  return source.replace(importPattern, (match, importPath) => {
+    const modulePath = normalizeLocalModulePath(importPath);
+    if (!modulePath) return match;
+    if (inlinedModules.has(modulePath)) return "";
+    inlinedModules.add(modulePath);
+    return `${stripModuleExports(readText(modulePath)).trim()}\n\n`;
+  });
 }
 
 function bootstrapPrelude() {
@@ -77,30 +82,7 @@ globalThis.__HA_SOLAR_DASHBOARD_BUILD__ = HA_SOLAR_DASHBOARD_BUILD;
 
 function buildEntry() {
   const cardSource = readText("src/ha-solar-dashboard.js");
-  let bundled = cardSource;
-  bundled = inlineModuleImport(bundled, "modules/advisor.js");
-  bundled = inlineModuleImport(bundled, "modules/advisor-engine.js");
-  bundled = inlineModuleImport(bundled, "modules/advisor-view.js");
-  bundled = inlineModuleImport(bundled, "modules/formatters.js");
-  bundled = inlineModuleImport(bundled, "modules/pv-strings.js");
-  bundled = inlineModuleImport(bundled, "modules/grid-flow.js");
-  bundled = inlineModuleImport(bundled, "modules/html.js");
-  bundled = inlineModuleImport(bundled, "modules/history-queue.js");
-  bundled = inlineModuleImport(bundled, "modules/charts.js");
-  bundled = inlineModuleImport(bundled, "modules/views.js");
-  bundled = inlineModuleImport(bundled, "modules/config-normalizers.js");
-  bundled = inlineModuleImport(bundled, "modules/editor.js");
-  bundled = inlineModuleImport(bundled, "modules/weather-images.js");
-  bundled = inlineModuleImport(bundled, "modules/tile-renderer.js");
-  bundled = inlineModuleImport(bundled, "modules/floorplan-renderer.js");
-  bundled = inlineModuleImport(bundled, "modules/overlay-renderer.js");
-  bundled = inlineModuleImport(bundled, "modules/chart-renderer.js");
-  bundled = inlineModuleImport(bundled, "modules/records.js");
-  bundled = inlineModuleImport(bundled, "modules/metrics.js");
-  bundled = inlineModuleImport(bundled, "modules/editor-loader.js");
-  bundled = inlineModuleImport(bundled, "modules/large-consumers.js");
-  bundled = inlineModuleImport(bundled, "modules/wallbox.js");
-  bundled = inlineModuleImport(bundled, "modules/house-variants.js");
+  let bundled = inlineLocalModuleImports(cardSource);
 
   bundled = bundled
     .replace("const I18N = {};", bundledI18nSource())
@@ -124,16 +106,7 @@ function buildEntry() {
 
 function buildEditorEntry() {
   const editorSource = readText("src/ha-solar-dashboard-editor.js");
-  let bundled = editorSource;
-  bundled = inlineModuleImport(bundled, "modules/advisor.js");
-  bundled = inlineModuleImport(bundled, "modules/config-normalizers.js");
-  bundled = inlineModuleImport(bundled, "modules/editor.js");
-  bundled = inlineModuleImport(bundled, "modules/house-variants.js");
-  bundled = inlineModuleImport(bundled, "modules/large-consumers.js");
-  bundled = inlineModuleImport(bundled, "modules/metrics.js");
-  bundled = inlineModuleImport(bundled, "modules/pv-strings.js");
-  bundled = inlineModuleImport(bundled, "modules/views.js");
-  bundled = inlineModuleImport(bundled, "modules/wallbox.js");
+  let bundled = inlineLocalModuleImports(editorSource);
 
   bundled = bundled
     .replace("const I18N = {};", bundledI18nSource())

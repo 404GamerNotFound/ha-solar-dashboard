@@ -162,8 +162,8 @@ function validatePackage() {
   }
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");
-  if (rootSource.includes('from "./modules/') || rootSource.includes("import {")) fail("ha-solar-dashboard.js must be a bundled entry without static module imports");
-  if (editorBundleSource.includes('from "./modules/') || editorBundleSource.includes("import {")) fail("ha-solar-dashboard-editor.js must be a bundled entry without static module imports");
+  if (/^\s*import\s+/m.test(rootSource)) fail("ha-solar-dashboard.js must be a bundled entry without static module imports");
+  if (/^\s*import\s+/m.test(editorBundleSource)) fail("ha-solar-dashboard-editor.js must be a bundled entry without static module imports");
   if (rootSource.includes("import.meta")) fail("ha-solar-dashboard.js must not rely on import.meta so it can survive legacy resource loading");
   if (editorBundleSource.includes("import.meta")) fail("ha-solar-dashboard-editor.js must not rely on import.meta so it can survive legacy resource loading");
   if (rootSource.includes('assetUrl("styles/')) fail("ha-solar-dashboard.js must inline critical CSS for direct HACS loads");
@@ -171,11 +171,15 @@ function validatePackage() {
   if (!rootSource.includes('"de": {')) fail("ha-solar-dashboard.js must inline translation dictionaries for direct HACS loads");
   if (!editorBundleSource.includes('"de": {')) fail("ha-solar-dashboard-editor.js must inline translation dictionaries for direct HACS loads");
   if (!rootSource.includes("function createDashboardEditorClass")) fail("ha-solar-dashboard.js must inline the full editor implementation for single-file HACS installs");
+  if (!rootSource.includes("function createBaseCardConfig")) fail("ha-solar-dashboard.js must inline the shared config schema");
+  if (!rootSource.includes("function formatMoneyValue")) fail("ha-solar-dashboard.js must inline grid finance helpers");
+  if (!rootSource.includes("function createHistoryServiceMethods")) fail("ha-solar-dashboard.js must inline shared history service helpers");
   if (!rootSource.includes("upgradeCustomElement(CARD_EDITOR_PANEL_TYPE, HaSolarDashboardCardEditorPanel)")) {
     fail("ha-solar-dashboard.js must register the embedded editor panel before the lazy editor wrapper");
   }
   if (!rootSource.includes("ha-solar-dashboard-editor.js")) fail("ha-solar-dashboard.js must keep the standalone editor bundle fallback reference");
   if (!editorBundleSource.includes("function createDashboardEditorClass")) fail("ha-solar-dashboard-editor.js must contain the full editor implementation");
+  if (!editorBundleSource.includes("function createEditorBaseConfig")) fail("ha-solar-dashboard-editor.js must inline the shared editor config schema");
 
   const configuredImages = [...packageSource.matchAll(/\b(?:file|dayFile):\s*"([^"]+)"/g)].map((match) => match[1]);
   const fallbackImages = [...packageSource.matchAll(/fallbackFiles:\s*\[([^\]]*)\]/g)]

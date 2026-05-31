@@ -8,12 +8,27 @@ import {
   normalizeEnergyRange,
 } from "../modules/config-normalizers.js";
 import {
+  createBaseCardConfig,
+  createEditorBaseConfig,
+  createStubCardConfig,
+} from "../modules/config-schema.js";
+import {
   formatEnergyValue,
   formatPowerValue,
   formatValue,
   isEnergyUnit,
   valueAsWatts,
 } from "../modules/formatters.js";
+import {
+  formatMoneyValue,
+  gridExportPrice,
+  gridFinanceItems,
+  gridFinanceLabel,
+  gridImportPrice,
+  localDateKey,
+  normalizeGridPrice,
+  todayStartDate,
+} from "../modules/grid-finance.js";
 import {
   formatGridStatusReading,
   gridSignedFlowInfo,
@@ -25,6 +40,15 @@ import {
   createHistoryQueueMethods,
   normalizeHistoryRequestConcurrency,
 } from "../modules/history-queue.js";
+import {
+  MINUTE_MS,
+  cacheBucket,
+  cacheBucketMsForMinutes,
+  counterConsumptionFromStates,
+  counterHistoryApiPath,
+  counterHistoryStatesFromEntries,
+  setCacheEntry,
+} from "../modules/history-service.js";
 import {
   imageFormatFiles,
   variantImage,
@@ -89,6 +113,47 @@ assert.equal(normalizeEnergyRange("lifetime"), "total");
 assert.equal(normalizeEnergyRange("unknown"), undefined);
 assert.equal(clampConfigNumber("12", 3, 1, 8), 8);
 assert.equal(clampConfigNumber("bad", 3, 1, 8), 3);
+
+const baseConfig = createBaseCardConfig({
+  advisorDefaults: {
+    surplusThreshold: 111,
+    importThreshold: 222,
+    highLoadThreshold: 333,
+    evSurplusThreshold: 444,
+    maxSuggestions: 5,
+    staleSensorWarningMinutes: 6,
+    staleSensorCriticalMinutes: 1440,
+  },
+  defaultHistoryRequestConcurrency: 4,
+  recordsDefaultDays: 14,
+});
+assert.equal(baseConfig.grid_import_price, "");
+assert.equal(baseConfig.currency, "€");
+assert.equal(baseConfig.records_range, "14d");
+assert.equal(baseConfig.advisor_surplus_threshold, 111);
+assert.equal(baseConfig.history_request_concurrency, 4);
+assert.equal(createEditorBaseConfig({ floorplanLabel: "Etage 1" }).floorplan.floors[0].label, "Etage 1");
+const stubConfig = createStubCardConfig({ cardType: "demo-card" });
+assert.equal(stubConfig.type, "custom:demo-card");
+assert.equal(stubConfig.visible_boxes.import_export_power, true);
+assert.equal(stubConfig.entities.import_export_power, "sensor.grid_power");
+
+assert.equal(normalizeGridPrice("0,32"), 0.32);
+assert.equal(normalizeGridPrice(""), "");
+assert.equal(gridImportPrice({ grid_import_price: "", import_price: "0.31" }), 0.31);
+assert.equal(gridExportPrice({ feed_in_tariff: "0.082" }), 0.082);
+assert.equal(formatMoneyValue(3.5, { currency: "€", language: "de" }), "3,50 €");
+assert.equal(localDateKey(new Date(2026, 4, 31, 12)), "2026-05-31");
+assert.equal(todayStartDate(new Date(2026, 4, 31, 12, 30)).getHours(), 0);
+const financeItems = gridFinanceItems({
+  config: {},
+  importPrice: 0.32,
+  exportPrice: "",
+  importInfo: { amount: 4.25 },
+  translate: (_key, _values, fallback) => fallback,
+});
+assert.equal(financeItems.length, 1);
+assert.equal(gridFinanceLabel(financeItems[0], { formatMoney: (value) => `${value.toFixed(2)} EUR` }), "Today cost: 1.36 EUR");
 
 const signedFlow = gridSignedFlowInfo({
   entityId: "sensor.grid_power",
@@ -166,6 +231,28 @@ assert.deepEqual(sortedAdvisorItems.map((item) => item.id), [
 assert.equal(normalizeHistoryRequestConcurrency(undefined), 2);
 assert.equal(normalizeHistoryRequestConcurrency(0), 1);
 assert.equal(normalizeHistoryRequestConcurrency(99), 6);
+assert.equal(cacheBucketMsForMinutes(30), MINUTE_MS);
+assert.equal(cacheBucketMsForMinutes(24 * 60), 5 * MINUTE_MS);
+assert.equal(cacheBucketMsForMinutes(31 * 24 * 60), 30 * MINUTE_MS);
+assert.equal(cacheBucketMsForMinutes(365 * 24 * 60), 6 * 60 * MINUTE_MS);
+assert.equal(cacheBucket(60_000, 123_456), 2);
+const cappedCache = new Map();
+setCacheEntry(cappedCache, "a", 1, 2);
+setCacheEntry(cappedCache, "b", 2, 2);
+setCacheEntry(cappedCache, "c", 3, 2);
+assert.deepEqual([...cappedCache.keys()], ["b", "c"]);
+assert.equal(
+  counterHistoryApiPath("sensor.grid import", new Date("2026-05-31T00:00:00.000Z"), new Date("2026-05-31T12:00:00.000Z")),
+  "history/period/2026-05-31T00:00:00.000Z?filter_entity_id=sensor.grid%20import&end_time=2026-05-31T12%3A00%3A00.000Z&significant_changes_only=0",
+);
+const counterStates = counterHistoryStatesFromEntries([
+  { state: "12.75", attributes: { unit_of_measurement: "kWh" }, last_changed: "2026-05-31T00:30:00.000Z" },
+  { state: "12.5", attributes: { unit_of_measurement: "kWh" }, last_changed: "2026-05-31T00:00:00.000Z" },
+  { state: "unknown", last_changed: "2026-05-31T01:00:00.000Z" },
+], { numericState: Number, defaultUnit: "kWh" });
+assert.deepEqual(counterStates.map((state) => state.value), [12.5, 12.75]);
+assert.deepEqual(counterConsumptionFromStates(counterStates, { currentValue: 13, defaultUnit: "kWh" }), { amount: 0.5, unit: "kWh" });
+assert.deepEqual(counterConsumptionFromStates(counterStates, { currentValue: 12, defaultUnit: "kWh" }), { amount: 0, unit: "kWh" });
 
 const dedupeQueueHost = { config: { history_request_concurrency: 2 } };
 Object.assign(dedupeQueueHost, createHistoryQueueMethods());

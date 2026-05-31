@@ -247,7 +247,7 @@ export function createRecordsDashboardMethods({
 
     _recordPointsFromStates(source, states = []) {
       return states
-        .map((entry) => source.type === "energy"
+        .map((entry) => (source.type === "energy" || source.type === "money")
           ? this._recordEnergyPoint(entry, source.entityId)
           : source.type === "counter"
             ? this._recordCounterPoint(entry, source.entityId, source.unit)
@@ -294,6 +294,26 @@ export function createRecordsDashboardMethods({
             metric: { key: `inverter_${entry.id || index}_power`, chartEntityId: entry.powerEntityId, unit: "power", color: "blue" },
           }))
         : [];
+      const gridFinanceSources = [
+        {
+          key: "grid_import_cost",
+          label: this._t("records.gridImport", {}, "Grid import"),
+          entityId: typeof this._gridEnergyEntityId === "function" ? this._gridEnergyEntityId("import") : "",
+          type: "money",
+          group: "grid",
+          recordKind: "importCost",
+          price: typeof this._gridImportPrice === "function" ? this._gridImportPrice() : "",
+        },
+        {
+          key: "grid_export_revenue",
+          label: this._t("records.gridExport", {}, "Grid export"),
+          entityId: typeof this._gridEnergyEntityId === "function" ? this._gridEnergyEntityId("export") : "",
+          type: "money",
+          group: "grid",
+          recordKind: "exportRevenue",
+          price: typeof this._gridExportPrice === "function" ? this._gridExportPrice() : "",
+        },
+      ].filter((source) => source.entityId && source.price !== "");
       const pvEnergySources = pvStrings
         .filter((entry) => entry.energyEntityId)
         .map((entry) => ({
@@ -408,7 +428,7 @@ export function createRecordsDashboardMethods({
         })
         .filter(Boolean);
       const seen = new Set();
-      return [...pvEnergySources, ...pvPowerSources, ...inverterPowerSources, ...metricSources].filter((source) => {
+      return [...gridFinanceSources, ...pvEnergySources, ...pvPowerSources, ...inverterPowerSources, ...metricSources].filter((source) => {
         const key = `${source.type}:${source.entityId}`;
         if (!source.entityId || seen.has(key)) return false;
         seen.add(key);
@@ -487,6 +507,7 @@ export function createRecordsDashboardMethods({
         peaks: [],
         wallbox: [],
         counters: [],
+        finance: [],
       };
       const pushCard = (section, card) => {
         if (!card || !card.value) return;
@@ -527,6 +548,24 @@ export function createRecordsDashboardMethods({
               value: this._formatRecordCounterValue(bestDay.amount, source.unit),
               sortValue: bestDay.amount,
               meta: this._recordDateLabel(bestDay.day),
+              entityId: source.entityId,
+            });
+          }
+        }
+        if (source.type === "money") {
+          const bestDay = dailyEnergyRecordsFn(state.points)[0];
+          const price = Number(source.price);
+          if (bestDay && Number.isFinite(price)) {
+            const value = bestDay.amount * price;
+            const titleKey = source.recordKind === "exportRevenue" ? "records.gridBestRevenue" : "records.gridHighestCost";
+            const fallback = source.recordKind === "exportRevenue"
+              ? `${source.label}: highest feed-in revenue`
+              : `${source.label}: highest import cost`;
+            pushCard("finance", {
+              title: this._t(titleKey, { name: source.label }, fallback),
+              value: typeof this._formatMoney === "function" ? this._formatMoney(value) : String(value.toFixed(2)),
+              sortValue: value,
+              meta: `${this._recordDateLabel(bestDay.day)} · ${this._formatEnergyValue(bestDay.amount, "kWh", "kWh")}`,
               entityId: source.entityId,
             });
           }
@@ -644,6 +683,7 @@ export function createRecordsDashboardMethods({
           { key: "pvEnergy", label: this._t("records.sectionPvEnergy", {}, "Best PV yield per string"), items: sortByValue(cards.pvEnergy) },
           { key: "solarHours", label: this._t("records.sectionSolarHours", {}, "Longest solar hours"), items: sortByValue(cards.solarHours) },
           { key: "wallbox", label: this._t("records.sectionWallbox", {}, "Wallbox records"), items: sortByValue(cards.wallbox) },
+          { key: "finance", label: this._t("records.sectionFinance", {}, "Costs and revenue"), items: sortByValue(cards.finance) },
           { key: "counters", label: this._t("records.sectionCounters", {}, "Meter records"), items: sortByValue(cards.counters) },
           { key: "peaks", label: this._t("records.sectionPeaks", {}, "Power peaks"), items: sortByValue(cards.peaks).slice(0, 8) },
         ].filter((section) => section.items.length > 0),
@@ -666,6 +706,7 @@ export function createRecordsDashboardMethods({
     _recordLoadingPurpose(source) {
       if (source.type === "energy" && source.group === "pv") return this._t("records.loadingPurposePvEnergy", {}, "PV daily yield");
       if (source.type === "energy" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxEnergy", {}, "Wallbox charged energy");
+      if (source.type === "money") return this._t("records.loadingPurposeGridFinance", {}, "Grid costs and revenue");
       if (source.type === "counter") return this._t("records.loadingPurposeCounter", {}, "Meter daily increase");
       if (source.type === "boolean" && source.recordKind === "chargingEnabled") return this._t("records.loadingPurposeWallboxChargingEnabled", {}, "Wallbox charging enabled time");
       if (source.type === "boolean" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxPluggedIn", {}, "Wallbox plugged-in time");
@@ -756,8 +797,12 @@ export function createRecordsDashboardMethods({
           event.stopPropagation();
           const rangeKey = normalizeRecordsRange(event.currentTarget.dataset.recordRange, rangeOptions);
           this._recordsRange = rangeKey || normalizeRecordsRange(defaultDays, rangeOptions);
-          this._recordsLoading?.clear();
-          this._clearPendingHistoryRequests?.("records:");
+          if (typeof this._clearRecordsHistoryRequests === "function") {
+            this._clearRecordsHistoryRequests();
+          } else {
+            this._recordsLoading?.clear();
+            this._clearPendingHistoryRequests?.("records:");
+          }
           this._renderCardShell(this._layoutState());
         });
       });

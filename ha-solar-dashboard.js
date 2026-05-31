@@ -1950,6 +1950,99 @@ function formatImportExportStatus(status = {}) {
   return `${status.label}: ${status.value}`;
 }
 
+function normalizeGridPrice(value) {
+  if (value === undefined || value === null || String(value).trim() === "") return "";
+  const number = Number(String(value).trim().replace(",", "."));
+  return Number.isFinite(number) ? Math.max(0, number) : "";
+}
+
+function firstConfiguredPrice(values = []) {
+  return values.map((value) => normalizeGridPrice(value)).find((value) => value !== "") ?? "";
+}
+
+function gridImportPrice(config = {}) {
+  return firstConfiguredPrice([
+    config.grid_import_price,
+    config.import_price,
+    config.electricity_import_price,
+    config.grid_import_cost,
+  ]);
+}
+
+function gridExportPrice(config = {}) {
+  return firstConfiguredPrice([
+    config.grid_export_price,
+    config.export_price,
+    config.feed_in_tariff,
+    config.einspeiseverguetung,
+  ]);
+}
+
+function gridCurrency(config = {}) {
+  return String(config.currency || config.grid_currency || "€").trim() || "€";
+}
+
+function formatMoneyValue(value, {
+  currency = "€",
+  language = "en",
+} = {}) {
+  if (!Number.isFinite(value)) return "—";
+  if (/^[A-Z]{3}$/.test(currency)) {
+    try {
+      return new Intl.NumberFormat(language, { style: "currency", currency }).format(value);
+    } catch (_err) {
+      // Fall back to symbol formatting below.
+    }
+  }
+  const formatted = value.toLocaleString(language, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${formatted} ${currency}`;
+}
+
+function todayStartDate(now = new Date()) {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function localDateKey(date = new Date()) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function gridFinanceItems({
+  config = {},
+  importPrice = gridImportPrice(config),
+  exportPrice = gridExportPrice(config),
+  importInfo,
+  exportInfo,
+  translate = (_key, _replacements, fallback) => fallback,
+} = {}) {
+  if (config.show_grid_daily_finance === false) return [];
+  return [
+    {
+      kind: "import",
+      price: importPrice,
+      info: importInfo,
+      label: translate("gridFinance.importCost", {}, "Today cost"),
+    },
+    {
+      kind: "export",
+      price: exportPrice,
+      info: exportInfo,
+      label: translate("gridFinance.exportRevenue", {}, "Today revenue"),
+    },
+  ].filter((item) => item.price !== "" && item.info);
+}
+
+function gridFinanceLabel(item, { formatMoney = formatMoneyValue } = {}) {
+  if (!item) return "";
+  if (item.info?.loading) return `${item.label}: …`;
+  if (item.info?.error || !Number.isFinite(item.info?.amount)) return `${item.label}: —`;
+  return `${item.label}: ${formatMoney(item.info.amount * item.price)}`;
+}
+
 const HTML_RAW = Symbol("htmlRaw");
 const VOID_ELEMENTS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
 
@@ -2121,6 +2214,150 @@ function createHistoryQueueMethods({
         job.reject?.(new Error("History request cancelled"));
       }
       this._historyRequestQueue = keep;
+    },
+  };
+}
+
+const MINUTE_MS = 60 * 1000;
+const MAX_HISTORY_CACHE_ENTRIES = 48;
+const MAX_COUNTER_CACHE_ENTRIES = 72;
+
+function cacheBucketMsForMinutes(minutes) {
+  if (!Number.isFinite(minutes) || minutes <= 60) return MINUTE_MS;
+  if (minutes <= 24 * 60) return 5 * MINUTE_MS;
+  if (minutes <= 31 * 24 * 60) return 30 * MINUTE_MS;
+  return 6 * 60 * MINUTE_MS;
+}
+
+function cacheBucket(bucketMs = MINUTE_MS, now = Date.now()) {
+  return Math.floor(now / bucketMs);
+}
+
+function setCacheEntry(cache, key, value, maxEntries) {
+  if (!cache) return;
+  if (cache.has(key)) cache.delete(key);
+  cache.set(key, value);
+  while (cache.size > maxEntries) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey === undefined) break;
+    cache.delete(oldestKey);
+  }
+}
+
+function counterHistoryApiPath(entityId, start, end = new Date()) {
+  const query = [
+    `filter_entity_id=${encodeURIComponent(entityId)}`,
+    `end_time=${encodeURIComponent(end.toISOString())}`,
+    "significant_changes_only=0",
+  ].join("&");
+  return `history/period/${start.toISOString()}?${query}`;
+}
+
+function counterHistoryStatesFromEntries(entries = [], {
+  entityId = "",
+  defaultUnit = "m³",
+  getEntityUnit = () => "",
+  numericState = Number,
+} = {}) {
+  return entries
+    .map((entry) => ({
+      value: numericState(entry?.state ?? entry?.s),
+      unit: entry?.attributes?.unit_of_measurement || getEntityUnit(entityId) || defaultUnit,
+      time: Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || ""),
+    }))
+    .filter((entry) => Number.isFinite(entry.value) && Number.isFinite(entry.time))
+    .sort((a, b) => a.time - b.time);
+}
+
+function counterConsumptionFromStates(states = [], {
+  currentValue,
+  currentUnit = "",
+  defaultUnit = "m³",
+} = {}) {
+  const latestState = states.length > 0 ? states[states.length - 1] : undefined;
+  const endValue = Number.isFinite(currentValue) ? currentValue : latestState?.value;
+  const startValue = states[0]?.value;
+  const amount = Number.isFinite(endValue) && Number.isFinite(startValue)
+    ? Math.max(0, endValue - startValue)
+    : undefined;
+  return { amount, unit: latestState?.unit || currentUnit || defaultUnit };
+}
+
+function createHistoryServiceMethods({
+  numericState = Number,
+} = {}) {
+  return {
+    _ensureHistoryServiceState() {
+      this._historyCache = this._historyCache || new Map();
+      this._chartDashboardLoading = this._chartDashboardLoading || new Set();
+      this._recordsCache = this._recordsCache || new Map();
+      this._recordsRawHistoryCache = this._recordsRawHistoryCache || new Map();
+      this._recordsLoading = this._recordsLoading || new Set();
+      this._overlayConsumptionCache = this._overlayConsumptionCache || new Map();
+      this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();
+      this._energyRangeCache = this._energyRangeCache || new Map();
+      this._energyRangeLoading = this._energyRangeLoading || new Set();
+    },
+
+    _clearHistoryLoadingState() {
+      this._energyRangeLoading?.clear();
+      this._overlayConsumptionLoading?.clear();
+      this._chartDashboardLoading?.clear();
+      this._recordsLoading?.clear();
+    },
+
+    _invalidateHistoryServiceState({ pendingPrefix = "" } = {}) {
+      this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
+      this._clearPendingHistoryRequests?.(pendingPrefix);
+      this._clearHistoryLoadingState();
+    },
+
+    _clearRecordsHistoryRequests() {
+      this._recordsLoading?.clear();
+      this._clearPendingHistoryRequests?.("records:");
+    },
+
+    _cacheBucketMsForMinutes(minutes) {
+      return cacheBucketMsForMinutes(minutes);
+    },
+
+    _cacheBucket(bucketMs = MINUTE_MS) {
+      return cacheBucket(bucketMs);
+    },
+
+    _setCacheEntry(cache, key, value, maxEntries) {
+      setCacheEntry(cache, key, value, maxEntries);
+    },
+
+    _isActiveRequest(token) {
+      return token === (this._asyncRequestToken || 0);
+    },
+
+    _updateReadingsIfReady() {
+      if (!this.config || !this.shadowRoot || !this._isCardConnected) return;
+      this._updateReadings();
+    },
+
+    async _loadCounterConsumption(entityId, minutes, defaultUnit = "m³") {
+      const end = new Date();
+      const start = new Date(end.getTime() - minutes * MINUTE_MS);
+      return this._loadCounterConsumptionSince(entityId, start, defaultUnit, end);
+    },
+
+    async _loadCounterConsumptionSince(entityId, start, defaultUnit = "m³", end = new Date()) {
+      const history = await this._hass.callApi("GET", counterHistoryApiPath(entityId, start, end));
+      const states = counterHistoryStatesFromEntries(Array.isArray(history?.[0]) ? history[0] : [], {
+        entityId,
+        defaultUnit,
+        getEntityUnit: (id) => this._getEntityUnit(id),
+        numericState,
+      });
+      const currentValue = numericState(this._getEntityValue(entityId, undefined));
+      return counterConsumptionFromStates(states, {
+        currentValue,
+        currentUnit: this._getEntityUnit(entityId),
+        defaultUnit,
+      });
     },
   };
 }
@@ -2602,6 +2839,240 @@ function createConfigNormalizerMethods({
   };
 }
 
+const DEFAULT_CURRENCY = "€";
+
+const DEFAULT_GRID_FINANCE_CONFIG = Object.freeze({
+  grid_import_price: "",
+  grid_export_price: "",
+  currency: DEFAULT_CURRENCY,
+  show_grid_daily_finance: true,
+});
+
+function createDefaultFloorplan(label = "Level 1") {
+  return {
+    mode: "editor",
+    show_grid: true,
+    active_floor: "level_1",
+    floors: [{ id: "level_1", label, image: "", rooms: [], walls: [], sensors: [] }],
+  };
+}
+
+function createDefaultImageOverlays() {
+  return {
+    smoke: { enabled: false, entity: "", period: "1h" },
+    heatpump: { enabled: false, entity: "" },
+  };
+}
+
+function createDefaultUnits() {
+  return {
+    power: "auto",
+    battery: "%",
+    volume: "m³",
+  };
+}
+
+function createStubUnits() {
+  return {
+    ...createDefaultUnits(),
+    water_meter: "m³",
+  };
+}
+
+function createDefaultMaxPowerKw() {
+  return {
+    pv_roof_power: 10,
+    pv_shed_power: 3,
+    pv_total_power: 13,
+    inverter_power: 10,
+    wallbox_power: 11,
+    wallbox2_power: 11,
+    import_export_power: 10,
+  };
+}
+
+function createDefaultVisibleBoxes() {
+  return {
+    pv_roof_power: true,
+    pv_shed_power: true,
+    battery_level: true,
+    inverter_power: true,
+    wallbox_power: true,
+    wallbox2_power: false,
+    water_meter: false,
+    import_export_power: true,
+  };
+}
+
+function createStubEntities() {
+  return {
+    pv_roof_power: "sensor.pv_roof_power",
+    pv_roof_power_today_energy: "",
+    pv_roof_power_forecast_today: "",
+    pv_roof_power_peak_today: "",
+    pv_shed_power: "sensor.pv_shed_power",
+    pv_shed_power_today_energy: "",
+    pv_shed_power_forecast_today: "",
+    pv_shed_power_peak_today: "",
+    battery_level: "sensor.battery_level",
+    battery_min_soc: "",
+    battery_max_soc: "",
+    battery_flow_power: "",
+    battery_flow_power_voltage: "",
+    battery_charge_power: "",
+    battery_discharge_power: "",
+    battery_temperature: "",
+    battery_cycles_today: "",
+    inverter_power: "sensor.wechselrichter_power",
+    inverter_power_voltage: "",
+    inverter_power_voltage_l1: "",
+    inverter_power_voltage_l2: "",
+    inverter_power_voltage_l3: "",
+    wallbox_power: "sensor.wallbox_power",
+    wallbox_power_voltage: "",
+    wallbox_phase: "",
+    wallbox_phase_action: "",
+    wallbox_phase_remaining: "",
+    wallbox_soc: "",
+    wallbox_max_soc: "",
+    wallbox_connected: "",
+    wallbox_charging_enabled: "",
+    wallbox_remaining_time: "",
+    wallbox2_power: "",
+    wallbox2_power_voltage: "",
+    wallbox2_phase: "",
+    wallbox2_phase_action: "",
+    wallbox2_phase_remaining: "",
+    wallbox2_soc: "",
+    wallbox2_max_soc: "",
+    wallbox2_connected: "",
+    wallbox2_charging_enabled: "",
+    wallbox2_remaining_time: "",
+    water_meter: "",
+    electricity_price: "",
+    pv_total_power: "sensor.pv_total_power",
+    pv_total_power_voltage: "",
+    pv_total_power_today_energy: "",
+    pv_total_power_forecast_today: "",
+    pv_total_power_peak_today: "",
+    import_export_power: "sensor.grid_power",
+    import_export_power_voltage: "",
+    import_power: "",
+    export_power: "",
+    pv_roof_power_voltage: "",
+    pv_shed_power_voltage: "",
+    house_consumption_power_voltage: "",
+  };
+}
+
+function createBaseCardConfig({
+  advisorDefaults,
+  defaultHistoryRequestConcurrency,
+  recordsDefaultDays,
+} = {}) {
+  return {
+    title: "Energy Flow",
+    house: "single_family_home",
+    view_mode: "house",
+    show_title: true,
+    show_view_selector: true,
+    show_house_selector: true,
+    show_energy_range_selector: false,
+    show_metric_tiles: true,
+    show_environment_sensors: true,
+    show_large_consumers: true,
+    show_floorplan: true,
+    show_power_flows: false,
+    show_status_label: true,
+    show_weather_status: false,
+    show_grid_status_tile: true,
+    hud_box_opacity: 0.65,
+    hud_box_scale: 1,
+    battery_low_threshold: 20,
+    grid_neutral_threshold: 25,
+    grid_voltage_warning_threshold: 245,
+    grid_voltage_critical_threshold: 253,
+    ...DEFAULT_GRID_FINANCE_CONFIG,
+    advisor_surplus_threshold: advisorDefaults?.surplusThreshold ?? 250,
+    advisor_import_threshold: advisorDefaults?.importThreshold ?? 250,
+    advisor_high_load_threshold: advisorDefaults?.highLoadThreshold ?? 3000,
+    advisor_ev_surplus_threshold: advisorDefaults?.evSurplusThreshold ?? 1500,
+    advisor_max_suggestions: advisorDefaults?.maxSuggestions ?? 8,
+    advisor_stale_sensor_warning_minutes: advisorDefaults?.staleSensorWarningMinutes ?? 30,
+    advisor_stale_sensor_critical_minutes: advisorDefaults?.staleSensorCriticalMinutes ?? 1440,
+    chart_hours: 24,
+    records_range: `${recordsDefaultDays ?? 7}d`,
+    history_request_concurrency: defaultHistoryRequestConcurrency ?? 2,
+    daylight_entity: "sun.sun",
+    weather_entity: "",
+    dynamic_tile_colors: true,
+    pv_roof_string_display: "sum",
+    inverter_display: "sum",
+    power_display_mode: "auto_kw",
+    power_decimals: 2,
+    energy_range: "live",
+    units: createDefaultUnits(),
+    entities: {},
+    positions: {},
+    visible_boxes: {},
+    max_power_kw: {},
+    labels: {},
+    label_visibility: {},
+    energy_entities: {},
+    image_overlays: {},
+    tile_color_rules: {},
+    custom_kpis: [],
+    environment_sensors: [],
+    floorplan: createDefaultFloorplan(),
+    large_consumers: [],
+    pv_roof_strings: [],
+    inverters: [],
+  };
+}
+
+function createStubCardConfig({
+  cardType,
+  advisorDefaults,
+  defaultTileColorRules,
+  normalizeLargeConsumers,
+} = {}) {
+  return {
+    type: `custom:${cardType}`,
+    ...createBaseCardConfig({ advisorDefaults }),
+    title: "Solar Dashboard",
+    max_power_kw: createDefaultMaxPowerKw(),
+    units: createStubUnits(),
+    tile_color_rules: defaultTileColorRules || {},
+    large_consumers: typeof normalizeLargeConsumers === "function" ? normalizeLargeConsumers([]) : [],
+    image_overlays: createDefaultImageOverlays(),
+    visible_boxes: createDefaultVisibleBoxes(),
+    entities: createStubEntities(),
+  };
+}
+
+function createEditorBaseConfig({ floorplanLabel = "Level 1" } = {}) {
+  return {
+    entities: {},
+    units: {},
+    positions: {},
+    max_power_kw: {},
+    labels: {},
+    label_visibility: {},
+    energy_entities: {},
+    image_overlays: {},
+    custom_kpis: [],
+    environment_sensors: [],
+    show_floorplan: true,
+    floorplan: createDefaultFloorplan(floorplanLabel),
+    large_consumers: [],
+    pv_roof_strings: [],
+    pv_roof_string_display: "sum",
+    inverters: [],
+    inverter_display: "sum",
+    ...DEFAULT_GRID_FINANCE_CONFIG,
+  };
+}
+
 function createDashboardEditorClass({
   ADVISOR_DEFAULTS,
   DEFAULT_IMAGE_OVERLAYS,
@@ -2614,6 +3085,7 @@ function createDashboardEditorClass({
   adjacentWallboxPosition,
   assetUrl,
   clampConfigNumber,
+  createEditorBaseConfig,
   ensureTranslations,
   findMetricByKey,
   inverterPhaseVoltageEntityKeys,
@@ -2641,29 +3113,9 @@ function createDashboardEditorClass({
 } = {}) {
   return class HaSolarDashboardCardEditor extends HTMLElement {
   setConfig(config) {
+    const baseConfig = createEditorBaseConfig?.({ floorplanLabel: this._floorplanFloorLabel(0) }) || {};
     this._config = {
-      entities: {},
-      units: {},
-      positions: {},
-      max_power_kw: {},
-      labels: {},
-      label_visibility: {},
-      energy_entities: {},
-      image_overlays: {},
-      custom_kpis: [],
-      environment_sensors: [],
-      show_floorplan: true,
-      floorplan: {
-        mode: "editor",
-        show_grid: true,
-        active_floor: "level_1",
-        floors: [{ id: "level_1", label: this._floorplanFloorLabel(0), image: "", rooms: [], walls: [], sensors: [] }],
-      },
-      large_consumers: [],
-      pv_roof_strings: [],
-      pv_roof_string_display: "sum",
-      inverters: [],
-      inverter_display: "sum",
+      ...baseConfig,
       ...config,
       image_overlays: {
         smoke: {
@@ -2822,6 +3274,8 @@ function createDashboardEditorClass({
       "advisor_stale_sensor_critical_minutes",
       "grid_voltage_warning_threshold",
       "grid_voltage_critical_threshold",
+      "grid_import_price",
+      "grid_export_price",
     ]);
     const numericProps = new Set(["left", "top", "width", "height", "position", "columns", "x", "y", "x1", "y1", "x2", "y2", "font_size"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
@@ -3664,6 +4118,8 @@ function createDashboardEditorClass({
       { path: "entities.import_export_power_voltage", ...voltageTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"]], include: [gridTerms, ...voltageTarget.include], threshold: 58 },
       { path: "entities.import_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "verbrauch netz", "from grid"]], include: [gridTerms, { terms: ["import", "bezug", "purchase", "verbrauch netz", "from grid"], weight: 32 }], exclude: ["export", "einspeis", "feed", "energy", "kwh"], threshold: 62 },
       { path: "entities.export_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["export", "einspeis", "feed", "feedin", "to grid"]], include: [gridTerms, { terms: ["export", "einspeis", "feed", "feedin", "to grid"], weight: 32 }], exclude: ["import", "bezug", "purchase", "energy", "kwh"], threshold: 62 },
+      { path: "energy_entities.import_power.entity", ...energyTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "from grid"]], block: ["power", "leistung"], include: [gridTerms, { terms: ["import", "bezug", "purchase", "from grid", "energy", "kwh", "total"], weight: 32 }], exclude: ["export", "einspeis", "feed"], threshold: 60 },
+      { path: "energy_entities.export_power.entity", ...energyTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["export", "einspeis", "feed", "feedin", "to grid"]], block: ["power", "leistung"], include: [gridTerms, { terms: ["export", "einspeis", "feed", "feedin", "to grid", "energy", "kwh", "total"], weight: 32 }], exclude: ["import", "bezug", "purchase"], threshold: 60 },
       { path: "entities.house_consumption_power", ...powerTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...powerTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 56 },
       { path: "entities.house_consumption_power_voltage", ...voltageTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...voltageTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox", ...voltageTarget.exclude], threshold: 58 },
       { path: "energy_entities.house_consumption_power.entity", ...energyTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], block: ["power", "leistung"], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 32 }, ...energyTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 58 },
@@ -3828,6 +4284,39 @@ function createDashboardEditorClass({
     `;
   }
 
+  _renderImportExportFinanceInputs(metric) {
+    if (metric.key !== "import_export_power") return "";
+    const importCounter = this._energyEntityConfig({ key: "import_power" });
+    const exportCounter = this._energyEntityConfig({ key: "export_power" });
+    const importCounterValue = importCounter.entity || importCounter.counter || importCounter.kwh_entity || importCounter.kwh || importCounter.meter || "";
+    const exportCounterValue = exportCounter.entity || exportCounter.counter || exportCounter.kwh_entity || exportCounter.kwh || exportCounter.meter || "";
+    return `
+      <details class="pv-labels" open>
+        <summary>${this._escape(this._t("editor.importExportFinance", {}, "Import/export costs"))}</summary>
+        <div class="details-grid">
+          <label>${this._labelText(this._t("editor.importEnergyCounterEntity", {}, "Import energy counter"), this._t("editor.helpImportExportFinance", {}, "Use cumulative kWh counters. The card calculates today's amount from local midnight."))}
+            <input data-path="energy_entities.import_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.grid_import_energy_total" value="${this._escape(importCounterValue)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.exportEnergyCounterEntity", {}, "Export energy counter"), this._t("editor.helpImportExportFinance", {}, "Use cumulative kWh counters. The card calculates today's amount from local midnight."))}
+            <input data-path="energy_entities.export_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.grid_export_energy_total" value="${this._escape(exportCounterValue)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.gridImportPrice", {}, "Grid import price per kWh"))}
+            <input type="number" min="0" step="0.0001" data-path="grid_import_price" value="${this._escape(this._config.grid_import_price ?? "")}" />
+          </label>
+          <label>${this._escape(this._t("editor.gridExportPrice", {}, "Feed-in tariff per kWh"))}
+            <input type="number" min="0" step="0.0001" data-path="grid_export_price" value="${this._escape(this._config.grid_export_price ?? "")}" />
+          </label>
+          <label>${this._escape(this._t("editor.currency", {}, "Currency"))}
+            <input data-path="currency" placeholder="€" value="${this._escape(this._config.currency || "€")}" />
+          </label>
+        </div>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_grid_daily_finance" ${this._config.show_grid_daily_finance !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridDailyFinance", {}, "Show today's costs and revenue labels"))}</label>
+        </div>
+      </details>
+    `;
+  }
+
   _labelVisibility(key) {
     const configured = this._config.label_visibility?.[key] || {};
     return {
@@ -3872,6 +4361,7 @@ function createDashboardEditorClass({
     if (metric.unit !== "power") return "";
     if (metric.key === "pv_roof_power") return "";
     if (metric.key === "inverter_power") return "";
+    if (metric.key === "import_export_power") return "";
     const config = this._energyEntityConfig(metric);
     const counterValue = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
 
@@ -4436,6 +4926,7 @@ function createDashboardEditorClass({
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
         ${this._renderLabelInput(metric)}
         ${this._renderImportExportLabelInputs(metric)}
+        ${this._renderImportExportFinanceInputs(metric)}
         ${this._renderEntityInput(metric)}
         ${this._renderVoltageEntityInput(metric)}
         ${this._renderPvLabelInputs(metric)}
@@ -5739,6 +6230,12 @@ function createTileRendererMethods() {
           ${this._renderPvMetaRow(metric, { placement: "footer" })}
           ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
         `
+        : metric.key === "import_export_power"
+        ? `
+          <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
+          ${this._renderGridDailyFinanceRow(metric, { placement: "footer" })}
+          ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
+        `
         : `
           <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>
           ${this._renderVoltageMetaRow(metric, { placement: "footer" })}
@@ -6411,7 +6908,7 @@ function createRecordsDashboardMethods({
 
     _recordPointsFromStates(source, states = []) {
       return states
-        .map((entry) => source.type === "energy"
+        .map((entry) => (source.type === "energy" || source.type === "money")
           ? this._recordEnergyPoint(entry, source.entityId)
           : source.type === "counter"
             ? this._recordCounterPoint(entry, source.entityId, source.unit)
@@ -6458,6 +6955,26 @@ function createRecordsDashboardMethods({
             metric: { key: `inverter_${entry.id || index}_power`, chartEntityId: entry.powerEntityId, unit: "power", color: "blue" },
           }))
         : [];
+      const gridFinanceSources = [
+        {
+          key: "grid_import_cost",
+          label: this._t("records.gridImport", {}, "Grid import"),
+          entityId: typeof this._gridEnergyEntityId === "function" ? this._gridEnergyEntityId("import") : "",
+          type: "money",
+          group: "grid",
+          recordKind: "importCost",
+          price: typeof this._gridImportPrice === "function" ? this._gridImportPrice() : "",
+        },
+        {
+          key: "grid_export_revenue",
+          label: this._t("records.gridExport", {}, "Grid export"),
+          entityId: typeof this._gridEnergyEntityId === "function" ? this._gridEnergyEntityId("export") : "",
+          type: "money",
+          group: "grid",
+          recordKind: "exportRevenue",
+          price: typeof this._gridExportPrice === "function" ? this._gridExportPrice() : "",
+        },
+      ].filter((source) => source.entityId && source.price !== "");
       const pvEnergySources = pvStrings
         .filter((entry) => entry.energyEntityId)
         .map((entry) => ({
@@ -6572,7 +7089,7 @@ function createRecordsDashboardMethods({
         })
         .filter(Boolean);
       const seen = new Set();
-      return [...pvEnergySources, ...pvPowerSources, ...inverterPowerSources, ...metricSources].filter((source) => {
+      return [...gridFinanceSources, ...pvEnergySources, ...pvPowerSources, ...inverterPowerSources, ...metricSources].filter((source) => {
         const key = `${source.type}:${source.entityId}`;
         if (!source.entityId || seen.has(key)) return false;
         seen.add(key);
@@ -6651,6 +7168,7 @@ function createRecordsDashboardMethods({
         peaks: [],
         wallbox: [],
         counters: [],
+        finance: [],
       };
       const pushCard = (section, card) => {
         if (!card || !card.value) return;
@@ -6691,6 +7209,24 @@ function createRecordsDashboardMethods({
               value: this._formatRecordCounterValue(bestDay.amount, source.unit),
               sortValue: bestDay.amount,
               meta: this._recordDateLabel(bestDay.day),
+              entityId: source.entityId,
+            });
+          }
+        }
+        if (source.type === "money") {
+          const bestDay = dailyEnergyRecordsFn(state.points)[0];
+          const price = Number(source.price);
+          if (bestDay && Number.isFinite(price)) {
+            const value = bestDay.amount * price;
+            const titleKey = source.recordKind === "exportRevenue" ? "records.gridBestRevenue" : "records.gridHighestCost";
+            const fallback = source.recordKind === "exportRevenue"
+              ? `${source.label}: highest feed-in revenue`
+              : `${source.label}: highest import cost`;
+            pushCard("finance", {
+              title: this._t(titleKey, { name: source.label }, fallback),
+              value: typeof this._formatMoney === "function" ? this._formatMoney(value) : String(value.toFixed(2)),
+              sortValue: value,
+              meta: `${this._recordDateLabel(bestDay.day)} · ${this._formatEnergyValue(bestDay.amount, "kWh", "kWh")}`,
               entityId: source.entityId,
             });
           }
@@ -6808,6 +7344,7 @@ function createRecordsDashboardMethods({
           { key: "pvEnergy", label: this._t("records.sectionPvEnergy", {}, "Best PV yield per string"), items: sortByValue(cards.pvEnergy) },
           { key: "solarHours", label: this._t("records.sectionSolarHours", {}, "Longest solar hours"), items: sortByValue(cards.solarHours) },
           { key: "wallbox", label: this._t("records.sectionWallbox", {}, "Wallbox records"), items: sortByValue(cards.wallbox) },
+          { key: "finance", label: this._t("records.sectionFinance", {}, "Costs and revenue"), items: sortByValue(cards.finance) },
           { key: "counters", label: this._t("records.sectionCounters", {}, "Meter records"), items: sortByValue(cards.counters) },
           { key: "peaks", label: this._t("records.sectionPeaks", {}, "Power peaks"), items: sortByValue(cards.peaks).slice(0, 8) },
         ].filter((section) => section.items.length > 0),
@@ -6830,6 +7367,7 @@ function createRecordsDashboardMethods({
     _recordLoadingPurpose(source) {
       if (source.type === "energy" && source.group === "pv") return this._t("records.loadingPurposePvEnergy", {}, "PV daily yield");
       if (source.type === "energy" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxEnergy", {}, "Wallbox charged energy");
+      if (source.type === "money") return this._t("records.loadingPurposeGridFinance", {}, "Grid costs and revenue");
       if (source.type === "counter") return this._t("records.loadingPurposeCounter", {}, "Meter daily increase");
       if (source.type === "boolean" && source.recordKind === "chargingEnabled") return this._t("records.loadingPurposeWallboxChargingEnabled", {}, "Wallbox charging enabled time");
       if (source.type === "boolean" && source.group === "wallbox") return this._t("records.loadingPurposeWallboxPluggedIn", {}, "Wallbox plugged-in time");
@@ -6920,8 +7458,12 @@ function createRecordsDashboardMethods({
           event.stopPropagation();
           const rangeKey = normalizeRecordsRange(event.currentTarget.dataset.recordRange, rangeOptions);
           this._recordsRange = rangeKey || normalizeRecordsRange(defaultDays, rangeOptions);
-          this._recordsLoading?.clear();
-          this._clearPendingHistoryRequests?.("records:");
+          if (typeof this._clearRecordsHistoryRequests === "function") {
+            this._clearRecordsHistoryRequests();
+          } else {
+            this._recordsLoading?.clear();
+            this._clearPendingHistoryRequests?.("records:");
+          }
           this._renderCardShell(this._layoutState());
         });
       });
@@ -8040,6 +8582,14 @@ const I18N = {
     "editor.importPowerEntity": "Import sensor",
     "editor.exportPowerEntity": "Export sensor",
     "editor.importExportLabels": "Import/Export labels",
+    "editor.importExportFinance": "Import/export costs",
+    "editor.importEnergyCounterEntity": "Import energy counter",
+    "editor.exportEnergyCounterEntity": "Export energy counter",
+    "editor.helpImportExportFinance": "Use cumulative kWh counters. The card calculates today's amount from local midnight.",
+    "editor.gridImportPrice": "Grid import price per kWh",
+    "editor.gridExportPrice": "Feed-in tariff per kWh",
+    "editor.currency": "Currency",
+    "editor.showGridDailyFinance": "Show today's costs and revenue labels",
     "editor.importLabel": "Import label",
     "editor.exportLabel": "Export label",
     "editor.neutralLabel": "Self-sufficient label",
@@ -8337,6 +8887,8 @@ const I18N = {
     "warning.sensorMissing": "Entity not found",
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor unavailable",
+    "gridFinance.importCost": "Today cost",
+    "gridFinance.exportRevenue": "Today revenue",
     "view.records": "Records",
     "records.count": "{count} records",
     "records.countOne": "{count} record",
@@ -8348,6 +8900,7 @@ const I18N = {
     "records.loadingCountOne": "{count} entity",
     "records.loadingPurposeConsumerPower": "Consumption peak",
     "records.loadingPurposeCounter": "Daily meter increase",
+    "records.loadingPurposeGridFinance": "Grid costs and revenue",
     "records.loadingPurposePower": "Power peak",
     "records.loadingPurposePvEnergy": "Daily PV yield",
     "records.loadingPurposePvPower": "PV power and solar hours",
@@ -8364,6 +8917,7 @@ const I18N = {
     "records.sectionPvEnergy": "Best PV yield per string",
     "records.sectionSolarHours": "Longest solar hours",
     "records.sectionWallbox": "Wallbox records",
+    "records.sectionFinance": "Costs and revenue",
     "records.subtitle": "Best values for {range} from Home Assistant history.",
     "records.title": "Energy records",
     "records.range7d": "7 days",
@@ -8374,6 +8928,10 @@ const I18N = {
     "records.range356d": "356 days",
     "records.consumerPeakPower": "{name}: highest consumption peak",
     "records.counterLargestIncrease": "{name}: largest daily meter increase",
+    "records.gridImport": "Grid import",
+    "records.gridExport": "Grid export",
+    "records.gridHighestCost": "{name}: highest import cost",
+    "records.gridBestRevenue": "{name}: highest feed-in revenue",
     "records.powerPeak": "{name}: highest power peak",
     "records.pvBestYield": "{name}: best daily PV yield",
     "records.pvPeakPower": "{name}: highest PV power",
@@ -8548,6 +9106,14 @@ const I18N = {
     "editor.importPowerEntity": "Bezugs-Sensor",
     "editor.exportPowerEntity": "Einspeise-Sensor",
     "editor.importExportLabels": "Import-/Export-Labels",
+    "editor.importExportFinance": "Bezugs-/Einspeisekosten",
+    "editor.importEnergyCounterEntity": "Bezugs-Energiezähler",
+    "editor.exportEnergyCounterEntity": "Einspeise-Energiezähler",
+    "editor.helpImportExportFinance": "Kumulative kWh-Zähler verwenden. Die Karte berechnet den heutigen Wert ab lokalem Tagesbeginn.",
+    "editor.gridImportPrice": "Bezugskosten pro kWh",
+    "editor.gridExportPrice": "Einspeisevergütung pro kWh",
+    "editor.currency": "Währung",
+    "editor.showGridDailyFinance": "Heutige Kosten und Einnahmen als Labels anzeigen",
     "editor.importLabel": "Bezugs-Label",
     "editor.exportLabel": "Einspeise-Label",
     "editor.neutralLabel": "Autark-Label",
@@ -8845,6 +9411,8 @@ const I18N = {
     "warning.sensorMissing": "Entität nicht gefunden",
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor nicht verfügbar",
+    "gridFinance.importCost": "Kosten heute",
+    "gridFinance.exportRevenue": "Einnahmen heute",
     "view.records": "Rekorde",
     "records.count": "{count} Rekorde",
     "records.countOne": "{count} Rekord",
@@ -8856,6 +9424,7 @@ const I18N = {
     "records.loadingCountOne": "{count} Entität",
     "records.loadingPurposeConsumerPower": "Verbrauchsspitze",
     "records.loadingPurposeCounter": "Tageszähler-Zuwachs",
+    "records.loadingPurposeGridFinance": "Netzkosten und Einspeiseerlöse",
     "records.loadingPurposePower": "Leistungsspitze",
     "records.loadingPurposePvEnergy": "PV-Tagesertrag",
     "records.loadingPurposePvPower": "PV-Leistung und solare Stunden",
@@ -8872,6 +9441,7 @@ const I18N = {
     "records.sectionPvEnergy": "Bester PV-Ertrag pro String",
     "records.sectionSolarHours": "Längste solare Stunden",
     "records.sectionWallbox": "Wallbox-Rekorde",
+    "records.sectionFinance": "Kosten und Einnahmen",
     "records.subtitle": "Bestwerte für {range} aus der Home-Assistant-Historie.",
     "records.title": "Energie-Rekorde",
     "records.range7d": "7 Tage",
@@ -8882,6 +9452,10 @@ const I18N = {
     "records.range356d": "356 Tage",
     "records.consumerPeakPower": "{name}: höchste Verbrauchsspitze",
     "records.counterLargestIncrease": "{name}: größter Tageszähler-Zuwachs",
+    "records.gridImport": "Netzbezug",
+    "records.gridExport": "Einspeisung",
+    "records.gridHighestCost": "{name}: höchste Bezugskosten",
+    "records.gridBestRevenue": "{name}: höchste Einspeiseerlöse",
     "records.powerPeak": "{name}: höchste Leistungsspitze",
     "records.pvBestYield": "{name}: bester PV-Tagesertrag",
     "records.pvPeakPower": "{name}: höchste PV-Leistung",
@@ -9056,6 +9630,14 @@ const I18N = {
     "editor.importPowerEntity": "Entidad de importación",
     "editor.exportPowerEntity": "Entidad de exportación",
     "editor.importExportLabels": "Etiquetas de importación/exportación",
+    "editor.importExportFinance": "Costes de importación/exportación",
+    "editor.importEnergyCounterEntity": "Contador de energía importada",
+    "editor.exportEnergyCounterEntity": "Contador de energía exportada",
+    "editor.helpImportExportFinance": "Usa contadores kWh acumulativos. La tarjeta calcula el valor de hoy desde la medianoche local.",
+    "editor.gridImportPrice": "Precio de importación por kWh",
+    "editor.gridExportPrice": "Tarifa de inyección por kWh",
+    "editor.currency": "Moneda",
+    "editor.showGridDailyFinance": "Mostrar etiquetas de costes e ingresos de hoy",
     "editor.importLabel": "Etiqueta de importación",
     "editor.exportLabel": "Etiqueta de exportación",
     "editor.neutralLabel": "Etiqueta de autosuficiencia",
@@ -9353,6 +9935,8 @@ const I18N = {
     "warning.sensorMissing": "Entidad no encontrada",
     "warning.sensorOffline": "Sensor sin conexión",
     "warning.sensorUnavailable": "Sensor no disponible",
+    "gridFinance.importCost": "Coste hoy",
+    "gridFinance.exportRevenue": "Ingresos hoy",
     "view.records": "Récords",
     "records.count": "{count} récords",
     "records.countOne": "{count} récord",
@@ -9364,6 +9948,7 @@ const I18N = {
     "records.loadingCountOne": "{count} entidad",
     "records.loadingPurposeConsumerPower": "Pico de consumo",
     "records.loadingPurposeCounter": "Incremento diario del contador",
+    "records.loadingPurposeGridFinance": "Costes e ingresos de red",
     "records.loadingPurposePower": "Pico de potencia",
     "records.loadingPurposePvEnergy": "Rendimiento FV diario",
     "records.loadingPurposePvPower": "Potencia FV y horas solares",
@@ -9380,6 +9965,7 @@ const I18N = {
     "records.sectionPvEnergy": "Mejor rendimiento FV por string",
     "records.sectionSolarHours": "Horas solares más largas",
     "records.sectionWallbox": "Récords de wallbox",
+    "records.sectionFinance": "Costes e ingresos",
     "records.subtitle": "Mejores valores de {range} del historial de Home Assistant.",
     "records.title": "Récords de energía",
     "records.range7d": "7 días",
@@ -9390,6 +9976,10 @@ const I18N = {
     "records.range356d": "356 días",
     "records.consumerPeakPower": "{name}: mayor pico de consumo",
     "records.counterLargestIncrease": "{name}: mayor incremento diario del contador",
+    "records.gridImport": "Importación de red",
+    "records.gridExport": "Exportación a red",
+    "records.gridHighestCost": "{name}: mayor coste de importación",
+    "records.gridBestRevenue": "{name}: mayores ingresos por inyección",
     "records.powerPeak": "{name}: mayor pico de potencia",
     "records.pvBestYield": "{name}: mejor rendimiento FV diario",
     "records.pvPeakPower": "{name}: mayor potencia FV",
@@ -9564,6 +10154,14 @@ const I18N = {
     "editor.importPowerEntity": "Entité import",
     "editor.exportPowerEntity": "Entité export",
     "editor.importExportLabels": "Libellés import/export",
+    "editor.importExportFinance": "Coûts import/export",
+    "editor.importEnergyCounterEntity": "Compteur d'énergie importée",
+    "editor.exportEnergyCounterEntity": "Compteur d'énergie exportée",
+    "editor.helpImportExportFinance": "Utilisez des compteurs kWh cumulatifs. La carte calcule la valeur du jour depuis minuit local.",
+    "editor.gridImportPrice": "Prix d'import par kWh",
+    "editor.gridExportPrice": "Tarif d'injection par kWh",
+    "editor.currency": "Devise",
+    "editor.showGridDailyFinance": "Afficher les libellés des coûts et revenus du jour",
     "editor.importLabel": "Libellé import",
     "editor.exportLabel": "Libellé export",
     "editor.neutralLabel": "Libellé autonomie",
@@ -9861,6 +10459,8 @@ const I18N = {
     "warning.sensorMissing": "Entité introuvable",
     "warning.sensorOffline": "Capteur hors ligne",
     "warning.sensorUnavailable": "Capteur indisponible",
+    "gridFinance.importCost": "Coût aujourd'hui",
+    "gridFinance.exportRevenue": "Revenus aujourd'hui",
     "view.records": "Records",
     "records.count": "{count} records",
     "records.countOne": "{count} record",
@@ -9872,6 +10472,7 @@ const I18N = {
     "records.loadingCountOne": "{count} entité",
     "records.loadingPurposeConsumerPower": "Pic de consommation",
     "records.loadingPurposeCounter": "Hausse quotidienne du compteur",
+    "records.loadingPurposeGridFinance": "Coûts et revenus réseau",
     "records.loadingPurposePower": "Pic de puissance",
     "records.loadingPurposePvEnergy": "Rendement PV journalier",
     "records.loadingPurposePvPower": "Puissance PV et heures solaires",
@@ -9888,6 +10489,7 @@ const I18N = {
     "records.sectionPvEnergy": "Meilleur rendement PV par string",
     "records.sectionSolarHours": "Plus longues heures solaires",
     "records.sectionWallbox": "Records wallbox",
+    "records.sectionFinance": "Coûts et revenus",
     "records.subtitle": "Meilleures valeurs pour {range} depuis l’historique Home Assistant.",
     "records.title": "Records d’énergie",
     "records.range7d": "7 jours",
@@ -9898,6 +10500,10 @@ const I18N = {
     "records.range356d": "356 jours",
     "records.consumerPeakPower": "{name}: plus grand pic de consommation",
     "records.counterLargestIncrease": "{name}: plus forte hausse quotidienne du compteur",
+    "records.gridImport": "Import réseau",
+    "records.gridExport": "Export réseau",
+    "records.gridHighestCost": "{name}: coût d'import maximal",
+    "records.gridBestRevenue": "{name}: revenus d'injection maximaux",
     "records.powerPeak": "{name}: plus grand pic de puissance",
     "records.pvBestYield": "{name}: meilleur rendement PV journalier",
     "records.pvPeakPower": "{name}: puissance PV maximale",
@@ -10072,6 +10678,14 @@ const I18N = {
     "editor.importPowerEntity": "Encja importu",
     "editor.exportPowerEntity": "Encja eksportu",
     "editor.importExportLabels": "Etykiety importu/eksportu",
+    "editor.importExportFinance": "Koszty importu/eksportu",
+    "editor.importEnergyCounterEntity": "Licznik energii importowanej",
+    "editor.exportEnergyCounterEntity": "Licznik energii eksportowanej",
+    "editor.helpImportExportFinance": "Użyj skumulowanych liczników kWh. Karta liczy dzisiejszą wartość od lokalnej północy.",
+    "editor.gridImportPrice": "Cena importu z sieci za kWh",
+    "editor.gridExportPrice": "Taryfa oddawania do sieci za kWh",
+    "editor.currency": "Waluta",
+    "editor.showGridDailyFinance": "Pokaż dzisiejsze koszty i przychody jako etykiety",
     "editor.importLabel": "Etykieta importu",
     "editor.exportLabel": "Etykieta eksportu",
     "editor.neutralLabel": "Etykieta samowystarczalności",
@@ -10369,6 +10983,8 @@ const I18N = {
     "warning.sensorMissing": "Nie znaleziono encji",
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor niedostępny",
+    "gridFinance.importCost": "Koszt dzisiaj",
+    "gridFinance.exportRevenue": "Przychód dzisiaj",
     "view.records": "Rekordy",
     "records.count": "{count} rekordów",
     "records.countOne": "{count} rekord",
@@ -10380,6 +10996,7 @@ const I18N = {
     "records.loadingCountOne": "{count} encja",
     "records.loadingPurposeConsumerPower": "Szczyt poboru",
     "records.loadingPurposeCounter": "Dzienny przyrost licznika",
+    "records.loadingPurposeGridFinance": "Koszty i przychody sieciowe",
     "records.loadingPurposePower": "Szczyt mocy",
     "records.loadingPurposePvEnergy": "Dzienny uzysk PV",
     "records.loadingPurposePvPower": "Moc PV i godziny solarne",
@@ -10396,6 +11013,7 @@ const I18N = {
     "records.sectionPvEnergy": "Najlepszy uzysk PV na string",
     "records.sectionSolarHours": "Najdłuższe godziny solarne",
     "records.sectionWallbox": "Rekordy wallboxa",
+    "records.sectionFinance": "Koszty i przychody",
     "records.subtitle": "Najlepsze wartości dla {range} z historii Home Assistant.",
     "records.title": "Rekordy energii",
     "records.range7d": "7 dni",
@@ -10406,6 +11024,10 @@ const I18N = {
     "records.range356d": "356 dni",
     "records.consumerPeakPower": "{name}: najwyższy szczyt poboru",
     "records.counterLargestIncrease": "{name}: największy dzienny przyrost licznika",
+    "records.gridImport": "Import z sieci",
+    "records.gridExport": "Eksport do sieci",
+    "records.gridHighestCost": "{name}: najwyższy koszt importu",
+    "records.gridBestRevenue": "{name}: najwyższy przychód z oddawania",
     "records.powerPeak": "{name}: najwyższy szczyt mocy",
     "records.pvBestYield": "{name}: najlepszy dzienny uzysk PV",
     "records.pvPeakPower": "{name}: najwyższa moc PV",
@@ -10514,10 +11136,6 @@ const PV_LABELS = [
   { suffix: "peak_today", labelKey: "pvLabel.peakToday", editorKey: "editor.pvPeakTodayEntity", source: "entity", unit: "power" },
 ];
 
-const MINUTE_MS = 60 * 1000;
-const MAX_HISTORY_CACHE_ENTRIES = 48;
-const MAX_COUNTER_CACHE_ENTRIES = 72;
-
 class HaSolarDashboardCard extends HTMLElement {
   connectedCallback() {
     this._isCardConnected = true;
@@ -10530,12 +11148,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   disconnectedCallback() {
     this._isCardConnected = false;
-    this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
-    this._clearPendingHistoryRequests?.();
-    this._energyRangeLoading?.clear();
-    this._overlayConsumptionLoading?.clear();
-    this._chartDashboardLoading?.clear();
-    this._recordsLoading?.clear();
+    this._invalidateHistoryServiceState();
     this._stopAdvisorRefreshTimer();
   }
 
@@ -10544,157 +11157,18 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return {
-      type: `custom:${CARD_TYPE}`,
-      title: "Solar Dashboard",
-      house: "single_family_home",
-      view_mode: "house",
-      show_title: true,
-      show_view_selector: true,
-      show_house_selector: true,
-      show_energy_range_selector: false,
-      show_metric_tiles: true,
-      show_environment_sensors: true,
-      show_large_consumers: true,
-      show_floorplan: true,
-      show_power_flows: false,
-      show_status_label: true,
-      show_weather_status: false,
-      show_grid_status_tile: true,
-      pv_roof_string_display: "sum",
-      inverter_display: "sum",
-      hud_box_opacity: 0.65,
-      hud_box_scale: 1,
-      battery_low_threshold: 20,
-      grid_neutral_threshold: 25,
-      grid_voltage_warning_threshold: 245,
-      grid_voltage_critical_threshold: 253,
-      advisor_surplus_threshold: ADVISOR_DEFAULTS.surplusThreshold,
-      advisor_import_threshold: ADVISOR_DEFAULTS.importThreshold,
-      advisor_high_load_threshold: ADVISOR_DEFAULTS.highLoadThreshold,
-      advisor_ev_surplus_threshold: ADVISOR_DEFAULTS.evSurplusThreshold,
-      advisor_max_suggestions: ADVISOR_DEFAULTS.maxSuggestions,
-      advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
-      advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
-      chart_hours: 24,
-      records_range: "7d",
-      max_power_kw: {
-        pv_roof_power: 10,
-        pv_shed_power: 3,
-        pv_total_power: 13,
-        inverter_power: 10,
-        wallbox_power: 11,
-        wallbox2_power: 11,
-        import_export_power: 10,
-      },
-      dynamic_tile_colors: true,
-      daylight_entity: "sun.sun",
-      weather_entity: "",
-      units: {
-        power: "auto",
-        battery: "%",
-        volume: "m³",
-        water_meter: "m³",
-      },
-      labels: {},
-      label_visibility: {},
-      energy_entities: {},
-      tile_color_rules: DEFAULT_TILE_COLOR_RULES,
-      custom_kpis: [],
-      environment_sensors: [],
-      floorplan: {
-        mode: "editor",
-        show_grid: true,
-        active_floor: "level_1",
-        floors: [{ id: "level_1", label: "Level 1", image: "", rooms: [], walls: [], sensors: [] }],
-      },
-      large_consumers: normalizeLargeConsumers([]),
-      pv_roof_strings: [],
-      inverters: [],
-      image_overlays: {
-        smoke: { enabled: false, entity: "", period: "1h" },
-        heatpump: { enabled: false, entity: "" },
-      },
-      visible_boxes: {
-        pv_roof_power: true,
-        pv_shed_power: true,
-        battery_level: true,
-        inverter_power: true,
-        wallbox_power: true,
-        wallbox2_power: false,
-        water_meter: false,
-        import_export_power: true,
-      },
-      entities: {
-        pv_roof_power: "sensor.pv_roof_power",
-        pv_roof_power_today_energy: "",
-        pv_roof_power_forecast_today: "",
-        pv_roof_power_peak_today: "",
-        pv_shed_power: "sensor.pv_shed_power",
-        pv_shed_power_today_energy: "",
-        pv_shed_power_forecast_today: "",
-        pv_shed_power_peak_today: "",
-        battery_level: "sensor.battery_level",
-        battery_min_soc: "",
-        battery_max_soc: "",
-        battery_flow_power: "",
-        battery_flow_power_voltage: "",
-        battery_charge_power: "",
-        battery_discharge_power: "",
-        battery_temperature: "",
-        battery_cycles_today: "",
-        inverter_power: "sensor.wechselrichter_power",
-        inverter_power_voltage: "",
-        inverter_power_voltage_l1: "",
-        inverter_power_voltage_l2: "",
-        inverter_power_voltage_l3: "",
-        wallbox_power: "sensor.wallbox_power",
-        wallbox_power_voltage: "",
-        wallbox_phase: "",
-        wallbox_phase_action: "",
-        wallbox_phase_remaining: "",
-        wallbox_soc: "",
-        wallbox_max_soc: "",
-        wallbox_connected: "",
-        wallbox_charging_enabled: "",
-        wallbox_remaining_time: "",
-        wallbox2_power: "",
-        wallbox2_power_voltage: "",
-        wallbox2_phase: "",
-        wallbox2_phase_action: "",
-        wallbox2_phase_remaining: "",
-        wallbox2_soc: "",
-        wallbox2_max_soc: "",
-        wallbox2_connected: "",
-        wallbox2_charging_enabled: "",
-        wallbox2_remaining_time: "",
-        water_meter: "",
-        electricity_price: "",
-        pv_total_power: "sensor.pv_total_power",
-        pv_total_power_voltage: "",
-        pv_total_power_today_energy: "",
-        pv_total_power_forecast_today: "",
-        pv_total_power_peak_today: "",
-        import_export_power: "sensor.grid_power",
-        import_export_power_voltage: "",
-        import_power: "",
-        export_power: "",
-        pv_roof_power_voltage: "",
-        pv_shed_power_voltage: "",
-        house_consumption_power_voltage: "",
-      },
-    };
+    return createStubCardConfig({
+      cardType: CARD_TYPE,
+      advisorDefaults: ADVISOR_DEFAULTS,
+      defaultTileColorRules: DEFAULT_TILE_COLOR_RULES,
+      normalizeLargeConsumers,
+    });
   }
 
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
 
-    this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
-    this._clearPendingHistoryRequests?.();
-    this._energyRangeLoading?.clear();
-    this._overlayConsumptionLoading?.clear();
-    this._chartDashboardLoading?.clear();
-    this._recordsLoading?.clear();
+    this._invalidateHistoryServiceState();
     this._advisorConditionSince = new Map();
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
@@ -10702,75 +11176,19 @@ class HaSolarDashboardCard extends HTMLElement {
     const viewMode = this._normalizeViewMode(config.view_mode || config.mode || config.default_view) || "house";
     this._hasCustomTitle = Object.prototype.hasOwnProperty.call(config, "title");
 
+    const baseConfig = createBaseCardConfig({
+      advisorDefaults: ADVISOR_DEFAULTS,
+      defaultHistoryRequestConcurrency: DEFAULT_HISTORY_REQUEST_CONCURRENCY,
+      recordsDefaultDays: RECORDS_DEFAULT_DAYS,
+    });
     this.config = {
-      title: "Energy Flow",
-      house,
-      view_mode: viewMode,
-      show_title: true,
-      show_view_selector: true,
-      show_house_selector: true,
-      show_energy_range_selector: false,
-      show_metric_tiles: true,
-      show_environment_sensors: true,
-      show_large_consumers: true,
-      show_floorplan: true,
-      show_power_flows: false,
-      show_status_label: true,
-      show_weather_status: false,
-      show_grid_status_tile: true,
-      hud_box_opacity: 0.65,
-      hud_box_scale: 1,
-      battery_low_threshold: 20,
-      grid_neutral_threshold: 25,
-      grid_voltage_warning_threshold: 245,
-      grid_voltage_critical_threshold: 253,
-      advisor_surplus_threshold: ADVISOR_DEFAULTS.surplusThreshold,
-      advisor_import_threshold: ADVISOR_DEFAULTS.importThreshold,
-      advisor_high_load_threshold: ADVISOR_DEFAULTS.highLoadThreshold,
-      advisor_ev_surplus_threshold: ADVISOR_DEFAULTS.evSurplusThreshold,
-      advisor_max_suggestions: ADVISOR_DEFAULTS.maxSuggestions,
-      advisor_stale_sensor_warning_minutes: ADVISOR_DEFAULTS.staleSensorWarningMinutes,
-      advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
-      chart_hours: 24,
-      records_range: "7d",
-      history_request_concurrency: DEFAULT_HISTORY_REQUEST_CONCURRENCY,
-      daylight_entity: "sun.sun",
-      weather_entity: "",
-      dynamic_tile_colors: true,
-      pv_roof_string_display: "sum",
-      inverter_display: "sum",
-      power_display_mode: "auto_kw",
-      power_decimals: 2,
-      energy_range: energyRange,
-      units: { power: "auto", battery: "%", volume: "m³" },
-      entities: {},
-      positions: {},
-      visible_boxes: {},
-      max_power_kw: {},
-      labels: {},
-      label_visibility: {},
-      energy_entities: {},
-      image_overlays: {},
-      tile_color_rules: {},
-      custom_kpis: [],
-      environment_sensors: [],
-      floorplan: {
-        mode: "editor",
-        show_grid: true,
-        active_floor: "level_1",
-        floors: [{ id: "level_1", label: "Level 1", image: "", rooms: [], walls: [], sensors: [] }],
-      },
-      large_consumers: [],
-      pv_roof_strings: [],
-      inverters: [],
+      ...baseConfig,
       ...config,
       house,
       view_mode: viewMode,
       energy_range: energyRange,
       units: {
-        power: "auto",
-        battery: "%",
-        volume: "m³",
+        ...baseConfig.units,
         ...(config.units || {}),
       },
       entities: {
@@ -10829,6 +11247,8 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.grid_neutral_threshold = this._clampNumber(this.config.grid_neutral_threshold, 25, 0, 1000000);
     this.config.grid_voltage_warning_threshold = this._clampNumber(this.config.grid_voltage_warning_threshold, 245, 0, 1000);
     this.config.grid_voltage_critical_threshold = this._clampNumber(this.config.grid_voltage_critical_threshold, 253, this.config.grid_voltage_warning_threshold, 1000);
+    this.config.grid_import_price = this._optionalPositiveNumber(this.config.grid_import_price);
+    this.config.grid_export_price = this._optionalPositiveNumber(this.config.grid_export_price);
     Object.assign(this.config, normalizeAdvisorConfig(this.config));
     this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
     this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
@@ -10841,15 +11261,7 @@ class HaSolarDashboardCard extends HTMLElement {
       : DEFAULT_HISTORY_REQUEST_CONCURRENCY;
     this._chartHours = this._chartHours || this.config.chart_hours;
     this._recordsRange = this._recordsRange || this.config.records_range;
-    this._historyCache = this._historyCache || new Map();
-    this._chartDashboardLoading = this._chartDashboardLoading || new Set();
-    this._recordsCache = this._recordsCache || new Map();
-    this._recordsRawHistoryCache = this._recordsRawHistoryCache || new Map();
-    this._recordsLoading = this._recordsLoading || new Set();
-    this._overlayConsumptionCache = this._overlayConsumptionCache || new Map();
-    this._overlayConsumptionLoading = this._overlayConsumptionLoading || new Set();
-    this._energyRangeCache = this._energyRangeCache || new Map();
-    this._energyRangeLoading = this._energyRangeLoading || new Set();
+    this._ensureHistoryServiceState();
 
     this._selectedHouse = house;
     this._selectedEnergyRange = this._normalizeEnergyRange(this._selectedEnergyRange || this.config.energy_range) || "live";
@@ -11045,6 +11457,18 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _gridExportEntityId() {
     return gridExportEntityId(this.config);
+  }
+
+  _gridEnergyEntityId(kind) {
+    const keys = kind === "export"
+      ? ["export_power", "grid_export_power", "import_export_export_power", "export_energy", "grid_export_energy"]
+      : ["import_power", "grid_import_power", "import_export_import_power", "import_energy", "grid_import_energy"];
+    for (const key of keys) {
+      const config = this._energyEntityConfig(key);
+      const entityId = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || this.config.entities?.[key];
+      if (entityId) return entityId;
+    }
+    return "";
   }
 
   _hasGridPowerSource() {
@@ -11704,6 +12128,111 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._clampNumber(this.config.grid_neutral_threshold, 25, 0, 1000000);
   }
 
+  _gridImportPrice() {
+    return gridImportPrice(this.config);
+  }
+
+  _gridExportPrice() {
+    return gridExportPrice(this.config);
+  }
+
+  _gridCurrency() {
+    return gridCurrency(this.config);
+  }
+
+  _formatMoney(value) {
+    return formatMoneyValue(value, {
+      currency: this._gridCurrency(),
+      language: this._language(),
+    });
+  }
+
+  _todayStartDate() {
+    return todayStartDate();
+  }
+
+  _localDateKey(date = new Date()) {
+    return localDateKey(date);
+  }
+
+  _dailyCounterCacheKey(entityId, purpose, startDate = this._todayStartDate()) {
+    return `${entityId}|${purpose}|${this._localDateKey(startDate)}|${this._cacheBucket(5 * MINUTE_MS)}`;
+  }
+
+  _dailyCounterConsumptionInfo(entityId, purpose, defaultUnit = "kWh") {
+    if (!entityId) return undefined;
+    if (this._hass?.states && !this._getEntity(entityId)) {
+      return { error: true, amount: undefined, unit: defaultUnit, entityId };
+    }
+    const startDate = this._todayStartDate();
+    const key = this._dailyCounterCacheKey(entityId, purpose, startDate);
+    const cached = this._energyRangeCache?.get(key);
+    if (cached) return cached;
+    this._requestDailyCounterConsumption(entityId, startDate, key, defaultUnit);
+    return { loading: true, amount: undefined, unit: this._getEntityUnit(entityId) || defaultUnit, entityId };
+  }
+
+  _requestDailyCounterConsumption(entityId, startDate, key, defaultUnit = "kWh") {
+    if (!this._hass?.callApi || this._energyRangeLoading?.has(key)) return;
+    const requestToken = this._asyncRequestToken || 0;
+    this._energyRangeLoading.add(key);
+    this._loadCounterConsumptionSince(entityId, startDate, defaultUnit)
+      .then((info) => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._energyRangeCache, key, {
+          ...info,
+          amount: this._valueAsKwh(info.amount, info.unit),
+          unit: "kWh",
+          entityId,
+          mode: "today",
+          kind: "energy",
+        }, MAX_COUNTER_CACHE_ENTRIES);
+      })
+      .catch(() => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._setCacheEntry(this._energyRangeCache, key, { error: true, amount: undefined, unit: this._getEntityUnit(entityId) || defaultUnit, entityId, mode: "today", kind: "energy" }, MAX_COUNTER_CACHE_ENTRIES);
+      })
+      .finally(() => {
+        if (!this._isActiveRequest(requestToken)) return;
+        this._energyRangeLoading?.delete(key);
+        this._updateReadingsIfReady();
+      });
+  }
+
+  _gridDailyEnergyInfo(kind) {
+    const entityId = this._gridEnergyEntityId(kind);
+    return this._dailyCounterConsumptionInfo(entityId, `grid_${kind}_today`, "kWh");
+  }
+
+  _gridDailyFinanceItems() {
+    const importPrice = this._gridImportPrice();
+    const exportPrice = this._gridExportPrice();
+    return gridFinanceItems({
+      config: this.config,
+      importPrice,
+      exportPrice,
+      importInfo: importPrice !== "" ? this._gridDailyEnergyInfo("import") : undefined,
+      exportInfo: exportPrice !== "" ? this._gridDailyEnergyInfo("export") : undefined,
+      translate: (key, replacements, fallback) => this._t(key, replacements, fallback),
+    });
+  }
+
+  _gridDailyFinanceLabel(kind) {
+    const item = this._gridDailyFinanceItems().find((entry) => entry.kind === kind);
+    return gridFinanceLabel(item, { formatMoney: (value) => this._formatMoney(value) });
+  }
+
+  _renderGridDailyFinanceRow(metric, { placement = "footer" } = {}) {
+    if (metric.key !== "import_export_power") return "";
+    const items = this._gridDailyFinanceItems();
+    if (items.length === 0) return "";
+    const badges = items.map((item) => {
+      const text = this._gridDailyFinanceLabel(item.kind);
+      return `<span class="finance-badge ${this._escape(item.kind)}" data-grid-finance="${this._escape(item.kind)}" title="${this._escape(text)}" aria-label="${this._escape(text)}">${this._escape(text)}</span>`;
+    }).join("");
+    return `<div class="meta-row finance-meta-row finance-meta-row-${this._escape(placement)}">${badges}</div>`;
+  }
+
   _configuredLabel(key, fallback) {
     const customLabel = this.config.labels?.[key];
     if (customLabel !== undefined && String(customLabel).trim() !== "") return String(customLabel).trim();
@@ -11861,37 +12390,6 @@ class HaSolarDashboardCard extends HTMLElement {
     if (normalizedRange === "month") return 30 * 24 * 60;
     if (normalizedRange === "year") return 365 * 24 * 60;
     return undefined;
-  }
-
-  _cacheBucketMsForMinutes(minutes) {
-    if (!Number.isFinite(minutes) || minutes <= 60) return MINUTE_MS;
-    if (minutes <= 24 * 60) return 5 * MINUTE_MS;
-    if (minutes <= 31 * 24 * 60) return 30 * MINUTE_MS;
-    return 6 * 60 * MINUTE_MS;
-  }
-
-  _cacheBucket(bucketMs = MINUTE_MS) {
-    return Math.floor(Date.now() / bucketMs);
-  }
-
-  _setCacheEntry(cache, key, value, maxEntries) {
-    if (!cache) return;
-    if (cache.has(key)) cache.delete(key);
-    cache.set(key, value);
-    while (cache.size > maxEntries) {
-      const oldestKey = cache.keys().next().value;
-      if (oldestKey === undefined) break;
-      cache.delete(oldestKey);
-    }
-  }
-
-  _isActiveRequest(token) {
-    return token === (this._asyncRequestToken || 0);
-  }
-
-  _updateReadingsIfReady() {
-    if (!this.config || !this.shadowRoot || !this._isCardConnected) return;
-    this._updateReadings();
   }
 
   _energyRangeCacheKey(entityId, range, kind = "energy") {
@@ -12265,33 +12763,6 @@ class HaSolarDashboardCard extends HTMLElement {
         this._overlayConsumptionLoading?.delete(key);
         this._updateReadingsIfReady();
       });
-  }
-
-  async _loadCounterConsumption(entityId, minutes, defaultUnit = "m³") {
-    const end = new Date();
-    const start = new Date(end.getTime() - minutes * 60 * 1000);
-    const query = [
-      `filter_entity_id=${encodeURIComponent(entityId)}`,
-      `end_time=${encodeURIComponent(end.toISOString())}`,
-      "significant_changes_only=0",
-    ].join("&");
-    const history = await this._hass.callApi("GET", `history/period/${start.toISOString()}?${query}`);
-    const states = (Array.isArray(history?.[0]) ? history[0] : [])
-      .map((entry) => ({
-        value: numericState(entry?.state ?? entry?.s),
-        unit: entry?.attributes?.unit_of_measurement || this._getEntityUnit(entityId) || defaultUnit,
-        time: Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || ""),
-      }))
-      .filter((entry) => Number.isFinite(entry.value) && Number.isFinite(entry.time))
-      .sort((a, b) => a.time - b.time);
-    const currentValue = numericState(this._getEntityValue(entityId, undefined));
-    const latestState = states.length > 0 ? states[states.length - 1] : undefined;
-    const endValue = Number.isFinite(currentValue) ? currentValue : latestState?.value;
-    const startValue = states[0]?.value;
-    const amount = Number.isFinite(endValue) && Number.isFinite(startValue)
-      ? Math.max(0, endValue - startValue)
-      : undefined;
-    return { amount, unit: latestState?.unit || this._getEntityUnit(entityId) || defaultUnit };
   }
 
   _formatGasConsumptionValue() {
@@ -12804,6 +13275,7 @@ class HaSolarDashboardCard extends HTMLElement {
       this._wallboxSocLabel(metric) ? `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${this._wallboxSocLabel(metric)}` : "",
       this._wallboxRemainingTimeLabel(metric) ? `${this._t("tooltip.remainingChargeTime", {}, "Remaining charge time")}: ${this._wallboxRemainingTimeLabel(metric)}` : "",
       this._wallboxPhaseActionInfo(metric)?.label ? `${this._t("tooltip.phaseChange", {}, "Upcoming phase change")}: ${this._wallboxPhaseActionInfo(metric).label}` : "",
+      metric.key === "import_export_power" ? this._gridDailyFinanceItems().map((item) => this._gridDailyFinanceLabel(item.kind)).join("\n") : "",
       this._metricVoltageLabel(metric) ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${this._metricVoltageLabel(metric)}` : "",
       updatedAt ? `${this._t("tooltip.updated")}: ${updatedAt}` : "",
       warning ? `${this._t("tooltip.status")}: ${warning.label}` : "",
@@ -13206,6 +13678,10 @@ class HaSolarDashboardCard extends HTMLElement {
     return Math.min(max, Math.max(min, number));
   }
 
+  _optionalPositiveNumber(value) {
+    return normalizeGridPrice(value);
+  }
+
   _isDaylight() {
     const entityId = this.config?.daylight_entity || "sun.sun";
     const entity = this._hass?.states?.[entityId];
@@ -13305,6 +13781,7 @@ class HaSolarDashboardCard extends HTMLElement {
       this._renderPvMetaRow(metric, { placement: "image" }),
       this._renderBatteryMetaRow(metric, { showFlowLabel: false, placement: "image" }),
       this._renderWallboxPhaseRow(metric, { placement: "image" }),
+      this._renderGridDailyFinanceRow(metric, { placement: "image" }),
       this._renderVoltageMetaRow(metric, { placement: "image" }),
       this._renderMetricMeter(metric),
     ].join("");
@@ -13520,6 +13997,7 @@ class HaSolarDashboardCard extends HTMLElement {
       remainingChargeTimes: this._cacheElementsByAttribute("data-remaining-charge-time"),
       phaseActions: this._cacheElementsByAttribute("data-phase-action"),
       voltages: this._cacheElementsByAttribute("data-voltage"),
+      gridFinances: this._cacheElementsByAttribute("data-grid-finance"),
       pvLabels: this._cacheElementsByAttribute("data-pv-label"),
       overlayLabels: this._cacheElementsByAttribute("data-overlay-label"),
       overlayValues: this._cacheElementsByAttribute("data-overlay-value"),
@@ -13870,6 +14348,10 @@ class HaSolarDashboardCard extends HTMLElement {
         .phase-action-badge:empty { display:none; }
         .pv-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:100%; border-radius:999px; padding:2px 5px; background:rgba(255,194,51,.14); color:#fde68a; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(253,230,138,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .pv-badge:empty { display:none; }
+        .finance-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:100%; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .finance-badge.import { color:#fdba74; background:rgba(251,146,60,.14); box-shadow:inset 0 0 0 1px rgba(253,186,116,.2); }
+        .finance-badge.export { color:#86efac; background:rgba(52,211,153,.14); box-shadow:inset 0 0 0 1px rgba(134,239,172,.2); }
+        .finance-badge:empty { display:none; }
         .voltage-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:86px; border-radius:999px; padding:2px 5px; background:rgba(250,204,21,.14); color:#fde047; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(250,204,21,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .voltage-badge:empty { display:none; }
         .metric.is-warning,.tile.is-warning { border-color:color-mix(in srgb,#f87171 74%,rgba(255,255,255,.18)); box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 18px rgba(248,113,113,.32),0 0 22px var(--tile-glow); }
@@ -14131,6 +14613,17 @@ class HaSolarDashboardCard extends HTMLElement {
         element.setAttribute("title", voltageTitle);
         element.setAttribute("aria-label", voltageTitle);
       });
+      if (metric.key === "import_export_power") {
+        ["import", "export"].forEach((kind) => {
+          const financeLabel = this._gridDailyFinanceLabel(kind);
+          this._cachedDomElements("gridFinances", kind).forEach((element) => {
+            if (element.textContent !== financeLabel) element.textContent = financeLabel;
+            element.style.display = financeLabel ? "inline-flex" : "none";
+            element.setAttribute("title", financeLabel);
+            element.setAttribute("aria-label", financeLabel);
+          });
+        });
+      }
       if (this._isPvMetric(metric)) {
         PV_LABELS.forEach((label) => {
           const key = this._pvLabelKey(metric, label);
@@ -14297,6 +14790,9 @@ Object.assign(
   createHistoryQueueMethods({
     defaultConcurrency: DEFAULT_HISTORY_REQUEST_CONCURRENCY,
   }),
+  createHistoryServiceMethods({
+    numericState,
+  }),
   createAdvisorEngineMethods({
     CARD_TYPE,
     GRID_STATUS_METRIC,
@@ -14357,6 +14853,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   adjacentWallboxPosition,
   assetUrl,
   clampConfigNumber,
+  createEditorBaseConfig,
   ensureTranslations,
   findMetricByKey,
   inverterPhaseVoltageEntityKeys,

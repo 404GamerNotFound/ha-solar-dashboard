@@ -281,6 +281,240 @@ function createConfigNormalizerMethods({
   };
 }
 
+const DEFAULT_CURRENCY = "€";
+
+const DEFAULT_GRID_FINANCE_CONFIG = Object.freeze({
+  grid_import_price: "",
+  grid_export_price: "",
+  currency: DEFAULT_CURRENCY,
+  show_grid_daily_finance: true,
+});
+
+function createDefaultFloorplan(label = "Level 1") {
+  return {
+    mode: "editor",
+    show_grid: true,
+    active_floor: "level_1",
+    floors: [{ id: "level_1", label, image: "", rooms: [], walls: [], sensors: [] }],
+  };
+}
+
+function createDefaultImageOverlays() {
+  return {
+    smoke: { enabled: false, entity: "", period: "1h" },
+    heatpump: { enabled: false, entity: "" },
+  };
+}
+
+function createDefaultUnits() {
+  return {
+    power: "auto",
+    battery: "%",
+    volume: "m³",
+  };
+}
+
+function createStubUnits() {
+  return {
+    ...createDefaultUnits(),
+    water_meter: "m³",
+  };
+}
+
+function createDefaultMaxPowerKw() {
+  return {
+    pv_roof_power: 10,
+    pv_shed_power: 3,
+    pv_total_power: 13,
+    inverter_power: 10,
+    wallbox_power: 11,
+    wallbox2_power: 11,
+    import_export_power: 10,
+  };
+}
+
+function createDefaultVisibleBoxes() {
+  return {
+    pv_roof_power: true,
+    pv_shed_power: true,
+    battery_level: true,
+    inverter_power: true,
+    wallbox_power: true,
+    wallbox2_power: false,
+    water_meter: false,
+    import_export_power: true,
+  };
+}
+
+function createStubEntities() {
+  return {
+    pv_roof_power: "sensor.pv_roof_power",
+    pv_roof_power_today_energy: "",
+    pv_roof_power_forecast_today: "",
+    pv_roof_power_peak_today: "",
+    pv_shed_power: "sensor.pv_shed_power",
+    pv_shed_power_today_energy: "",
+    pv_shed_power_forecast_today: "",
+    pv_shed_power_peak_today: "",
+    battery_level: "sensor.battery_level",
+    battery_min_soc: "",
+    battery_max_soc: "",
+    battery_flow_power: "",
+    battery_flow_power_voltage: "",
+    battery_charge_power: "",
+    battery_discharge_power: "",
+    battery_temperature: "",
+    battery_cycles_today: "",
+    inverter_power: "sensor.wechselrichter_power",
+    inverter_power_voltage: "",
+    inverter_power_voltage_l1: "",
+    inverter_power_voltage_l2: "",
+    inverter_power_voltage_l3: "",
+    wallbox_power: "sensor.wallbox_power",
+    wallbox_power_voltage: "",
+    wallbox_phase: "",
+    wallbox_phase_action: "",
+    wallbox_phase_remaining: "",
+    wallbox_soc: "",
+    wallbox_max_soc: "",
+    wallbox_connected: "",
+    wallbox_charging_enabled: "",
+    wallbox_remaining_time: "",
+    wallbox2_power: "",
+    wallbox2_power_voltage: "",
+    wallbox2_phase: "",
+    wallbox2_phase_action: "",
+    wallbox2_phase_remaining: "",
+    wallbox2_soc: "",
+    wallbox2_max_soc: "",
+    wallbox2_connected: "",
+    wallbox2_charging_enabled: "",
+    wallbox2_remaining_time: "",
+    water_meter: "",
+    electricity_price: "",
+    pv_total_power: "sensor.pv_total_power",
+    pv_total_power_voltage: "",
+    pv_total_power_today_energy: "",
+    pv_total_power_forecast_today: "",
+    pv_total_power_peak_today: "",
+    import_export_power: "sensor.grid_power",
+    import_export_power_voltage: "",
+    import_power: "",
+    export_power: "",
+    pv_roof_power_voltage: "",
+    pv_shed_power_voltage: "",
+    house_consumption_power_voltage: "",
+  };
+}
+
+function createBaseCardConfig({
+  advisorDefaults,
+  defaultHistoryRequestConcurrency,
+  recordsDefaultDays,
+} = {}) {
+  return {
+    title: "Energy Flow",
+    house: "single_family_home",
+    view_mode: "house",
+    show_title: true,
+    show_view_selector: true,
+    show_house_selector: true,
+    show_energy_range_selector: false,
+    show_metric_tiles: true,
+    show_environment_sensors: true,
+    show_large_consumers: true,
+    show_floorplan: true,
+    show_power_flows: false,
+    show_status_label: true,
+    show_weather_status: false,
+    show_grid_status_tile: true,
+    hud_box_opacity: 0.65,
+    hud_box_scale: 1,
+    battery_low_threshold: 20,
+    grid_neutral_threshold: 25,
+    grid_voltage_warning_threshold: 245,
+    grid_voltage_critical_threshold: 253,
+    ...DEFAULT_GRID_FINANCE_CONFIG,
+    advisor_surplus_threshold: advisorDefaults?.surplusThreshold ?? 250,
+    advisor_import_threshold: advisorDefaults?.importThreshold ?? 250,
+    advisor_high_load_threshold: advisorDefaults?.highLoadThreshold ?? 3000,
+    advisor_ev_surplus_threshold: advisorDefaults?.evSurplusThreshold ?? 1500,
+    advisor_max_suggestions: advisorDefaults?.maxSuggestions ?? 8,
+    advisor_stale_sensor_warning_minutes: advisorDefaults?.staleSensorWarningMinutes ?? 30,
+    advisor_stale_sensor_critical_minutes: advisorDefaults?.staleSensorCriticalMinutes ?? 1440,
+    chart_hours: 24,
+    records_range: `${recordsDefaultDays ?? 7}d`,
+    history_request_concurrency: defaultHistoryRequestConcurrency ?? 2,
+    daylight_entity: "sun.sun",
+    weather_entity: "",
+    dynamic_tile_colors: true,
+    pv_roof_string_display: "sum",
+    inverter_display: "sum",
+    power_display_mode: "auto_kw",
+    power_decimals: 2,
+    energy_range: "live",
+    units: createDefaultUnits(),
+    entities: {},
+    positions: {},
+    visible_boxes: {},
+    max_power_kw: {},
+    labels: {},
+    label_visibility: {},
+    energy_entities: {},
+    image_overlays: {},
+    tile_color_rules: {},
+    custom_kpis: [],
+    environment_sensors: [],
+    floorplan: createDefaultFloorplan(),
+    large_consumers: [],
+    pv_roof_strings: [],
+    inverters: [],
+  };
+}
+
+function createStubCardConfig({
+  cardType,
+  advisorDefaults,
+  defaultTileColorRules,
+  normalizeLargeConsumers,
+} = {}) {
+  return {
+    type: `custom:${cardType}`,
+    ...createBaseCardConfig({ advisorDefaults }),
+    title: "Solar Dashboard",
+    max_power_kw: createDefaultMaxPowerKw(),
+    units: createStubUnits(),
+    tile_color_rules: defaultTileColorRules || {},
+    large_consumers: typeof normalizeLargeConsumers === "function" ? normalizeLargeConsumers([]) : [],
+    image_overlays: createDefaultImageOverlays(),
+    visible_boxes: createDefaultVisibleBoxes(),
+    entities: createStubEntities(),
+  };
+}
+
+function createEditorBaseConfig({ floorplanLabel = "Level 1" } = {}) {
+  return {
+    entities: {},
+    units: {},
+    positions: {},
+    max_power_kw: {},
+    labels: {},
+    label_visibility: {},
+    energy_entities: {},
+    image_overlays: {},
+    custom_kpis: [],
+    environment_sensors: [],
+    show_floorplan: true,
+    floorplan: createDefaultFloorplan(floorplanLabel),
+    large_consumers: [],
+    pv_roof_strings: [],
+    pv_roof_string_display: "sum",
+    inverters: [],
+    inverter_display: "sum",
+    ...DEFAULT_GRID_FINANCE_CONFIG,
+  };
+}
+
 function createDashboardEditorClass({
   ADVISOR_DEFAULTS,
   DEFAULT_IMAGE_OVERLAYS,
@@ -293,6 +527,7 @@ function createDashboardEditorClass({
   adjacentWallboxPosition,
   assetUrl,
   clampConfigNumber,
+  createEditorBaseConfig,
   ensureTranslations,
   findMetricByKey,
   inverterPhaseVoltageEntityKeys,
@@ -320,29 +555,9 @@ function createDashboardEditorClass({
 } = {}) {
   return class HaSolarDashboardCardEditor extends HTMLElement {
   setConfig(config) {
+    const baseConfig = createEditorBaseConfig?.({ floorplanLabel: this._floorplanFloorLabel(0) }) || {};
     this._config = {
-      entities: {},
-      units: {},
-      positions: {},
-      max_power_kw: {},
-      labels: {},
-      label_visibility: {},
-      energy_entities: {},
-      image_overlays: {},
-      custom_kpis: [],
-      environment_sensors: [],
-      show_floorplan: true,
-      floorplan: {
-        mode: "editor",
-        show_grid: true,
-        active_floor: "level_1",
-        floors: [{ id: "level_1", label: this._floorplanFloorLabel(0), image: "", rooms: [], walls: [], sensors: [] }],
-      },
-      large_consumers: [],
-      pv_roof_strings: [],
-      pv_roof_string_display: "sum",
-      inverters: [],
-      inverter_display: "sum",
+      ...baseConfig,
       ...config,
       image_overlays: {
         smoke: {
@@ -501,6 +716,8 @@ function createDashboardEditorClass({
       "advisor_stale_sensor_critical_minutes",
       "grid_voltage_warning_threshold",
       "grid_voltage_critical_threshold",
+      "grid_import_price",
+      "grid_export_price",
     ]);
     const numericProps = new Set(["left", "top", "width", "height", "position", "columns", "x", "y", "x1", "y1", "x2", "y2", "font_size"]);
     const shouldBeNumeric = numericFields.has(path) || numericProps.has(lastPart) || parts[0] === "max_power_kw" || lastPart === "max_power_kw";
@@ -1343,6 +1560,8 @@ function createDashboardEditorClass({
       { path: "entities.import_export_power_voltage", ...voltageTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"]], include: [gridTerms, ...voltageTarget.include], threshold: 58 },
       { path: "entities.import_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "verbrauch netz", "from grid"]], include: [gridTerms, { terms: ["import", "bezug", "purchase", "verbrauch netz", "from grid"], weight: 32 }], exclude: ["export", "einspeis", "feed", "energy", "kwh"], threshold: 62 },
       { path: "entities.export_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["export", "einspeis", "feed", "feedin", "to grid"]], include: [gridTerms, { terms: ["export", "einspeis", "feed", "feedin", "to grid"], weight: 32 }], exclude: ["import", "bezug", "purchase", "energy", "kwh"], threshold: 62 },
+      { path: "energy_entities.import_power.entity", ...energyTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "from grid"]], block: ["power", "leistung"], include: [gridTerms, { terms: ["import", "bezug", "purchase", "from grid", "energy", "kwh", "total"], weight: 32 }], exclude: ["export", "einspeis", "feed"], threshold: 60 },
+      { path: "energy_entities.export_power.entity", ...energyTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["export", "einspeis", "feed", "feedin", "to grid"]], block: ["power", "leistung"], include: [gridTerms, { terms: ["export", "einspeis", "feed", "feedin", "to grid", "energy", "kwh", "total"], weight: 32 }], exclude: ["import", "bezug", "purchase"], threshold: 60 },
       { path: "entities.house_consumption_power", ...powerTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...powerTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 56 },
       { path: "entities.house_consumption_power_voltage", ...voltageTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 34 }, ...voltageTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox", ...voltageTarget.exclude], threshold: 58 },
       { path: "energy_entities.house_consumption_power.entity", ...energyTarget, required: [["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"]], block: ["power", "leistung"], include: [{ terms: ["house", "home", "load", "consumption", "verbrauch", "hausverbrauch"], weight: 32 }, ...energyTarget.include], exclude: ["grid", "netz", "battery", "batterie", "pv", "solar", "wallbox"], threshold: 58 },
@@ -1507,6 +1726,39 @@ function createDashboardEditorClass({
     `;
   }
 
+  _renderImportExportFinanceInputs(metric) {
+    if (metric.key !== "import_export_power") return "";
+    const importCounter = this._energyEntityConfig({ key: "import_power" });
+    const exportCounter = this._energyEntityConfig({ key: "export_power" });
+    const importCounterValue = importCounter.entity || importCounter.counter || importCounter.kwh_entity || importCounter.kwh || importCounter.meter || "";
+    const exportCounterValue = exportCounter.entity || exportCounter.counter || exportCounter.kwh_entity || exportCounter.kwh || exportCounter.meter || "";
+    return `
+      <details class="pv-labels" open>
+        <summary>${this._escape(this._t("editor.importExportFinance", {}, "Import/export costs"))}</summary>
+        <div class="details-grid">
+          <label>${this._labelText(this._t("editor.importEnergyCounterEntity", {}, "Import energy counter"), this._t("editor.helpImportExportFinance", {}, "Use cumulative kWh counters. The card calculates today's amount from local midnight."))}
+            <input data-path="energy_entities.import_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.grid_import_energy_total" value="${this._escape(importCounterValue)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.exportEnergyCounterEntity", {}, "Export energy counter"), this._t("editor.helpImportExportFinance", {}, "Use cumulative kWh counters. The card calculates today's amount from local midnight."))}
+            <input data-path="energy_entities.export_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.grid_export_energy_total" value="${this._escape(exportCounterValue)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.gridImportPrice", {}, "Grid import price per kWh"))}
+            <input type="number" min="0" step="0.0001" data-path="grid_import_price" value="${this._escape(this._config.grid_import_price ?? "")}" />
+          </label>
+          <label>${this._escape(this._t("editor.gridExportPrice", {}, "Feed-in tariff per kWh"))}
+            <input type="number" min="0" step="0.0001" data-path="grid_export_price" value="${this._escape(this._config.grid_export_price ?? "")}" />
+          </label>
+          <label>${this._escape(this._t("editor.currency", {}, "Currency"))}
+            <input data-path="currency" placeholder="€" value="${this._escape(this._config.currency || "€")}" />
+          </label>
+        </div>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_grid_daily_finance" ${this._config.show_grid_daily_finance !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridDailyFinance", {}, "Show today's costs and revenue labels"))}</label>
+        </div>
+      </details>
+    `;
+  }
+
   _labelVisibility(key) {
     const configured = this._config.label_visibility?.[key] || {};
     return {
@@ -1551,6 +1803,7 @@ function createDashboardEditorClass({
     if (metric.unit !== "power") return "";
     if (metric.key === "pv_roof_power") return "";
     if (metric.key === "inverter_power") return "";
+    if (metric.key === "import_export_power") return "";
     const config = this._energyEntityConfig(metric);
     const counterValue = config.entity || config.counter || config.kwh_entity || config.kwh || config.meter || "";
 
@@ -2115,6 +2368,7 @@ function createDashboardEditorClass({
         <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
         ${this._renderLabelInput(metric)}
         ${this._renderImportExportLabelInputs(metric)}
+        ${this._renderImportExportFinanceInputs(metric)}
         ${this._renderEntityInput(metric)}
         ${this._renderVoltageEntityInput(metric)}
         ${this._renderPvLabelInputs(metric)}
@@ -4673,6 +4927,14 @@ const I18N = {
     "editor.importPowerEntity": "Import sensor",
     "editor.exportPowerEntity": "Export sensor",
     "editor.importExportLabels": "Import/Export labels",
+    "editor.importExportFinance": "Import/export costs",
+    "editor.importEnergyCounterEntity": "Import energy counter",
+    "editor.exportEnergyCounterEntity": "Export energy counter",
+    "editor.helpImportExportFinance": "Use cumulative kWh counters. The card calculates today's amount from local midnight.",
+    "editor.gridImportPrice": "Grid import price per kWh",
+    "editor.gridExportPrice": "Feed-in tariff per kWh",
+    "editor.currency": "Currency",
+    "editor.showGridDailyFinance": "Show today's costs and revenue labels",
     "editor.importLabel": "Import label",
     "editor.exportLabel": "Export label",
     "editor.neutralLabel": "Self-sufficient label",
@@ -4970,6 +5232,8 @@ const I18N = {
     "warning.sensorMissing": "Entity not found",
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor unavailable",
+    "gridFinance.importCost": "Today cost",
+    "gridFinance.exportRevenue": "Today revenue",
     "view.records": "Records",
     "records.count": "{count} records",
     "records.countOne": "{count} record",
@@ -4981,6 +5245,7 @@ const I18N = {
     "records.loadingCountOne": "{count} entity",
     "records.loadingPurposeConsumerPower": "Consumption peak",
     "records.loadingPurposeCounter": "Daily meter increase",
+    "records.loadingPurposeGridFinance": "Grid costs and revenue",
     "records.loadingPurposePower": "Power peak",
     "records.loadingPurposePvEnergy": "Daily PV yield",
     "records.loadingPurposePvPower": "PV power and solar hours",
@@ -4997,6 +5262,7 @@ const I18N = {
     "records.sectionPvEnergy": "Best PV yield per string",
     "records.sectionSolarHours": "Longest solar hours",
     "records.sectionWallbox": "Wallbox records",
+    "records.sectionFinance": "Costs and revenue",
     "records.subtitle": "Best values for {range} from Home Assistant history.",
     "records.title": "Energy records",
     "records.range7d": "7 days",
@@ -5007,6 +5273,10 @@ const I18N = {
     "records.range356d": "356 days",
     "records.consumerPeakPower": "{name}: highest consumption peak",
     "records.counterLargestIncrease": "{name}: largest daily meter increase",
+    "records.gridImport": "Grid import",
+    "records.gridExport": "Grid export",
+    "records.gridHighestCost": "{name}: highest import cost",
+    "records.gridBestRevenue": "{name}: highest feed-in revenue",
     "records.powerPeak": "{name}: highest power peak",
     "records.pvBestYield": "{name}: best daily PV yield",
     "records.pvPeakPower": "{name}: highest PV power",
@@ -5181,6 +5451,14 @@ const I18N = {
     "editor.importPowerEntity": "Bezugs-Sensor",
     "editor.exportPowerEntity": "Einspeise-Sensor",
     "editor.importExportLabels": "Import-/Export-Labels",
+    "editor.importExportFinance": "Bezugs-/Einspeisekosten",
+    "editor.importEnergyCounterEntity": "Bezugs-Energiezähler",
+    "editor.exportEnergyCounterEntity": "Einspeise-Energiezähler",
+    "editor.helpImportExportFinance": "Kumulative kWh-Zähler verwenden. Die Karte berechnet den heutigen Wert ab lokalem Tagesbeginn.",
+    "editor.gridImportPrice": "Bezugskosten pro kWh",
+    "editor.gridExportPrice": "Einspeisevergütung pro kWh",
+    "editor.currency": "Währung",
+    "editor.showGridDailyFinance": "Heutige Kosten und Einnahmen als Labels anzeigen",
     "editor.importLabel": "Bezugs-Label",
     "editor.exportLabel": "Einspeise-Label",
     "editor.neutralLabel": "Autark-Label",
@@ -5478,6 +5756,8 @@ const I18N = {
     "warning.sensorMissing": "Entität nicht gefunden",
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor nicht verfügbar",
+    "gridFinance.importCost": "Kosten heute",
+    "gridFinance.exportRevenue": "Einnahmen heute",
     "view.records": "Rekorde",
     "records.count": "{count} Rekorde",
     "records.countOne": "{count} Rekord",
@@ -5489,6 +5769,7 @@ const I18N = {
     "records.loadingCountOne": "{count} Entität",
     "records.loadingPurposeConsumerPower": "Verbrauchsspitze",
     "records.loadingPurposeCounter": "Tageszähler-Zuwachs",
+    "records.loadingPurposeGridFinance": "Netzkosten und Einspeiseerlöse",
     "records.loadingPurposePower": "Leistungsspitze",
     "records.loadingPurposePvEnergy": "PV-Tagesertrag",
     "records.loadingPurposePvPower": "PV-Leistung und solare Stunden",
@@ -5505,6 +5786,7 @@ const I18N = {
     "records.sectionPvEnergy": "Bester PV-Ertrag pro String",
     "records.sectionSolarHours": "Längste solare Stunden",
     "records.sectionWallbox": "Wallbox-Rekorde",
+    "records.sectionFinance": "Kosten und Einnahmen",
     "records.subtitle": "Bestwerte für {range} aus der Home-Assistant-Historie.",
     "records.title": "Energie-Rekorde",
     "records.range7d": "7 Tage",
@@ -5515,6 +5797,10 @@ const I18N = {
     "records.range356d": "356 Tage",
     "records.consumerPeakPower": "{name}: höchste Verbrauchsspitze",
     "records.counterLargestIncrease": "{name}: größter Tageszähler-Zuwachs",
+    "records.gridImport": "Netzbezug",
+    "records.gridExport": "Einspeisung",
+    "records.gridHighestCost": "{name}: höchste Bezugskosten",
+    "records.gridBestRevenue": "{name}: höchste Einspeiseerlöse",
     "records.powerPeak": "{name}: höchste Leistungsspitze",
     "records.pvBestYield": "{name}: bester PV-Tagesertrag",
     "records.pvPeakPower": "{name}: höchste PV-Leistung",
@@ -5689,6 +5975,14 @@ const I18N = {
     "editor.importPowerEntity": "Entidad de importación",
     "editor.exportPowerEntity": "Entidad de exportación",
     "editor.importExportLabels": "Etiquetas de importación/exportación",
+    "editor.importExportFinance": "Costes de importación/exportación",
+    "editor.importEnergyCounterEntity": "Contador de energía importada",
+    "editor.exportEnergyCounterEntity": "Contador de energía exportada",
+    "editor.helpImportExportFinance": "Usa contadores kWh acumulativos. La tarjeta calcula el valor de hoy desde la medianoche local.",
+    "editor.gridImportPrice": "Precio de importación por kWh",
+    "editor.gridExportPrice": "Tarifa de inyección por kWh",
+    "editor.currency": "Moneda",
+    "editor.showGridDailyFinance": "Mostrar etiquetas de costes e ingresos de hoy",
     "editor.importLabel": "Etiqueta de importación",
     "editor.exportLabel": "Etiqueta de exportación",
     "editor.neutralLabel": "Etiqueta de autosuficiencia",
@@ -5986,6 +6280,8 @@ const I18N = {
     "warning.sensorMissing": "Entidad no encontrada",
     "warning.sensorOffline": "Sensor sin conexión",
     "warning.sensorUnavailable": "Sensor no disponible",
+    "gridFinance.importCost": "Coste hoy",
+    "gridFinance.exportRevenue": "Ingresos hoy",
     "view.records": "Récords",
     "records.count": "{count} récords",
     "records.countOne": "{count} récord",
@@ -5997,6 +6293,7 @@ const I18N = {
     "records.loadingCountOne": "{count} entidad",
     "records.loadingPurposeConsumerPower": "Pico de consumo",
     "records.loadingPurposeCounter": "Incremento diario del contador",
+    "records.loadingPurposeGridFinance": "Costes e ingresos de red",
     "records.loadingPurposePower": "Pico de potencia",
     "records.loadingPurposePvEnergy": "Rendimiento FV diario",
     "records.loadingPurposePvPower": "Potencia FV y horas solares",
@@ -6013,6 +6310,7 @@ const I18N = {
     "records.sectionPvEnergy": "Mejor rendimiento FV por string",
     "records.sectionSolarHours": "Horas solares más largas",
     "records.sectionWallbox": "Récords de wallbox",
+    "records.sectionFinance": "Costes e ingresos",
     "records.subtitle": "Mejores valores de {range} del historial de Home Assistant.",
     "records.title": "Récords de energía",
     "records.range7d": "7 días",
@@ -6023,6 +6321,10 @@ const I18N = {
     "records.range356d": "356 días",
     "records.consumerPeakPower": "{name}: mayor pico de consumo",
     "records.counterLargestIncrease": "{name}: mayor incremento diario del contador",
+    "records.gridImport": "Importación de red",
+    "records.gridExport": "Exportación a red",
+    "records.gridHighestCost": "{name}: mayor coste de importación",
+    "records.gridBestRevenue": "{name}: mayores ingresos por inyección",
     "records.powerPeak": "{name}: mayor pico de potencia",
     "records.pvBestYield": "{name}: mejor rendimiento FV diario",
     "records.pvPeakPower": "{name}: mayor potencia FV",
@@ -6197,6 +6499,14 @@ const I18N = {
     "editor.importPowerEntity": "Entité import",
     "editor.exportPowerEntity": "Entité export",
     "editor.importExportLabels": "Libellés import/export",
+    "editor.importExportFinance": "Coûts import/export",
+    "editor.importEnergyCounterEntity": "Compteur d'énergie importée",
+    "editor.exportEnergyCounterEntity": "Compteur d'énergie exportée",
+    "editor.helpImportExportFinance": "Utilisez des compteurs kWh cumulatifs. La carte calcule la valeur du jour depuis minuit local.",
+    "editor.gridImportPrice": "Prix d'import par kWh",
+    "editor.gridExportPrice": "Tarif d'injection par kWh",
+    "editor.currency": "Devise",
+    "editor.showGridDailyFinance": "Afficher les libellés des coûts et revenus du jour",
     "editor.importLabel": "Libellé import",
     "editor.exportLabel": "Libellé export",
     "editor.neutralLabel": "Libellé autonomie",
@@ -6494,6 +6804,8 @@ const I18N = {
     "warning.sensorMissing": "Entité introuvable",
     "warning.sensorOffline": "Capteur hors ligne",
     "warning.sensorUnavailable": "Capteur indisponible",
+    "gridFinance.importCost": "Coût aujourd'hui",
+    "gridFinance.exportRevenue": "Revenus aujourd'hui",
     "view.records": "Records",
     "records.count": "{count} records",
     "records.countOne": "{count} record",
@@ -6505,6 +6817,7 @@ const I18N = {
     "records.loadingCountOne": "{count} entité",
     "records.loadingPurposeConsumerPower": "Pic de consommation",
     "records.loadingPurposeCounter": "Hausse quotidienne du compteur",
+    "records.loadingPurposeGridFinance": "Coûts et revenus réseau",
     "records.loadingPurposePower": "Pic de puissance",
     "records.loadingPurposePvEnergy": "Rendement PV journalier",
     "records.loadingPurposePvPower": "Puissance PV et heures solaires",
@@ -6521,6 +6834,7 @@ const I18N = {
     "records.sectionPvEnergy": "Meilleur rendement PV par string",
     "records.sectionSolarHours": "Plus longues heures solaires",
     "records.sectionWallbox": "Records wallbox",
+    "records.sectionFinance": "Coûts et revenus",
     "records.subtitle": "Meilleures valeurs pour {range} depuis l’historique Home Assistant.",
     "records.title": "Records d’énergie",
     "records.range7d": "7 jours",
@@ -6531,6 +6845,10 @@ const I18N = {
     "records.range356d": "356 jours",
     "records.consumerPeakPower": "{name}: plus grand pic de consommation",
     "records.counterLargestIncrease": "{name}: plus forte hausse quotidienne du compteur",
+    "records.gridImport": "Import réseau",
+    "records.gridExport": "Export réseau",
+    "records.gridHighestCost": "{name}: coût d'import maximal",
+    "records.gridBestRevenue": "{name}: revenus d'injection maximaux",
     "records.powerPeak": "{name}: plus grand pic de puissance",
     "records.pvBestYield": "{name}: meilleur rendement PV journalier",
     "records.pvPeakPower": "{name}: puissance PV maximale",
@@ -6705,6 +7023,14 @@ const I18N = {
     "editor.importPowerEntity": "Encja importu",
     "editor.exportPowerEntity": "Encja eksportu",
     "editor.importExportLabels": "Etykiety importu/eksportu",
+    "editor.importExportFinance": "Koszty importu/eksportu",
+    "editor.importEnergyCounterEntity": "Licznik energii importowanej",
+    "editor.exportEnergyCounterEntity": "Licznik energii eksportowanej",
+    "editor.helpImportExportFinance": "Użyj skumulowanych liczników kWh. Karta liczy dzisiejszą wartość od lokalnej północy.",
+    "editor.gridImportPrice": "Cena importu z sieci za kWh",
+    "editor.gridExportPrice": "Taryfa oddawania do sieci za kWh",
+    "editor.currency": "Waluta",
+    "editor.showGridDailyFinance": "Pokaż dzisiejsze koszty i przychody jako etykiety",
     "editor.importLabel": "Etykieta importu",
     "editor.exportLabel": "Etykieta eksportu",
     "editor.neutralLabel": "Etykieta samowystarczalności",
@@ -7002,6 +7328,8 @@ const I18N = {
     "warning.sensorMissing": "Nie znaleziono encji",
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor niedostępny",
+    "gridFinance.importCost": "Koszt dzisiaj",
+    "gridFinance.exportRevenue": "Przychód dzisiaj",
     "view.records": "Rekordy",
     "records.count": "{count} rekordów",
     "records.countOne": "{count} rekord",
@@ -7013,6 +7341,7 @@ const I18N = {
     "records.loadingCountOne": "{count} encja",
     "records.loadingPurposeConsumerPower": "Szczyt poboru",
     "records.loadingPurposeCounter": "Dzienny przyrost licznika",
+    "records.loadingPurposeGridFinance": "Koszty i przychody sieciowe",
     "records.loadingPurposePower": "Szczyt mocy",
     "records.loadingPurposePvEnergy": "Dzienny uzysk PV",
     "records.loadingPurposePvPower": "Moc PV i godziny solarne",
@@ -7029,6 +7358,7 @@ const I18N = {
     "records.sectionPvEnergy": "Najlepszy uzysk PV na string",
     "records.sectionSolarHours": "Najdłuższe godziny solarne",
     "records.sectionWallbox": "Rekordy wallboxa",
+    "records.sectionFinance": "Koszty i przychody",
     "records.subtitle": "Najlepsze wartości dla {range} z historii Home Assistant.",
     "records.title": "Rekordy energii",
     "records.range7d": "7 dni",
@@ -7039,6 +7369,10 @@ const I18N = {
     "records.range356d": "356 dni",
     "records.consumerPeakPower": "{name}: najwyższy szczyt poboru",
     "records.counterLargestIncrease": "{name}: największy dzienny przyrost licznika",
+    "records.gridImport": "Import z sieci",
+    "records.gridExport": "Eksport do sieci",
+    "records.gridHighestCost": "{name}: najwyższy koszt importu",
+    "records.gridBestRevenue": "{name}: najwyższy przychód z oddawania",
     "records.powerPeak": "{name}: najwyższy szczyt mocy",
     "records.pvBestYield": "{name}: najlepszy dzienny uzysk PV",
     "records.pvPeakPower": "{name}: najwyższa moc PV",
@@ -7153,6 +7487,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   adjacentWallboxPosition,
   assetUrl,
   clampConfigNumber,
+  createEditorBaseConfig,
   ensureTranslations,
   findMetricByKey,
   inverterPhaseVoltageEntityKeys,

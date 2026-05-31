@@ -6,6 +6,9 @@ import {
   clampConfigNumber,
 } from "../modules/config-normalizers.js";
 import {
+  createEditorBaseConfig,
+} from "../modules/config-schema.js";
+import {
   createDashboardEditorClass,
 } from "../modules/editor.js";
 import {
@@ -150,6 +153,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   adjacentWallboxPosition,
   assetUrl,
   clampConfigNumber,
+  createEditorBaseConfig,
   ensureTranslations,
   findMetricByKey,
   inverterPhaseVoltageEntityKeys,

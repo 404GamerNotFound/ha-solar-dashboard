@@ -433,16 +433,25 @@ export function createRecordsDashboardMethods({
         this._setCacheEntry(this._recordsCache, cacheKey, points, 192);
         return { loading: false, error: "", points };
       }
-      this._requestRecordHistory(source, rawCacheKey);
+      const order = this._recordsDashboardRenderIndex || 0;
+      this._recordsDashboardRenderIndex = order + 1;
+      this._requestRecordHistory(source, rawCacheKey, { priority: Math.max(5, 60 - order) });
       return { loading: true, error: "", points: [] };
     },
 
-    _requestRecordHistory(source, rawCacheKey) {
+    _requestRecordHistory(source, rawCacheKey, { priority = 0 } = {}) {
       if (!this._hass?.callApi || this._recordsLoading?.has(rawCacheKey)) return;
       const requestToken = this._asyncRequestToken || 0;
       const hours = this._recordsDashboardHours();
       this._recordsLoading.add(rawCacheKey);
-      this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours))
+      const request = typeof this._queueHistoryRequest === "function"
+        ? this._queueHistoryRequest(
+          `records:${rawCacheKey}`,
+          () => this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours)),
+          { priority },
+        )
+        : this._hass.callApi("GET", chartHistoryApiPath(source.entityId, hours));
+      request
         .then((history) => {
           if (!this._isActiveRequest(requestToken)) return;
           const states = Array.isArray(history?.[0]) ? history[0] : [];
@@ -461,6 +470,7 @@ export function createRecordsDashboardMethods({
 
     _recordsSections(variant = this._currentVariant || this._layoutState().variant) {
       const sources = this._recordSources(variant);
+      this._recordsDashboardRenderIndex = 0;
       const states = sources.map((source) => ({ source, state: this._recordHistoryState(source) }));
       const loading = states.some((entry) => entry.state.loading);
       const hasError = states.some((entry) => entry.state.error);
@@ -746,6 +756,8 @@ export function createRecordsDashboardMethods({
           event.stopPropagation();
           const rangeKey = normalizeRecordsRange(event.currentTarget.dataset.recordRange, rangeOptions);
           this._recordsRange = rangeKey || normalizeRecordsRange(defaultDays, rangeOptions);
+          this._recordsLoading?.clear();
+          this._clearPendingHistoryRequests?.("records:");
           this._renderCardShell(this._layoutState());
         });
       });

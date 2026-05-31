@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "optimize-images": "node scripts/generate-webp.mjs",
-    "test": "node tests/validate-hacs-package.mjs"
+    "test": "node tests/validate-hacs-package.mjs && npm run test:logic",
+    "test:logic": "NODE_OPTIONS=--no-warnings node tests/domain-logic.mjs"
   },
   "engines": {
     "node": ">=20"

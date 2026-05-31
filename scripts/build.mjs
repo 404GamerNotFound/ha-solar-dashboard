@@ -85,13 +85,18 @@ function buildEntry() {
   bundled = inlineModuleImport(bundled, "modules/pv-strings.js");
   bundled = inlineModuleImport(bundled, "modules/grid-flow.js");
   bundled = inlineModuleImport(bundled, "modules/html.js");
+  bundled = inlineModuleImport(bundled, "modules/history-queue.js");
   bundled = inlineModuleImport(bundled, "modules/charts.js");
   bundled = inlineModuleImport(bundled, "modules/views.js");
+  bundled = inlineModuleImport(bundled, "modules/config-normalizers.js");
   bundled = inlineModuleImport(bundled, "modules/weather-images.js");
   bundled = inlineModuleImport(bundled, "modules/tile-renderer.js");
+  bundled = inlineModuleImport(bundled, "modules/floorplan-renderer.js");
+  bundled = inlineModuleImport(bundled, "modules/overlay-renderer.js");
+  bundled = inlineModuleImport(bundled, "modules/chart-renderer.js");
   bundled = inlineModuleImport(bundled, "modules/records.js");
   bundled = inlineModuleImport(bundled, "modules/metrics.js");
-  bundled = inlineModuleImport(bundled, "modules/editor.js");
+  bundled = inlineModuleImport(bundled, "modules/editor-loader.js");
   bundled = inlineModuleImport(bundled, "modules/large-consumers.js");
   bundled = inlineModuleImport(bundled, "modules/wallbox.js");
   bundled = inlineModuleImport(bundled, "modules/house-variants.js");
@@ -116,17 +121,52 @@ function buildEntry() {
   return `${bootstrapPrelude()}${bundled}`;
 }
 
-const entry = buildEntry();
-const entryPath = "ha-solar-dashboard.js";
+function buildEditorEntry() {
+  const editorSource = readText("src/ha-solar-dashboard-editor.js");
+  let bundled = editorSource;
+  bundled = inlineModuleImport(bundled, "modules/advisor.js");
+  bundled = inlineModuleImport(bundled, "modules/config-normalizers.js");
+  bundled = inlineModuleImport(bundled, "modules/editor.js");
+  bundled = inlineModuleImport(bundled, "modules/house-variants.js");
+  bundled = inlineModuleImport(bundled, "modules/large-consumers.js");
+  bundled = inlineModuleImport(bundled, "modules/metrics.js");
+  bundled = inlineModuleImport(bundled, "modules/pv-strings.js");
+  bundled = inlineModuleImport(bundled, "modules/views.js");
+  bundled = inlineModuleImport(bundled, "modules/wallbox.js");
+
+  bundled = bundled
+    .replace("const I18N = {};", bundledI18nSource())
+    .replace(
+      '      <link rel="stylesheet" href="${this._escape(assetUrl("styles/editor.css"))}" />',
+      styleTagFromFile("styles/editor.css"),
+    );
+
+  if (/^\s*import\s+/m.test(bundled)) {
+    throw new Error("Editor entry still contains a static module import");
+  }
+  if (bundled.includes('assetUrl("styles/')) {
+    throw new Error("Editor entry still depends on external CSS files");
+  }
+  return bundled;
+}
+
+const entries = [
+  ["ha-solar-dashboard.js", buildEntry()],
+  ["ha-solar-dashboard-editor.js", buildEditorEntry()],
+];
 
 if (checkOnly) {
-  if (!existsSync(join(root, entryPath))) {
-    throw new Error(`${entryPath} is missing`);
-  }
-  const current = readText(entryPath);
-  if (current !== entry) {
-    throw new Error(`${entryPath} is not up to date; run npm run build`);
+  for (const [entryPath, entry] of entries) {
+    if (!existsSync(join(root, entryPath))) {
+      throw new Error(`${entryPath} is missing`);
+    }
+    const current = readText(entryPath);
+    if (current !== entry) {
+      throw new Error(`${entryPath} is not up to date; run npm run build`);
+    }
   }
 } else {
-  writeText(entryPath, entry);
+  for (const [entryPath, entry] of entries) {
+    writeText(entryPath, entry);
+  }
 }

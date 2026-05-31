@@ -77,6 +77,10 @@ import {
   styleMap,
 } from "../modules/html.js";
 import {
+  DEFAULT_HISTORY_REQUEST_CONCURRENCY,
+  createHistoryQueueMethods,
+} from "../modules/history-queue.js";
+import {
   chartBounds,
   chartDashboardSections,
   chartHistoryApiPath,
@@ -95,12 +99,24 @@ import {
   viewModeIconSvg,
 } from "../modules/views.js";
 import {
+  createConfigNormalizerMethods,
+} from "../modules/config-normalizers.js";
+import {
   createWeatherImageMethods,
   imageFormatFiles,
 } from "../modules/weather-images.js";
 import {
   createTileRendererMethods,
 } from "../modules/tile-renderer.js";
+import {
+  createFloorplanRendererMethods,
+} from "../modules/floorplan-renderer.js";
+import {
+  createOverlayRendererMethods,
+} from "../modules/overlay-renderer.js";
+import {
+  createChartRendererMethods,
+} from "../modules/chart-renderer.js";
 import {
   RECORDS_DEFAULT_DAYS,
   RECORDS_RANGE_OPTIONS,
@@ -127,8 +143,8 @@ import {
   metricVoltageEntityKey,
 } from "../modules/metrics.js";
 import {
-  createDashboardEditorClass,
-} from "../modules/editor.js";
+  createLazyEditorElementClass,
+} from "../modules/editor-loader.js";
 import {
   largeConsumerAdvisorDetails,
   largeConsumerEnergyEntityId,
@@ -180,6 +196,8 @@ import {
 
 const CARD_TYPE = "ha-solar-dashboard-card";
 const CARD_EDITOR_TYPE = "ha-solar-dashboard-card-editor";
+const CARD_EDITOR_PANEL_TYPE = "ha-solar-dashboard-card-editor-panel";
+const CARD_EDITOR_BUNDLE = "ha-solar-dashboard-editor.js";
 const REPOSITORY_IMAGE_BASE =
   "https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/images";
 
@@ -210,6 +228,13 @@ function scriptAssetBaseUrl() {
 
 function assetUrl(path) {
   return new URL(path, scriptAssetBaseUrl()).href;
+}
+
+function scriptSiblingUrl(path) {
+  const base = new URL(scriptAssetBaseUrl());
+  const url = new URL(path, base);
+  if (base.search && !url.search) url.search = base.search;
+  return url.href;
 }
 
 function translationUrl(language) {
@@ -284,17 +309,6 @@ const MINUTE_MS = 60 * 1000;
 const MAX_HISTORY_CACHE_ENTRIES = 48;
 const MAX_COUNTER_CACHE_ENTRIES = 72;
 
-function normalizeConfigId(value, fallback) {
-  const id = String(value || fallback || "").trim().replace(/[^\w-]+/g, "_");
-  return id || String(fallback || "item").replace(/[^\w-]+/g, "_");
-}
-
-function clampConfigNumber(value, fallback, min, max) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
-  return Math.min(max, Math.max(min, number));
-}
-
 class HaSolarDashboardCard extends HTMLElement {
   connectedCallback() {
     this._isCardConnected = true;
@@ -308,6 +322,7 @@ class HaSolarDashboardCard extends HTMLElement {
   disconnectedCallback() {
     this._isCardConnected = false;
     this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
+    this._clearPendingHistoryRequests?.();
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
     this._chartDashboardLoading?.clear();
@@ -466,6 +481,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (!config) throw new Error("Invalid configuration");
 
     this._asyncRequestToken = (this._asyncRequestToken || 0) + 1;
+    this._clearPendingHistoryRequests?.();
     this._energyRangeLoading?.clear();
     this._overlayConsumptionLoading?.clear();
     this._chartDashboardLoading?.clear();
@@ -508,6 +524,7 @@ class HaSolarDashboardCard extends HTMLElement {
       advisor_stale_sensor_critical_minutes: ADVISOR_DEFAULTS.staleSensorCriticalMinutes,
       chart_hours: 24,
       records_range: "7d",
+      history_request_concurrency: DEFAULT_HISTORY_REQUEST_CONCURRENCY,
       daylight_entity: "sun.sun",
       weather_entity: "",
       dynamic_tile_colors: true,
@@ -610,6 +627,9 @@ class HaSolarDashboardCard extends HTMLElement {
     this.config.inverters = normalizeInverters(this.config.inverters || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
     this.config.records_range = String(this.config.records_range || this.config.records_days || `${RECORDS_DEFAULT_DAYS}d`);
+    this.config.history_request_concurrency = this._historyRequestConcurrency
+      ? this._historyRequestConcurrency()
+      : DEFAULT_HISTORY_REQUEST_CONCURRENCY;
     this._chartHours = this._chartHours || this.config.chart_hours;
     this._recordsRange = this._recordsRange || this.config.records_range;
     this._historyCache = this._historyCache || new Map();
@@ -680,20 +700,6 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _normalizeHouse(value) {
     return normalizeHouse(value);
-  }
-
-  _normalizeEnergyRange(value) {
-    const normalized = String(value || "").trim().toLowerCase();
-    if (normalized === "hour" || normalized === "hourly" || normalized === "1hr" || normalized === "60m") return "1h";
-    if (normalized === "day" || normalized === "today" || normalized === "daily" || normalized === "24hr") return "24h";
-    if (normalized === "monthly") return "month";
-    if (normalized === "yearly") return "year";
-    if (normalized === "all" || normalized === "overall" || normalized === "lifetime") return "total";
-    return ENERGY_RANGE_OPTIONS.some((option) => option.key === normalized) ? normalized : undefined;
-  }
-
-  _normalizeViewMode(value) {
-    return normalizeViewMode(value);
   }
 
   _currentViewMode() {
@@ -1130,31 +1136,6 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._formatWithUnit(value, unit);
   }
 
-  _normalizeCustomKpis(kpis) {
-    if (!Array.isArray(kpis)) return [];
-    return kpis
-      .map((kpi, index) => {
-        if (!kpi || typeof kpi !== "object") return undefined;
-        const id = String(kpi.id || kpi.key || `kpi_${index + 1}`).trim().replace(/[^\w-]/g, "_");
-        const label = String(kpi.label || kpi.name || `KPI ${index + 1}`).trim();
-        const position = this._clampNumber(kpi.position ?? kpi.order ?? 100 + index, 100 + index, 0, 999);
-        const columns = Math.round(this._clampNumber(kpi.columns ?? kpi.span ?? 1, 1, 1, 6));
-        return {
-          id,
-          label,
-          entity: String(kpi.entity || kpi.entity_id || "").trim(),
-          value: kpi.value ?? "",
-          unit: kpi.unit ?? "auto",
-          position,
-          columns,
-          color: this._safeCssColor(kpi.color, "#1f8fff"),
-          glow: kpi.glow,
-          visible: kpi.visible !== false,
-        };
-      })
-      .filter(Boolean);
-  }
-
   _customKpiMetrics() {
     return (this.config.custom_kpis || [])
       .filter((kpi) => kpi.visible !== false)
@@ -1170,129 +1151,12 @@ class HaSolarDashboardCard extends HTMLElement {
       }));
   }
 
-  _normalizeEnvironmentSensors(sensors) {
-    const source = Array.isArray(sensors)
-      ? sensors
-      : sensors && typeof sensors === "object"
-        ? Object.entries(sensors).map(([id, sensor]) => (
-          typeof sensor === "string"
-            ? { id, entity: sensor }
-            : { id, ...(sensor || {}) }
-        ))
-        : [];
-    return source
-      .map((sensor, index) => {
-        if (!sensor || typeof sensor !== "object") return undefined;
-        const id = String(sensor.id || sensor.key || sensor.entity || `environment_${index + 1}`).trim().replace(/[^\w-]/g, "_");
-        const position = this._clampNumber(sensor.position ?? sensor.order ?? 300 + index, 300 + index, 0, 999);
-        const columns = Math.round(this._clampNumber(sensor.columns ?? sensor.span ?? 1, 1, 1, 6));
-        const left = this._clampNumber(sensor.left ?? sensor.x, 50, 0, 100);
-        const top = this._clampNumber(sensor.top ?? sensor.y, 50, 0, 100);
-        return {
-          id,
-          label: String(sensor.label || sensor.name || "").trim(),
-          entity: String(sensor.entity || sensor.entity_id || sensor.sensor || "").trim(),
-          type: String(sensor.type || sensor.sensor_type || sensor.kind || "custom").trim() || "custom",
-          unit: sensor.unit ?? "auto",
-          position,
-          columns,
-          left,
-          top,
-          color: this._safeCssColor(sensor.color, "#34d399"),
-          glow: sensor.glow,
-          visible: sensor.visible !== false,
-          show_footer: sensor.show_footer ?? sensor.footer ?? true,
-          show_image: sensor.show_image ?? sensor.image ?? false,
-        };
-      })
-      .filter(Boolean);
-  }
-
   _environmentSensorLabel(sensor, index = 0) {
     if (sensor?.label) return sensor.label;
     const entity = this._getEntity(sensor?.entity);
     const friendlyName = entity?.attributes?.friendly_name || entity?.attributes?.name;
     if (friendlyName) return String(friendlyName);
     return this._t("environment.sensor", { index: index + 1 }, `Environment ${index + 1}`);
-  }
-
-  _floorplanSensorType(type = "indoor") {
-    const types = {
-      indoor: { label: this._t("environment.templateIndoor", {}, "Indoor temperature"), color: "#34d399" },
-      outdoor: { label: this._t("environment.templateOutdoor", {}, "Outdoor temperature"), color: "#60a5fa" },
-      hot_water: { label: this._t("environment.templateHotWater", {}, "Hot water"), color: "#fb923c" },
-      humidity: { label: this._t("environment.templateHumidity", {}, "Humidity"), color: "#22c55e" },
-      pressure: { label: this._t("environment.templatePressure", {}, "Pressure"), color: "#a78bfa" },
-      air_quality: { label: this._t("environment.templateAirQuality", {}, "Air quality"), color: "#f87171" },
-      custom: { label: this._t("environment.templateCustom", {}, "Custom"), color: "#34d399" },
-    };
-    return types[type] || types.indoor;
-  }
-
-  _normalizeFloorplanMode(value = "editor") {
-    const mode = String(value || "").trim().toLowerCase();
-    return ["image", "picture", "bild"].includes(mode) ? "image" : "editor";
-  }
-
-  _floorplanFloorLabel(index = 0) {
-    return this._t("floorplan.level", { index: index + 1 }, `Level ${index + 1}`);
-  }
-
-  _normalizeFloorplanRoom(room, index = 0) {
-    if (!room || typeof room !== "object") return undefined;
-    return {
-      id: normalizeConfigId(room.id || room.key, `room_${index + 1}`),
-      label: String(room.label || room.name || this._t("floorplan.room", { index: index + 1 }, `Room ${index + 1}`)).trim(),
-      x: this._clampNumber(room.x, 10 + index * 4, 0, 100),
-      y: this._clampNumber(room.y, 10 + index * 4, 0, 70),
-      width: this._clampNumber(room.width ?? room.w, 24, 3, 100),
-      height: this._clampNumber(room.height ?? room.h, 18, 3, 70),
-      color: this._safeCssColor(room.color, "#1f8fff"),
-    };
-  }
-
-  _normalizeFloorplanWall(wall, index = 0) {
-    if (!wall || typeof wall !== "object") return undefined;
-    return {
-      id: normalizeConfigId(wall.id || wall.key, `wall_${index + 1}`),
-      x1: this._clampNumber(wall.x1 ?? wall.from_x, 12, 0, 100),
-      y1: this._clampNumber(wall.y1 ?? wall.from_y, 12, 0, 70),
-      x2: this._clampNumber(wall.x2 ?? wall.to_x, 36, 0, 100),
-      y2: this._clampNumber(wall.y2 ?? wall.to_y, 12, 0, 70),
-      width: this._clampNumber(wall.width ?? wall.stroke_width, 1.2, 0.2, 5),
-      color: this._safeCssColor(wall.color, "#dbeafe"),
-    };
-  }
-
-  _normalizeFloorplanSensor(sensor, index = 0) {
-    if (!sensor || typeof sensor !== "object") return undefined;
-    const type = String(sensor.type || sensor.sensor_type || sensor.kind || "indoor").trim() || "indoor";
-    return {
-      id: normalizeConfigId(sensor.id || sensor.key || sensor.entity || sensor.environment_sensor, `sensor_${index + 1}`),
-      label: String(sensor.label || sensor.name || "").trim(),
-      entity: String(sensor.entity || sensor.entity_id || "").trim(),
-      environment_sensor: String(sensor.environment_sensor || sensor.environmentSensor || "").trim(),
-      type,
-      unit: sensor.unit ?? "auto",
-      x: this._clampNumber(sensor.x ?? sensor.left, 50, 0, 100),
-      y: this._clampNumber(sensor.y ?? sensor.top, 35, 0, 70),
-      color: this._safeCssColor(sensor.color, this._floorplanSensorType(type).color),
-      visible: sensor.visible !== false,
-      show_label: sensor.show_label !== false && sensor.label_visible !== false && sensor.showLabel !== false,
-      font_size: this._clampNumber(sensor.font_size ?? sensor.fontSize ?? sensor.text_size ?? sensor.textSize, 3.05, 1.4, 8),
-    };
-  }
-
-  _normalizeFloorplanFloor(floor = {}, index = 0) {
-    const source = floor && typeof floor === "object" ? floor : {};
-    return {
-      id: normalizeConfigId(source.id || source.key, `level_${index + 1}`),
-      label: String(source.label || source.name || this._floorplanFloorLabel(index)).trim(),
-      image: String(source.image || source.image_path || source.background_image || "").trim(),
-      rooms: (Array.isArray(source.rooms) ? source.rooms : []).map((room, roomIndex) => this._normalizeFloorplanRoom(room, roomIndex)).filter(Boolean),
-      walls: (Array.isArray(source.walls) ? source.walls : []).map((wall, wallIndex) => this._normalizeFloorplanWall(wall, wallIndex)).filter(Boolean),
-      sensors: (Array.isArray(source.sensors) ? source.sensors : []).map((sensor, sensorIndex) => this._normalizeFloorplanSensor(sensor, sensorIndex)).filter(Boolean),
-    };
   }
 
   _environmentSensorMetrics({ placement = "" } = {}) {
@@ -1315,183 +1179,6 @@ class HaSolarDashboardCard extends HTMLElement {
         tileColumns: sensor.columns ?? 1,
       }))
       .sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
-  }
-
-  _normalizeFloorplan(floorplan = {}) {
-    const source = floorplan && typeof floorplan === "object" ? floorplan : {};
-    const mode = this._normalizeFloorplanMode(source.mode || source.type || source.source || source.layout_type || "editor");
-    const fallbackFloor = {
-      id: source.active_floor || source.activeFloor || source.floor_id || "level_1",
-      label: source.floor_label || source.label || this._floorplanFloorLabel(0),
-      image: source.image || source.image_path || source.background_image || "",
-      rooms: Array.isArray(source.rooms) ? source.rooms : [],
-      walls: Array.isArray(source.walls) ? source.walls : [],
-      sensors: Array.isArray(source.sensors) ? source.sensors : [],
-    };
-    const floors = (Array.isArray(source.floors) && source.floors.length > 0 ? source.floors : [fallbackFloor])
-      .map((floor, index) => this._normalizeFloorplanFloor(floor, index))
-      .filter(Boolean);
-    const normalizedFloors = floors.length ? floors : [this._normalizeFloorplanFloor(fallbackFloor, 0)];
-    const requestedActiveFloor = String(this._activeFloorplanFloorId || source.active_floor || source.activeFloor || source.selected_floor || normalizedFloors[0].id || "level_1");
-    const activeFloor = normalizedFloors.find((floor) => floor.id === requestedActiveFloor) || normalizedFloors[0];
-    return {
-      mode,
-      show_grid: source.show_grid !== false,
-      active_floor: activeFloor.id,
-      floors: normalizedFloors,
-      image: normalizedFloors[0].image,
-      rooms: normalizedFloors[0].rooms,
-      walls: normalizedFloors[0].walls,
-      sensors: normalizedFloors[0].sensors,
-    };
-  }
-
-  _activeFloorplanFloor(floorplan = this._normalizeFloorplan(this.config?.floorplan || {})) {
-    const floors = Array.isArray(floorplan.floors) && floorplan.floors.length > 0 ? floorplan.floors : [floorplan];
-    const requestedFloor = this._activeFloorplanFloorId || floorplan.active_floor;
-    const index = Math.max(0, floors.findIndex((floor) => floor.id === requestedFloor));
-    return { floor: floors[index] || floors[0], index: index >= 0 ? index : 0 };
-  }
-
-  _floorplanImageUrl(path = "") {
-    const value = String(path || "").trim();
-    if (!value) return "";
-    if (/^(https?:|data:|blob:|\/)/i.test(value)) return value;
-    if (/^local\//i.test(value)) return `/${value}`;
-    return assetUrl(value);
-  }
-
-  _floorplanEnvironmentSensor(id) {
-    if (!id) return undefined;
-    return (this.config.environment_sensors || []).find((sensor) => sensor.id === id);
-  }
-
-  _floorplanSensorSource(sensor, index = 0) {
-    const linkedSensor = this._floorplanEnvironmentSensor(sensor?.environment_sensor);
-    const label = sensor?.label || (linkedSensor ? this._environmentSensorLabel(linkedSensor, index) : this._floorplanSensorType(sensor?.type).label);
-    const entity = linkedSensor?.entity || sensor?.entity || "";
-    const unit = sensor?.unit !== undefined && sensor?.unit !== "" ? sensor.unit : linkedSensor?.unit ?? "auto";
-    const color = sensor?.color || linkedSensor?.color || this._floorplanSensorType(sensor?.type).color;
-    return {
-      label: label || this._t("floorplan.sensor", { index: index + 1 }, `Sensor ${index + 1}`),
-      entity,
-      unit,
-      color,
-    };
-  }
-
-  _floorplanSensorValue(sensor, index = 0) {
-    const source = this._floorplanSensorSource(sensor, index);
-    if (!source.entity) return "—";
-    const value = this._getEntityValue(source.entity, undefined);
-    const entityUnit = this._getEntityUnit(source.entity);
-    const unit = this._normalizeUnit(source.unit) === "auto" ? entityUnit : source.unit;
-    return this._formatWithUnit(value, unit);
-  }
-
-  _renderFloorplanDashboard() {
-    const floorplan = this._normalizeFloorplan(this.config.floorplan || {});
-    const { floor: activeFloor } = this._activeFloorplanFloor(floorplan);
-    const imageSrc = this._floorplanImageUrl(activeFloor.image);
-    const grid = floorplan.mode === "editor" && floorplan.show_grid !== false
-      ? Array.from({ length: 11 }, (_item, index) => index * 10).map((x) => `<line class="floorplan-grid-line" x1="${x}" y1="0" x2="${x}" y2="70"></line>`).join("")
-        + Array.from({ length: 8 }, (_item, index) => index * 10).map((y) => `<line class="floorplan-grid-line" x1="0" y1="${y}" x2="100" y2="${y}"></line>`).join("")
-      : "";
-    const backgroundImage = floorplan.mode === "image" && imageSrc
-      ? `<image class="floorplan-image" href="${this._escape(imageSrc)}" x="0" y="0" width="100" height="70" preserveAspectRatio="xMidYMid slice"></image>`
-      : "";
-    const rooms = floorplan.mode === "editor" ? activeFloor.rooms.map((room) => `
-      <g class="floorplan-room" style="--room-color:${this._escape(room.color)}">
-        <rect x="${this._escape(room.x)}" y="${this._escape(room.y)}" width="${this._escape(room.width)}" height="${this._escape(room.height)}" rx="1.4"></rect>
-        <text x="${this._escape(room.x + 1.6)}" y="${this._escape(room.y + 4.2)}">${this._escape(room.label)}</text>
-      </g>
-    `).join("") : "";
-    const walls = floorplan.mode === "editor" ? activeFloor.walls.map((wall) => `
-      <line class="floorplan-wall" x1="${this._escape(wall.x1)}" y1="${this._escape(wall.y1)}" x2="${this._escape(wall.x2)}" y2="${this._escape(wall.y2)}" style="--wall-color:${this._escape(wall.color)};--wall-width:${this._escape(wall.width)}"></line>
-    `).join("") : "";
-    const sensors = activeFloor.sensors
-      .filter((sensor) => sensor.visible !== false)
-      .map((sensor, index) => {
-        const source = this._floorplanSensorSource(sensor, index);
-        const value = this._floorplanSensorValue(sensor, index);
-        const title = source.entity ? `${source.label}: ${value} (${source.entity})` : source.label;
-        const fontSize = this._clampNumber(sensor.font_size, 3.05, 1.4, 8);
-        const labelFontSize = this._clampNumber(fontSize * 0.77, 2.35, 1.1, 6.2);
-        const labelY = this._clampNumber(fontSize * -0.62, -1.9, -5, -0.4);
-        const valueY = sensor.show_label !== false
-          ? this._clampNumber(fontSize * 0.82, 2.5, 1.2, 7)
-          : this._clampNumber(fontSize * 0.35, 1.1, 0.7, 4);
-        const labelText = sensor.show_label !== false
-          ? `<text class="floorplan-sensor-label" x="4.2" y="${this._escape(labelY)}" style="font-size:${this._escape(labelFontSize)}px" data-floorplan-sensor-label="${this._escape(sensor.id)}">${this._escape(source.label)}</text>`
-          : "";
-        return `
-          <g class="floorplan-sensor" data-floorplan-sensor="${this._escape(sensor.id)}" style="--sensor-color:${this._escape(source.color)};--sensor-font-size:${this._escape(fontSize)}px" transform="translate(${this._escape(sensor.x)} ${this._escape(sensor.y)})">
-            <title>${this._escape(title)}</title>
-            <circle r="1.7"></circle>
-            ${labelText}
-            <text class="floorplan-sensor-value" x="4.2" y="${this._escape(valueY)}" style="font-size:${this._escape(fontSize)}px" data-floorplan-sensor-value="${this._escape(sensor.id)}">${this._escape(value)}</text>
-          </g>
-        `;
-      })
-      .join("");
-    const floorTabs = floorplan.floors.length > 1
-      ? `
-        <div class="floorplan-floor-tabs" role="group" aria-label="${this._escape(this._t("editor.floorplanFloors", {}, "Levels"))}">
-          ${floorplan.floors.map((floor) => `
-            <button type="button" class="${floor.id === activeFloor.id ? "active" : ""}" data-floorplan-view-floor="${this._escape(floor.id)}" aria-pressed="${floor.id === activeFloor.id ? "true" : "false"}">${this._escape(floor.label)}</button>
-          `).join("")}
-        </div>
-      `
-      : "";
-    const empty = floorplan.mode === "image" && !imageSrc
-      ? `<div class="floorplan-empty">${this._escape(this._t("floorplan.imageEmpty", {}, "Enter an image path for this level."))}</div>`
-      : activeFloor.rooms.length === 0 && activeFloor.walls.length === 0 && activeFloor.sensors.length === 0
-      ? `<div class="floorplan-empty">${this._escape(this._t("floorplan.empty", {}, "Create rooms, walls, and sensors in the card editor."))}</div>`
-      : "";
-    return `
-      <section class="floorplan-dashboard" data-floorplan-dashboard>
-        <div class="floorplan-head">
-          <div>
-            <div class="chart-dashboard-label">${this._escape(this._t("floorplan.label", {}, "Floorplan"))}</div>
-            <h2>${this._escape(activeFloor.label || this._t("floorplan.title", {}, "Home floorplan"))}</h2>
-          </div>
-          <span>${this._escape(this._t("floorplan.counts", { rooms: activeFloor.rooms.length, sensors: activeFloor.sensors.length }, `${activeFloor.rooms.length} rooms · ${activeFloor.sensors.length} sensors`))}</span>
-        </div>
-        ${floorTabs}
-        <div class="floorplan-canvas">
-          <svg viewBox="0 0 100 70" role="img" aria-label="${this._escape(this._t("floorplan.title", {}, "Home floorplan"))}" preserveAspectRatio="xMidYMid meet">
-            <rect class="floorplan-background" x="0" y="0" width="100" height="70" rx="1.5"></rect>
-            ${backgroundImage}
-            ${grid}
-            ${rooms}
-            ${walls}
-            ${sensors}
-          </svg>
-          ${empty}
-        </div>
-      </section>
-    `;
-  }
-
-  _updateFloorplanReadings() {
-    if (!this._domCache) this._refreshDomCache();
-    const floorplan = this.config?.floorplan ? this._normalizeFloorplan(this.config.floorplan) : undefined;
-    if (!floorplan || this._currentViewMode() !== FLOORPLAN_DASHBOARD_VIEW) return;
-    const { floor } = this._activeFloorplanFloor(floorplan);
-    (floor.sensors || []).forEach((sensor, index) => {
-      const source = this._floorplanSensorSource(sensor, index);
-      const value = this._floorplanSensorValue(sensor, index);
-      this._cachedDomElements("floorplanSensorLabels", sensor.id).forEach((element) => {
-        if (element.textContent !== source.label) element.textContent = source.label;
-      });
-      this._cachedDomElements("floorplanSensorValues", sensor.id).forEach((element) => {
-        if (element.textContent !== value) element.textContent = value;
-      });
-      this._cachedDomElements("floorplanSensors", sensor.id).forEach((element) => {
-        element.style.setProperty("--sensor-color", source.color);
-        element.style.setProperty("--sensor-font-size", `${this._clampNumber(sensor.font_size, 3.05, 1.4, 8)}px`);
-      });
-    });
   }
 
   _largeConsumerLabel(consumer, index = 0) {
@@ -2954,7 +2641,7 @@ class HaSolarDashboardCard extends HTMLElement {
     this._renderCardShell(this._layoutState());
 
     try {
-      const points = await this._loadHistoryPoints(metric, entityId, this._chartHours);
+      const points = await this._loadHistoryPoints(metric, entityId, this._chartHours, { priority: 100 });
       if (!this._isActiveRequest(requestToken) || !this._activeChart || this._activeChart.metricKey !== metricKey || this._activeChart.hours !== this._chartHours) return;
       this._activeChart = {
         ...this._activeChart,
@@ -2980,13 +2667,17 @@ class HaSolarDashboardCard extends HTMLElement {
     this._renderCardShell(this._layoutState());
   }
 
-  async _loadHistoryPoints(metric, entityId, hours) {
+  async _loadHistoryPoints(metric, entityId, hours, { priority = 0 } = {}) {
     if (!this._hass?.callApi) throw new Error("Home Assistant history API is unavailable");
     const cacheKey = this._historyCacheKey(entityId, hours);
     const cached = this._historyCache.get(cacheKey);
     if (cached) return cached;
 
-    const history = await this._hass.callApi("GET", chartHistoryApiPath(entityId, hours));
+    const history = await this._queueHistoryRequest(
+      `chart:${cacheKey}`,
+      () => this._hass.callApi("GET", chartHistoryApiPath(entityId, hours)),
+      { priority },
+    );
     const states = Array.isArray(history?.[0]) ? history[0] : [];
     const points = states
       .map((entry) => this._historyPoint(metric, entry))
@@ -3009,107 +2700,6 @@ class HaSolarDashboardCard extends HTMLElement {
       numericState,
       isPowerUnit: (unit) => this._isPowerUnit(unit),
     });
-  }
-
-  _formatChartValue(value, metric) {
-    if (this._isMetricEnergyMode(metric)) return this._formatEnergyValue(value, "kWh", "kWh");
-    if (metric.overlay === "heatpump") {
-      const entityUnit = this._getEntityUnit(this._metricEntityId(metric));
-      if (this._isPowerUnit(entityUnit)) return this._formatPowerValue(value, "auto", "W");
-      if (this._isEnergyUnit(entityUnit)) return this._formatEnergyValue(value, entityUnit, "kWh");
-    }
-    if (metric.overlay === "smoke") {
-      const unit = this._getEntityUnit(this._metricEntityId(metric)) || "m³";
-      return `${Number(value).toFixed(2)} ${unit}`;
-    }
-    if (metric.unit === "volume") return this._formatVolumeValue(value, "m³", this._volumeTargetUnit(metric));
-    if (metric.unit === "power") return this._formatPowerValue(value, this._unitForMetric(metric), "W");
-    if (metric.key === "battery_level") return this._formatWithUnit(Math.round(value), this._unitForMetric(metric));
-    const unit = this._unitForMetric(metric);
-    return this._formatWithUnit(Number(value.toFixed(2)), unit === "auto" ? this._getEntityUnit(this._metricEntityId(metric)) : unit);
-  }
-
-  _formatChartTime(timestamp) {
-    try {
-      return new Intl.DateTimeFormat(this._language(), { hour: "2-digit", minute: "2-digit" }).format(new Date(timestamp));
-    } catch (_err) {
-      return new Date(timestamp).toLocaleTimeString();
-    }
-  }
-
-  _chartPath(points, min, max, start, end, width, height, padding) {
-    return chartPath(points, min, max, start, end, width, height, padding);
-  }
-
-  _renderChartSvg(metric, chart) {
-    const points = chart.points || [];
-    if (chart.loading) return `<div class="chart-message">${this._escape(this._t("chart.loading"))}</div>`;
-    if (chart.error) return `<div class="chart-message is-error">${this._escape(chart.error)}</div>`;
-    if (points.length < 2) return `<div class="chart-message">${this._escape(this._t("chart.empty"))}</div>`;
-
-    const width = 720;
-    const height = 260;
-    const padding = { top: 22, right: 22, bottom: 36, left: 58 };
-    const { min, max } = chartBounds(points);
-    const start = Date.now() - chart.hours * 60 * 60 * 1000;
-    const end = Date.now();
-    const line = this._chartPath(points, min, max, start, end, width, height, padding);
-    const latest = points[points.length - 1];
-    const latestCoordinates = chartLastPointCoordinates(line, padding);
-    const zeroY = min < 0 && max > 0
-      ? padding.top + (1 - ((0 - min) / (max - min))) * (height - padding.top - padding.bottom)
-      : undefined;
-
-    return `
-      <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${this._escape(this._metricLabel(metric, this._currentVariant))}">
-        <line class="chart-gridline" x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}"></line>
-        <line class="chart-gridline" x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}"></line>
-        <line class="chart-gridline soft" x1="${padding.left}" y1="${padding.top + (height - padding.top - padding.bottom) / 2}" x2="${width - padding.right}" y2="${padding.top + (height - padding.top - padding.bottom) / 2}"></line>
-        ${zeroY ? `<line class="chart-zero" x1="${padding.left}" y1="${zeroY.toFixed(1)}" x2="${width - padding.right}" y2="${zeroY.toFixed(1)}"></line>` : ""}
-        <polyline class="chart-line" points="${this._escape(line)}"></polyline>
-        <circle class="chart-dot" cx="${this._escape(latestCoordinates.x)}" cy="${this._escape(latestCoordinates.y)}" r="4"></circle>
-        <text class="chart-label" x="${padding.left}" y="16">${this._escape(this._formatChartValue(max, metric))}</text>
-        <text class="chart-label" x="${padding.left}" y="${height - 8}">${this._escape(this._formatChartTime(start))}</text>
-        <text class="chart-label end" x="${width - padding.right}" y="${height - 8}">${this._escape(this._formatChartTime(end))}</text>
-        <text class="chart-current" x="${width - padding.right}" y="16">${this._escape(this._formatChartValue(latest.value, metric))}</text>
-      </svg>
-    `;
-  }
-
-  _renderChartOverlay() {
-    if (!this._activeChart) return "";
-    const metric = this._chartMetric(this._activeChart.metricKey);
-    if (!metric) return "";
-    const entityId = this._metricEntityId(metric);
-    const title = this._metricLabel(metric, this._currentVariant);
-    const hours = this._activeChart.hours;
-    const rangeButton = (value) => `
-      <button type="button" class="chart-range${hours === value ? " active" : ""}" data-chart-hours="${value}">${this._escape(this._t(`chart.range${value}`))}</button>
-    `;
-
-    return `
-      <div class="chart-backdrop" data-chart-close></div>
-      <div class="chart-dialog" role="dialog" aria-modal="true" aria-label="${this._escape(title)}" style="${this._escape(this._accentStyle(metric))}">
-        <div class="chart-head">
-          <div class="chart-title">
-            <strong>${this._escape(title)}</strong>
-            <span>${this._escape(this._t("chart.subtitle", { hours }))}${entityId ? ` / ${this._escape(entityId)}` : ""}</span>
-          </div>
-          <div class="chart-actions">
-            ${rangeButton(24)}
-            ${rangeButton(48)}
-            <button type="button" class="chart-close" data-chart-close aria-label="${this._escape(this._t("chart.close"))}">×</button>
-          </div>
-        </div>
-        <div class="chart-body">
-          ${this._renderChartSvg(metric, this._activeChart)}
-        </div>
-      </div>
-    `;
-  }
-
-  _chartDashboardHours() {
-    return [24, 48].includes(Number(this._chartHours)) ? Number(this._chartHours) : this.config.chart_hours || 24;
   }
 
   _chartEntityId(metric) {
@@ -3155,15 +2745,17 @@ class HaSolarDashboardCard extends HTMLElement {
     const cached = this._historyCache.get(cacheKey);
     if (cached?.error) return { hours, loading: false, error: this._t("chart.error"), points: [] };
     if (cached) return { hours, loading: false, error: "", points: cached };
-    this._requestDashboardChart(metric, entityId, hours, cacheKey);
+    const order = this._chartDashboardRenderIndex || 0;
+    this._chartDashboardRenderIndex = order + 1;
+    this._requestDashboardChart(metric, entityId, hours, cacheKey, { priority: Math.max(10, 80 - order) });
     return { hours, loading: true, error: "", points: [] };
   }
 
-  _requestDashboardChart(metric, entityId, hours, cacheKey) {
+  _requestDashboardChart(metric, entityId, hours, cacheKey, { priority = 0 } = {}) {
     if (!this._hass?.callApi || this._chartDashboardLoading?.has(cacheKey)) return;
     const requestToken = this._asyncRequestToken || 0;
     this._chartDashboardLoading.add(cacheKey);
-    this._loadHistoryPoints(metric, entityId, hours)
+    this._loadHistoryPoints(metric, entityId, hours, { priority })
       .then((points) => {
         if (!this._isActiveRequest(requestToken)) return;
         this._setCacheEntry(this._historyCache, cacheKey, points, MAX_HISTORY_CACHE_ENTRIES);
@@ -3177,70 +2769,6 @@ class HaSolarDashboardCard extends HTMLElement {
         this._chartDashboardLoading?.delete(cacheKey);
         this._updateReadingsIfReady();
       });
-  }
-
-  _renderChartDashboardCard(metric) {
-    const entityId = this._chartEntityId(metric);
-    const chart = this._dashboardChartState(metric);
-    const normalizedChart = chart?.error === true
-      ? { hours: this._chartDashboardHours(), loading: false, error: this._t("chart.error"), points: [] }
-      : chart;
-    return `
-      <article class="chart-card" data-chart-dashboard-card="${this._escape(metric.chartKey || metric.key)}" style="${this._escape(this._accentStyle(metric))}">
-        <div class="chart-card-head">
-          <div>
-            <strong>${this._escape(this._metricLabel(metric, this._currentVariant))}</strong>
-            <span>${this._escape(entityId)}</span>
-          </div>
-          <button type="button" class="chart-open-button" data-chart-key="${this._escape(metric.key)}" aria-label="${this._escape(this._t("charts.openLarge", {}, "Open large chart"))}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"></path><path d="M4 19h16"></path><path d="m7 15 3-4 3 2 4-6"></path><path d="M17 7h3v3"></path></svg>
-          </button>
-        </div>
-        <div class="chart-card-body">
-          ${this._renderChartSvg(metric, normalizedChart)}
-        </div>
-      </article>
-    `;
-  }
-
-  _renderChartDashboard(variant = this._currentVariant || this._layoutState().variant) {
-    const sections = this._chartDashboardSections(variant);
-    const totalCharts = flattenChartSections(sections).length;
-    const hours = this._chartDashboardHours();
-    const rangeButton = (value) => `
-      <button type="button" class="chart-range${hours === value ? " active" : ""}" data-chart-dashboard-hours="${value}">${this._escape(this._t(`chart.range${value}`, {}, `${value}h`))}</button>
-    `;
-    const sectionHtml = sections.map((section) => `
-      <section class="chart-section">
-        <div class="chart-section-head">
-          <h3>${this._escape(section.label)}</h3>
-          <span>${this._escape(section.items.length === 1
-            ? this._t("charts.countOne", { count: section.items.length }, "1 chart")
-            : this._t("charts.count", { count: section.items.length }, `${section.items.length} charts`))}</span>
-        </div>
-        <div class="chart-grid">
-          ${section.items.map((metric) => this._renderChartDashboardCard(metric)).join("")}
-        </div>
-      </section>
-    `).join("");
-
-    return `
-      <section class="chart-dashboard" data-chart-dashboard>
-        <div class="chart-dashboard-head">
-          <div>
-            <div class="chart-dashboard-label">${this._escape(this._t("charts.label", {}, "Charts"))}</div>
-            <h2>${this._escape(this._t("charts.title", {}, "Entity history"))}</h2>
-          </div>
-          <div class="chart-actions">
-            ${rangeButton(24)}
-            ${rangeButton(48)}
-          </div>
-        </div>
-        ${totalCharts > 0
-          ? sectionHtml
-          : `<div class="chart-message">${this._escape(this._t("charts.empty", {}, "No chartable entities configured yet."))}</div>`}
-      </section>
-    `;
   }
 
   _ruleMatches(rule, value) {
@@ -3550,75 +3078,6 @@ class HaSolarDashboardCard extends HTMLElement {
       .join("");
 
     return htmlTag("select", { class: "energy-range-select", "aria-label": this._t("aria.energyRangeSelector") }, rawHtml(options));
-  }
-
-  _overlayDefault(activeHouse, key) {
-    return DEFAULT_IMAGE_OVERLAYS[activeHouse]?.[key]
-      || DEFAULT_IMAGE_OVERLAYS.single_family_home[key]
-      || {};
-  }
-
-  _overlayConfig(activeHouse, key) {
-    return {
-      ...this._overlayDefault(activeHouse, key),
-      ...(this.config.image_overlays?.[key] || {}),
-    };
-  }
-
-  _overlayNumber(value, fallback, min, max) {
-    return this._clampNumber(value, fallback, min, max);
-  }
-
-  _overlayAssetUrls(key) {
-    const file = `${key}.png`;
-    const urls = imageFormatFiles(file).flatMap((candidate) => {
-      const candidates = [this._remoteImageUrl(candidate)];
-      try {
-        candidates.push(assetUrl(candidate));
-      } catch (_err) {
-        // no local root fallback
-      }
-      try {
-        candidates.push(assetUrl(`images/${candidate}`));
-      } catch (_err) {
-        // no local images fallback
-      }
-      return candidates;
-    });
-    return [...new Set(urls.filter(Boolean))];
-  }
-
-  _renderImageOverlays(activeHouse) {
-    return IMAGE_OVERLAY_KEYS.map((key) => {
-      const config = this._overlayConfig(activeHouse, key);
-      if (config.enabled !== true) return "";
-      const left = this._overlayNumber(config.left, this._overlayDefault(activeHouse, key).left ?? 50, 0, 100);
-      const top = this._overlayNumber(config.top, this._overlayDefault(activeHouse, key).top ?? 50, 0, 100);
-      const width = this._overlayNumber(config.width ?? config.size, this._overlayDefault(activeHouse, key).width ?? 12, 2, 60);
-      const orientation = String(config.orientation || "right").toLowerCase() === "left" ? "left" : "right";
-      const label = this._overlayLabel(key);
-      const scaleX = key === "heatpump" && orientation === "left" ? -1 : 1;
-      const translateY = key === "smoke" ? "-100%" : "-50%";
-      const style = [
-        `left:${left}%`,
-        `top:${top}%`,
-        `width:${width}%`,
-        `--overlay-scale-x:${scaleX}`,
-        `--overlay-translate-y:${translateY}`,
-      ].join(";");
-      const [src, ...fallbacks] = this._overlayAssetUrls(key);
-      const reading = this._formatOverlayReading(key);
-      const visibilityKey = `overlay_${key}`;
-      const readingHtml = this.config.image_overlays?.[key]?.entity && this._labelVisibility(visibilityKey).image
-        ? `<div class="overlay-reading${this._labelVisibilityClass(visibilityKey, "image")}"><span class="overlay-reading-label" data-overlay-label="${this._escape(key)}">${this._escape(label)}</span><span class="overlay-reading-value" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</span></div>`
-        : "";
-      return `
-        <div class="image-overlay-wrap image-overlay-wrap-${this._escape(key)}" style="${this._escape(style)}">
-          <img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(src)}" data-fallbacks="${this._escape(fallbacks.join("|"))}" alt="${this._escape(label)}" loading="lazy" />
-          ${readingHtml}
-        </div>
-      `;
-    }).join("");
   }
 
   _renderMetric(metric, variant) {
@@ -4017,6 +3476,8 @@ class HaSolarDashboardCard extends HTMLElement {
         event.stopPropagation();
         const hours = Number(event.currentTarget.dataset.chartDashboardHours);
         this._chartHours = [24, 48].includes(hours) ? hours : 24;
+        this._chartDashboardLoading?.clear();
+        this._clearPendingHistoryRequests?.("chart:");
         this._renderCardShell(this._layoutState());
       });
     });
@@ -4415,6 +3876,12 @@ class HaSolarDashboardCard extends HTMLElement {
 
 Object.assign(
   HaSolarDashboardCard.prototype,
+  createConfigNormalizerMethods({
+    normalizeViewMode,
+  }),
+  createHistoryQueueMethods({
+    defaultConcurrency: DEFAULT_HISTORY_REQUEST_CONCURRENCY,
+  }),
   createAdvisorEngineMethods({
     CARD_TYPE,
     GRID_STATUS_METRIC,
@@ -4435,6 +3902,22 @@ Object.assign(
     assetUrl,
   }),
   createTileRendererMethods(),
+  createFloorplanRendererMethods({
+    FLOORPLAN_DASHBOARD_VIEW,
+    assetUrl,
+  }),
+  createOverlayRendererMethods({
+    DEFAULT_IMAGE_OVERLAYS,
+    IMAGE_OVERLAY_KEYS,
+    imageFormatFiles,
+    assetUrl,
+  }),
+  createChartRendererMethods({
+    chartBounds,
+    chartLastPointCoordinates,
+    chartPath,
+    flattenChartSections,
+  }),
   createRecordsDashboardMethods({
     RECORDS_DEFAULT_DAYS,
     RECORDS_RANGE_OPTIONS,
@@ -4447,42 +3930,9 @@ Object.assign(
   }),
 );
 
-const HaSolarDashboardCardEditor = createDashboardEditorClass({
-  ADVISOR_DEFAULTS,
-  DEFAULT_IMAGE_OVERLAYS,
-  DEFAULT_TILE_COLOR_RULES,
-  HOUSE_VARIANTS,
-  IMAGE_OVERLAY_KEYS,
-  PV_LABELS,
-  TILE_METRICS,
-  VIEW_MODE_OPTIONS,
-  adjacentWallboxPosition,
-  assetUrl,
-  clampConfigNumber,
-  ensureTranslations,
-  findMetricByKey,
-  inverterPhaseVoltageEntityKeys,
-  isPvMetric,
-  languageFromHass,
-  largeConsumerLabel,
-  metricVoltageEntityKey,
-  normalizeAdvisorConfig,
-  normalizeHouse,
-  normalizeInverterDisplay,
-  normalizeInverters,
-  normalizeLargeConsumers,
-  normalizePvRoofStringDisplay,
-  normalizePvRoofStrings,
-  parsePowerLimitWatts,
-  translate,
-  wallboxChargingEnabledEntityKey,
-  wallboxConnectedEntityKey,
-  wallboxMaxSocEntityKey,
-  wallboxPhaseActionEntityKey,
-  wallboxPhaseEntityKey,
-  wallboxPhaseRemainingEntityKey,
-  wallboxRemainingTimeEntityKey,
-  wallboxSocEntityKey,
+const HaSolarDashboardCardEditorLoader = createLazyEditorElementClass({
+  editorPanelType: CARD_EDITOR_PANEL_TYPE,
+  editorBundleUrl: () => scriptSiblingUrl(CARD_EDITOR_BUNDLE),
 });
 
 function upgradeCustomElement(type, elementClass) {
@@ -4509,7 +3959,7 @@ function upgradeCustomElement(type, elementClass) {
 }
 
 upgradeCustomElement(CARD_TYPE, HaSolarDashboardCard);
-upgradeCustomElement(CARD_EDITOR_TYPE, HaSolarDashboardCardEditor);
+upgradeCustomElement(CARD_EDITOR_TYPE, HaSolarDashboardCardEditorLoader);
 
 window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === CARD_TYPE)) {

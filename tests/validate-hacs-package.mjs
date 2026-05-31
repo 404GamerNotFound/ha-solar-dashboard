@@ -84,7 +84,9 @@ function validateReadme() {
 
 function validatePackage() {
   assertExists("src/ha-solar-dashboard.js");
+  assertExists("src/ha-solar-dashboard-editor.js");
   assertExists("ha-solar-dashboard.js");
+  assertExists("ha-solar-dashboard-editor.js");
 
   const distFiles = listFilesRecursive("dist");
   const allowedDistFiles = ["dist/ha-solar-dashboard.js"];
@@ -143,9 +145,12 @@ function validatePackage() {
   if (sourceModuleFiles.length === 0) fail("modules must contain at least one JavaScript module");
 
   const source = readText("src/ha-solar-dashboard.js");
+  const editorEntrySource = readText("src/ha-solar-dashboard-editor.js");
   const rootSource = readText("ha-solar-dashboard.js");
+  const editorBundleSource = readText("ha-solar-dashboard-editor.js");
   const packageSource = [
     source,
+    editorEntrySource,
     ...sourceModuleFiles.map((file) => readText(`modules/${file}`)),
   ].join("\n");
   const literalTranslationKeys = [...source.matchAll(/_t\(\s*["']([^"'`]+)["']/g)]
@@ -158,9 +163,16 @@ function validatePackage() {
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");
   if (rootSource.includes('from "./modules/') || rootSource.includes("import {")) fail("ha-solar-dashboard.js must be a bundled entry without static module imports");
+  if (editorBundleSource.includes('from "./modules/') || editorBundleSource.includes("import {")) fail("ha-solar-dashboard-editor.js must be a bundled entry without static module imports");
   if (rootSource.includes("import.meta")) fail("ha-solar-dashboard.js must not rely on import.meta so it can survive legacy resource loading");
+  if (editorBundleSource.includes("import.meta")) fail("ha-solar-dashboard-editor.js must not rely on import.meta so it can survive legacy resource loading");
   if (rootSource.includes('assetUrl("styles/')) fail("ha-solar-dashboard.js must inline critical CSS for direct HACS loads");
+  if (editorBundleSource.includes('assetUrl("styles/')) fail("ha-solar-dashboard-editor.js must inline editor CSS for direct HACS loads");
   if (!rootSource.includes('"de": {')) fail("ha-solar-dashboard.js must inline translation dictionaries for direct HACS loads");
+  if (!editorBundleSource.includes('"de": {')) fail("ha-solar-dashboard-editor.js must inline translation dictionaries for direct HACS loads");
+  if (rootSource.includes("function createDashboardEditorClass")) fail("ha-solar-dashboard.js must lazy-load the full editor implementation");
+  if (!rootSource.includes("ha-solar-dashboard-editor.js")) fail("ha-solar-dashboard.js must reference the lazy editor bundle");
+  if (!editorBundleSource.includes("function createDashboardEditorClass")) fail("ha-solar-dashboard-editor.js must contain the full editor implementation");
 
   const configuredImages = [...packageSource.matchAll(/\b(?:file|dayFile):\s*"([^"]+)"/g)].map((match) => match[1]);
   const fallbackImages = [...packageSource.matchAll(/fallbackFiles:\s*\[([^\]]*)\]/g)]
@@ -209,7 +221,7 @@ function validateJavaScript() {
     ...listFiles("modules").filter((file) => file.endsWith(".js")).map((file) => `modules/${file}`),
   ];
   const distShimFiles = existsSync(join(root, "dist/ha-solar-dashboard.js")) ? ["dist/ha-solar-dashboard.js"] : [];
-  for (const file of ["src/ha-solar-dashboard.js", "ha-solar-dashboard.js", ...moduleFiles, ...distShimFiles]) {
+  for (const file of ["src/ha-solar-dashboard.js", "src/ha-solar-dashboard-editor.js", "ha-solar-dashboard.js", "ha-solar-dashboard-editor.js", ...moduleFiles, ...distShimFiles]) {
     try {
       execFileSync("node", ["--check", join(root, file)], { stdio: "pipe" });
     } catch (error) {

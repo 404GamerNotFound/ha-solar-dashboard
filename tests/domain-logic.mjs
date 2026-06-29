@@ -50,7 +50,10 @@ import {
   setCacheEntry,
 } from "../modules/history-service.js";
 import {
+  customImage,
+  customImageFiles,
   imageFormatFiles,
+  imageWithSuffix,
   variantImage,
   weatherImageFiles,
 } from "../modules/weather-images.js";
@@ -65,6 +68,9 @@ function gridLabel(kind) {
 
 assert.deepEqual(imageFormatFiles("house.png"), ["house.webp", "house.png"]);
 assert.deepEqual(imageFormatFiles("house.jpg"), ["house.jpg"]);
+assert.equal(imageWithSuffix("/local/solar/house_day.png", "rainy"), "/local/solar/house_day_rainy.png");
+assert.equal(imageWithSuffix("https://example.com/solar/house.png?v=1", "rainy"), "https://example.com/solar/house_rainy.png?v=1");
+assert.equal(imageWithSuffix("https://example.com/solar/house", "rainy"), "https://example.com/solar/house_rainy");
 
 const weatherFiles = weatherImageFiles({
   variant: {
@@ -103,6 +109,31 @@ assert.deepEqual(image.fallbacks.slice(0, 5), [
   "local/demo-house/demo_day_sunny.png",
   "remote/demo-house/demo_sunny.webp",
   "local/demo-house/demo_sunny.webp",
+]);
+
+const customWeatherFiles = customImageFiles({
+  image: "/local/solar/house_night.png",
+  dayImage: "/local/solar/house_day.png",
+  isDaylight: true,
+  weatherState: "rainy",
+});
+assert.deepEqual(customWeatherFiles, [
+  "/local/solar/house_day_rainy.png",
+  "/local/solar/house_night_rainy.png",
+  "/local/solar/house_day.png",
+  "/local/solar/house_night.png",
+]);
+const customWeatherImage = customImage({
+  image: "/local/solar/house_night.png",
+  dayImage: "/local/solar/house_day.png",
+  isDaylight: true,
+  weatherState: "rainy",
+});
+assert.equal(customWeatherImage.src, "/local/solar/house_day_rainy.png");
+assert.deepEqual(customWeatherImage.fallbacks, [
+  "/local/solar/house_night_rainy.png",
+  "/local/solar/house_day.png",
+  "/local/solar/house_night.png",
 ]);
 
 assert.equal(normalizeEnergyRange("hourly"), "1h");

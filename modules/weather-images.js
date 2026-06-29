@@ -27,10 +27,13 @@ export function weatherSuffixes(state, suffixMap = WEATHER_IMAGE_SUFFIXES) {
 }
 
 export function imageWithSuffix(file, suffix) {
-  if (!file || !suffix) return "";
-  const dotIndex = file.lastIndexOf(".");
-  if (dotIndex < 0) return `${file}_${suffix}`;
-  return `${file.slice(0, dotIndex)}_${suffix}${file.slice(dotIndex)}`;
+  const value = String(file || "");
+  if (!value || !suffix) return "";
+  const [, path = value, trail = ""] = value.match(/^([^?#]*)([?#].*)?$/) || [];
+  const slashIndex = path.lastIndexOf("/");
+  const dotIndex = path.lastIndexOf(".");
+  if (dotIndex <= slashIndex) return `${path}_${suffix}${trail}`;
+  return `${path.slice(0, dotIndex)}_${suffix}${path.slice(dotIndex)}${trail}`;
 }
 
 export function weatherImageFiles({
@@ -66,6 +69,50 @@ export function imageFormatFiles(file) {
   if (!/\.png$/i.test(String(file || ""))) return [file].filter(Boolean);
   const webpFile = webpImageFile(file);
   return webpFile && webpFile !== file ? [webpFile, file] : [file];
+}
+
+export function customImageFiles({
+  image = "",
+  dayImage = "",
+  isDaylight = false,
+  weatherState = "",
+  suffixMap = WEATHER_IMAGE_SUFFIXES,
+} = {}) {
+  const standardFile = String(image || "").trim();
+  const daylightFile = String(dayImage || "").trim();
+  const primaryFile = isDaylight && daylightFile ? daylightFile : standardFile;
+  if (!primaryFile) return [];
+  const fallbackFile = isDaylight ? standardFile : daylightFile;
+  const weatherFiles = weatherSuffixes(weatherState, suffixMap).flatMap((suffix) => [
+    imageWithSuffix(primaryFile, suffix),
+    fallbackFile && fallbackFile !== primaryFile ? imageWithSuffix(fallbackFile, suffix) : "",
+  ]);
+  return [
+    ...weatherFiles,
+    primaryFile,
+    ...(fallbackFile && fallbackFile !== primaryFile ? [fallbackFile] : []),
+  ].filter(Boolean);
+}
+
+export function customImage({
+  image = "",
+  dayImage = "",
+  isDaylight = false,
+  weatherState = "",
+  suffixMap = WEATHER_IMAGE_SUFFIXES,
+} = {}) {
+  const urls = [...new Set(customImageFiles({
+    image,
+    dayImage,
+    isDaylight,
+    weatherState,
+    suffixMap,
+  }))];
+  const [primaryUrl, ...fallbackUrls] = urls;
+  return {
+    src: primaryUrl,
+    fallbacks: fallbackUrls,
+  };
 }
 
 export function variantImage({
@@ -136,6 +183,16 @@ export function createWeatherImageMethods({
         weatherState: this._weatherState(),
         localImageUrl: (file) => this._localImageUrl(file),
         remoteImageUrl: (file) => this._remoteImageUrl(file),
+      });
+    },
+
+    _customImage() {
+      return customImage({
+        image: this.config?.image,
+        dayImage: this.config?.day_image,
+        isDaylight: this._isDaylight(),
+        weatherState: this._weatherState(),
+        suffixMap,
       });
     },
 

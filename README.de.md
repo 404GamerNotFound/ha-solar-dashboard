@@ -45,6 +45,27 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Optionale Ansichtsauswahl oben in der Karte für `Hausansicht` oder `Advisor Dashboard`
 - In der Home-Assistant-Kartenauswahl mit Preview registriert
 
+## Eigene Bilder und Wettervarianten
+
+Eigene Bilder legst du in Home Assistant unter `/config/www/` ab und trägst sie in der Karte als `/local/...` ein. Beispiel:
+
+```yaml
+weather_entity: weather.home
+image: /local/solar/house_night.png
+day_image: /local/solar/house_day.png
+```
+
+Die Dateien müssen dann tatsächlich hier liegen:
+
+```text
+/config/www/solar/house_night.png
+/config/www/solar/house_day.png
+/config/www/solar/house_night_rainy.png
+/config/www/solar/house_day_rainy.png
+```
+
+Wenn `weather_entity` z. B. `rainy` meldet und es Tag ist, versucht die Karte zuerst `/local/solar/house_day_rainy.png`, dann `/local/solar/house_night_rainy.png`, danach `/local/solar/house_day.png` und zuletzt `/local/solar/house_night.png`. Wenn keine eigene Datei geladen werden kann, fällt die Karte weiterhin auf die mitgelieferten Standardbilder zurück.
+
 ## Installation (HACS)
 
 1. Repository in HACS als **Custom repository** mit Typ **Dashboard** hinzufügen.

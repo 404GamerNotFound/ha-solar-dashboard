@@ -2897,9 +2897,11 @@ class HaSolarDashboardCard extends HTMLElement {
     const activeHouse = this._normalizeHouse(this._selectedHouse) || this.config.house;
     const variant = HOUSE_VARIANTS[activeHouse] || HOUSE_VARIANTS.single_family_home;
     const variantImage = this._variantImage(variant);
-    const customImage = this._isDaylight() && this.config.day_image ? this.config.day_image : this.config.image;
-    const imageSrc = customImage || variantImage.src;
-    const imageFallbacks = customImage ? [variantImage.src, ...(variantImage.fallbacks || [])] : variantImage.fallbacks;
+    const customImage = this._customImage();
+    const imageSrc = customImage.src || variantImage.src;
+    const imageFallbacks = customImage.src
+      ? [...(customImage.fallbacks || []), variantImage.src, ...(variantImage.fallbacks || [])]
+      : variantImage.fallbacks;
 
     return { activeHouse, variant, imageSrc, imageFallbacks };
   }

@@ -196,6 +196,7 @@
   "editor.labelShowImage": "Show label in image",
   "editor.maxPowerKw": "Expected max power (kW/kWp)",
   "editor.optionalDayImage": "Optional daylight image",
+  "editor.helpCustomImages": "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png.",
   "editor.powerDecimals": "Power decimals",
   "editor.powerDisplayMode": "Power display mode",
   "editor.rawMode": "Raw value + configured unit",

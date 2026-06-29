@@ -196,6 +196,7 @@
   "editor.labelShowImage": "Mostrar etiqueta en la imagen",
   "editor.maxPowerKw": "Potencia máxima (kW/kWp)",
   "editor.optionalDayImage": "Imagen diurna opcional",
+  "editor.helpCustomImages": "Guarda las imágenes personalizadas en Home Assistant bajo /config/www/ e introdúcelas como /local/.... Cuando weather_entity está configurada, se prueban automáticamente los sufijos correspondientes, por ejemplo /local/solar/house_day_rainy.png antes de /local/solar/house_day.png.",
   "editor.powerDecimals": "Decimales de potencia",
   "editor.powerDisplayMode": "Modo de potencia",
   "editor.rawMode": "Valor bruto + unidad configurada",

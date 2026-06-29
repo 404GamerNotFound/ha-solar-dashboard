@@ -298,8 +298,8 @@ large_consumers:
 - `image_overlays.heatpump.orientation` (string, default: `right`; use `left` or `right` to mirror the heat pump toward the matching side of the house)
 - `daylight_entity` (string, default: `sun.sun`; uses `_day` images during the day and standard images before sunrise/after sunset)
 - `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
-- `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`)
-- `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight)
+- `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`; when `weather_entity` is configured, matching weather suffixes are tried first, for example `/local/solar/house_night_rainy.png`)
+- `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight; during daylight, matching weather suffixes are tried first, for example `/local/solar/house_day_rainy.png`)
 - `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, `wallbox2_power`, `water_meter`, and `import_export_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
 - `labels.<entity_key>` (string, optional; custom label for HUD boxes and summary tiles, for example `PV Dach`, `Speicher` or `Wallbox Garage`)
@@ -400,6 +400,25 @@ Built-in images are grouped by house key and use English file names so the card 
 - Weather image: `<house>/<base>_<weather_suffix>.png`, for example `single_family_home/single_family_home_day_sunny.png`
 
 When `weather_entity` is configured, the card tries weather-specific files first and falls back automatically when a file does not exist. During daylight it tries `<house>/<house>_day_<weather_suffix>.png`, then `<house>/<house>_<weather_suffix>.png`, then the normal day and standard images. At night the same logic starts with `<house>/<house>_<weather_suffix>.png` and then falls back to the day weather image.
+
+Custom images follow the same suffix rule. Put the files below Home Assistant's `/config/www/` directory and reference them with `/local/...` in the card configuration. For example:
+
+```yaml
+weather_entity: weather.home
+image: /local/solar/house_night.png
+day_image: /local/solar/house_day.png
+```
+
+The actual files belong here:
+
+```text
+/config/www/solar/house_night.png
+/config/www/solar/house_day.png
+/config/www/solar/house_night_rainy.png
+/config/www/solar/house_day_rainy.png
+```
+
+If Home Assistant reports `rainy` during daylight, the card first tries `/local/solar/house_day_rainy.png`, then `/local/solar/house_night_rainy.png`, then `/local/solar/house_day.png`, and finally `/local/solar/house_night.png`. If none of the custom candidates can be loaded, the built-in image fallback chain is still used.
 
 ## Built-in image overview
 

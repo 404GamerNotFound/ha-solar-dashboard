@@ -3053,8 +3053,8 @@ function createDashboardEditorClass({
           <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
           <label>${this._escape(this._t("editor.viewMode", {}, "Default view"))} <select data-path="view_mode">${viewModeOptions}</select></label>
           <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
-          <label>${this._escape(this._t("editor.customImage"))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
-          <label>${this._escape(this._t("editor.customDayImage"))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
+          <label>${this._labelText(this._t("editor.customImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
+          <label>${this._labelText(this._t("editor.customDayImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
           <label>${this._escape(this._t("editor.weatherEntity"))}
             <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />
           </label>
@@ -4966,6 +4966,7 @@ const I18N = {
     "editor.labelShowImage": "Show label in image",
     "editor.maxPowerKw": "Expected max power (kW/kWp)",
     "editor.optionalDayImage": "Optional daylight image",
+    "editor.helpCustomImages": "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png.",
     "editor.powerDecimals": "Power decimals",
     "editor.powerDisplayMode": "Power display mode",
     "editor.rawMode": "Raw value + configured unit",
@@ -5490,6 +5491,7 @@ const I18N = {
     "editor.labelShowImage": "Label im Bild anzeigen",
     "editor.maxPowerKw": "Erwartete Maximalleistung (kW/kWp)",
     "editor.optionalDayImage": "Optionales Tagesbild",
+    "editor.helpCustomImages": "Lege eigene Bilder in Home Assistant unter /config/www/ ab und trage sie als /local/... ein. Wenn weather_entity gesetzt ist, werden passende Suffixe automatisch versucht, zum Beispiel /local/solar/house_day_rainy.png vor /local/solar/house_day.png.",
     "editor.powerDecimals": "Leistungs-Nachkommastellen",
     "editor.powerDisplayMode": "Leistungsanzeige",
     "editor.rawMode": "Rohwert + konfigurierte Einheit",
@@ -6014,6 +6016,7 @@ const I18N = {
     "editor.labelShowImage": "Mostrar etiqueta en la imagen",
     "editor.maxPowerKw": "Potencia máxima (kW/kWp)",
     "editor.optionalDayImage": "Imagen diurna opcional",
+    "editor.helpCustomImages": "Guarda las imágenes personalizadas en Home Assistant bajo /config/www/ e introdúcelas como /local/.... Cuando weather_entity está configurada, se prueban automáticamente los sufijos correspondientes, por ejemplo /local/solar/house_day_rainy.png antes de /local/solar/house_day.png.",
     "editor.powerDecimals": "Decimales de potencia",
     "editor.powerDisplayMode": "Modo de potencia",
     "editor.rawMode": "Valor bruto + unidad configurada",
@@ -6538,6 +6541,7 @@ const I18N = {
     "editor.labelShowImage": "Afficher le libellé dans l’image",
     "editor.maxPowerKw": "Puissance max. (kW/kWp)",
     "editor.optionalDayImage": "Image de jour optionnelle",
+    "editor.helpCustomImages": "Stockez les images personnalisées dans Home Assistant sous /config/www/ et saisissez-les sous la forme /local/.... Quand weather_entity est configurée, les suffixes correspondants sont essayés automatiquement, par exemple /local/solar/house_day_rainy.png avant /local/solar/house_day.png.",
     "editor.powerDecimals": "Décimales de puissance",
     "editor.powerDisplayMode": "Mode d'affichage de la puissance",
     "editor.rawMode": "Valeur brute + unité configurée",
@@ -7062,6 +7066,7 @@ const I18N = {
     "editor.labelShowImage": "Pokaż etykietę na obrazie",
     "editor.maxPowerKw": "Maks. moc (kW/kWp)",
     "editor.optionalDayImage": "Opcjonalny obraz dzienny",
+    "editor.helpCustomImages": "Zapisz własne obrazy w Home Assistant w /config/www/ i wpisz je jako /local/.... Gdy ustawiono weather_entity, pasujące sufiksy są sprawdzane automatycznie, na przykład /local/solar/house_day_rainy.png przed /local/solar/house_day.png.",
     "editor.powerDecimals": "Miejsca dziesiętne mocy",
     "editor.powerDisplayMode": "Tryb wyświetlania mocy",
     "editor.rawMode": "Wartość surowa + skonfigurowana jednostka",

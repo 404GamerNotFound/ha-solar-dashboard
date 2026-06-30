@@ -18,6 +18,10 @@ import {
   normalizeHouse,
 } from "../modules/house-variants.js";
 import {
+  htmlTag,
+  rawHtml,
+} from "../modules/html.js";
+import {
   normalizeLargeConsumers,
   largeConsumerLabel,
 } from "../modules/large-consumers.js";
@@ -156,6 +160,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   createEditorBaseConfig,
   ensureTranslations,
   findMetricByKey,
+  htmlTag,
   inverterPhaseVoltageEntityKeys,
   isPvMetric,
   languageFromHass,
@@ -169,6 +174,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   normalizePvRoofStringDisplay,
   normalizePvRoofStrings,
   parsePowerLimitWatts,
+  rawHtml,
   translate,
   wallboxChargingEnabledEntityKey,
   wallboxConnectedEntityKey,

@@ -13,6 +13,7 @@ export function createDashboardEditorClass({
   createEditorBaseConfig,
   ensureTranslations,
   findMetricByKey,
+  htmlTag,
   inverterPhaseVoltageEntityKeys,
   isPvMetric,
   languageFromHass,
@@ -26,6 +27,7 @@ export function createDashboardEditorClass({
   normalizePvRoofStringDisplay,
   normalizePvRoofStrings,
   parsePowerLimitWatts,
+  rawHtml,
   translate,
   wallboxChargingEnabledEntityKey,
   wallboxConnectedEntityKey,
@@ -165,6 +167,125 @@ export function createDashboardEditorClass({
     if (missing > 0) parts.push(this._t("editor.statusMissing", { count: missing }, `${missing} missing`));
     if (advanced) parts.push(this._t("editor.statusAdvanced", {}, "Advanced active"));
     return parts.join(" · ") || this._t("editor.statusReady", {}, "Ready");
+  }
+
+  _detailsOpen(key, fallback = false) {
+    if (!key) return fallback;
+    if (this._editorSectionState?.has?.(key)) return this._editorSectionState.get(key);
+    return fallback;
+  }
+
+  _configValue(value) {
+    if (value && typeof value === "object") {
+      return value.entity || value.counter || value.kwh_entity || value.kwh || value.meter || "";
+    }
+    return value;
+  }
+
+  _metricConfigValues(metric) {
+    const key = metric?.key;
+    if (!key) return [];
+    const values = [];
+    const add = (value) => values.push(this._configValue(value));
+    const addEntity = (entityKey) => add(this._config.entities?.[entityKey]);
+    const addEnergy = (metricKey) => add(this._config.energy_entities?.[metricKey]);
+
+    addEntity(key);
+    if (metric.unit === "power") addEnergy(key);
+
+    const voltageKey = this._metricVoltageEntityKey(metric);
+    if (voltageKey) addEntity(voltageKey);
+    this._metricVoltagePhaseFields(metric).forEach(([phaseKey]) => addEntity(phaseKey));
+
+    if (this._isPvMetric(metric)) {
+      PV_LABELS.forEach((label) => {
+        if (label.source === "entity") addEntity(this._pvLabelKey(metric, label));
+      });
+    }
+
+    if (key === "pv_roof_power") {
+      normalizePvRoofStrings(this._config.pv_roof_strings || []).forEach((string) => {
+        add(string.power_entity);
+        add(string.energy_entity);
+      });
+    }
+
+    if (key === "inverter_power") {
+      normalizeInverters(this._config.inverters || []).forEach((inverter) => {
+        add(inverter.power_entity);
+        add(inverter.energy_entity);
+        add(inverter.voltage_entity);
+        add(inverter.voltage_entity_l1);
+        add(inverter.voltage_entity_l2);
+        add(inverter.voltage_entity_l3);
+      });
+    }
+
+    if (key === "battery_level") {
+      [
+        "battery_flow_power",
+        "battery_flow_power_voltage",
+        "battery_charge_power",
+        "battery_discharge_power",
+        "battery_min_soc",
+        "battery_max_soc",
+        "battery_temperature",
+        "battery_cycles_today",
+      ].forEach(addEntity);
+    }
+
+    if (key === "import_export_power") {
+      [
+        "import_power",
+        "export_power",
+        "import_export_power_voltage",
+      ].forEach(addEntity);
+      add(this._config.energy_entities?.import_power);
+      add(this._config.energy_entities?.export_power);
+    }
+
+    if (key === "wallbox_power" || key === "wallbox2_power") {
+      [
+        this._wallboxPhaseEntityKey(metric),
+        this._wallboxPhaseActionEntityKey(metric),
+        this._wallboxPhaseRemainingEntityKey(metric),
+        this._wallboxSocEntityKey(metric),
+        this._wallboxMaxSocEntityKey(metric),
+        this._wallboxConnectedEntityKey(metric),
+        this._wallboxChargingEnabledEntityKey(metric),
+        this._wallboxRemainingTimeEntityKey(metric),
+      ].filter(Boolean).forEach(addEntity);
+    }
+
+    return values;
+  }
+
+  _metricGroupDefinitions() {
+    const metricByKey = new Map(TILE_METRICS.map((metric) => [metric.key, metric]));
+    const used = new Set();
+    const group = (key, title, fallback, keys) => {
+      const metrics = keys.map((metricKey) => metricByKey.get(metricKey)).filter(Boolean);
+      metrics.forEach((metric) => used.add(metric.key));
+      return {
+        key,
+        title: this._t(title, {}, fallback),
+        metrics,
+      };
+    };
+    const groups = [
+      group("solar", "editor.groupSolar", "Solar & inverter", ["pv_total_power", "pv_roof_power", "pv_shed_power", "inverter_power"]),
+      group("storage", "editor.groupStorage", "Storage & charging", ["battery_level", "wallbox_power", "wallbox2_power"]),
+      group("grid", "editor.groupGrid", "Grid & consumption", ["import_export_power", "house_consumption_power", "water_meter"]),
+    ].filter((item) => item.metrics.length > 0);
+    const remaining = TILE_METRICS.filter((metric) => !used.has(metric.key));
+    if (remaining.length > 0) {
+      groups.push({
+        key: "other",
+        title: this._t("editor.groupOther", {}, "Other"),
+        metrics: remaining,
+      });
+    }
+    return groups;
   }
 
   _shouldRenderAfterInput(path = "", parts = []) {
@@ -1845,36 +1966,52 @@ export function createDashboardEditorClass({
     const left = Number.isFinite(Number(position.left)) ? Number(position.left) : 50;
     const top = Number.isFinite(Number(position.top)) ? Number(position.top) : 50;
     const visible = this._metricVisible(metric);
+    const configuredValues = this._metricConfigValues(metric);
+    const configured = this._countConfigured(configuredValues);
+    const missing = this._missingEntityCount(configuredValues);
+    const detailsKey = `metric-${metric.key}`;
+    const status = this._statusText({ configured, missing, hidden: visible ? 0 : 1 });
 
     return `
-      <div class="box-field">
-        <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
-        ${this._renderLabelInput(metric)}
-        ${this._renderImportExportLabelInputs(metric)}
-        ${this._renderImportExportFinanceInputs(metric)}
-        ${this._renderEntityInput(metric)}
-        ${this._renderVoltageEntityInput(metric)}
-        ${this._renderPvLabelInputs(metric)}
-        ${this._renderPvRoofStringInputs(metric)}
-        ${this._renderInverterInputs(metric)}
-        ${this._renderEnergyEntityInputs(metric)}
-        ${this._renderWallboxPhaseInput(metric)}
-        ${this._renderWallboxPhaseActionInput(metric)}
-        ${this._renderWallboxSocInput(metric)}
-        ${this._renderWallboxMaxSocInput(metric)}
-        ${this._renderWallboxConnectedInput(metric)}
-        ${this._renderWallboxChargingEnabledInput(metric)}
-        ${this._renderWallboxRemainingTimeInput(metric)}
-        ${this._renderUnitSelect(metric)}
-        ${this._renderBatteryFlowInputs(metric)}
-        ${this._renderMaxPowerInput(metric)}
-        <label>${this._labelText(`${this._t("editor.xPosition")} (${left})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}
-          <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.left" value="${this._escape(left)}" />
-        </label>
-        <label>${this._labelText(`${this._t("editor.yPosition")} (${top})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}
-          <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.top" value="${this._escape(top)}" />
-        </label>
-      </div>
+      <details class="box-field metric-field" data-editor-section="${this._escape(detailsKey)}"${this._detailsOpen(detailsKey) ? " open" : ""}>
+        <summary class="box-summary">
+          <span class="box-summary-main">
+            <strong>${this._escape(this._metricLabel(metric))}</strong>
+            <small>${this._escape(this._t(`metrics.${metric.key}`, {}, metric.label || metric.key))}</small>
+          </span>
+          <span class="box-summary-side">
+            <span class="section-status">${this._escape(status)}</span>
+          </span>
+        </summary>
+        <div class="box-body">
+          <label class="inline"><input type="checkbox" data-path="visible_boxes.${metric.key}" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label: this._metricLabel(metric) }))}</label>
+          ${this._renderLabelInput(metric)}
+          ${this._renderImportExportLabelInputs(metric)}
+          ${this._renderImportExportFinanceInputs(metric)}
+          ${this._renderEntityInput(metric)}
+          ${this._renderVoltageEntityInput(metric)}
+          ${this._renderPvLabelInputs(metric)}
+          ${this._renderPvRoofStringInputs(metric)}
+          ${this._renderInverterInputs(metric)}
+          ${this._renderEnergyEntityInputs(metric)}
+          ${this._renderWallboxPhaseInput(metric)}
+          ${this._renderWallboxPhaseActionInput(metric)}
+          ${this._renderWallboxSocInput(metric)}
+          ${this._renderWallboxMaxSocInput(metric)}
+          ${this._renderWallboxConnectedInput(metric)}
+          ${this._renderWallboxChargingEnabledInput(metric)}
+          ${this._renderWallboxRemainingTimeInput(metric)}
+          ${this._renderUnitSelect(metric)}
+          ${this._renderBatteryFlowInputs(metric)}
+          ${this._renderMaxPowerInput(metric)}
+          <label>${this._labelText(`${this._t("editor.xPosition")} (${left})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}
+            <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.left" value="${this._escape(left)}" />
+          </label>
+          <label>${this._labelText(`${this._t("editor.yPosition")} (${top})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}
+            <input type="range" min="4" max="96" step="1" data-path="positions.${metric.key}.top" value="${this._escape(top)}" />
+          </label>
+        </div>
+      </details>
     `;
   }
 
@@ -1945,26 +2082,45 @@ export function createDashboardEditorClass({
       `
       : "";
 
+    const detailsKey = `overlay-${key}`;
+    const configuredValues = [entity, this._config.image_overlays?.[key]?.label];
+    const status = this._statusText({
+      configured: this._countConfigured(configuredValues),
+      missing: this._missingEntityCount([entity]),
+      hidden: enabled ? 0 : 1,
+    });
+
     return `
-      <div class="box-field">
-        <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.enabled" ${enabled ? "checked" : ""}/> ${this._escape(this._t("editor.overlayEnable", { label }))}</label>
-        <label>${this._escape(this._t("editor.overlayLabel"))}
-          <input data-path="image_overlays.${key}.label" placeholder="${this._escape(defaultLabel)}" value="${this._escape(this._config.image_overlays?.[key]?.label || "")}" />
-        </label>
-        ${entityHtml}
-        ${this._renderLabelVisibilityOptions(`overlay_${key}`)}
-        ${periodHtml}
-        <label>${this._labelText(`${this._t("editor.xPosition")} (${left})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}
-          <input type="range" min="0" max="100" step="1" data-path="image_overlays.${key}.left" value="${this._escape(left)}" />
-        </label>
-        <label>${this._labelText(`${this._t("editor.yPosition")} (${top})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}
-          <input type="range" min="0" max="100" step="1" data-path="image_overlays.${key}.top" value="${this._escape(top)}" />
-        </label>
-        <label>${this._escape(this._t("editor.overlaySize"))} (${this._escape(width)})
-          <input type="range" min="2" max="60" step="1" data-path="image_overlays.${key}.width" value="${this._escape(width)}" />
-        </label>
-        ${orientationHtml}
-      </div>
+      <details class="box-field overlay-field" data-editor-section="${this._escape(detailsKey)}"${this._detailsOpen(detailsKey) ? " open" : ""}>
+        <summary class="box-summary">
+          <span class="box-summary-main">
+            <strong>${this._escape(label)}</strong>
+            <small>${this._escape(defaultLabel)}</small>
+          </span>
+          <span class="box-summary-side">
+            <span class="section-status">${this._escape(status)}</span>
+          </span>
+        </summary>
+        <div class="box-body">
+          <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.enabled" ${enabled ? "checked" : ""}/> ${this._escape(this._t("editor.overlayEnable", { label }))}</label>
+          <label>${this._escape(this._t("editor.overlayLabel"))}
+            <input data-path="image_overlays.${key}.label" placeholder="${this._escape(defaultLabel)}" value="${this._escape(this._config.image_overlays?.[key]?.label || "")}" />
+          </label>
+          ${entityHtml}
+          ${this._renderLabelVisibilityOptions(`overlay_${key}`)}
+          ${periodHtml}
+          <label>${this._labelText(`${this._t("editor.xPosition")} (${left})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}
+            <input type="range" min="0" max="100" step="1" data-path="image_overlays.${key}.left" value="${this._escape(left)}" />
+          </label>
+          <label>${this._labelText(`${this._t("editor.yPosition")} (${top})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}
+            <input type="range" min="0" max="100" step="1" data-path="image_overlays.${key}.top" value="${this._escape(top)}" />
+          </label>
+          <label>${this._escape(this._t("editor.overlaySize"))} (${this._escape(width)})
+            <input type="range" min="2" max="60" step="1" data-path="image_overlays.${key}.width" value="${this._escape(width)}" />
+          </label>
+          ${orientationHtml}
+        </div>
+      </details>
     `;
   }
 
@@ -1976,35 +2132,51 @@ export function createDashboardEditorClass({
     const position = Number.isFinite(Number(kpi?.position ?? kpi?.order)) ? Number(kpi.position ?? kpi.order) : 100 + index;
     const columns = Number.isFinite(Number(kpi?.columns ?? kpi?.span)) ? Number(kpi.columns ?? kpi.span) : 1;
     const color = kpi?.color || "#1f8fff";
+    const detailsKey = `kpi-${index}-${String(kpi?.id || kpi?.key || "item").replace(/[^\w-]+/g, "_")}`;
+    const status = this._statusText({
+      configured: this._countConfigured([label, entity, value]),
+      missing: this._missingEntityCount([entity]),
+    });
 
     return `
-      <div class="box-field kpi-field">
-        <div class="kpi-head">
-          <strong>${this._escape(label || `KPI ${index + 1}`)}</strong>
-          <button type="button" data-action="remove-kpi" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
+      <details class="box-field kpi-field" data-editor-section="${this._escape(detailsKey)}"${this._detailsOpen(detailsKey) ? " open" : ""}>
+        <summary class="box-summary">
+          <span class="box-summary-main">
+            <strong>${this._escape(label || `KPI ${index + 1}`)}</strong>
+            <small>${this._escape(this._t("editor.sectionKpis", {}, "Custom KPI tiles"))}</small>
+          </span>
+          <span class="box-summary-side">
+            <span class="section-status">${this._escape(status)}</span>
+          </span>
+        </summary>
+        <div class="box-body">
+          <div class="kpi-head">
+            <strong>${this._escape(label || `KPI ${index + 1}`)}</strong>
+            <button type="button" data-action="remove-kpi" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
+          </div>
+          <label>${this._escape(this._t("editor.kpiLabel"))}
+            <input data-path="custom_kpis.${index}.label" value="${this._escape(label)}" />
+          </label>
+          <label>${this._escape(this._t("editor.kpiEntity"))}
+            <input data-path="custom_kpis.${index}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.autarky" value="${this._escape(entity)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.kpiStaticValue"))}
+            <input data-path="custom_kpis.${index}.value" placeholder="42" value="${this._escape(value)}" />
+          </label>
+          <label>${this._escape(this._t("editor.unit"))}
+            <input data-path="custom_kpis.${index}.unit" placeholder="auto, %, kg, kWh/kWp" value="${this._escape(unit)}" />
+          </label>
+          <label>${this._labelText(`${this._t("editor.kpiPosition")} (${position})`, this._t("editor.helpFooterOrder", {}, "Controls the order of tiles below the image. Lower numbers appear earlier."))}
+            <input type="number" min="0" max="999" step="1" data-path="custom_kpis.${index}.position" value="${this._escape(position)}" />
+          </label>
+          <label>${this._labelText(`${this._t("editor.kpiColumns")} (${columns})`, this._t("editor.helpTileWidth", {}, "Controls how wide the footer tile is on desktop. Mobile width is capped automatically."))}
+            <input type="range" min="1" max="6" step="1" data-path="custom_kpis.${index}.columns" value="${this._escape(columns)}" />
+          </label>
+          <label>${this._escape(this._t("editor.kpiColor"))}
+            <input data-path="custom_kpis.${index}.color" placeholder="#1f8fff" value="${this._escape(color)}" />
+          </label>
         </div>
-        <label>${this._escape(this._t("editor.kpiLabel"))}
-          <input data-path="custom_kpis.${index}.label" value="${this._escape(label)}" />
-        </label>
-        <label>${this._escape(this._t("editor.kpiEntity"))}
-          <input data-path="custom_kpis.${index}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.autarky" value="${this._escape(entity)}" autocomplete="off" />
-        </label>
-        <label>${this._escape(this._t("editor.kpiStaticValue"))}
-          <input data-path="custom_kpis.${index}.value" placeholder="42" value="${this._escape(value)}" />
-        </label>
-        <label>${this._escape(this._t("editor.unit"))}
-          <input data-path="custom_kpis.${index}.unit" placeholder="auto, %, kg, kWh/kWp" value="${this._escape(unit)}" />
-        </label>
-        <label>${this._labelText(`${this._t("editor.kpiPosition")} (${position})`, this._t("editor.helpFooterOrder", {}, "Controls the order of tiles below the image. Lower numbers appear earlier."))}
-          <input type="number" min="0" max="999" step="1" data-path="custom_kpis.${index}.position" value="${this._escape(position)}" />
-        </label>
-        <label>${this._labelText(`${this._t("editor.kpiColumns")} (${columns})`, this._t("editor.helpTileWidth", {}, "Controls how wide the footer tile is on desktop. Mobile width is capped automatically."))}
-          <input type="range" min="1" max="6" step="1" data-path="custom_kpis.${index}.columns" value="${this._escape(columns)}" />
-        </label>
-        <label>${this._escape(this._t("editor.kpiColor"))}
-          <input data-path="custom_kpis.${index}.color" placeholder="#1f8fff" value="${this._escape(color)}" />
-        </label>
-      </div>
+      </details>
     `;
   }
 
@@ -2031,36 +2203,53 @@ export function createDashboardEditorClass({
         </label>
       `
       : "";
+    const detailsKey = `environment-${index}-${String(sensor?.id || "sensor").replace(/[^\w-]+/g, "_")}`;
+    const status = this._statusText({
+      configured: this._countConfigured([label, entity]),
+      missing: this._missingEntityCount([entity]),
+      hidden: visible ? 0 : 1,
+    });
 
     return `
-      <div class="box-field environment-field">
-        <div class="kpi-head">
-          <strong>${this._escape(label || fallbackLabel)}</strong>
-          <button type="button" data-action="remove-environment-sensor" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
+      <details class="box-field environment-field" data-editor-section="${this._escape(detailsKey)}"${this._detailsOpen(detailsKey) ? " open" : ""}>
+        <summary class="box-summary">
+          <span class="box-summary-main">
+            <strong>${this._escape(label || fallbackLabel)}</strong>
+            <small>${this._escape(this._floorplanSensorTypeLabel(this._environmentSensorDisplayType(sensor)) || this._t("editor.tabEnvironment", {}, "Environment"))}</small>
+          </span>
+          <span class="box-summary-side">
+            <span class="section-status">${this._escape(status)}</span>
+          </span>
+        </summary>
+        <div class="box-body">
+          <div class="kpi-head">
+            <strong>${this._escape(label || fallbackLabel)}</strong>
+            <button type="button" data-action="remove-environment-sensor" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>
+          </div>
+          <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.visible" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShow", { label: label || fallbackLabel }, `Show ${label || fallbackLabel} tile`))}</label>
+          <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.show_footer" ${showFooter ? "checked" : ""}/> ${this._labelText(this._t("editor.environmentShowFooter", {}, "Show box in footer"), this._t("editor.helpEnvironmentFooter", {}, "Shows this sensor as a tile in the Environment section below the image."))}</label>
+          <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.show_image" ${showImage ? "checked" : ""}/> ${this._labelText(this._t("editor.environmentShowImage", {}, "Show box in image"), this._t("editor.helpEnvironmentImage", {}, "Shows this sensor as a scalable HUD box on the house image."))}</label>
+          <label>${this._escape(this._t("editor.environmentLabel", {}, "Sensor label"))}
+            <input data-path="environment_sensors.${index}.label" placeholder="${this._escape(fallbackLabel)}" value="${this._escape(label)}" />
+          </label>
+          <label>${this._escape(this._t("editor.environmentEntity", {}, "Sensor entity"))}
+            <input data-path="environment_sensors.${index}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.indoor_temperature" value="${this._escape(entity)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.environmentUnit", {}, "Display unit"), this._t("editor.helpUnitAuto", {}, "Use Auto to display the unit reported by the Home Assistant entity. Choose another value only when you want to override it."))}
+            <input data-path="environment_sensors.${index}.unit" placeholder="auto" value="${this._escape(unit)}" />
+          </label>
+          <label>${this._labelText(`${this._t("editor.kpiPosition")} (${position})`, this._t("editor.helpFooterOrder", {}, "Controls the order of tiles below the image. Lower numbers appear earlier."))}
+            <input type="number" min="0" max="999" step="1" data-path="environment_sensors.${index}.position" value="${this._escape(position)}" />
+          </label>
+          <label>${this._labelText(`${this._t("editor.kpiColumns")} (${columns})`, this._t("editor.helpTileWidth", {}, "Controls how wide the footer tile is on desktop. Mobile width is capped automatically."))}
+            <input type="range" min="1" max="6" step="1" data-path="environment_sensors.${index}.columns" value="${this._escape(columns)}" />
+          </label>
+          <label>${this._escape(this._t("editor.kpiColor"))}
+            <input data-path="environment_sensors.${index}.color" placeholder="#34d399" value="${this._escape(color)}" />
+          </label>
+          ${imagePositionHtml}
         </div>
-        <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.visible" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.environmentShow", { label: label || fallbackLabel }, `Show ${label || fallbackLabel} tile`))}</label>
-        <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.show_footer" ${showFooter ? "checked" : ""}/> ${this._labelText(this._t("editor.environmentShowFooter", {}, "Show box in footer"), this._t("editor.helpEnvironmentFooter", {}, "Shows this sensor as a tile in the Environment section below the image."))}</label>
-        <label class="inline"><input type="checkbox" data-path="environment_sensors.${index}.show_image" ${showImage ? "checked" : ""}/> ${this._labelText(this._t("editor.environmentShowImage", {}, "Show box in image"), this._t("editor.helpEnvironmentImage", {}, "Shows this sensor as a scalable HUD box on the house image."))}</label>
-        <label>${this._escape(this._t("editor.environmentLabel", {}, "Sensor label"))}
-          <input data-path="environment_sensors.${index}.label" placeholder="${this._escape(fallbackLabel)}" value="${this._escape(label)}" />
-        </label>
-        <label>${this._escape(this._t("editor.environmentEntity", {}, "Sensor entity"))}
-          <input data-path="environment_sensors.${index}.entity" list="ha-solar-dashboard-entities" placeholder="sensor.indoor_temperature" value="${this._escape(entity)}" autocomplete="off" />
-        </label>
-        <label>${this._labelText(this._t("editor.environmentUnit", {}, "Display unit"), this._t("editor.helpUnitAuto", {}, "Use Auto to display the unit reported by the Home Assistant entity. Choose another value only when you want to override it."))}
-          <input data-path="environment_sensors.${index}.unit" placeholder="auto" value="${this._escape(unit)}" />
-        </label>
-        <label>${this._labelText(`${this._t("editor.kpiPosition")} (${position})`, this._t("editor.helpFooterOrder", {}, "Controls the order of tiles below the image. Lower numbers appear earlier."))}
-          <input type="number" min="0" max="999" step="1" data-path="environment_sensors.${index}.position" value="${this._escape(position)}" />
-        </label>
-        <label>${this._labelText(`${this._t("editor.kpiColumns")} (${columns})`, this._t("editor.helpTileWidth", {}, "Controls how wide the footer tile is on desktop. Mobile width is capped automatically."))}
-          <input type="range" min="1" max="6" step="1" data-path="environment_sensors.${index}.columns" value="${this._escape(columns)}" />
-        </label>
-        <label>${this._escape(this._t("editor.kpiColor"))}
-          <input data-path="environment_sensors.${index}.color" placeholder="#34d399" value="${this._escape(color)}" />
-        </label>
-        ${imagePositionHtml}
-      </div>
+      </details>
     `;
   }
 
@@ -2080,39 +2269,56 @@ export function createDashboardEditorClass({
     const color = consumer?.color || "#1f8fff";
     const visible = consumer?.visible !== false;
     const placeholderBase = String(consumer?.id || `consumer_${index + 1}`).replace(/[^\w-]+/g, "_");
+    const detailsKey = `consumer-${index}-${placeholderBase}`;
+    const status = this._statusText({
+      configured: this._countConfigured([labelValue, powerEntity, voltageEntity, energyEntity]),
+      missing: this._missingEntityCount([powerEntity, voltageEntity, energyEntity]),
+      hidden: visible ? 0 : 1,
+    });
 
     return `
-      <div class="box-field consumer-field">
-        <div class="kpi-head">
-          <strong>${this._escape(label)}</strong>
-          ${consumer?.custom ? `<button type="button" data-action="remove-large-consumer" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>` : ""}
+      <details class="box-field consumer-field" data-editor-section="${this._escape(detailsKey)}"${this._detailsOpen(detailsKey) ? " open" : ""}>
+        <summary class="box-summary">
+          <span class="box-summary-main">
+            <strong>${this._escape(label)}</strong>
+            <small>${this._escape(this._t("editor.sectionLargeConsumers", {}, "Additional large consumers"))}</small>
+          </span>
+          <span class="box-summary-side">
+            <span class="section-status">${this._escape(status)}</span>
+          </span>
+        </summary>
+        <div class="box-body">
+          <div class="kpi-head">
+            <strong>${this._escape(label)}</strong>
+            ${consumer?.custom ? `<button type="button" data-action="remove-large-consumer" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove"))}</button>` : ""}
+          </div>
+          <label class="inline"><input type="checkbox" data-path="large_consumers.${index}.visible" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.consumerShow", { label }, `Show ${label} tile`))}</label>
+          <label>${this._escape(this._t("editor.consumerLabel", {}, "Device name"))}
+            <input data-path="large_consumers.${index}.label" placeholder="${this._escape(label)}" value="${this._escape(labelValue)}" />
+          </label>
+          <label>${this._escape(this._t("editor.consumerPowerEntity", {}, "Power entity"))}
+            <input data-path="large_consumers.${index}.power_entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(placeholderBase)}_power" value="${this._escape(powerEntity)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.voltageEntity", {}, "Voltage entity"))}
+            <input data-path="large_consumers.${index}.voltage_entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(placeholderBase)}_voltage" value="${this._escape(voltageEntity)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.consumerEnergyEntity", {}, "kWh counter entity"))}
+            <input data-path="large_consumers.${index}.energy_entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(placeholderBase)}_energy" value="${this._escape(energyEntity)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.maxPowerKw"))}
+            <input type="number" min="0" step="0.1" data-path="large_consumers.${index}.max_power_kw" placeholder="2.0" value="${this._escape(maxPowerKw)}" />
+          </label>
+          <label>${this._escape(this._t("editor.kpiPosition"))} (${this._escape(position)})
+            <input type="number" min="0" max="999" step="1" data-path="large_consumers.${index}.position" value="${this._escape(position)}" />
+          </label>
+          <label>${this._escape(this._t("editor.kpiColumns"))} (${this._escape(columns)})
+            <input type="range" min="1" max="6" step="1" data-path="large_consumers.${index}.columns" value="${this._escape(columns)}" />
+          </label>
+          <label>${this._escape(this._t("editor.kpiColor"))}
+            <input data-path="large_consumers.${index}.color" placeholder="#1f8fff" value="${this._escape(color)}" />
+          </label>
         </div>
-        <label class="inline"><input type="checkbox" data-path="large_consumers.${index}.visible" ${visible ? "checked" : ""}/> ${this._escape(this._t("editor.consumerShow", { label }, `Show ${label} tile`))}</label>
-        <label>${this._escape(this._t("editor.consumerLabel", {}, "Device name"))}
-          <input data-path="large_consumers.${index}.label" placeholder="${this._escape(label)}" value="${this._escape(labelValue)}" />
-        </label>
-        <label>${this._escape(this._t("editor.consumerPowerEntity", {}, "Power entity"))}
-          <input data-path="large_consumers.${index}.power_entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(placeholderBase)}_power" value="${this._escape(powerEntity)}" autocomplete="off" />
-        </label>
-        <label>${this._escape(this._t("editor.voltageEntity", {}, "Voltage entity"))}
-          <input data-path="large_consumers.${index}.voltage_entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(placeholderBase)}_voltage" value="${this._escape(voltageEntity)}" autocomplete="off" />
-        </label>
-        <label>${this._escape(this._t("editor.consumerEnergyEntity", {}, "kWh counter entity"))}
-          <input data-path="large_consumers.${index}.energy_entity" list="ha-solar-dashboard-entities" placeholder="sensor.${this._escape(placeholderBase)}_energy" value="${this._escape(energyEntity)}" autocomplete="off" />
-        </label>
-        <label>${this._escape(this._t("editor.maxPowerKw"))}
-          <input type="number" min="0" step="0.1" data-path="large_consumers.${index}.max_power_kw" placeholder="2.0" value="${this._escape(maxPowerKw)}" />
-        </label>
-        <label>${this._escape(this._t("editor.kpiPosition"))} (${this._escape(position)})
-          <input type="number" min="0" max="999" step="1" data-path="large_consumers.${index}.position" value="${this._escape(position)}" />
-        </label>
-        <label>${this._escape(this._t("editor.kpiColumns"))} (${this._escape(columns)})
-          <input type="range" min="1" max="6" step="1" data-path="large_consumers.${index}.columns" value="${this._escape(columns)}" />
-        </label>
-        <label>${this._escape(this._t("editor.kpiColor"))}
-          <input data-path="large_consumers.${index}.color" placeholder="#1f8fff" value="${this._escape(color)}" />
-        </label>
-      </div>
+      </details>
     `;
   }
 
@@ -2475,6 +2681,29 @@ export function createDashboardEditorClass({
     `;
   }
 
+  _renderMetricGroups() {
+    return this._metricGroupDefinitions().map((group) => {
+      const values = group.metrics.flatMap((metric) => this._metricConfigValues(metric));
+      const hidden = group.metrics.filter((metric) => !this._metricVisible(metric)).length;
+      const status = this._statusText({
+        configured: this._countConfigured(values),
+        missing: this._missingEntityCount(values),
+        hidden,
+      });
+      return `
+        <section class="editor-card metric-group-card">
+          <div class="editor-card-head">
+            <strong>${this._escape(group.title)}</strong>
+            <span class="section-status">${this._escape(status)}</span>
+          </div>
+          <div class="metric-grid">
+            ${group.metrics.map((metric) => this._renderBoxField(metric)).join("")}
+          </div>
+        </section>
+      `;
+    }).join("");
+  }
+
   _render() {
     if (!this._config) return;
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
@@ -2595,7 +2824,7 @@ export function createDashboardEditorClass({
         </label>
       </div>
     `;
-    const boxSettingsHtml = `<div class="grid">${TILE_METRICS.map((metric) => this._renderBoxField(metric)).join("")}</div>`;
+    const boxSettingsHtml = this._renderMetricGroups();
     const overlaySettingsHtml = `<div class="grid">${overlayFields}</div>`;
     const kpiSettingsHtml = `
       <div class="grid">${customKpiFields}</div>
@@ -2625,7 +2854,7 @@ export function createDashboardEditorClass({
         key: "energy",
         label: this._t("editor.tabEnergy", {}, "Energy"),
         status: this._statusText({ configured: configuredTileEntities.length, total: TILE_METRICS.length, missing: this._missingEntityCount(configuredTileEntities) }),
-        content: renderEditorCard(this._t("editor.sectionBoxes", {}, "Energy boxes"), this._statusText({ configured: configuredTileEntities.length, total: TILE_METRICS.length }), boxSettingsHtml),
+        content: boxSettingsHtml,
       },
       {
         key: "devices",
@@ -2674,6 +2903,39 @@ export function createDashboardEditorClass({
       },
     ];
     const activeTab = this._activeTab();
+    const activePanel = tabPanels.find((tab) => tab.key === activeTab) || tabPanels[0];
+    const configuredOverviewValues = [
+      ...configuredTileEntities,
+      ...environmentSensors.map((sensor) => sensor.entity),
+      ...largeConsumers.flatMap((consumer) => [consumer.power_entity, consumer.energy_entity]),
+      ...customKpis.flatMap((kpi) => [kpi.entity, kpi.value]),
+    ];
+    const overviewEntityValues = [
+      ...configuredTileEntities,
+      ...environmentSensors.map((sensor) => sensor.entity),
+      ...largeConsumers.flatMap((consumer) => [consumer.power_entity, consumer.energy_entity]),
+      ...customKpis.map((kpi) => kpi.entity),
+    ];
+    const overviewHtml = `
+      <header class="editor-overview">
+        <div class="overview-item">
+          <span>${this._escape(this._t("editor.overviewActive", {}, "Active"))}</span>
+          <strong>${this._escape(activePanel.label)}</strong>
+        </div>
+        <div class="overview-item">
+          <span>${this._escape(this._t("editor.overviewEntities", {}, "Entities"))}</span>
+          <strong>${this._escape(this._countConfigured(configuredOverviewValues))}</strong>
+        </div>
+        <div class="overview-item">
+          <span>${this._escape(this._t("editor.overviewItems", {}, "Items"))}</span>
+          <strong>${this._escape(customKpis.length + environmentSensors.length + largeConsumers.length + floorplanElementCount)}</strong>
+        </div>
+        <div class="overview-item${this._missingEntityCount(overviewEntityValues) > 0 ? " warning" : ""}">
+          <span>${this._escape(this._t("editor.overviewMissing", {}, "Missing"))}</span>
+          <strong>${this._escape(this._missingEntityCount(overviewEntityValues))}</strong>
+        </div>
+      </header>
+    `;
     const tabButtons = tabPanels.map((tab) => `
       <button type="button" class="editor-tab${tab.key === activeTab ? " active" : ""}" data-editor-tab="${this._escape(tab.key)}" aria-pressed="${tab.key === activeTab ? "true" : "false"}">
         <span>${this._escape(tab.label)}</span>
@@ -2690,10 +2952,15 @@ export function createDashboardEditorClass({
       <link rel="stylesheet" href="${this._escape(assetUrl("styles/editor.css"))}" />
       <div class="editor">
         <datalist id="ha-solar-dashboard-entities">${entityOptions}</datalist>
-        <nav class="editor-tabs" aria-label="${this._escape(this._t("editor.tabs", {}, "Configuration sections"))}">
-          ${tabButtons}
-        </nav>
-        ${tabContent}
+        ${overviewHtml}
+        <div class="editor-shell">
+          <nav class="editor-tabs" aria-label="${this._escape(this._t("editor.tabs", {}, "Configuration sections"))}">
+            ${tabButtons}
+          </nav>
+          <main class="editor-main">
+            ${tabContent}
+          </main>
+        </div>
       </div>
     `;
 

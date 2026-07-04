@@ -1,5 +1,19 @@
 export const DEFAULT_GARDEN_IMAGE = "images/single_family_home_top_view_garden.png";
 
+export const GARDEN_HERO_BADGE_POSITION_KEYS = Object.freeze({
+  mower_status: "garden_mower_status",
+  garden_water: "garden_water",
+  rain_24h: "garden_rain_24h",
+  soil_moisture: "garden_soil_moisture",
+});
+
+export const GARDEN_HERO_BADGE_POSITIONS = Object.freeze({
+  mower_status: Object.freeze({ left: 13, top: 10 }),
+  garden_water: Object.freeze({ left: 84, top: 11 }),
+  rain_24h: Object.freeze({ left: 28, top: 86 }),
+  soil_moisture: Object.freeze({ left: 43, top: 86 }),
+});
+
 export const GARDEN_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "mower_status", labelKey: "garden.mowerStatus", label: "Mäher", group: "mower", kind: "status", aliases: ["mower", "mower_status", "maeher_status", "mower_activity", "lawn_mower_status", "robot_mower_status"] }),
   Object.freeze({ key: "mower_battery", labelKey: "garden.mowerBattery", label: "Mäher Akku", group: "mower", kind: "percent", aliases: ["mower_battery", "maeher_battery", "maeher_akku", "robot_mower_battery"] }),
@@ -48,6 +62,12 @@ function firstGardenValue(values = []) {
   return values
     .map((value) => String(value || "").trim())
     .find(Boolean) || "";
+}
+
+function normalizeGardenBadgeCoordinate(value, fallback = 50) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(0, Math.min(100, number));
 }
 
 function normalizeGardenEntities(entities = {}) {
@@ -281,13 +301,24 @@ export function createGardenDashboardMethods({
       return "#2dd4bf";
     },
 
+    _gardenHeroBadgePosition(definitionKey) {
+      const positionKey = GARDEN_HERO_BADGE_POSITION_KEYS[definitionKey] || (definitionKey.startsWith("garden_") ? definitionKey : `garden_${definitionKey}`);
+      const fallback = GARDEN_HERO_BADGE_POSITIONS[definitionKey] || { left: 50, top: 50 };
+      const configured = this.config.positions?.[positionKey] || {};
+      return {
+        left: normalizeGardenBadgeCoordinate(configured.left, fallback.left),
+        top: normalizeGardenBadgeCoordinate(configured.top, fallback.top),
+      };
+    },
+
     _renderGardenHeroBadge(definitionKey, className = "") {
       const definition = this._gardenDefinition(definitionKey);
       if (!definition) return "";
       const state = this._gardenFieldState(definition);
       if (!state.configured || state.value === GARDEN_EMPTY_VALUE) return "";
+      const position = this._gardenHeroBadgePosition(definitionKey);
       return `
-        <div class="garden-badge ${this._escape(className)}" style="--tile-accent:${this._escape(this._gardenAccent(definition.group))}">
+        <div class="garden-badge ${this._escape(className)}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._gardenAccent(definition.group))}">
           <span>${this._escape(state.label)}</span>
           <strong data-garden-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>

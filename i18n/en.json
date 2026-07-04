@@ -329,7 +329,7 @@
   "editor.helpSignedBattery": "Use one signed sensor when possible: positive means charging, negative means discharging.",
   "editor.helpFooterOrder": "Controls the order of tiles below the image. Lower numbers appear earlier.",
   "editor.helpTileWidth": "Controls how wide the footer tile is on desktop. Mobile width is capped automatically.",
-  "editor.helpImagePosition": "Position of the box on the house image in percent.",
+  "editor.helpImagePosition": "Position of the box on the selected image in percent.",
   "editor.helpEnvironmentFooter": "Shows this sensor as a tile in the Environment section below the image.",
   "editor.helpEnvironmentImage": "Shows this sensor as a scalable HUD box on the house image.",
   "editor.helpMaxPower": "Used only for the utilization bar and Advisor load checks.",

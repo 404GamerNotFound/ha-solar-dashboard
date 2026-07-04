@@ -329,7 +329,7 @@
   "editor.helpSignedBattery": "Jeśli to możliwe, użyj czujnika ze znakiem: dodatni oznacza ładowanie, ujemny rozładowanie.",
   "editor.helpFooterOrder": "Steruje kolejnością kafelków pod obrazem. Niższe liczby pojawiają się wcześniej.",
   "editor.helpTileWidth": "Steruje szerokością kafelka dolnego na komputerze. Na telefonie szerokość jest ograniczana automatycznie.",
-  "editor.helpImagePosition": "Pozycja pola na obrazie domu w procentach.",
+  "editor.helpImagePosition": "Pozycja pola na wybranym obrazie w procentach.",
   "editor.helpEnvironmentFooter": "Pokazuje ten czujnik jako kafelek w sekcji Środowisko pod obrazem.",
   "editor.helpEnvironmentImage": "Pokazuje ten czujnik jako skalowalne pole HUD na obrazie domu.",
   "editor.helpMaxPower": "Używane tylko dla paska wykorzystania i kontroli obciążenia doradcy.",

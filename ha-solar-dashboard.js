@@ -3143,6 +3143,22 @@ function createEditorBaseConfig({ floorplanLabel = "Level 1" } = {}) {
 
 const DEFAULT_ELECTRIC_VEHICLE_IMAGE = "images/car_image.png";
 
+const ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS = Object.freeze({
+  status: "electric_vehicle_status",
+  charge_power: "electric_vehicle_charge_power",
+  vehicle_soc: "electric_vehicle_vehicle_soc",
+  charge_remaining_duration: "electric_vehicle_charge_remaining_duration",
+  session_solar_percentage: "electric_vehicle_session_solar_percentage",
+});
+
+const ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS = Object.freeze({
+  status: Object.freeze({ left: 13, top: 11 }),
+  charge_power: Object.freeze({ left: 84, top: 11 }),
+  vehicle_soc: Object.freeze({ left: 13, top: 23 }),
+  charge_remaining_duration: Object.freeze({ left: 84, top: 23 }),
+  session_solar_percentage: Object.freeze({ left: 50, top: 86 }),
+});
+
 const ELECTRIC_VEHICLE_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "status", labelKey: "ev.status", label: "Status", group: "state", kind: "status", aliases: ["ev_status", "loadpoint_status", "wallbox_status"] }),
   Object.freeze({ key: "mode", labelKey: "ev.mode", label: "Mode", group: "state", kind: "text", aliases: ["ev_mode", "loadpoint_mode", "wallbox_mode"] }),
@@ -3252,6 +3268,12 @@ function isUnavailableElectricVehicleValue(value) {
 
 function electricVehicleEntityDomain(entityId = "") {
   return String(entityId || "").split(".")[0];
+}
+
+function normalizeElectricVehicleBadgeCoordinate(value, fallback = 50) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(0, Math.min(100, number));
 }
 
 function normalizeElectricVehicleWallbox(value) {
@@ -3431,6 +3453,16 @@ function createElectricVehicleDashboardMethods({
       return this._t("ev.unknown", {}, "Unknown");
     },
 
+    _electricVehicleHeroBadgePosition(definitionKey) {
+      const positionKey = ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS[definitionKey] || `electric_vehicle_${definitionKey}`;
+      const fallback = ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[definitionKey] || { left: 50, top: 50 };
+      const configured = this.config.positions?.[positionKey] || {};
+      return {
+        left: normalizeElectricVehicleBadgeCoordinate(configured.left, fallback.left),
+        top: normalizeElectricVehicleBadgeCoordinate(configured.top, fallback.top),
+      };
+    },
+
     _electricVehicleFormatDuration(rawValue, entityUnit = "") {
       if (isUnavailableElectricVehicleValue(rawValue)) return ELECTRIC_VEHICLE_EMPTY_VALUE;
       const numericValue = Number(String(rawValue).replace(",", "."));
@@ -3555,8 +3587,9 @@ function createElectricVehicleDashboardMethods({
       if (!definition) return "";
       const state = this._electricVehicleFieldState(definition);
       if (!state.configured || state.value === ELECTRIC_VEHICLE_EMPTY_VALUE) return "";
+      const position = this._electricVehicleHeroBadgePosition(definitionKey);
       return `
-        <div class="electric-vehicle-badge">
+        <div class="electric-vehicle-badge" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleAccent(definition))}">
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -3670,6 +3703,20 @@ function createElectricVehicleDashboardMethods({
 
 const DEFAULT_GARDEN_IMAGE = "images/single_family_home_top_view_garden.png";
 
+const GARDEN_HERO_BADGE_POSITION_KEYS = Object.freeze({
+  mower_status: "garden_mower_status",
+  garden_water: "garden_water",
+  rain_24h: "garden_rain_24h",
+  soil_moisture: "garden_soil_moisture",
+});
+
+const GARDEN_HERO_BADGE_POSITIONS = Object.freeze({
+  mower_status: Object.freeze({ left: 13, top: 10 }),
+  garden_water: Object.freeze({ left: 84, top: 11 }),
+  rain_24h: Object.freeze({ left: 28, top: 86 }),
+  soil_moisture: Object.freeze({ left: 43, top: 86 }),
+});
+
 const GARDEN_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "mower_status", labelKey: "garden.mowerStatus", label: "Mäher", group: "mower", kind: "status", aliases: ["mower", "mower_status", "maeher_status", "mower_activity", "lawn_mower_status", "robot_mower_status"] }),
   Object.freeze({ key: "mower_battery", labelKey: "garden.mowerBattery", label: "Mäher Akku", group: "mower", kind: "percent", aliases: ["mower_battery", "maeher_battery", "maeher_akku", "robot_mower_battery"] }),
@@ -3718,6 +3765,12 @@ function firstGardenValue(values = []) {
   return values
     .map((value) => String(value || "").trim())
     .find(Boolean) || "";
+}
+
+function normalizeGardenBadgeCoordinate(value, fallback = 50) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(0, Math.min(100, number));
 }
 
 function normalizeGardenEntities(entities = {}) {
@@ -3951,13 +4004,24 @@ function createGardenDashboardMethods({
       return "#2dd4bf";
     },
 
+    _gardenHeroBadgePosition(definitionKey) {
+      const positionKey = GARDEN_HERO_BADGE_POSITION_KEYS[definitionKey] || (definitionKey.startsWith("garden_") ? definitionKey : `garden_${definitionKey}`);
+      const fallback = GARDEN_HERO_BADGE_POSITIONS[definitionKey] || { left: 50, top: 50 };
+      const configured = this.config.positions?.[positionKey] || {};
+      return {
+        left: normalizeGardenBadgeCoordinate(configured.left, fallback.left),
+        top: normalizeGardenBadgeCoordinate(configured.top, fallback.top),
+      };
+    },
+
     _renderGardenHeroBadge(definitionKey, className = "") {
       const definition = this._gardenDefinition(definitionKey);
       if (!definition) return "";
       const state = this._gardenFieldState(definition);
       if (!state.configured || state.value === GARDEN_EMPTY_VALUE) return "";
+      const position = this._gardenHeroBadgePosition(definitionKey);
       return `
-        <div class="garden-badge ${this._escape(className)}" style="--tile-accent:${this._escape(this._gardenAccent(definition.group))}">
+        <div class="garden-badge ${this._escape(className)}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._gardenAccent(definition.group))}">
           <span>${this._escape(state.label)}</span>
           <strong data-garden-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -4042,7 +4106,11 @@ function createDashboardEditorClass({
   DEFAULT_IMAGE_OVERLAYS,
   DEFAULT_TILE_COLOR_RULES,
   ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
   GARDEN_ENTITY_DEFINITIONS,
+  GARDEN_HERO_BADGE_POSITIONS,
+  GARDEN_HERO_BADGE_POSITION_KEYS,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,
   PV_LABELS,
@@ -6551,6 +6619,112 @@ function createDashboardEditorClass({
     }
   }
 
+  _editorAssetImageSrc(path = "", fallback = "") {
+    const value = String(path || fallback || "").trim();
+    if (!value) return "";
+    if (/^(?:https?:)?\/\//i.test(value) || value.startsWith("/") || value.startsWith("data:")) return value;
+    try {
+      return assetUrl(value);
+    } catch (_err) {
+      return value;
+    }
+  }
+
+  _editorElectricVehicleImageSrc() {
+    const normalized = normalizeElectricVehicleConfig?.(this._config.electric_vehicle || {}) || this._config.electric_vehicle || {};
+    return this._editorAssetImageSrc(normalized.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE || "images/car_image.png");
+  }
+
+  _editorGardenImageSrc() {
+    const normalized = normalizeGardenConfig?.(this._config.garden || {}) || this._config.garden || {};
+    return this._editorAssetImageSrc(normalized.image, DEFAULT_GARDEN_IMAGE || "images/single_family_home_top_view_garden.png");
+  }
+
+  _layoutPositionConfig(positionKey) {
+    const position = this._config.positions?.[positionKey];
+    return position && typeof position === "object" ? position : {};
+  }
+
+  _layoutPositionNumber(value, fallback = 50) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.max(0, Math.min(100, number));
+  }
+
+  _layoutPosition(positionKey, fallback = {}) {
+    const position = this._layoutPositionConfig(positionKey);
+    return {
+      left: this._layoutPositionNumber(position.left, Number.isFinite(Number(fallback.left)) ? Number(fallback.left) : 50),
+      top: this._layoutPositionNumber(position.top, Number.isFinite(Number(fallback.top)) ? Number(fallback.top) : 50),
+    };
+  }
+
+  _layoutPositionConfigured(positionKey) {
+    const position = this._layoutPositionConfig(positionKey);
+    return Number.isFinite(Number(position.left)) || Number.isFinite(Number(position.top));
+  }
+
+  _electricVehicleHeroBadgePositionKey(key = "") {
+    return ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS?.[key] || `electric_vehicle_${key}`;
+  }
+
+  _electricVehicleWallboxKey() {
+    return this._config.electric_vehicle?.wallbox === "wallbox2_power" ? "wallbox2_power" : "wallbox_power";
+  }
+
+  _electricVehicleWallboxFallbackEntityKey(kind = "") {
+    const wallboxKey = this._electricVehicleWallboxKey();
+    if (kind === "power") return wallboxKey;
+    if (kind === "soc") return this._wallboxSocEntityKey(wallboxKey);
+    if (kind === "maxSoc") return this._wallboxMaxSocEntityKey(wallboxKey);
+    if (kind === "connected") return this._wallboxConnectedEntityKey(wallboxKey);
+    if (kind === "chargingEnabled") return this._wallboxChargingEnabledEntityKey(wallboxKey);
+    if (kind === "remainingTime") return this._wallboxRemainingTimeEntityKey(wallboxKey);
+    if (kind === "phase") return this._wallboxPhaseEntityKey(wallboxKey);
+    if (kind === "phaseAction") return this._wallboxPhaseActionEntityKey(wallboxKey);
+    if (kind === "phaseRemaining") return this._wallboxPhaseRemainingEntityKey(wallboxKey);
+    return "";
+  }
+
+  _electricVehicleLayoutEntityId(definition) {
+    const key = definition?.key || "";
+    const entities = this._config.electric_vehicle?.entities || {};
+    const direct = entities[key] || definition?.aliases?.map((alias) => entities[alias]).find(Boolean);
+    if (direct) return direct;
+
+    const fallbackKey = definition?.wallboxFallback ? this._electricVehicleWallboxFallbackEntityKey(definition.wallboxFallback) : "";
+    if (fallbackKey && this._config.entities?.[fallbackKey]) return this._config.entities[fallbackKey];
+
+    const aliases = [
+      key,
+      `ev_${key}`,
+      `evcc_${key}`,
+      `electric_vehicle_${key}`,
+      ...(definition?.aliases || []),
+    ];
+    return aliases.map((alias) => this._config.entities?.[alias]).find(Boolean) || "";
+  }
+
+  _gardenHeroBadgePositionKey(key = "") {
+    return GARDEN_HERO_BADGE_POSITION_KEYS?.[key] || (key.startsWith("garden_") ? key : `garden_${key}`);
+  }
+
+  _gardenLayoutEntityId(definition) {
+    const key = definition?.key || "";
+    const entities = this._config.garden?.entities || {};
+    const direct = entities[key] || definition?.aliases?.map((alias) => entities[alias]).find(Boolean);
+    if (direct) return direct;
+    const aliases = [
+      key,
+      this._gardenHeroBadgePositionKey(key),
+      `garten_${key}`,
+      `irrigation_${key}`,
+      `watering_${key}`,
+      ...(definition?.aliases || []),
+    ];
+    return aliases.map((alias) => this._config.entities?.[alias]).find(Boolean) || "";
+  }
+
   _layoutItems() {
     const metricItems = TILE_METRICS
       .filter((metric) => this._metricVisible(metric))
@@ -6559,6 +6733,7 @@ function createDashboardEditorClass({
         return {
           key: `metric:${metric.key}`,
           label: this._metricLabel(metric),
+          scope: "house",
           left: Number.isFinite(Number(position.left)) ? Number(position.left) : 50,
           top: Number.isFinite(Number(position.top)) ? Number(position.top) : 50,
           leftPath: `positions.${metric.key}.left`,
@@ -6574,6 +6749,7 @@ function createDashboardEditorClass({
         return {
           key: `overlay:${key}`,
           label: this._overlayLabel(key),
+          scope: "house",
           left: Number.isFinite(Number(config.left)) ? Number(config.left) : 50,
           top: Number.isFinite(Number(config.top)) ? Number(config.top) : 50,
           leftPath: `image_overlays.${key}.left`,
@@ -6590,6 +6766,7 @@ function createDashboardEditorClass({
         return {
           key: `environment:${index}`,
           label,
+          scope: "house",
           left: Number.isFinite(Number(sensor.left)) ? Number(sensor.left) : 50,
           top: Number.isFinite(Number(sensor.top)) ? Number(sensor.top) : 50,
           leftPath: `environment_sensors.${index}.left`,
@@ -6599,7 +6776,53 @@ function createDashboardEditorClass({
         };
       })
       .filter(Boolean);
-    return [...metricItems, ...overlayItems, ...environmentItems];
+    const electricVehicleItems = this._config.show_electric_vehicle === false
+      ? []
+      : Object.entries(ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS || {})
+        .map(([key, fallback]) => {
+          const definition = this._electricVehicleDefinitions().find((item) => item.key === key);
+          if (!definition) return undefined;
+          const positionKey = this._electricVehicleHeroBadgePositionKey(key);
+          const entityId = this._electricVehicleLayoutEntityId(definition);
+          if (key !== "status" && !entityId && !this._layoutPositionConfigured(positionKey)) return undefined;
+          const position = this._layoutPosition(positionKey, fallback);
+          return {
+            key: `electric_vehicle:${key}`,
+            label: `${this._t("view.electricVehicle", {}, "E-Auto")}: ${this._t(definition.labelKey, {}, definition.label)}`,
+            scope: "electric_vehicle",
+            left: position.left,
+            top: position.top,
+            leftPath: `positions.${positionKey}.left`,
+            topPath: `positions.${positionKey}.top`,
+            color: definition.group === "charging" ? "#ffc233" : definition.group === "vehicle" ? "#34d399" : "#1f8fff",
+            type: this._t("view.electricVehicle", {}, "E-Auto"),
+          };
+        })
+        .filter(Boolean);
+    const gardenItems = this._config.show_garden === false
+      ? []
+      : Object.entries(GARDEN_HERO_BADGE_POSITIONS || {})
+        .map(([key, fallback]) => {
+          const definition = this._gardenDefinitions().find((item) => item.key === key);
+          if (!definition) return undefined;
+          const positionKey = this._gardenHeroBadgePositionKey(key);
+          const entityId = this._gardenLayoutEntityId(definition);
+          if (!entityId && !this._layoutPositionConfigured(positionKey)) return undefined;
+          const position = this._layoutPosition(positionKey, fallback);
+          return {
+            key: `garden:${key}`,
+            label: `${this._t("view.garden", {}, "Garten")}: ${this._t(definition.labelKey, {}, definition.label)}`,
+            scope: "garden",
+            left: position.left,
+            top: position.top,
+            leftPath: `positions.${positionKey}.left`,
+            topPath: `positions.${positionKey}.top`,
+            color: definition.group === "weather" ? "#38bdf8" : definition.group === "water" ? "#1f8fff" : "#34d399",
+            type: this._t("view.garden", {}, "Garten"),
+          };
+        })
+        .filter(Boolean);
+    return [...metricItems, ...overlayItems, ...environmentItems, ...electricVehicleItems, ...gardenItems];
   }
 
   _selectedLayoutItem(items) {
@@ -6806,8 +7029,21 @@ function createDashboardEditorClass({
     const items = this._layoutItems();
     const selected = this._selectedLayoutItem(items);
     this._selectedLayoutItemKey = selected?.key;
-    const imageSrc = this._editorImageSrc();
-    const markers = items.map((item) => `
+    const selectedScope = selected?.scope || "house";
+    const previewItems = items.filter((item) => (item.scope || "house") === selectedScope);
+    const houseAlt = this._houseLabel(this._normalizeHouse(this._config.house), this._houseVariant());
+    let imageSrc = this._editorImageSrc();
+    let imageAlt = houseAlt;
+    if (selectedScope === "electric_vehicle") {
+      const electricVehicle = normalizeElectricVehicleConfig?.(this._config.electric_vehicle || {}) || this._config.electric_vehicle || {};
+      imageSrc = this._editorElectricVehicleImageSrc();
+      imageAlt = electricVehicle.title || this._t("ev.title", {}, "E-Auto");
+    } else if (selectedScope === "garden") {
+      const garden = normalizeGardenConfig?.(this._config.garden || {}) || this._config.garden || {};
+      imageSrc = this._editorGardenImageSrc();
+      imageAlt = garden.title || this._t("garden.title", {}, "Garten");
+    }
+    const markers = previewItems.map((item) => `
       <button type="button" class="layout-marker${selected?.key === item.key ? " active" : ""}" data-layout-key="${this._escape(item.key)}" style="left:${this._escape(item.left)}%;top:${this._escape(item.top)}%;--layout-color:${this._escape(item.color)}" title="${this._escape(item.label)}">
         <span>${this._escape(item.label)}</span>
       </button>
@@ -6840,7 +7076,7 @@ function createDashboardEditorClass({
         </div>
         <div class="layout-editor">
           <div class="layout-preview">
-            ${imageSrc ? `<img src="${this._escape(imageSrc)}" alt="${this._escape(this._houseLabel(this._normalizeHouse(this._config.house), this._houseVariant()))}" />` : ""}
+            ${imageSrc ? `<img src="${this._escape(imageSrc)}" alt="${this._escape(imageAlt)}" />` : ""}
             ${markers}
           </div>
           ${controls}
@@ -7393,8 +7629,8 @@ function createDashboardEditorClass({
         button:disabled{opacity:.55;cursor:not-allowed}
         summary{cursor:pointer;color:var(--editor-text)}
         summary::-webkit-details-marker{display:none}
-        .editor-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;min-width:0}
-        .overview-item{display:grid;gap:3px;min-width:0;padding:10px 12px;border:1px solid var(--editor-border);border-radius:8px;background:var(--editor-surface-soft);box-shadow:inset 3px 0 0 color-mix(in srgb,var(--editor-accent) 72%,var(--editor-border))}
+        .editor-overview{display:grid;grid-template-columns:repeat(4,minmax(112px,1fr));gap:8px;min-width:0;max-width:100%;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+        .overview-item{display:grid;gap:3px;min-width:112px;padding:10px 12px;border:1px solid var(--editor-border);border-radius:8px;background:var(--editor-surface-soft);box-shadow:inset 3px 0 0 color-mix(in srgb,var(--editor-accent) 72%,var(--editor-border))}
         .overview-item span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--editor-muted);font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:0}
         .overview-item strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:18px;line-height:1.15}
         .overview-item.warning{box-shadow:inset 3px 0 0 var(--editor-warning)}
@@ -7504,10 +7740,9 @@ function createDashboardEditorClass({
           .editor-tabs{position:static;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}
           .editor-tab{min-height:58px}
           .editor-tab.active{box-shadow:inset 0 -3px 0 var(--editor-accent)}
-          .editor-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
         }
         @container (max-width:520px){
-          .editor-overview,.editor-tabs,.layout-editor,.floorplan-editor .layout-controls{grid-template-columns:minmax(0,1fr)}
+          .editor-tabs,.layout-editor,.floorplan-editor .layout-controls{grid-template-columns:minmax(0,1fr)}
           .editor-card-head,.box-summary,.wizard-suggestion{display:grid;grid-template-columns:minmax(0,1fr)}
           .box-summary-side,.wizard-suggestion-side{justify-items:start;justify-content:start;white-space:normal}
           .section-status{text-align:left}
@@ -7517,7 +7752,7 @@ function createDashboardEditorClass({
           .editor-tabs{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}
         }
         @media (max-width:700px){
-          .editor-overview,.checkbox-grid,.settings-grid,.editor-tabs,.layout-editor,.floorplan-editor .layout-controls{grid-template-columns:minmax(0,1fr)}
+          .checkbox-grid,.settings-grid,.editor-tabs,.layout-editor,.floorplan-editor .layout-controls{grid-template-columns:minmax(0,1fr)}
           .editor-card-head,.box-summary,.wizard-suggestion{display:grid;grid-template-columns:minmax(0,1fr)}
           .box-summary-side,.wizard-suggestion-side{justify-items:start;justify-content:start;white-space:normal}
           .section-status{text-align:left}
@@ -10470,7 +10705,7 @@ const I18N = {
     "editor.helpSignedBattery": "Use one signed sensor when possible: positive means charging, negative means discharging.",
     "editor.helpFooterOrder": "Controls the order of tiles below the image. Lower numbers appear earlier.",
     "editor.helpTileWidth": "Controls how wide the footer tile is on desktop. Mobile width is capped automatically.",
-    "editor.helpImagePosition": "Position of the box on the house image in percent.",
+    "editor.helpImagePosition": "Position of the box on the selected image in percent.",
     "editor.helpEnvironmentFooter": "Shows this sensor as a tile in the Environment section below the image.",
     "editor.helpEnvironmentImage": "Shows this sensor as a scalable HUD box on the house image.",
     "editor.helpMaxPower": "Used only for the utilization bar and Advisor load checks.",
@@ -11045,7 +11280,7 @@ const I18N = {
     "editor.helpSignedBattery": "Wenn möglich einen Vorzeichen-Sensor nutzen: positiv lädt, negativ entlädt.",
     "editor.helpFooterOrder": "Legt die Reihenfolge der Kacheln unter dem Bild fest. Niedrigere Werte erscheinen früher.",
     "editor.helpTileWidth": "Legt fest, wie breit die Footer-Kachel auf dem Desktop ist. Mobil wird die Breite automatisch begrenzt.",
-    "editor.helpImagePosition": "Position der Box auf dem Hausbild in Prozent.",
+    "editor.helpImagePosition": "Position der Box auf dem ausgewählten Bild in Prozent.",
     "editor.helpEnvironmentFooter": "Zeigt diesen Sensor als Kachel im Umgebungsbereich unter dem Bild.",
     "editor.helpEnvironmentImage": "Zeigt diesen Sensor als skalierbare HUD-Box direkt auf dem Hausbild.",
     "editor.helpMaxPower": "Wird nur für die Auslastungsleiste und Lastprüfungen im Advisor verwendet.",
@@ -11620,7 +11855,7 @@ const I18N = {
     "editor.helpSignedBattery": "Usa un sensor con signo si es posible: positivo significa carga y negativo descarga.",
     "editor.helpFooterOrder": "Controla el orden de los mosaicos bajo la imagen. Los números más bajos aparecen antes.",
     "editor.helpTileWidth": "Controla el ancho del mosaico inferior en escritorio. En móvil se limita automáticamente.",
-    "editor.helpImagePosition": "Posición de la caja sobre la imagen de la casa en porcentaje.",
+    "editor.helpImagePosition": "Posición de la caja en la imagen seleccionada en porcentaje.",
     "editor.helpEnvironmentFooter": "Muestra este sensor como mosaico en la sección Ambiente bajo la imagen.",
     "editor.helpEnvironmentImage": "Muestra este sensor como caja HUD escalable sobre la imagen de la casa.",
     "editor.helpMaxPower": "Solo se usa para la barra de utilización y las comprobaciones de carga del asesor.",
@@ -12195,7 +12430,7 @@ const I18N = {
     "editor.helpSignedBattery": "Utilisez un capteur signé si possible : positif signifie charge, négatif décharge.",
     "editor.helpFooterOrder": "Contrôle l'ordre des tuiles sous l'image. Les nombres plus bas apparaissent plus tôt.",
     "editor.helpTileWidth": "Contrôle la largeur de la tuile inférieure sur bureau. Sur mobile, elle est limitée automatiquement.",
-    "editor.helpImagePosition": "Position de la boîte sur l'image de la maison en pourcentage.",
+    "editor.helpImagePosition": "Position de la boîte sur l'image sélectionnée en pourcentage.",
     "editor.helpEnvironmentFooter": "Affiche ce capteur comme tuile dans la section Environnement sous l'image.",
     "editor.helpEnvironmentImage": "Affiche ce capteur comme boîte HUD redimensionnable sur l'image de la maison.",
     "editor.helpMaxPower": "Utilisé seulement pour la barre d'utilisation et les contrôles de charge du conseiller.",
@@ -12770,7 +13005,7 @@ const I18N = {
     "editor.helpSignedBattery": "Jeśli to możliwe, użyj czujnika ze znakiem: dodatni oznacza ładowanie, ujemny rozładowanie.",
     "editor.helpFooterOrder": "Steruje kolejnością kafelków pod obrazem. Niższe liczby pojawiają się wcześniej.",
     "editor.helpTileWidth": "Steruje szerokością kafelka dolnego na komputerze. Na telefonie szerokość jest ograniczana automatycznie.",
-    "editor.helpImagePosition": "Pozycja pola na obrazie domu w procentach.",
+    "editor.helpImagePosition": "Pozycja pola na wybranym obrazie w procentach.",
     "editor.helpEnvironmentFooter": "Pokazuje ten czujnik jako kafelek w sekcji Środowisko pod obrazem.",
     "editor.helpEnvironmentImage": "Pokazuje ten czujnik jako skalowalne pole HUD na obrazie domu.",
     "editor.helpMaxPower": "Używane tylko dla paska wykorzystania i kontroli obciążenia doradcy.",
@@ -16548,8 +16783,8 @@ class HaSolarDashboardCard extends HTMLElement {
         .electric-vehicle-head span { flex:0 0 auto; max-width:42%; border-radius:999px; padding:4px 7px; background:rgba(52,211,153,.12); color:#86efac; font-size:.7rem; line-height:1.1; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .electric-vehicle-hero { position:relative; min-width:0; aspect-ratio:4/3; overflow:hidden; border-radius:14px; border:1px solid rgba(255,255,255,.1); background:rgba(8,13,28,.68); }
         .electric-vehicle-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.02); }
-        .electric-vehicle-badges { position:absolute; inset:10px; display:grid; grid-template-columns:repeat(2,minmax(86px,max-content)); align-content:start; justify-content:space-between; gap:8px; pointer-events:none; }
-        .electric-vehicle-badge { --tile-accent:#34d399; display:grid; gap:1px; min-width:86px; max-width:148px; padding:6px 8px; border-radius:9px; border:1px solid color-mix(in srgb,var(--tile-accent) 46%,rgba(255,255,255,.18)); background:rgba(8,16,38,.7); box-shadow:0 8px 20px rgba(0,0,0,.28); backdrop-filter:blur(4px); }
+        .electric-vehicle-badges { position:absolute; inset:0; pointer-events:none; }
+        .electric-vehicle-badge { --tile-accent:#34d399; position:absolute; display:grid; gap:1px; min-width:86px; max-width:148px; padding:6px 8px; border-radius:9px; border:1px solid color-mix(in srgb,var(--tile-accent) 46%,rgba(255,255,255,.18)); background:rgba(8,16,38,.7); box-shadow:0 8px 20px rgba(0,0,0,.28); backdrop-filter:blur(4px); transform:translate(-50%,-50%); }
         .electric-vehicle-badge span,.electric-vehicle-tile span { min-width:0; color:var(--text-muted); font-size:.66rem; line-height:1.15; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .electric-vehicle-badge strong,.electric-vehicle-tile strong { min-width:0; color:var(--tile-accent,#34d399); font-size:.86rem; line-height:1.2; font-weight:900; overflow-wrap:anywhere; }
         .electric-vehicle-section { display:grid; gap:8px; min-width:0; }
@@ -16585,7 +16820,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .garden-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; min-width:0; }
         .garden-tile { --tile-accent:#2dd4bf; display:grid; gap:3px; min-width:0; padding:10px; border-radius:8px; border:1px solid color-mix(in srgb,var(--tile-accent) 32%,rgba(255,255,255,.1)); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18); }
         .garden-empty { display:grid; place-items:center; min-height:120px; padding:18px; border-radius:8px; border:1px dashed rgba(255,255,255,.16); color:var(--text-muted); text-align:center; font-size:.86rem; }
-        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .view-mode-toggle{grid-template-columns:repeat(var(--view-mode-count,5),minmax(0,1fr));} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head,.electric-vehicle-head,.garden-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} .record-loading-item{grid-template-columns:1fr;align-items:start;gap:2px;} .electric-vehicle-head span,.garden-head span{max-width:100%;justify-self:start;} .electric-vehicle-badges{inset:8px;grid-template-columns:minmax(0,1fr);align-content:start;justify-content:stretch;} .electric-vehicle-badge{max-width:164px;} .electric-vehicle-grid,.garden-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .electric-vehicle-mode-toggle{grid-template-columns:repeat(2,minmax(0,1fr));} .garden-badge{min-width:78px;max-width:124px;padding:5px 7px;} .garden-badge span{font-size:.6rem;} .garden-badge strong{font-size:.76rem;} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .view-mode-toggle{grid-template-columns:repeat(var(--view-mode-count,5),minmax(0,1fr));} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head,.electric-vehicle-head,.garden-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} .record-loading-item{grid-template-columns:1fr;align-items:start;gap:2px;} .electric-vehicle-head span,.garden-head span{max-width:100%;justify-self:start;} .electric-vehicle-badge{max-width:164px;} .electric-vehicle-grid,.garden-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .electric-vehicle-mode-toggle{grid-template-columns:repeat(2,minmax(0,1fr));} .garden-badge{min-width:78px;max-width:124px;padding:5px 7px;} .garden-badge span{font-size:.6rem;} .garden-badge strong{font-size:.76rem;} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <style>
@@ -16977,7 +17212,11 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   DEFAULT_GARDEN_IMAGE,
   DEFAULT_TILE_COLOR_RULES,
   ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
   GARDEN_ENTITY_DEFINITIONS,
+  GARDEN_HERO_BADGE_POSITIONS,
+  GARDEN_HERO_BADGE_POSITION_KEYS,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,
   PV_LABELS,

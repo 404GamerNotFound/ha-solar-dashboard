@@ -318,6 +318,8 @@ large_consumers:
 - `currency` (string, default: `€`; use a symbol such as `€` or an ISO code such as `EUR`)
 - `show_grid_daily_finance` (boolean, default: `true`; shows today's grid costs and feed-in revenue as compact labels on the import/export HUD and tile when counters and prices are configured)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
+- `positions.electric_vehicle_status`, `positions.electric_vehicle_charge_power`, `positions.electric_vehicle_vehicle_soc`, `positions.electric_vehicle_charge_remaining_duration`, and `positions.electric_vehicle_session_solar_percentage` (optional `left`/`top` percentages for badges on the E-Auto image)
+- `positions.garden_mower_status`, `positions.garden_water`, `positions.garden_rain_24h`, and `positions.garden_soil_moisture` (optional `left`/`top` percentages for badges on the Garten image)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)
 - `entities.pv_total_power` (entity id; shown as `PV Total` in the summary boxes below the image)

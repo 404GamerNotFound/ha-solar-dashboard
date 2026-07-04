@@ -1,5 +1,21 @@
 export const DEFAULT_ELECTRIC_VEHICLE_IMAGE = "images/car_image.png";
 
+export const ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS = Object.freeze({
+  status: "electric_vehicle_status",
+  charge_power: "electric_vehicle_charge_power",
+  vehicle_soc: "electric_vehicle_vehicle_soc",
+  charge_remaining_duration: "electric_vehicle_charge_remaining_duration",
+  session_solar_percentage: "electric_vehicle_session_solar_percentage",
+});
+
+export const ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS = Object.freeze({
+  status: Object.freeze({ left: 13, top: 11 }),
+  charge_power: Object.freeze({ left: 84, top: 11 }),
+  vehicle_soc: Object.freeze({ left: 13, top: 23 }),
+  charge_remaining_duration: Object.freeze({ left: 84, top: 23 }),
+  session_solar_percentage: Object.freeze({ left: 50, top: 86 }),
+});
+
 export const ELECTRIC_VEHICLE_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "status", labelKey: "ev.status", label: "Status", group: "state", kind: "status", aliases: ["ev_status", "loadpoint_status", "wallbox_status"] }),
   Object.freeze({ key: "mode", labelKey: "ev.mode", label: "Mode", group: "state", kind: "text", aliases: ["ev_mode", "loadpoint_mode", "wallbox_mode"] }),
@@ -109,6 +125,12 @@ function isUnavailableElectricVehicleValue(value) {
 
 function electricVehicleEntityDomain(entityId = "") {
   return String(entityId || "").split(".")[0];
+}
+
+function normalizeElectricVehicleBadgeCoordinate(value, fallback = 50) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(0, Math.min(100, number));
 }
 
 function normalizeElectricVehicleWallbox(value) {
@@ -288,6 +310,16 @@ export function createElectricVehicleDashboardMethods({
       return this._t("ev.unknown", {}, "Unknown");
     },
 
+    _electricVehicleHeroBadgePosition(definitionKey) {
+      const positionKey = ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS[definitionKey] || `electric_vehicle_${definitionKey}`;
+      const fallback = ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[definitionKey] || { left: 50, top: 50 };
+      const configured = this.config.positions?.[positionKey] || {};
+      return {
+        left: normalizeElectricVehicleBadgeCoordinate(configured.left, fallback.left),
+        top: normalizeElectricVehicleBadgeCoordinate(configured.top, fallback.top),
+      };
+    },
+
     _electricVehicleFormatDuration(rawValue, entityUnit = "") {
       if (isUnavailableElectricVehicleValue(rawValue)) return ELECTRIC_VEHICLE_EMPTY_VALUE;
       const numericValue = Number(String(rawValue).replace(",", "."));
@@ -412,8 +444,9 @@ export function createElectricVehicleDashboardMethods({
       if (!definition) return "";
       const state = this._electricVehicleFieldState(definition);
       if (!state.configured || state.value === ELECTRIC_VEHICLE_EMPTY_VALUE) return "";
+      const position = this._electricVehicleHeroBadgePosition(definitionKey);
       return `
-        <div class="electric-vehicle-badge">
+        <div class="electric-vehicle-badge" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleAccent(definition))}">
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>

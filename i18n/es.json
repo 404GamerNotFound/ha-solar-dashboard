@@ -329,7 +329,7 @@
   "editor.helpSignedBattery": "Usa un sensor con signo si es posible: positivo significa carga y negativo descarga.",
   "editor.helpFooterOrder": "Controla el orden de los mosaicos bajo la imagen. Los números más bajos aparecen antes.",
   "editor.helpTileWidth": "Controla el ancho del mosaico inferior en escritorio. En móvil se limita automáticamente.",
-  "editor.helpImagePosition": "Posición de la caja sobre la imagen de la casa en porcentaje.",
+  "editor.helpImagePosition": "Posición de la caja en la imagen seleccionada en porcentaje.",
   "editor.helpEnvironmentFooter": "Muestra este sensor como mosaico en la sección Ambiente bajo la imagen.",
   "editor.helpEnvironmentImage": "Muestra este sensor como caja HUD escalable sobre la imagen de la casa.",
   "editor.helpMaxPower": "Solo se usa para la barra de utilización y las comprobaciones de carga del asesor.",

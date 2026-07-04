@@ -329,7 +329,7 @@
   "editor.helpSignedBattery": "Utilisez un capteur signé si possible : positif signifie charge, négatif décharge.",
   "editor.helpFooterOrder": "Contrôle l'ordre des tuiles sous l'image. Les nombres plus bas apparaissent plus tôt.",
   "editor.helpTileWidth": "Contrôle la largeur de la tuile inférieure sur bureau. Sur mobile, elle est limitée automatiquement.",
-  "editor.helpImagePosition": "Position de la boîte sur l'image de la maison en pourcentage.",
+  "editor.helpImagePosition": "Position de la boîte sur l'image sélectionnée en pourcentage.",
   "editor.helpEnvironmentFooter": "Affiche ce capteur comme tuile dans la section Environnement sous l'image.",
   "editor.helpEnvironmentImage": "Affiche ce capteur comme boîte HUD redimensionnable sur l'image de la maison.",
   "editor.helpMaxPower": "Utilisé seulement pour la barre d'utilisation et les contrôles de charge du conseiller.",

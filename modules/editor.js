@@ -5,7 +5,11 @@ export function createDashboardEditorClass({
   DEFAULT_IMAGE_OVERLAYS,
   DEFAULT_TILE_COLOR_RULES,
   ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
   GARDEN_ENTITY_DEFINITIONS,
+  GARDEN_HERO_BADGE_POSITIONS,
+  GARDEN_HERO_BADGE_POSITION_KEYS,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,
   PV_LABELS,
@@ -2514,6 +2518,112 @@ export function createDashboardEditorClass({
     }
   }
 
+  _editorAssetImageSrc(path = "", fallback = "") {
+    const value = String(path || fallback || "").trim();
+    if (!value) return "";
+    if (/^(?:https?:)?\/\//i.test(value) || value.startsWith("/") || value.startsWith("data:")) return value;
+    try {
+      return assetUrl(value);
+    } catch (_err) {
+      return value;
+    }
+  }
+
+  _editorElectricVehicleImageSrc() {
+    const normalized = normalizeElectricVehicleConfig?.(this._config.electric_vehicle || {}) || this._config.electric_vehicle || {};
+    return this._editorAssetImageSrc(normalized.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE || "images/car_image.png");
+  }
+
+  _editorGardenImageSrc() {
+    const normalized = normalizeGardenConfig?.(this._config.garden || {}) || this._config.garden || {};
+    return this._editorAssetImageSrc(normalized.image, DEFAULT_GARDEN_IMAGE || "images/single_family_home_top_view_garden.png");
+  }
+
+  _layoutPositionConfig(positionKey) {
+    const position = this._config.positions?.[positionKey];
+    return position && typeof position === "object" ? position : {};
+  }
+
+  _layoutPositionNumber(value, fallback = 50) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.max(0, Math.min(100, number));
+  }
+
+  _layoutPosition(positionKey, fallback = {}) {
+    const position = this._layoutPositionConfig(positionKey);
+    return {
+      left: this._layoutPositionNumber(position.left, Number.isFinite(Number(fallback.left)) ? Number(fallback.left) : 50),
+      top: this._layoutPositionNumber(position.top, Number.isFinite(Number(fallback.top)) ? Number(fallback.top) : 50),
+    };
+  }
+
+  _layoutPositionConfigured(positionKey) {
+    const position = this._layoutPositionConfig(positionKey);
+    return Number.isFinite(Number(position.left)) || Number.isFinite(Number(position.top));
+  }
+
+  _electricVehicleHeroBadgePositionKey(key = "") {
+    return ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS?.[key] || `electric_vehicle_${key}`;
+  }
+
+  _electricVehicleWallboxKey() {
+    return this._config.electric_vehicle?.wallbox === "wallbox2_power" ? "wallbox2_power" : "wallbox_power";
+  }
+
+  _electricVehicleWallboxFallbackEntityKey(kind = "") {
+    const wallboxKey = this._electricVehicleWallboxKey();
+    if (kind === "power") return wallboxKey;
+    if (kind === "soc") return this._wallboxSocEntityKey(wallboxKey);
+    if (kind === "maxSoc") return this._wallboxMaxSocEntityKey(wallboxKey);
+    if (kind === "connected") return this._wallboxConnectedEntityKey(wallboxKey);
+    if (kind === "chargingEnabled") return this._wallboxChargingEnabledEntityKey(wallboxKey);
+    if (kind === "remainingTime") return this._wallboxRemainingTimeEntityKey(wallboxKey);
+    if (kind === "phase") return this._wallboxPhaseEntityKey(wallboxKey);
+    if (kind === "phaseAction") return this._wallboxPhaseActionEntityKey(wallboxKey);
+    if (kind === "phaseRemaining") return this._wallboxPhaseRemainingEntityKey(wallboxKey);
+    return "";
+  }
+
+  _electricVehicleLayoutEntityId(definition) {
+    const key = definition?.key || "";
+    const entities = this._config.electric_vehicle?.entities || {};
+    const direct = entities[key] || definition?.aliases?.map((alias) => entities[alias]).find(Boolean);
+    if (direct) return direct;
+
+    const fallbackKey = definition?.wallboxFallback ? this._electricVehicleWallboxFallbackEntityKey(definition.wallboxFallback) : "";
+    if (fallbackKey && this._config.entities?.[fallbackKey]) return this._config.entities[fallbackKey];
+
+    const aliases = [
+      key,
+      `ev_${key}`,
+      `evcc_${key}`,
+      `electric_vehicle_${key}`,
+      ...(definition?.aliases || []),
+    ];
+    return aliases.map((alias) => this._config.entities?.[alias]).find(Boolean) || "";
+  }
+
+  _gardenHeroBadgePositionKey(key = "") {
+    return GARDEN_HERO_BADGE_POSITION_KEYS?.[key] || (key.startsWith("garden_") ? key : `garden_${key}`);
+  }
+
+  _gardenLayoutEntityId(definition) {
+    const key = definition?.key || "";
+    const entities = this._config.garden?.entities || {};
+    const direct = entities[key] || definition?.aliases?.map((alias) => entities[alias]).find(Boolean);
+    if (direct) return direct;
+    const aliases = [
+      key,
+      this._gardenHeroBadgePositionKey(key),
+      `garten_${key}`,
+      `irrigation_${key}`,
+      `watering_${key}`,
+      ...(definition?.aliases || []),
+    ];
+    return aliases.map((alias) => this._config.entities?.[alias]).find(Boolean) || "";
+  }
+
   _layoutItems() {
     const metricItems = TILE_METRICS
       .filter((metric) => this._metricVisible(metric))
@@ -2522,6 +2632,7 @@ export function createDashboardEditorClass({
         return {
           key: `metric:${metric.key}`,
           label: this._metricLabel(metric),
+          scope: "house",
           left: Number.isFinite(Number(position.left)) ? Number(position.left) : 50,
           top: Number.isFinite(Number(position.top)) ? Number(position.top) : 50,
           leftPath: `positions.${metric.key}.left`,
@@ -2537,6 +2648,7 @@ export function createDashboardEditorClass({
         return {
           key: `overlay:${key}`,
           label: this._overlayLabel(key),
+          scope: "house",
           left: Number.isFinite(Number(config.left)) ? Number(config.left) : 50,
           top: Number.isFinite(Number(config.top)) ? Number(config.top) : 50,
           leftPath: `image_overlays.${key}.left`,
@@ -2553,6 +2665,7 @@ export function createDashboardEditorClass({
         return {
           key: `environment:${index}`,
           label,
+          scope: "house",
           left: Number.isFinite(Number(sensor.left)) ? Number(sensor.left) : 50,
           top: Number.isFinite(Number(sensor.top)) ? Number(sensor.top) : 50,
           leftPath: `environment_sensors.${index}.left`,
@@ -2562,7 +2675,53 @@ export function createDashboardEditorClass({
         };
       })
       .filter(Boolean);
-    return [...metricItems, ...overlayItems, ...environmentItems];
+    const electricVehicleItems = this._config.show_electric_vehicle === false
+      ? []
+      : Object.entries(ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS || {})
+        .map(([key, fallback]) => {
+          const definition = this._electricVehicleDefinitions().find((item) => item.key === key);
+          if (!definition) return undefined;
+          const positionKey = this._electricVehicleHeroBadgePositionKey(key);
+          const entityId = this._electricVehicleLayoutEntityId(definition);
+          if (key !== "status" && !entityId && !this._layoutPositionConfigured(positionKey)) return undefined;
+          const position = this._layoutPosition(positionKey, fallback);
+          return {
+            key: `electric_vehicle:${key}`,
+            label: `${this._t("view.electricVehicle", {}, "E-Auto")}: ${this._t(definition.labelKey, {}, definition.label)}`,
+            scope: "electric_vehicle",
+            left: position.left,
+            top: position.top,
+            leftPath: `positions.${positionKey}.left`,
+            topPath: `positions.${positionKey}.top`,
+            color: definition.group === "charging" ? "#ffc233" : definition.group === "vehicle" ? "#34d399" : "#1f8fff",
+            type: this._t("view.electricVehicle", {}, "E-Auto"),
+          };
+        })
+        .filter(Boolean);
+    const gardenItems = this._config.show_garden === false
+      ? []
+      : Object.entries(GARDEN_HERO_BADGE_POSITIONS || {})
+        .map(([key, fallback]) => {
+          const definition = this._gardenDefinitions().find((item) => item.key === key);
+          if (!definition) return undefined;
+          const positionKey = this._gardenHeroBadgePositionKey(key);
+          const entityId = this._gardenLayoutEntityId(definition);
+          if (!entityId && !this._layoutPositionConfigured(positionKey)) return undefined;
+          const position = this._layoutPosition(positionKey, fallback);
+          return {
+            key: `garden:${key}`,
+            label: `${this._t("view.garden", {}, "Garten")}: ${this._t(definition.labelKey, {}, definition.label)}`,
+            scope: "garden",
+            left: position.left,
+            top: position.top,
+            leftPath: `positions.${positionKey}.left`,
+            topPath: `positions.${positionKey}.top`,
+            color: definition.group === "weather" ? "#38bdf8" : definition.group === "water" ? "#1f8fff" : "#34d399",
+            type: this._t("view.garden", {}, "Garten"),
+          };
+        })
+        .filter(Boolean);
+    return [...metricItems, ...overlayItems, ...environmentItems, ...electricVehicleItems, ...gardenItems];
   }
 
   _selectedLayoutItem(items) {
@@ -2769,8 +2928,21 @@ export function createDashboardEditorClass({
     const items = this._layoutItems();
     const selected = this._selectedLayoutItem(items);
     this._selectedLayoutItemKey = selected?.key;
-    const imageSrc = this._editorImageSrc();
-    const markers = items.map((item) => `
+    const selectedScope = selected?.scope || "house";
+    const previewItems = items.filter((item) => (item.scope || "house") === selectedScope);
+    const houseAlt = this._houseLabel(this._normalizeHouse(this._config.house), this._houseVariant());
+    let imageSrc = this._editorImageSrc();
+    let imageAlt = houseAlt;
+    if (selectedScope === "electric_vehicle") {
+      const electricVehicle = normalizeElectricVehicleConfig?.(this._config.electric_vehicle || {}) || this._config.electric_vehicle || {};
+      imageSrc = this._editorElectricVehicleImageSrc();
+      imageAlt = electricVehicle.title || this._t("ev.title", {}, "E-Auto");
+    } else if (selectedScope === "garden") {
+      const garden = normalizeGardenConfig?.(this._config.garden || {}) || this._config.garden || {};
+      imageSrc = this._editorGardenImageSrc();
+      imageAlt = garden.title || this._t("garden.title", {}, "Garten");
+    }
+    const markers = previewItems.map((item) => `
       <button type="button" class="layout-marker${selected?.key === item.key ? " active" : ""}" data-layout-key="${this._escape(item.key)}" style="left:${this._escape(item.left)}%;top:${this._escape(item.top)}%;--layout-color:${this._escape(item.color)}" title="${this._escape(item.label)}">
         <span>${this._escape(item.label)}</span>
       </button>
@@ -2803,7 +2975,7 @@ export function createDashboardEditorClass({
         </div>
         <div class="layout-editor">
           <div class="layout-preview">
-            ${imageSrc ? `<img src="${this._escape(imageSrc)}" alt="${this._escape(this._houseLabel(this._normalizeHouse(this._config.house), this._houseVariant()))}" />` : ""}
+            ${imageSrc ? `<img src="${this._escape(imageSrc)}" alt="${this._escape(imageAlt)}" />` : ""}
             ${markers}
           </div>
           ${controls}

@@ -329,7 +329,7 @@
   "editor.helpSignedBattery": "Wenn möglich einen Vorzeichen-Sensor nutzen: positiv lädt, negativ entlädt.",
   "editor.helpFooterOrder": "Legt die Reihenfolge der Kacheln unter dem Bild fest. Niedrigere Werte erscheinen früher.",
   "editor.helpTileWidth": "Legt fest, wie breit die Footer-Kachel auf dem Desktop ist. Mobil wird die Breite automatisch begrenzt.",
-  "editor.helpImagePosition": "Position der Box auf dem Hausbild in Prozent.",
+  "editor.helpImagePosition": "Position der Box auf dem ausgewählten Bild in Prozent.",
   "editor.helpEnvironmentFooter": "Zeigt diesen Sensor als Kachel im Umgebungsbereich unter dem Bild.",
   "editor.helpEnvironmentImage": "Zeigt diesen Sensor als skalierbare HUD-Box direkt auf dem Hausbild.",
   "editor.helpMaxPower": "Wird nur für die Auslastungsleiste und Lastprüfungen im Advisor verwendet.",

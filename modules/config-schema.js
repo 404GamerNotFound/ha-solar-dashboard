@@ -1,4 +1,6 @@
 export const DEFAULT_CURRENCY = "€";
+const DEFAULT_EV_IMAGE_PATH = "images/car_image.png";
+const DEFAULT_GARDEN_IMAGE_PATH = "images/single_family_home_top_view_garden.png";
 
 export const DEFAULT_GRID_FINANCE_CONFIG = Object.freeze({
   grid_import_price: "",
@@ -28,6 +30,23 @@ export function createDefaultUnits() {
     power: "auto",
     battery: "%",
     volume: "m³",
+  };
+}
+
+export function createDefaultElectricVehicleConfig() {
+  return {
+    title: "",
+    image: DEFAULT_EV_IMAGE_PATH,
+    wallbox: "wallbox_power",
+    entities: {},
+  };
+}
+
+export function createDefaultGardenConfig() {
+  return {
+    title: "",
+    image: DEFAULT_GARDEN_IMAGE_PATH,
+    entities: {},
   };
 }
 
@@ -140,6 +159,8 @@ export function createBaseCardConfig({
     show_metric_tiles: true,
     show_environment_sensors: true,
     show_large_consumers: true,
+    show_electric_vehicle: true,
+    show_garden: true,
     show_floorplan: true,
     show_power_flows: false,
     show_status_label: true,
@@ -183,6 +204,8 @@ export function createBaseCardConfig({
     custom_kpis: [],
     environment_sensors: [],
     floorplan: createDefaultFloorplan(),
+    electric_vehicle: createDefaultElectricVehicleConfig(),
+    garden: createDefaultGardenConfig(),
     large_consumers: [],
     pv_roof_strings: [],
     inverters: [],
@@ -223,6 +246,10 @@ export function createEditorBaseConfig({ floorplanLabel = "Level 1" } = {}) {
     environment_sensors: [],
     show_floorplan: true,
     floorplan: createDefaultFloorplan(floorplanLabel),
+    show_electric_vehicle: true,
+    electric_vehicle: createDefaultElectricVehicleConfig(),
+    show_garden: true,
+    garden: createDefaultGardenConfig(),
     large_consumers: [],
     pv_roof_strings: [],
     pv_roof_string_display: "sum",

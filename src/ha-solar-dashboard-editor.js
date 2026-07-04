@@ -9,6 +9,16 @@ import {
   createEditorBaseConfig,
 } from "../modules/config-schema.js";
 import {
+  DEFAULT_ELECTRIC_VEHICLE_IMAGE,
+  ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  normalizeElectricVehicleConfig,
+} from "../modules/electric-vehicle.js";
+import {
+  DEFAULT_GARDEN_IMAGE,
+  GARDEN_ENTITY_DEFINITIONS,
+  normalizeGardenConfig,
+} from "../modules/garden.js";
+import {
   createDashboardEditorClass,
 } from "../modules/editor.js";
 import {
@@ -147,8 +157,12 @@ function translate(language, key, replacements = {}, fallback = "") {
 
 const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   ADVISOR_DEFAULTS,
+  DEFAULT_ELECTRIC_VEHICLE_IMAGE,
+  DEFAULT_GARDEN_IMAGE,
   DEFAULT_IMAGE_OVERLAYS,
   DEFAULT_TILE_COLOR_RULES,
+  ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  GARDEN_ENTITY_DEFINITIONS,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,
   PV_LABELS,
@@ -167,6 +181,8 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   largeConsumerLabel,
   metricVoltageEntityKey,
   normalizeAdvisorConfig,
+  normalizeElectricVehicleConfig,
+  normalizeGardenConfig,
   normalizeHouse,
   normalizeInverterDisplay,
   normalizeInverters,

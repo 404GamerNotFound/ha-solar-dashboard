@@ -332,6 +332,7 @@ large_consumers:
 - `entities.wallbox_connected` (entity id, optional; boolean/binary/sensor state used by the Advisor Dashboard to distinguish plugged-in vs. disconnected vehicles)
 - `entities.wallbox_charging_enabled` (entity id, optional; boolean/switch/sensor state used by the Advisor Dashboard to notice when charging is disabled or blocked)
 - `entities.wallbox_remaining_time` (entity id, optional; remaining charge time badge shown next to the Wallbox phase/SoC badges only while `wallbox_power` is charging)
+- `electric_vehicle.entities.mode_control` (`select`/`input_select` entity id, optional; enables the EVCC charge mode control in the E-Auto dashboard for `Off`, `PV`, `Min+PV`, and `Fast`)
 - `entities.wallbox2_power` (entity id, optional; second EV charger, hidden by default and auto-positioned next to `wallbox_power` unless `positions.wallbox2_power` is set)
 - `entities.wallbox2_phase` (entity id, optional; phase badge for the second EV charger)
 - `entities.wallbox2_soc` (entity id, optional; vehicle battery SoC badge for the second EV charger)
@@ -605,3 +606,7 @@ This repository ships the HACS entry file as `ha-solar-dashboard.js` in the repo
 When publishing a GitHub release, attach `ha-solar-dashboard.js` and every `images/**/*.png` file as release assets. The included Release workflow does this automatically for tag pushes and published releases by flattening the uniquely named image files into release assets. If a release already exists without the image assets, run the `HACS Release Asset Repair` workflow with that tag, for example `v1.0.8`.
 
 The `homeassistant` value in `hacs.json` must be a plain minimum version such as `2023.8.0`, not a comparator expression like `>=2023.8.0`.
+
+## Support
+
+If you find this project helpful, you can support it via PayPal: [paypal.me/TonyBrueser](https://www.paypal.com/paypalme/TonyBrueser)

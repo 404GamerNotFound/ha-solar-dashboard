@@ -20,6 +20,14 @@ import {
   valueAsWatts,
 } from "../modules/formatters.js";
 import {
+  DEFAULT_ELECTRIC_VEHICLE_IMAGE,
+  normalizeElectricVehicleConfig,
+} from "../modules/electric-vehicle.js";
+import {
+  DEFAULT_GARDEN_IMAGE,
+  normalizeGardenConfig,
+} from "../modules/garden.js";
+import {
   formatMoneyValue,
   gridExportPrice,
   gridFinanceItems,
@@ -163,11 +171,48 @@ assert.equal(baseConfig.currency, "€");
 assert.equal(baseConfig.records_range, "14d");
 assert.equal(baseConfig.advisor_surplus_threshold, 111);
 assert.equal(baseConfig.history_request_concurrency, 4);
+assert.equal(baseConfig.show_electric_vehicle, true);
+assert.equal(baseConfig.electric_vehicle.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE);
+assert.equal(baseConfig.show_garden, true);
+assert.equal(baseConfig.garden.image, DEFAULT_GARDEN_IMAGE);
+assert.equal(Object.hasOwn(baseConfig.garden, "zones"), false);
 assert.equal(createEditorBaseConfig({ floorplanLabel: "Etage 1" }).floorplan.floors[0].label, "Etage 1");
+assert.equal(createEditorBaseConfig().electric_vehicle.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE);
+assert.equal(createEditorBaseConfig().garden.image, DEFAULT_GARDEN_IMAGE);
 const stubConfig = createStubCardConfig({ cardType: "demo-card" });
 assert.equal(stubConfig.type, "custom:demo-card");
 assert.equal(stubConfig.visible_boxes.import_export_power, true);
 assert.equal(stubConfig.entities.import_export_power, "sensor.grid_power");
+const electricVehicleConfig = normalizeElectricVehicleConfig({
+  image_path: "/local/car.png",
+  loadpoint: "2",
+  evcc_entities: {
+    charge_mode: "select.evcc_charge_mode",
+    vehicle_soc: "sensor.evcc_vehicle_soc",
+    wallbox_power: "sensor.evcc_charge_power",
+  },
+});
+assert.equal(electricVehicleConfig.image, "/local/car.png");
+assert.equal(electricVehicleConfig.wallbox, "wallbox2_power");
+assert.equal(electricVehicleConfig.entities.mode_control, "select.evcc_charge_mode");
+assert.equal(electricVehicleConfig.entities.vehicle_soc, "sensor.evcc_vehicle_soc");
+assert.equal(electricVehicleConfig.entities.charge_power, "sensor.evcc_charge_power");
+const gardenConfig = normalizeGardenConfig({
+  image_path: "/local/garden.png",
+  garden_entities: {
+    mower_status: "sensor.mower_status",
+    regen_24h: "sensor.rain_24h",
+    gartenwasser: "switch.garden_water",
+    automation_enabled: "input_boolean.irrigation_auto",
+  },
+  zones: [{ id: "z1", label: "Rasen links", left: 12, top: 34 }],
+});
+assert.equal(gardenConfig.image, "/local/garden.png");
+assert.equal(gardenConfig.entities.mower_status, "sensor.mower_status");
+assert.equal(gardenConfig.entities.rain_24h, "sensor.rain_24h");
+assert.equal(gardenConfig.entities.garden_water, "switch.garden_water");
+assert.equal(gardenConfig.entities.irrigation_enabled, "input_boolean.irrigation_auto");
+assert.equal(Object.hasOwn(gardenConfig, "zones"), false);
 
 assert.equal(normalizeGridPrice("0,32"), 0.32);
 assert.equal(normalizeGridPrice(""), "");

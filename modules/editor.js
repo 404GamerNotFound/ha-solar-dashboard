@@ -1,7 +1,11 @@
 export function createDashboardEditorClass({
   ADVISOR_DEFAULTS,
+  DEFAULT_ELECTRIC_VEHICLE_IMAGE,
+  DEFAULT_GARDEN_IMAGE,
   DEFAULT_IMAGE_OVERLAYS,
   DEFAULT_TILE_COLOR_RULES,
+  ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  GARDEN_ENTITY_DEFINITIONS,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,
   PV_LABELS,
@@ -20,6 +24,8 @@ export function createDashboardEditorClass({
   largeConsumerLabel,
   metricVoltageEntityKey,
   normalizeAdvisorConfig,
+  normalizeElectricVehicleConfig,
+  normalizeGardenConfig,
   normalizeHouse,
   normalizeInverterDisplay,
   normalizeInverters,
@@ -41,9 +47,23 @@ export function createDashboardEditorClass({
   return class HaSolarDashboardCardEditor extends HTMLElement {
   setConfig(config) {
     const baseConfig = createEditorBaseConfig?.({ floorplanLabel: this._floorplanFloorLabel(0) }) || {};
+    const electricVehicleSource = (config || {}).electric_vehicle || (config || {}).e_auto || (config || {}).ev || {};
+    const showElectricVehicle = (config || {}).show_electric_vehicle
+      ?? (config || {}).show_ev_dashboard
+      ?? (config || {}).show_e_auto
+      ?? electricVehicleSource.enabled
+      ?? electricVehicleSource.show;
+    const gardenSource = (config || {}).garden || (config || {}).garten || (config || {}).irrigation || {};
+    const showGarden = (config || {}).show_garden
+      ?? (config || {}).show_garden_dashboard
+      ?? (config || {}).show_irrigation
+      ?? gardenSource.enabled
+      ?? gardenSource.show;
     this._config = {
       ...baseConfig,
       ...config,
+      show_electric_vehicle: showElectricVehicle === undefined ? baseConfig.show_electric_vehicle !== false : showElectricVehicle !== false,
+      show_garden: showGarden === undefined ? baseConfig.show_garden !== false : showGarden !== false,
       image_overlays: {
         smoke: {
           ...(((config || {}).overlays || {}).smoke || {}),
@@ -63,6 +83,8 @@ export function createDashboardEditorClass({
         : [],
       environment_sensors: this._normalizeEnvironmentSensors((config || {}).environment_sensors || (config || {}).environment_sensor_tiles || []),
       floorplan: this._normalizeFloorplan((config || {}).floorplan || {}),
+      electric_vehicle: normalizeElectricVehicleConfig?.(electricVehicleSource) || electricVehicleSource,
+      garden: normalizeGardenConfig?.(gardenSource) || gardenSource,
       large_consumers: normalizeLargeConsumers((config || {}).large_consumers || (config || {}).large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings((config || {}).pv_roof_strings || (config || {}).pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay((config || {}).pv_roof_string_display || (config || {}).pv_roof_display || "sum"),
@@ -115,7 +137,7 @@ export function createDashboardEditorClass({
   }
 
   _activeTab() {
-    const allowed = new Set(["setup", "energy", "devices", "environment", "floorplan", "layout", "appearance", "advisor", "advanced"]);
+    const allowed = new Set(["setup", "energy", "devices", "electric_vehicle", "garden", "environment", "floorplan", "layout", "appearance", "advisor", "advanced"]);
     return allowed.has(this._activeEditorTab) ? this._activeEditorTab : "setup";
   }
 
@@ -294,6 +316,10 @@ export function createDashboardEditorClass({
     if (path === "house" || path === "image" || path === "day_image") return true;
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
+    if (root === "show_electric_vehicle") return true;
+    if (root === "electric_vehicle" && ["image", "wallbox", "title"].includes(lastPart)) return true;
+    if (root === "show_garden") return true;
+    if (root === "garden") return true;
     if (root === "show_floorplan") return true;
     if (root === "floorplan") return true;
     if (root === "environment_sensors") {
@@ -1036,6 +1062,16 @@ export function createDashboardEditorClass({
     const key = path.split(".").pop();
     const metric = findMetricByKey(key);
     if (metric) return this._metricLabel(metric);
+    const evMatch = path.match(/^electric_vehicle\.entities\.([^.]+)$/);
+    if (evMatch) {
+      const definition = (ELECTRIC_VEHICLE_ENTITY_DEFINITIONS || []).find((item) => item.key === evMatch[1]);
+      if (definition) return this._t(definition.labelKey, {}, definition.label);
+    }
+    const gardenMatch = path.match(/^garden\.entities\.([^.]+)$/);
+    if (gardenMatch) {
+      const definition = (GARDEN_ENTITY_DEFINITIONS || []).find((item) => item.key === gardenMatch[1]);
+      if (definition) return this._t(definition.labelKey, {}, definition.label);
+    }
     const voltageMetricKey = key?.replace(/_voltage$/, "");
     const voltageMetric = findMetricByKey(voltageMetricKey);
     if (voltageMetric) return `${this._metricLabel(voltageMetric)} ${this._t("tooltip.voltage", {}, "Voltage")}`;
@@ -1111,8 +1147,40 @@ export function createDashboardEditorClass({
     const pvTerms = { terms: ["pv", "solar", "photovoltaic", "photovoltaik"], weight: 36 };
     const gridTerms = { terms: ["grid", "netz", "meter", "utility", "power meter", "smart meter"], weight: 28 };
     const wallboxTerms = { terms: ["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], weight: 34 };
+    const evccTerms = { terms: ["evcc", "loadpoint", "ladepunkt", "wallbox", "vehicle", "fahrzeug", "auto", "ev"], weight: 34 };
     const batteryTerms = { terms: ["battery", "batterie", "speicher", "akku"], weight: 34 };
     const waterTerms = { terms: ["water", "wasser", "water meter", "wasserzaehler", "wasserzahler"], weight: 38 };
+    const gardenTerms = { terms: ["garden", "garten", "irrigation", "watering", "bewasserung", "bewaesserung", "rasen", "lawn"], weight: 34 };
+    const mowerTerms = { terms: ["mower", "maeher", "maher", "mähroboter", "maehroboter", "automower", "landroid", "sileno"], weight: 38 };
+    const irrigationTerms = { terms: ["garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung", "sprinkler", "ventil", "valve"], weight: 36 };
+    const gardenEquipmentTerms = { terms: ["garden", "garten", "outdoor", "aussen", "außen", "patio", "terrasse"], weight: 26 };
+    const evccTextTarget = {
+      domains: ["sensor", "select"],
+      include: [evccTerms],
+    };
+    const evccBooleanTarget = {
+      domains: ["binary_sensor", "sensor", "switch", "input_boolean"],
+      include: [evccTerms],
+    };
+    const evccTargets = [
+      { path: "electric_vehicle.entities.status", ...evccTextTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["status", "state", "zustand"]], include: [evccTerms, { terms: ["status", "state", "zustand"], weight: 30 }], threshold: 58 },
+      { path: "electric_vehicle.entities.mode_control", domains: ["select", "input_select"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["mode", "modus", "charge mode", "lademodus"]], include: [evccTerms, { terms: ["mode", "modus", "charge mode", "lademodus", "minpv", "min+pv", "pv", "schnell", "fast"], weight: 38 }], threshold: 58 },
+      { path: "electric_vehicle.entities.mode", ...evccTextTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["mode", "modus"]], include: [evccTerms, { terms: ["mode", "modus"], weight: 30 }], exclude: ["control", "steuerung"], threshold: 58 },
+      { path: "electric_vehicle.entities.vehicle_title", ...evccTextTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["vehicle", "fahrzeug", "auto", "title", "name"]], include: [evccTerms, { terms: ["vehicle title", "vehicle name", "fahrzeug", "auto"], weight: 30 }], threshold: 58 },
+      { path: "electric_vehicle.entities.charging", ...evccBooleanTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["charging", "laedt", "laden"]], include: [evccTerms, { terms: ["charging", "laedt", "laden"], weight: 30 }], exclude: ["enabled", "freigabe"], threshold: 58 },
+      { path: "electric_vehicle.entities.charge_current", domains: ["sensor"], units: ["a"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["current", "strom", "ampere"]], include: [evccTerms, { terms: ["current", "strom", "ampere"], weight: 32 }], exclude: ["min", "max"], threshold: 58 },
+      { path: "electric_vehicle.entities.charged_energy", ...energyTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["charged", "geladen", "session", "sitzung"]], include: [evccTerms, { terms: ["charged energy", "geladene energie", "session", "sitzung"], weight: 32 }, ...energyTarget.include], threshold: 58 },
+      { path: "electric_vehicle.entities.session_solar_percentage", domains: ["sensor"], units: ["%"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["solar", "pv", "green", "eigenerzeugung"], ["session", "sitzung"]], include: [evccTerms, { terms: ["solar percentage", "solar share", "pv anteil", "eigenerzeugung"], weight: 34 }], threshold: 58 },
+      { path: "electric_vehicle.entities.charge_remaining_duration", domains: ["sensor"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["remaining", "rest", "verbleibend", "duration", "dauer"]], include: [evccTerms, { terms: ["remaining duration", "remaining time", "restzeit", "verbleibend"], weight: 34 }], threshold: 58 },
+      { path: "electric_vehicle.entities.charge_remaining_energy", ...energyTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["remaining", "rest", "verbleibend"], ["energy", "energie", "kwh", "wh"]], include: [evccTerms, { terms: ["remaining energy", "restenergie", "verbleibend"], weight: 34 }, ...energyTarget.include], threshold: 58 },
+      { path: "electric_vehicle.entities.charge_total_import", ...energyTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["total", "gesamt", "meter", "zaehler"]], include: [evccTerms, { terms: ["charge total import", "meter", "zaehler", "gesamt"], weight: 34 }, ...energyTarget.include], threshold: 58 },
+      { path: "electric_vehicle.entities.vehicle_range", domains: ["sensor"], units: ["km"], required: [["evcc", "vehicle", "fahrzeug", "auto"], ["range", "reichweite"]], include: [evccTerms, { terms: ["range", "reichweite", "km"], weight: 36 }], threshold: 58 },
+      { path: "electric_vehicle.entities.phases_active", domains: ["sensor"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["phase", "phases", "phasen"], ["active", "aktiv"]], include: [evccTerms, { terms: ["phases active", "aktive phasen"], weight: 36 }], threshold: 58 },
+      { path: "electric_vehicle.entities.plan_active", ...evccBooleanTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["plan", "schedule", "planung"], ["active", "aktiv"]], include: [evccTerms, { terms: ["plan active", "planung aktiv"], weight: 34 }], threshold: 58 },
+      { path: "electric_vehicle.entities.smart_cost_active", ...evccBooleanTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["smart cost", "smartcost", "kosten"], ["active", "aktiv"]], include: [evccTerms, { terms: ["smart cost active", "smartcost", "kosten aktiv"], weight: 36 }], threshold: 58 },
+      { path: "electric_vehicle.entities.min_current", domains: ["sensor", "number", "input_number"], units: ["a"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["min", "minimum"], ["current", "strom", "ampere"]], include: [evccTerms, { terms: ["min current", "minimum current", "minimaler strom"], weight: 36 }], threshold: 58 },
+      { path: "electric_vehicle.entities.max_current", domains: ["sensor", "number", "input_number"], units: ["a"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["max", "maximum"], ["current", "strom", "ampere"]], include: [evccTerms, { terms: ["max current", "maximum current", "maximaler strom"], weight: 36 }], threshold: 58 },
+    ];
 
     return [
       { path: "weather_entity", domains: ["weather"], include: [{ terms: ["weather", "wetter", "home", "haus"], weight: 14 }], threshold: 35 },
@@ -1160,6 +1228,29 @@ export function createDashboardEditorClass({
       { path: "entities.wallbox2_connected", domains: ["binary_sensor", "sensor", "switch"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["connected", "plugged", "plug", "cable", "vehicle", "car", "auto", "verbunden", "eingesteckt", "kabel"], weight: 32 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 64 },
       { path: "entities.wallbox2_charging_enabled", domains: ["switch", "binary_sensor", "sensor", "input_boolean"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["enabled", "allowed", "enable", "freigabe", "aktiviert", "start", "stop", "charging"], weight: 30 }], exclude: ["power", "leistung", "phase", "phasen", "soc", "remaining"], threshold: 64 },
       { path: "entities.wallbox2_remaining_time", domains: ["sensor"], required: [["wallbox", "charger", "charging", "evse", "ev charger", "ladepunkt", "lader", "laden", "easee", "go e", "goe", "zaptec"], ["2", "second", "zweite", "two"], ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"]], include: [wallboxTerms, { terms: ["2", "second", "zweite", "two"], weight: 20 }, { terms: ["remaining", "rest", "time", "duration", "verbleibend", "ladezeit"], weight: 30 }], exclude: ["power", "leistung", "phase", "soc"], threshold: 64 },
+      ...evccTargets,
+      { path: "garden.entities.mower_status", domains: ["sensor", "lawn_mower", "vacuum"], required: [["mower", "maeher", "maher", "mähroboter", "maehroboter", "automower", "landroid", "sileno"]], include: [mowerTerms, { terms: ["status", "state", "activity", "maeht", "mowing"], weight: 30 }], threshold: 54 },
+      { path: "garden.entities.mower_battery", domains: ["sensor"], units: ["%"], required: [["mower", "maeher", "maher", "mähroboter", "maehroboter", "automower", "landroid", "sileno"], ["battery", "akku", "batterie"]], include: [mowerTerms, { terms: ["battery", "akku", "batterie"], weight: 34 }], threshold: 58 },
+      { path: "garden.entities.mower_next_start", domains: ["sensor"], required: [["mower", "maeher", "maher", "mähroboter", "maehroboter", "automower", "landroid", "sileno"], ["next", "schedule", "start", "naechst", "nächst", "zeitplan"]], include: [mowerTerms, { terms: ["next start", "schedule", "zeitplan", "naechster start", "nächster start"], weight: 32 }], threshold: 58 },
+      { path: "garden.entities.mower_error", domains: ["sensor", "binary_sensor"], required: [["mower", "maeher", "maher", "mähroboter", "maehroboter", "automower", "landroid", "sileno"], ["error", "fault", "problem", "fehler", "stoerung", "störung"]], include: [mowerTerms, { terms: ["error", "fault", "fehler", "stoerung", "störung"], weight: 34 }], threshold: 58 },
+      { path: "garden.entities.garden_water", domains: ["switch", "binary_sensor", "sensor", "input_boolean"], required: [["garden", "garten", "garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung", "sprinkler"]], include: [gardenTerms, irrigationTerms, { terms: ["garden water", "gartenwasser", "status", "state", "active", "watering", "ventil", "valve"], weight: 34 }], threshold: 54 },
+      { path: "garden.entities.irrigation_enabled", domains: ["switch", "binary_sensor", "input_boolean", "sensor"], required: [["garden", "garten", "garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung"], ["auto", "automatic", "automatik", "enabled", "aktiv"]], include: [gardenTerms, irrigationTerms, { terms: ["automatic", "automatik", "enabled", "aktiv"], weight: 32 }], threshold: 56 },
+      { path: "garden.entities.irrigation_next_start", domains: ["sensor"], required: [["garden", "garten", "garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung"], ["schedule", "zeitplan", "plan", "next", "naechst", "nächst"]], include: [gardenTerms, irrigationTerms, { terms: ["schedule", "zeitplan", "plan", "next", "naechste", "nächste"], weight: 32 }], threshold: 56 },
+      { path: "garden.entities.irrigation_remaining", domains: ["sensor"], required: [["garden", "garten", "garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung"], ["remaining", "rest", "restzeit", "duration", "dauer"]], include: [gardenTerms, irrigationTerms, { terms: ["remaining", "restzeit", "verbleibend", "dauer"], weight: 34 }], threshold: 56 },
+      { path: "garden.entities.rain_24h", domains: ["sensor"], units: ["mm"], required: [["rain", "regen", "precipitation", "niederschlag"], ["24h", "24", "day", "tag"]], include: [gardenTerms, { terms: ["rain", "regen", "precipitation", "niederschlag"], weight: 36 }, { terms: ["24h", "24", "day", "tag"], weight: 18 }], threshold: 54 },
+      { path: "garden.entities.rain_today", domains: ["sensor"], units: ["mm"], required: [["rain", "regen", "precipitation", "niederschlag"], ["today", "heute", "day", "tag"]], include: [gardenTerms, { terms: ["rain", "regen", "precipitation", "niederschlag"], weight: 36 }, { terms: ["today", "heute", "day", "tag"], weight: 20 }], threshold: 54 },
+      { path: "garden.entities.outdoor_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c"], required: [["outdoor", "outside", "aussen", "außen", "garden", "garten"], ["temperature", "temperatur"]], include: [gardenTerms, { terms: ["outdoor", "outside", "aussen", "außen"], weight: 28 }, { terms: ["temperature", "temperatur"], weight: 32 }], threshold: 54 },
+      { path: "garden.entities.humidity", domains: ["sensor"], deviceClasses: ["humidity"], units: ["%"], required: [["outdoor", "outside", "aussen", "außen", "garden", "garten"], ["humidity", "luftfeuchte", "feuchte"]], include: [gardenTerms, { terms: ["humidity", "luftfeuchte"], weight: 36 }], threshold: 54 },
+      { path: "garden.entities.soil_moisture", domains: ["sensor"], units: ["%"], required: [["soil", "boden", "moisture", "feuchte", "garten"]], include: [gardenTerms, { terms: ["soil moisture", "bodenfeuchte", "feuchte", "moisture"], weight: 38 }], threshold: 54 },
+      { path: "garden.entities.soil_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c"], required: [["soil", "boden", "garden", "garten"], ["temperature", "temperatur"]], include: [gardenTerms, { terms: ["soil temperature", "bodentemperatur"], weight: 38 }], threshold: 54 },
+      { path: "garden.entities.water_flow", domains: ["sensor"], required: [["garden", "garten", "irrigation", "watering", "bewasserung", "bewaesserung"], ["flow", "durchfluss", "water flow"]], include: [gardenTerms, irrigationTerms, { terms: ["flow", "durchfluss", "l min"], weight: 34 }], threshold: 56 },
+      { path: "garden.entities.water_consumption_today", ...volumeTarget, required: [["garden", "garten", "irrigation", "watering", "bewasserung", "bewaesserung"], ["today", "heute", "day", "tag"]], include: [gardenTerms, irrigationTerms, { terms: ["today", "heute", "water", "wasser"], weight: 28 }, ...volumeTarget.include], threshold: 56 },
+      { path: "garden.entities.water_pressure", domains: ["sensor"], required: [["garden", "garten", "garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung"], ["pressure", "druck", "bar", "wasserdruck"]], include: [gardenTerms, irrigationTerms, { terms: ["pressure", "wasserdruck", "druck", "bar"], weight: 36 }], threshold: 56 },
+      { path: "garden.entities.cistern_level", domains: ["sensor"], units: ["%"], required: [["cistern", "zisterne", "rain barrel", "regenfass", "water tank", "wassertank"], ["level", "fill", "füllstand", "fuellstand", "stand"]], include: [gardenTerms, { terms: ["cistern", "zisterne", "rain barrel", "regenfass", "water tank", "wassertank"], weight: 38 }, { terms: ["level", "fill", "füllstand", "fuellstand"], weight: 30 }], threshold: 56 },
+      { path: "garden.entities.garden_lights", domains: ["light", "switch", "binary_sensor", "sensor"], required: [["garden", "garten", "outdoor", "aussen", "außen", "patio", "terrasse"], ["light", "licht", "beleuchtung"]], include: [gardenEquipmentTerms, { terms: ["light", "licht", "beleuchtung"], weight: 38 }], threshold: 56 },
+      { path: "garden.entities.garden_outlet", domains: ["switch", "binary_sensor", "sensor"], required: [["garden", "garten", "outdoor", "aussen", "außen"], ["outlet", "socket", "steckdose"]], include: [gardenEquipmentTerms, { terms: ["outlet", "socket", "steckdose"], weight: 38 }], threshold: 56 },
+      { path: "garden.entities.pond_pump", domains: ["switch", "binary_sensor", "sensor"], required: [["pond", "teich"], ["pump", "pumpe", "filter"]], include: [gardenEquipmentTerms, { terms: ["pond", "teich"], weight: 34 }, { terms: ["pump", "pumpe", "filter"], weight: 34 }], threshold: 56 },
+      { path: "garden.entities.pool_pump", domains: ["switch", "binary_sensor", "sensor"], required: [["pool", "schwimmbad"], ["pump", "pumpe", "filter"]], include: [gardenEquipmentTerms, { terms: ["pool", "schwimmbad"], weight: 34 }, { terms: ["pump", "pumpe", "filter"], weight: 34 }], threshold: 56 },
       { path: "entities.import_export_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import export", "bezug einspeisung", "net", "saldo", "balance", "signed"]], include: [gridTerms, { terms: ["import export", "bezug einspeisung", "net", "saldo", "balance", "signed"], weight: 28 }, ...powerTarget.include], exclude: ["energy", "kwh", "total"], threshold: 58 },
       { path: "entities.import_export_power_voltage", ...voltageTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"]], include: [gridTerms, ...voltageTarget.include], threshold: 58 },
       { path: "entities.import_power", ...powerTarget, required: [["grid", "netz", "meter", "utility", "power meter", "smart meter"], ["import", "bezug", "purchase", "verbrauch netz", "from grid"]], include: [gridTerms, { terms: ["import", "bezug", "purchase", "verbrauch netz", "from grid"], weight: 32 }], exclude: ["export", "einspeis", "feed", "energy", "kwh"], threshold: 62 },
@@ -1241,6 +1332,8 @@ export function createDashboardEditorClass({
       if (mode === "fill" && hasCurrent && !this._isPlaceholderEntity(suggestion.path, current) && !onePath) return;
       if (onePath && hasCurrent && String(current) === suggestion.entityId) return;
       this._setPath(next, suggestion.path.split("."), suggestion.entityId);
+      if (suggestion.path.startsWith("electric_vehicle.entities.")) next.show_electric_vehicle = true;
+      if (suggestion.path.startsWith("garden.")) next.show_garden = true;
       if (suggestion.path.startsWith("entities.wallbox2_")) this._setPath(next, ["visible_boxes", "wallbox2_power"], true);
       if (suggestion.path === "entities.water_meter") this._setPath(next, ["visible_boxes", "water_meter"], true);
       if (suggestion.path === "entities.import_export_power" || suggestion.path === "entities.import_power" || suggestion.path === "entities.export_power") {
@@ -2681,6 +2774,195 @@ export function createDashboardEditorClass({
     `;
   }
 
+  _electricVehicleDefinitions() {
+    return Array.isArray(ELECTRIC_VEHICLE_ENTITY_DEFINITIONS) ? ELECTRIC_VEHICLE_ENTITY_DEFINITIONS : [];
+  }
+
+  _electricVehicleConfiguredValues(electricVehicle = this._config.electric_vehicle || {}) {
+    const entities = electricVehicle.entities || {};
+    return this._electricVehicleDefinitions()
+      .map((definition) => entities[definition.key])
+      .filter(Boolean);
+  }
+
+  _electricVehicleGroups() {
+    return [
+      ["controls", "ev.groupControls", "Controls"],
+      ["state", "ev.groupState", "State"],
+      ["vehicle", "ev.groupVehicle", "Vehicle"],
+      ["charging", "ev.groupCharging", "Charging"],
+      ["limits", "ev.groupLimits", "Limits"],
+      ["planning", "ev.groupPlanning", "Planning"],
+    ];
+  }
+
+  _renderElectricVehicleEntityField(definition, electricVehicle = this._config.electric_vehicle || {}) {
+    const value = electricVehicle.entities?.[definition.key] || "";
+    const aliases = definition.aliases?.slice(0, 3).join(", ") || `sensor.evcc_${definition.key}`;
+    const detailsKey = `electric-vehicle-${definition.key}`;
+    const status = this._statusText({
+      configured: this._countConfigured([value]),
+      missing: this._missingEntityCount([value]),
+    });
+    return `
+      <details class="box-field electric-vehicle-field" data-editor-section="${this._escape(detailsKey)}"${this._detailsOpen(detailsKey) ? " open" : ""}>
+        <summary class="box-summary">
+          <span class="box-summary-main">
+            <strong>${this._escape(this._t(definition.labelKey, {}, definition.label))}</strong>
+            <small>${this._escape(aliases)}</small>
+          </span>
+          <span class="box-summary-side">
+            <span class="section-status">${this._escape(status)}</span>
+          </span>
+        </summary>
+        <div class="box-body">
+          <label>${this._labelText(this._t("editor.electricVehicleEntity", {}, "EVCC entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}
+            <input data-path="electric_vehicle.entities.${this._escape(definition.key)}" list="ha-solar-dashboard-entities" placeholder="${this._escape(aliases.split(", ")[0] || `sensor.evcc_${definition.key}`)}" value="${this._escape(value)}" autocomplete="off" />
+          </label>
+        </div>
+      </details>
+    `;
+  }
+
+  _renderElectricVehicleEditor(electricVehicle = this._config.electric_vehicle || {}) {
+    const normalized = normalizeElectricVehicleConfig?.(electricVehicle) || electricVehicle;
+    const entityValues = this._electricVehicleConfiguredValues(normalized);
+    const missing = this._missingEntityCount(entityValues);
+    const wallbox = normalized.wallbox || "wallbox_power";
+    const image = normalized.image || DEFAULT_ELECTRIC_VEHICLE_IMAGE || "images/car_image.png";
+    const title = normalized.title || "";
+    const groupHtml = this._electricVehicleGroups().map(([groupKey, labelKey, fallback]) => {
+      const definitions = this._electricVehicleDefinitions().filter((definition) => definition.group === groupKey);
+      if (!definitions.length) return "";
+      const values = definitions.map((definition) => normalized.entities?.[definition.key]).filter(Boolean);
+      return `
+        <section class="editor-card metric-group-card">
+          <div class="editor-card-head">
+            <strong>${this._escape(this._t(labelKey, {}, fallback))}</strong>
+            <span class="section-status">${this._escape(this._statusText({ configured: this._countConfigured(values), missing: this._missingEntityCount(values) }))}</span>
+          </div>
+          <div class="metric-grid">
+            ${definitions.map((definition) => this._renderElectricVehicleEntityField(definition, normalized)).join("")}
+          </div>
+        </section>
+      `;
+    }).join("");
+
+    return `
+      <section class="editor-panel editor-general">
+        <div class="editor-panel-title">${this._escape(this._t("editor.electricVehicleSettings", {}, "E-Auto settings"))}</div>
+        <div class="settings-grid">
+          <label>${this._escape(this._t("editor.electricVehicleTitle", {}, "Title"))}
+            <input data-path="electric_vehicle.title" placeholder="${this._escape(this._t("ev.title", {}, "E-Auto"))}" value="${this._escape(title)}" />
+          </label>
+          <label>${this._labelText(this._t("editor.electricVehicleImage", {}, "Vehicle image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
+            <input data-path="electric_vehicle.image" placeholder="${this._escape(DEFAULT_ELECTRIC_VEHICLE_IMAGE || "images/car_image.png")}" value="${this._escape(image)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.electricVehicleWallbox", {}, "Wallbox fallback"))}
+            <select data-path="electric_vehicle.wallbox">
+              <option value="wallbox_power"${wallbox !== "wallbox2_power" ? " selected" : ""}>${this._escape(this._t("metrics.wallbox_power", {}, "EV Charger"))}</option>
+              <option value="wallbox2_power"${wallbox === "wallbox2_power" ? " selected" : ""}>${this._escape(this._t("metrics.wallbox2_power", {}, "EV Charger 2"))}</option>
+            </select>
+          </label>
+        </div>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_electric_vehicle" ${this._config.show_electric_vehicle !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showElectricVehicle", {}, "Show E-Auto area"))}</label>
+        </div>
+      </section>
+      ${groupHtml || `<div class="layout-empty">${this._escape(this._t("editor.sectionElectricVehicle", {}, "EVCC entities"))}: ${this._escape(this._statusText({ configured: this._countConfigured(entityValues), total: this._electricVehicleDefinitions().length, missing }))}</div>`}
+    `;
+  }
+
+  _gardenDefinitions() {
+    return Array.isArray(GARDEN_ENTITY_DEFINITIONS) ? GARDEN_ENTITY_DEFINITIONS : [];
+  }
+
+  _gardenConfiguredValues(garden = this._config.garden || {}) {
+    const normalized = normalizeGardenConfig?.(garden) || garden || {};
+    return this._gardenDefinitions()
+      .map((definition) => normalized.entities?.[definition.key])
+      .filter(Boolean);
+  }
+
+  _gardenGroups() {
+    return [
+      ["mower", "garden.groupMower", "Mäher"],
+      ["water", "garden.groupWater", "Gartenwasser"],
+      ["weather", "garden.groupWeather", "Wetter & Boden"],
+      ["equipment", "garden.groupEquipment", "Gartengeräte"],
+    ];
+  }
+
+  _renderGardenEntityField(definition, garden = this._config.garden || {}) {
+    const value = garden.entities?.[definition.key] || "";
+    const aliases = definition.aliases?.slice(0, 3).join(", ") || `sensor.garden_${definition.key}`;
+    const detailsKey = `garden-${definition.key}`;
+    const status = this._statusText({
+      configured: this._countConfigured([value]),
+      missing: this._missingEntityCount([value]),
+    });
+    return `
+      <details class="box-field garden-field" data-editor-section="${this._escape(detailsKey)}"${this._detailsOpen(detailsKey) ? " open" : ""}>
+        <summary class="box-summary">
+          <span class="box-summary-main">
+            <strong>${this._escape(this._t(definition.labelKey, {}, definition.label))}</strong>
+            <small>${this._escape(aliases)}</small>
+          </span>
+          <span class="box-summary-side">
+            <span class="section-status">${this._escape(status)}</span>
+          </span>
+        </summary>
+        <div class="box-body">
+          <label>${this._labelText(this._t("editor.gardenEntity", {}, "Garten entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}
+            <input data-path="garden.entities.${this._escape(definition.key)}" list="ha-solar-dashboard-entities" placeholder="${this._escape(aliases.split(", ")[0] || `sensor.garden_${definition.key}`)}" value="${this._escape(value)}" autocomplete="off" />
+          </label>
+        </div>
+      </details>
+    `;
+  }
+
+  _renderGardenEditor(garden = this._config.garden || {}) {
+    const normalized = normalizeGardenConfig?.(garden) || garden;
+    const entityValues = this._gardenConfiguredValues(normalized);
+    const missing = this._missingEntityCount(entityValues);
+    const image = normalized.image || DEFAULT_GARDEN_IMAGE || "images/single_family_home_top_view_garden.png";
+    const title = normalized.title || "";
+    const groupHtml = this._gardenGroups().map(([groupKey, labelKey, fallback]) => {
+      const definitions = this._gardenDefinitions().filter((definition) => definition.group === groupKey);
+      if (!definitions.length) return "";
+      const values = definitions.map((definition) => normalized.entities?.[definition.key]).filter(Boolean);
+      return `
+        <section class="editor-card metric-group-card">
+          <div class="editor-card-head">
+            <strong>${this._escape(this._t(labelKey, {}, fallback))}</strong>
+            <span class="section-status">${this._escape(this._statusText({ configured: this._countConfigured(values), total: definitions.length, missing: this._missingEntityCount(values) }))}</span>
+          </div>
+          <div class="metric-grid">
+            ${definitions.map((definition) => this._renderGardenEntityField(definition, normalized)).join("")}
+          </div>
+        </section>
+      `;
+    }).join("");
+    return `
+      <section class="editor-panel editor-general">
+        <div class="editor-panel-title">${this._escape(this._t("editor.gardenSettings", {}, "Garten settings"))}</div>
+        <div class="settings-grid">
+          <label>${this._escape(this._t("editor.gardenTitle", {}, "Title"))}
+            <input data-path="garden.title" placeholder="${this._escape(this._t("garden.title", {}, "Garten"))}" value="${this._escape(title)}" />
+          </label>
+          <label>${this._labelText(this._t("editor.gardenImage", {}, "Garden image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
+            <input data-path="garden.image" placeholder="${this._escape(DEFAULT_GARDEN_IMAGE || "images/single_family_home_top_view_garden.png")}" value="${this._escape(image)}" autocomplete="off" />
+          </label>
+        </div>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_garden" ${this._config.show_garden !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGarden", {}, "Show Garten area"))}</label>
+        </div>
+      </section>
+      ${groupHtml}
+      ${groupHtml ? "" : `<div class="layout-empty">${this._escape(this._t("editor.tabGarden", {}, "Garten"))}: ${this._escape(this._statusText({ configured: this._countConfigured(entityValues), total: this._gardenDefinitions().length, missing }))}</div>`}
+    `;
+  }
+
   _renderMetricGroups() {
     return this._metricGroupDefinitions().map((group) => {
       const values = group.metrics.flatMap((metric) => this._metricConfigValues(metric));
@@ -2712,12 +2994,21 @@ export function createDashboardEditorClass({
       .map(([key, value]) => `<option value="${this._escape(key)}"${key === house ? " selected" : ""}>${this._escape(this._houseLabel(key, value))}</option>`)
       .join("");
     const normalizedConfiguredViewMode = this._normalizeViewMode(this._config.view_mode);
-    const configuredViewMode = this._config.show_floorplan === false && normalizedConfiguredViewMode === "floorplan"
+    const configuredViewMode = (
+      (this._config.show_floorplan === false && normalizedConfiguredViewMode === "floorplan")
+      || (this._config.show_electric_vehicle === false && normalizedConfiguredViewMode === "electric_vehicle")
+      || (this._config.show_garden === false && normalizedConfiguredViewMode === "garden")
+    )
       ? "house"
       : normalizedConfiguredViewMode;
     const viewMode = this._normalizeViewMode(configuredViewMode) || "house";
     const viewModeOptions = VIEW_MODE_OPTIONS
-      .filter((option) => option.key !== "floorplan" || this._config.show_floorplan !== false)
+      .filter((option) => {
+        if (option.key === "floorplan") return this._config.show_floorplan !== false;
+        if (option.key === "electric_vehicle") return this._config.show_electric_vehicle !== false;
+        if (option.key === "garden") return this._config.show_garden !== false;
+        return true;
+      })
       .map((option) => `<option value="${this._escape(option.key)}"${option.key === viewMode ? " selected" : ""}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`)
       .join("");
     const entityOptions = this._entityOptions()
@@ -2730,6 +3021,10 @@ export function createDashboardEditorClass({
     const environmentSensorFields = environmentSensors.map((sensor, index) => this._renderEnvironmentSensorField(sensor, index)).join("");
     const floorplan = this._normalizeFloorplan(this._config.floorplan || {});
     this._config.floorplan = floorplan;
+    const electricVehicle = normalizeElectricVehicleConfig?.(this._config.electric_vehicle || this._config.ev || this._config.e_auto || {}) || {};
+    this._config.electric_vehicle = electricVehicle;
+    const garden = normalizeGardenConfig?.(this._config.garden || this._config.garten || this._config.irrigation || {}) || {};
+    this._config.garden = garden;
     this._config.pv_roof_string_display = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
     this._config.pv_roof_strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
     this._config.inverter_display = normalizeInverterDisplay(this._config.inverter_display);
@@ -2747,6 +3042,13 @@ export function createDashboardEditorClass({
       if (sensor.entity) return sensor.entity;
       return environmentSensors.find((item) => item.id === sensor.environment_sensor)?.entity || "";
     }));
+    const electricVehicleEntityValues = this._electricVehicleConfiguredValues(electricVehicle);
+    const electricVehicleConfigured = this._countConfigured(electricVehicleEntityValues);
+    const electricVehicleMissing = this._missingEntityCount(electricVehicleEntityValues);
+    const gardenEntityValues = this._gardenConfiguredValues(garden);
+    const gardenConfigured = this._countConfigured(gardenEntityValues);
+    const gardenMissing = this._missingEntityCount(gardenEntityValues);
+    const gardenTotal = this._gardenDefinitions().length;
     const largeConsumerConfigured = largeConsumers.filter((consumer) => consumer.power_entity || consumer.energy_entity).length;
     const customKpiConfigured = customKpis.filter((kpi) => kpi.entity || kpi.value).length;
     const renderEditorCard = (title, status, content) => `
@@ -2779,6 +3081,8 @@ export function createDashboardEditorClass({
           <label class="inline"><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_environment_sensors" ${this._config.show_environment_sensors !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnvironmentSensors", {}, "Show environment sensor tiles"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_electric_vehicle" ${this._config.show_electric_vehicle !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showElectricVehicle", {}, "Show E-Auto area"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_garden" ${this._config.show_garden !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGarden", {}, "Show Garten area"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
@@ -2866,6 +3170,18 @@ export function createDashboardEditorClass({
         ].join(""),
       },
       {
+        key: "electric_vehicle",
+        label: this._t("editor.tabElectricVehicle", {}, "E-Auto"),
+        status: this._statusText({ configured: electricVehicleConfigured, total: this._electricVehicleDefinitions().length, hidden: this._config.show_electric_vehicle === false ? 1 : 0, missing: electricVehicleMissing }),
+        content: this._renderElectricVehicleEditor(electricVehicle),
+      },
+      {
+        key: "garden",
+        label: this._t("editor.tabGarden", {}, "Garten"),
+        status: this._statusText({ configured: gardenConfigured, total: gardenTotal, hidden: this._config.show_garden === false ? 1 : 0, missing: gardenMissing }),
+        content: this._renderGardenEditor(garden),
+      },
+      {
         key: "environment",
         label: this._t("editor.tabEnvironment", {}, "Environment"),
         status: this._statusText({ configured: environmentConfigured, total: environmentSensors.length, hidden: environmentSensors.filter((sensor) => sensor.visible === false).length, missing: environmentMissing }),
@@ -2906,12 +3222,16 @@ export function createDashboardEditorClass({
     const activePanel = tabPanels.find((tab) => tab.key === activeTab) || tabPanels[0];
     const configuredOverviewValues = [
       ...configuredTileEntities,
+      ...electricVehicleEntityValues,
+      ...gardenEntityValues,
       ...environmentSensors.map((sensor) => sensor.entity),
       ...largeConsumers.flatMap((consumer) => [consumer.power_entity, consumer.energy_entity]),
       ...customKpis.flatMap((kpi) => [kpi.entity, kpi.value]),
     ];
     const overviewEntityValues = [
       ...configuredTileEntities,
+      ...electricVehicleEntityValues,
+      ...gardenEntityValues,
       ...environmentSensors.map((sensor) => sensor.entity),
       ...largeConsumers.flatMap((consumer) => [consumer.power_entity, consumer.energy_entity]),
       ...customKpis.map((kpi) => kpi.entity),
@@ -2928,7 +3248,7 @@ export function createDashboardEditorClass({
         </div>
         <div class="overview-item">
           <span>${this._escape(this._t("editor.overviewItems", {}, "Items"))}</span>
-          <strong>${this._escape(customKpis.length + environmentSensors.length + largeConsumers.length + floorplanElementCount)}</strong>
+          <strong>${this._escape(customKpis.length + environmentSensors.length + largeConsumers.length + floorplanElementCount + this._countConfigured(electricVehicleEntityValues) + this._countConfigured(gardenEntityValues))}</strong>
         </div>
         <div class="overview-item${this._missingEntityCount(overviewEntityValues) > 0 ? " warning" : ""}">
           <span>${this._escape(this._t("editor.overviewMissing", {}, "Missing"))}</span>

@@ -109,7 +109,9 @@ import {
 } from "../modules/charts.js";
 import {
   CHART_DASHBOARD_VIEW,
+  ELECTRIC_VEHICLE_DASHBOARD_VIEW,
   FLOORPLAN_DASHBOARD_VIEW,
+  GARDEN_DASHBOARD_VIEW,
   RECORDS_DASHBOARD_VIEW,
   VIEW_MODE_OPTIONS,
   normalizeViewMode,
@@ -123,6 +125,18 @@ import {
   createBaseCardConfig,
   createStubCardConfig,
 } from "../modules/config-schema.js";
+import {
+  DEFAULT_ELECTRIC_VEHICLE_IMAGE,
+  ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  createElectricVehicleDashboardMethods,
+  normalizeElectricVehicleConfig,
+} from "../modules/electric-vehicle.js";
+import {
+  DEFAULT_GARDEN_IMAGE,
+  GARDEN_ENTITY_DEFINITIONS,
+  createGardenDashboardMethods,
+  normalizeGardenConfig,
+} from "../modules/garden.js";
 import {
   createDashboardEditorClass,
 } from "../modules/editor.js";
@@ -368,6 +382,18 @@ class HaSolarDashboardCard extends HTMLElement {
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
     const energyRange = this._normalizeEnergyRange(config.energy_range) || "live";
     const viewMode = this._normalizeViewMode(config.view_mode || config.mode || config.default_view) || "house";
+    const electricVehicleSource = config.electric_vehicle || config.e_auto || config.ev || {};
+    const showElectricVehicle = config.show_electric_vehicle
+      ?? config.show_ev_dashboard
+      ?? config.show_e_auto
+      ?? electricVehicleSource.enabled
+      ?? electricVehicleSource.show;
+    const gardenSource = config.garden || config.garten || config.irrigation || {};
+    const showGarden = config.show_garden
+      ?? config.show_garden_dashboard
+      ?? config.show_irrigation
+      ?? gardenSource.enabled
+      ?? gardenSource.show;
     this._hasCustomTitle = Object.prototype.hasOwnProperty.call(config, "title");
 
     const baseConfig = createBaseCardConfig({
@@ -381,6 +407,8 @@ class HaSolarDashboardCard extends HTMLElement {
       house,
       view_mode: viewMode,
       energy_range: energyRange,
+      show_electric_vehicle: showElectricVehicle === undefined ? baseConfig.show_electric_vehicle : showElectricVehicle !== false,
+      show_garden: showGarden === undefined ? baseConfig.show_garden : showGarden !== false,
       units: {
         ...baseConfig.units,
         ...(config.units || {}),
@@ -426,6 +454,8 @@ class HaSolarDashboardCard extends HTMLElement {
       custom_kpis: this._normalizeCustomKpis(config.custom_kpis || config.kpis || []),
       environment_sensors: this._normalizeEnvironmentSensors(config.environment_sensors || config.environment_sensor_tiles || []),
       floorplan: this._normalizeFloorplan(config.floorplan || {}),
+      electric_vehicle: normalizeElectricVehicleConfig(electricVehicleSource),
+      garden: normalizeGardenConfig(gardenSource),
       large_consumers: normalizeLargeConsumers(config.large_consumers || config.large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings(config.pv_roof_strings || config.pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay(config.pv_roof_string_display || config.pv_roof_display || "sum"),
@@ -519,11 +549,18 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _currentViewMode() {
     const viewMode = this._normalizeViewMode(this._selectedViewMode || this.config?.view_mode) || "house";
+    if (viewMode === ELECTRIC_VEHICLE_DASHBOARD_VIEW && this.config?.show_electric_vehicle === false) return "house";
+    if (viewMode === GARDEN_DASHBOARD_VIEW && this.config?.show_garden === false) return "house";
     return viewMode === FLOORPLAN_DASHBOARD_VIEW && this.config?.show_floorplan === false ? "house" : viewMode;
   }
 
   _viewModeOptions() {
-    return VIEW_MODE_OPTIONS.filter((option) => option.key !== FLOORPLAN_DASHBOARD_VIEW || this.config?.show_floorplan !== false);
+    return VIEW_MODE_OPTIONS.filter((option) => {
+      if (option.key === FLOORPLAN_DASHBOARD_VIEW) return this.config?.show_floorplan !== false;
+      if (option.key === ELECTRIC_VEHICLE_DASHBOARD_VIEW) return this.config?.show_electric_vehicle !== false;
+      if (option.key === GARDEN_DASHBOARD_VIEW) return this.config?.show_garden !== false;
+      return true;
+    });
   }
 
   _currentEnergyRange() {
@@ -3211,9 +3248,11 @@ class HaSolarDashboardCard extends HTMLElement {
       statusLabel: this.shadowRoot.querySelector("[data-status-label]"),
       voltageAlert: this.shadowRoot.querySelector("[data-grid-voltage-alert]"),
       advisor: this.shadowRoot.querySelector("[data-energy-advisor]"),
+      electricVehicleDashboard: this.shadowRoot.querySelector("[data-electric-vehicle-dashboard]"),
+      gardenDashboard: this.shadowRoot.querySelector("[data-garden-dashboard]"),
       chartDashboard: this.shadowRoot.querySelector("[data-chart-dashboard]"),
       recordsDashboard: this.shadowRoot.querySelector("[data-record-dashboard]"),
-      contentAnchor: this.shadowRoot.querySelector(".scene,[data-energy-advisor],[data-floorplan-dashboard],[data-chart-dashboard],[data-record-dashboard]"),
+      contentAnchor: this.shadowRoot.querySelector(".scene,[data-energy-advisor],[data-electric-vehicle-dashboard],[data-garden-dashboard],[data-floorplan-dashboard],[data-chart-dashboard],[data-record-dashboard]"),
       card: this.shadowRoot.querySelector("ha-card"),
     };
   }
@@ -3281,10 +3320,33 @@ class HaSolarDashboardCard extends HTMLElement {
       });
     }
 
+    this.shadowRoot.querySelectorAll("[data-electric-vehicle-mode]").forEach((button) => {
+      ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
+        button.addEventListener(eventName, (event) => event.stopPropagation());
+      });
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._electricVehicleSetMode(event.currentTarget.dataset.electricVehicleMode || "");
+      });
+    });
+
     const image = this.shadowRoot.querySelector(".scene-image");
     if (image) {
       image.addEventListener("error", () => this._applyImageFallback(image));
       if (image.complete && image.naturalWidth === 0) this._applyImageFallback(image);
+    }
+
+    const electricVehicleImage = this.shadowRoot.querySelector(".electric-vehicle-image");
+    if (electricVehicleImage) {
+      electricVehicleImage.addEventListener("error", () => this._applyImageFallback(electricVehicleImage));
+      if (electricVehicleImage.complete && electricVehicleImage.naturalWidth === 0) this._applyImageFallback(electricVehicleImage);
+    }
+
+    const gardenImage = this.shadowRoot.querySelector(".garden-image");
+    if (gardenImage) {
+      gardenImage.addEventListener("error", () => this._applyImageFallback(gardenImage));
+      if (gardenImage.complete && gardenImage.naturalWidth === 0) this._applyImageFallback(gardenImage);
     }
 
     this.shadowRoot.querySelectorAll(".image-overlay").forEach((overlay) => {
@@ -3447,6 +3509,8 @@ class HaSolarDashboardCard extends HTMLElement {
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
     const advisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
+    const electricVehicleDashboardHtml = activeView === ELECTRIC_VEHICLE_DASHBOARD_VIEW ? this._renderElectricVehicleDashboard() : "";
+    const gardenDashboardHtml = activeView === GARDEN_DASHBOARD_VIEW ? this._renderGardenDashboard() : "";
     const floorplanDashboardHtml = activeView === FLOORPLAN_DASHBOARD_VIEW ? this._renderFloorplanDashboard() : "";
     const chartDashboardHtml = activeView === CHART_DASHBOARD_VIEW ? this._renderChartDashboard(state.variant) : "";
     const recordsDashboardHtml = activeView === RECORDS_DASHBOARD_VIEW ? this._renderRecordsDashboard(state.variant) : "";
@@ -3494,13 +3558,17 @@ class HaSolarDashboardCard extends HTMLElement {
         ${voltageAlertHtml}
         ${activeView === "advisor"
           ? advisorHtml
-          : activeView === FLOORPLAN_DASHBOARD_VIEW
-            ? floorplanDashboardHtml
-            : activeView === CHART_DASHBOARD_VIEW
-              ? chartDashboardHtml
-              : activeView === RECORDS_DASHBOARD_VIEW
-                ? recordsDashboardHtml
-                : `
+          : activeView === ELECTRIC_VEHICLE_DASHBOARD_VIEW
+            ? electricVehicleDashboardHtml
+            : activeView === GARDEN_DASHBOARD_VIEW
+              ? gardenDashboardHtml
+              : activeView === FLOORPLAN_DASHBOARD_VIEW
+                ? floorplanDashboardHtml
+                : activeView === CHART_DASHBOARD_VIEW
+                  ? chartDashboardHtml
+                  : activeView === RECORDS_DASHBOARD_VIEW
+                    ? recordsDashboardHtml
+                    : `
             <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
             ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${environmentSectionHtml}${largeConsumerSectionHtml}` : ""}
           `}
@@ -3726,6 +3794,30 @@ class HaSolarDashboardCard extends HTMLElement {
       domCacheChanged = true;
     }
     if (advisorChanged) this._attachAdvisorControls();
+    const nextElectricVehicleDashboardHtml = activeView === ELECTRIC_VEHICLE_DASHBOARD_VIEW ? this._renderElectricVehicleDashboard() : "";
+    const electricVehicleDashboardElement = this._domCache?.electricVehicleDashboard;
+    if (electricVehicleDashboardElement && nextElectricVehicleDashboardHtml) {
+      electricVehicleDashboardElement.outerHTML = nextElectricVehicleDashboardHtml.trim();
+      domCacheChanged = true;
+    } else if (electricVehicleDashboardElement && !nextElectricVehicleDashboardHtml) {
+      electricVehicleDashboardElement.remove();
+      domCacheChanged = true;
+    } else if (!electricVehicleDashboardElement && nextElectricVehicleDashboardHtml) {
+      this._domCache?.card?.insertAdjacentHTML("beforeend", nextElectricVehicleDashboardHtml);
+      domCacheChanged = true;
+    }
+    const nextGardenDashboardHtml = activeView === GARDEN_DASHBOARD_VIEW ? this._renderGardenDashboard() : "";
+    const gardenDashboardElement = this._domCache?.gardenDashboard;
+    if (gardenDashboardElement && nextGardenDashboardHtml) {
+      gardenDashboardElement.outerHTML = nextGardenDashboardHtml.trim();
+      domCacheChanged = true;
+    } else if (gardenDashboardElement && !nextGardenDashboardHtml) {
+      gardenDashboardElement.remove();
+      domCacheChanged = true;
+    } else if (!gardenDashboardElement && nextGardenDashboardHtml) {
+      this._domCache?.card?.insertAdjacentHTML("beforeend", nextGardenDashboardHtml);
+      domCacheChanged = true;
+    }
     const nextChartDashboardHtml = activeView === CHART_DASHBOARD_VIEW ? this._renderChartDashboard(variant) : "";
     const chartDashboardElement = this._domCache?.chartDashboard;
     let chartDashboardChanged = false;
@@ -3799,6 +3891,16 @@ Object.assign(
     assetUrl,
   }),
   createTileRendererMethods(),
+  createElectricVehicleDashboardMethods({
+    assetUrl,
+    findMetricByKey,
+    numericState,
+  }),
+  createGardenDashboardMethods({
+    assetUrl,
+    numericState,
+    styleMap,
+  }),
   createFloorplanRendererMethods({
     FLOORPLAN_DASHBOARD_VIEW,
     assetUrl,
@@ -3830,7 +3932,11 @@ Object.assign(
 const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   ADVISOR_DEFAULTS,
   DEFAULT_IMAGE_OVERLAYS,
+  DEFAULT_ELECTRIC_VEHICLE_IMAGE,
+  DEFAULT_GARDEN_IMAGE,
   DEFAULT_TILE_COLOR_RULES,
+  ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  GARDEN_ENTITY_DEFINITIONS,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,
   PV_LABELS,
@@ -3849,6 +3955,8 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   largeConsumerLabel,
   metricVoltageEntityKey,
   normalizeAdvisorConfig,
+  normalizeElectricVehicleConfig,
+  normalizeGardenConfig,
   normalizeHouse,
   normalizeInverterDisplay,
   normalizeInverters,

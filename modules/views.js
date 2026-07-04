@@ -1,9 +1,13 @@
 export const CHART_DASHBOARD_VIEW = "charts";
 export const RECORDS_DASHBOARD_VIEW = "records";
 export const FLOORPLAN_DASHBOARD_VIEW = "floorplan";
+export const ELECTRIC_VEHICLE_DASHBOARD_VIEW = "electric_vehicle";
+export const GARDEN_DASHBOARD_VIEW = "garden";
 
 export const VIEW_MODE_OPTIONS = Object.freeze([
   Object.freeze({ key: "house", labelKey: "view.house", label: "House View", icon: "house" }),
+  Object.freeze({ key: ELECTRIC_VEHICLE_DASHBOARD_VIEW, labelKey: "view.electricVehicle", label: "E-Auto", icon: "car" }),
+  Object.freeze({ key: GARDEN_DASHBOARD_VIEW, labelKey: "view.garden", label: "Garten", icon: "droplet" }),
   Object.freeze({ key: FLOORPLAN_DASHBOARD_VIEW, labelKey: "view.floorplan", label: "Floorplan", icon: "floorplan" }),
   Object.freeze({ key: "advisor", labelKey: "view.advisor", label: "Advisor Dashboard", icon: "advisor" }),
   Object.freeze({ key: CHART_DASHBOARD_VIEW, labelKey: "view.charts", label: "Charts", icon: "chart" }),
@@ -15,6 +19,22 @@ const VIEW_MODE_ALIASES = Object.freeze({
   haus: "house",
   house_view: "house",
   building: "house",
+  e_auto: ELECTRIC_VEHICLE_DASHBOARD_VIEW,
+  eauto: ELECTRIC_VEHICLE_DASHBOARD_VIEW,
+  ev: ELECTRIC_VEHICLE_DASHBOARD_VIEW,
+  evcc: ELECTRIC_VEHICLE_DASHBOARD_VIEW,
+  car: ELECTRIC_VEHICLE_DASHBOARD_VIEW,
+  auto: ELECTRIC_VEHICLE_DASHBOARD_VIEW,
+  vehicle: ELECTRIC_VEHICLE_DASHBOARD_VIEW,
+  electric_vehicle: ELECTRIC_VEHICLE_DASHBOARD_VIEW,
+  elektroauto: ELECTRIC_VEHICLE_DASHBOARD_VIEW,
+  garten: GARDEN_DASHBOARD_VIEW,
+  garden: GARDEN_DASHBOARD_VIEW,
+  irrigation: GARDEN_DASHBOARD_VIEW,
+  watering: GARDEN_DASHBOARD_VIEW,
+  bewaesserung: GARDEN_DASHBOARD_VIEW,
+  bewasserung: GARDEN_DASHBOARD_VIEW,
+  lawn: GARDEN_DASHBOARD_VIEW,
   grundriss: FLOORPLAN_DASHBOARD_VIEW,
   floor_plan: FLOORPLAN_DASHBOARD_VIEW,
   floorplan_view: FLOORPLAN_DASHBOARD_VIEW,
@@ -42,6 +62,21 @@ const VIEW_MODE_ICONS = Object.freeze({
       <path d="m3 10.5 9-7 9 7"></path>
       <path d="M5 9.5V20h14V9.5"></path>
       <path d="M9 20v-6h6v6"></path>
+    </svg>
+  `,
+  car: `
+    <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 17h14"></path>
+      <path d="M6 17l1.5-6.2A3 3 0 0 1 10.42 8h3.16a3 3 0 0 1 2.92 2.8L18 17"></path>
+      <path d="M7.5 13h9"></path>
+      <circle cx="8" cy="17" r="2"></circle>
+      <circle cx="16" cy="17" r="2"></circle>
+      <path d="M12 4l-1.4 2.6H13L11.4 10"></path>
+    </svg>
+  `,
+  droplet: `
+    <svg class="view-mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.5C8.7 7.2 6 10.9 6 14a6 6 0 0 0 12 0c0-3.1-2.7-6.8-6-10.5Z"></path>
     </svg>
   `,
   advisor: `

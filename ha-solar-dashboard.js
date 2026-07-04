@@ -3038,6 +3038,9 @@ function createBaseCardConfig({
     show_electric_vehicle: true,
     show_garden: true,
     show_floorplan: true,
+    show_advisor: true,
+    show_charts: true,
+    show_records: true,
     show_power_flows: false,
     show_status_label: true,
     show_weather_status: false,
@@ -3126,6 +3129,9 @@ function createEditorBaseConfig({ floorplanLabel = "Level 1" } = {}) {
     electric_vehicle: createDefaultElectricVehicleConfig(),
     show_garden: true,
     garden: createDefaultGardenConfig(),
+    show_advisor: true,
+    show_charts: true,
+    show_records: true,
     large_consumers: [],
     pv_roof_strings: [],
     pv_roof_string_display: "sum",
@@ -3498,9 +3504,45 @@ function createElectricVehicleDashboardMethods({
         .filter((item) => item.state.configured && item.state.value !== ELECTRIC_VEHICLE_EMPTY_VALUE);
     },
 
-    _electricVehicleImageUrl(path = this._electricVehicleConfig().image) {
+    _electricVehicleImageUrls(path = this._electricVehicleConfig().image) {
       const value = String(path || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE;
-      if (/^(?:https?:)?\/\//i.test(value) || value.startsWith("/") || value.startsWith("data:")) return value;
+      const defaultValue = DEFAULT_ELECTRIC_VEHICLE_IMAGE;
+      const values = [value, ...(value === defaultValue ? [] : [defaultValue])];
+      const urls = values.flatMap((item) => {
+        if (/^(?:https?:)?\/\//i.test(item) || item.startsWith("/") || item.startsWith("data:")) return [item];
+        const withoutImagesPrefix = item.replace(/^images\//, "");
+        const candidates = [item, withoutImagesPrefix]
+          .flatMap((candidate) => (typeof this._imageFormatFiles === "function" ? this._imageFormatFiles(candidate) : [candidate]))
+          .filter(Boolean);
+        return candidates.flatMap((candidate) => {
+          const localCandidates = [
+            `images/${candidate.replace(/^images\//, "")}`,
+            candidate,
+          ];
+          const resolved = [
+            typeof this._remoteImageUrl === "function" ? this._remoteImageUrl(candidate.replace(/^images\//, "")) : "",
+            `/hacsfiles/ha-solar-dashboard/images/${candidate.replace(/^images\//, "")}`,
+            `/hacsfiles/ha-solar-dashboard/${candidate.replace(/^images\//, "")}`,
+            `/local/community/ha-solar-dashboard/images/${candidate.replace(/^images\//, "")}`,
+            `/local/community/ha-solar-dashboard/${candidate.replace(/^images\//, "")}`,
+          ];
+          localCandidates.forEach((localCandidate) => {
+            try {
+              resolved.push(assetUrl(localCandidate));
+            } catch (_err) {
+              // Optional local assets can be unavailable in some install modes.
+            }
+          });
+          return resolved;
+        });
+      });
+      return [...new Set(urls.filter(Boolean))];
+    },
+
+    _electricVehicleImageUrl(path = this._electricVehicleConfig().image) {
+      const [src] = this._electricVehicleImageUrls(path);
+      if (src) return src;
+      const value = String(path || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE;
       try {
         return assetUrl(value);
       } catch (_err) {
@@ -3578,7 +3620,7 @@ function createElectricVehicleDashboardMethods({
     _renderElectricVehicleDashboard() {
       const evConfig = this._electricVehicleConfig();
       const configuredFields = this._electricVehicleConfiguredFields();
-      const imageSrc = this._electricVehicleImageUrl(evConfig.image);
+      const [imageSrc, ...imageFallbacks] = this._electricVehicleImageUrls(evConfig.image);
       const title = evConfig.title || this._t("ev.title", {}, "E-Auto");
       const vehicleTitle = this._electricVehicleFieldState(this._electricVehicleDefinition("vehicle_title")).value;
       const subtitle = vehicleTitle && vehicleTitle !== ELECTRIC_VEHICLE_EMPTY_VALUE
@@ -3616,7 +3658,7 @@ function createElectricVehicleDashboardMethods({
           </div>
           ${modeControl}
           <div class="electric-vehicle-hero">
-            <img class="electric-vehicle-image" src="${this._escape(imageSrc)}" alt="${this._escape(title)}" />
+            <img class="electric-vehicle-image" src="${this._escape(imageSrc)}" data-fallbacks="${this._escape(imageFallbacks.join("|"))}" alt="${this._escape(title)}" />
             <div class="electric-vehicle-badges">${heroBadges}</div>
           </div>
           ${empty || groups}
@@ -3854,9 +3896,46 @@ function createGardenDashboardMethods({
         .filter((item) => item.state.configured && item.state.value !== GARDEN_EMPTY_VALUE);
     },
 
-    _gardenImageUrl(path = this._gardenConfig().image) {
+    _gardenImageUrls(path = this._gardenConfig().image) {
       const value = String(path || DEFAULT_GARDEN_IMAGE).trim() || DEFAULT_GARDEN_IMAGE;
-      if (/^(?:https?:)?\/\//i.test(value) || value.startsWith("/") || value.startsWith("data:")) return value;
+      const defaultValue = DEFAULT_GARDEN_IMAGE;
+      const values = [value, ...(value === defaultValue ? [] : [defaultValue])];
+      const urls = values.flatMap((item) => {
+        if (/^(?:https?:)?\/\//i.test(item) || item.startsWith("/") || item.startsWith("data:")) return [item];
+        const withoutImagesPrefix = item.replace(/^images\//, "");
+        const candidates = [item, withoutImagesPrefix]
+          .flatMap((candidate) => (typeof this._imageFormatFiles === "function" ? this._imageFormatFiles(candidate) : [candidate]))
+          .filter(Boolean);
+        return candidates.flatMap((candidate) => {
+          const normalized = candidate.replace(/^images\//, "");
+          const localCandidates = [
+            `images/${normalized}`,
+            candidate,
+          ];
+          const resolved = [
+            typeof this._remoteImageUrl === "function" ? this._remoteImageUrl(normalized) : "",
+            `/hacsfiles/ha-solar-dashboard/images/${normalized}`,
+            `/hacsfiles/ha-solar-dashboard/${normalized}`,
+            `/local/community/ha-solar-dashboard/images/${normalized}`,
+            `/local/community/ha-solar-dashboard/${normalized}`,
+          ];
+          localCandidates.forEach((localCandidate) => {
+            try {
+              resolved.push(assetUrl(localCandidate));
+            } catch (_err) {
+              // Optional local assets can be unavailable in some install modes.
+            }
+          });
+          return resolved;
+        });
+      });
+      return [...new Set(urls.filter(Boolean))];
+    },
+
+    _gardenImageUrl(path = this._gardenConfig().image) {
+      const [src] = this._gardenImageUrls(path);
+      if (src) return src;
+      const value = String(path || DEFAULT_GARDEN_IMAGE).trim() || DEFAULT_GARDEN_IMAGE;
       try {
         return assetUrl(value);
       } catch (_err) {
@@ -3899,7 +3978,7 @@ function createGardenDashboardMethods({
     _renderGardenDashboard() {
       const gardenConfig = this._gardenConfig();
       const configuredFields = this._gardenConfiguredFields();
-      const imageSrc = this._gardenImageUrl(gardenConfig.image);
+      const [imageSrc, ...imageFallbacks] = this._gardenImageUrls(gardenConfig.image);
       const title = gardenConfig.title || this._t("garden.title", {}, "Garten");
       const mower = this._gardenFieldState(this._gardenDefinition("mower_status"));
       const gardenWater = this._gardenFieldState(this._gardenDefinition("garden_water"));
@@ -3944,7 +4023,7 @@ function createGardenDashboardMethods({
             <span>${this._escape(stateLabel)}</span>
           </div>
           <div class="garden-hero">
-            <img class="garden-image" src="${this._escape(imageSrc)}" alt="${this._escape(title)}" />
+            <img class="garden-image" src="${this._escape(imageSrc)}" data-fallbacks="${this._escape(imageFallbacks.join("|"))}" alt="${this._escape(title)}" />
             <div class="garden-overlay">
               ${heroBadges}
             </div>
@@ -4017,11 +4096,29 @@ function createDashboardEditorClass({
       ?? (config || {}).show_irrigation
       ?? gardenSource.enabled
       ?? gardenSource.show;
+    const showAdvisor = (config || {}).show_advisor
+      ?? (config || {}).show_advisor_dashboard
+      ?? (config || {}).show_energy_advisor
+      ?? (config || {}).advisor?.enabled
+      ?? (config || {}).advisor?.show;
+    const showCharts = (config || {}).show_charts
+      ?? (config || {}).show_chart_dashboard
+      ?? (config || {}).show_chart
+      ?? (config || {}).charts?.enabled
+      ?? (config || {}).charts?.show;
+    const showRecords = (config || {}).show_records
+      ?? (config || {}).show_records_dashboard
+      ?? (config || {}).show_record_dashboard
+      ?? (config || {}).records?.enabled
+      ?? (config || {}).records?.show;
     this._config = {
       ...baseConfig,
       ...config,
       show_electric_vehicle: showElectricVehicle === undefined ? baseConfig.show_electric_vehicle !== false : showElectricVehicle !== false,
       show_garden: showGarden === undefined ? baseConfig.show_garden !== false : showGarden !== false,
+      show_advisor: showAdvisor === undefined ? baseConfig.show_advisor !== false : showAdvisor !== false,
+      show_charts: showCharts === undefined ? baseConfig.show_charts !== false : showCharts !== false,
+      show_records: showRecords === undefined ? baseConfig.show_records !== false : showRecords !== false,
       image_overlays: {
         smoke: {
           ...(((config || {}).overlays || {}).smoke || {}),
@@ -4279,6 +4376,9 @@ function createDashboardEditorClass({
     if (root === "show_garden") return true;
     if (root === "garden") return true;
     if (root === "show_floorplan") return true;
+    if (root === "show_advisor") return true;
+    if (root === "show_charts") return true;
+    if (root === "show_records") return true;
     if (root === "floorplan") return true;
     if (root === "environment_sensors") {
       return ["visible", "show_image", "left", "top", "label", "color"].includes(lastPart);
@@ -6956,6 +7056,9 @@ function createDashboardEditorClass({
       (this._config.show_floorplan === false && normalizedConfiguredViewMode === "floorplan")
       || (this._config.show_electric_vehicle === false && normalizedConfiguredViewMode === "electric_vehicle")
       || (this._config.show_garden === false && normalizedConfiguredViewMode === "garden")
+      || (this._config.show_advisor === false && normalizedConfiguredViewMode === "advisor")
+      || (this._config.show_charts === false && normalizedConfiguredViewMode === "charts")
+      || (this._config.show_records === false && normalizedConfiguredViewMode === "records")
     )
       ? "house"
       : normalizedConfiguredViewMode;
@@ -6965,6 +7068,9 @@ function createDashboardEditorClass({
         if (option.key === "floorplan") return this._config.show_floorplan !== false;
         if (option.key === "electric_vehicle") return this._config.show_electric_vehicle !== false;
         if (option.key === "garden") return this._config.show_garden !== false;
+        if (option.key === "advisor") return this._config.show_advisor !== false;
+        if (option.key === "charts") return this._config.show_charts !== false;
+        if (option.key === "records") return this._config.show_records !== false;
         return true;
       })
       .map((option) => `<option value="${this._escape(option.key)}"${option.key === viewMode ? " selected" : ""}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`)
@@ -7018,6 +7124,23 @@ function createDashboardEditorClass({
         <div class="section-body">${content}</div>
       </section>
     `;
+    const dashboardAreasHtml = `
+      <section class="editor-panel editor-dashboard-areas">
+        <div class="editor-panel-title">${this._escape(this._t("editor.sectionDashboardAreas", {}, "Dashboard areas"))}</div>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_view_selector" ${this._config.show_view_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showViewSelector", {}, "Show view selector"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_electric_vehicle" ${this._config.show_electric_vehicle !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showElectricVehicle", {}, "Show E-Auto area"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_garden" ${this._config.show_garden !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGarden", {}, "Show Garten area"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_floorplan" ${this._config.show_floorplan !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showFloorplan", {}, "Show floorplan"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_advisor" ${this._config.show_advisor !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showAdvisor", {}, "Show Advisor Dashboard"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_charts" ${this._config.show_charts !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showCharts", {}, "Show Charts Dashboard"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_records" ${this._config.show_records !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showRecords", {}, "Show Records Dashboard"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_environment_sensors" ${this._config.show_environment_sensors !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnvironmentSensors", {}, "Show environment sensor tiles"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
+        </div>
+      </section>
+    `;
     const generalSettingsHtml = `
       <section class="editor-panel editor-general">
         <div class="editor-panel-title">${this._escape(this._t("editor.sectionGeneral", {}, "General settings"))}</div>
@@ -7033,14 +7156,8 @@ function createDashboardEditorClass({
         </div>
         <div class="checkbox-grid">
           <label class="inline"><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_view_selector" ${this._config.show_view_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showViewSelector", {}, "Show House/Advisor view selector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_environment_sensors" ${this._config.show_environment_sensors !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnvironmentSensors", {}, "Show environment sensor tiles"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_electric_vehicle" ${this._config.show_electric_vehicle !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showElectricVehicle", {}, "Show E-Auto area"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_garden" ${this._config.show_garden !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGarden", {}, "Show Garten area"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
@@ -7110,7 +7227,7 @@ function createDashboardEditorClass({
         key: "setup",
         label: this._t("editor.tabSetup", {}, "Setup"),
         status: this._statusText({ configured: this._countConfigured([this._config.house, this._config.title, this._config.weather_entity]) }),
-        content: `${this._renderSetupWizard()}${generalSettingsHtml}`,
+        content: `${this._renderSetupWizard()}${dashboardAreasHtml}${generalSettingsHtml}`,
       },
       {
         key: "energy",
@@ -10253,11 +10370,16 @@ const I18N = {
     "editor.sectionEnvironmentSensors": "Environment sensors",
     "editor.sectionLargeConsumers": "Additional large consumers",
     "editor.sectionOverlays": "Image overlays",
+    "editor.sectionDashboardAreas": "Dashboard areas",
     "editor.showBox": "Show {label}",
+    "editor.showAdvisor": "Show Advisor Dashboard",
+    "editor.showCharts": "Show Charts Dashboard",
+    "editor.showElectricVehicle": "Show E-Auto area",
     "editor.showEnergyRangeSelector": "Show Live/1h/24h/month/year/total selector",
     "editor.showHouseSelector": "Show house selector",
     "editor.showEnvironmentSensors": "Show environment sensor tiles",
     "editor.showLargeConsumers": "Show large consumers in house view",
+    "editor.showRecords": "Show Records Dashboard",
     "editor.showGridStatusTile": "Show grid status tile",
     "editor.showMetricTiles": "Show metric boxes below image",
     "editor.showPowerFlows": "Show animated power flows",
@@ -10823,11 +10945,16 @@ const I18N = {
     "editor.sectionEnvironmentSensors": "Umweltsensoren",
     "editor.sectionLargeConsumers": "Weitere große Verbraucher",
     "editor.sectionOverlays": "Bild-Overlays",
+    "editor.sectionDashboardAreas": "Dashboard-Bereiche",
     "editor.showBox": "{label} anzeigen",
+    "editor.showAdvisor": "Advisor Dashboard anzeigen",
+    "editor.showCharts": "Charts Dashboard anzeigen",
+    "editor.showElectricVehicle": "E-Auto-Bereich anzeigen",
     "editor.showEnergyRangeSelector": "Live-/1h-/24h-/Monat-/Jahr-/Gesamt-Auswahl anzeigen",
     "editor.showHouseSelector": "Hausauswahl anzeigen",
     "editor.showEnvironmentSensors": "Umweltsensor-Kacheln anzeigen",
     "editor.showLargeConsumers": "Große Verbraucher in der Hausansicht anzeigen",
+    "editor.showRecords": "Rekorde-Dashboard anzeigen",
     "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
     "editor.showMetricTiles": "Messwertboxen unter dem Bild anzeigen",
     "editor.showPowerFlows": "Animierte Stromflüsse anzeigen",
@@ -11393,11 +11520,16 @@ const I18N = {
     "editor.sectionEnvironmentSensors": "Sensores ambientales",
     "editor.sectionLargeConsumers": "Otros grandes consumidores",
     "editor.sectionOverlays": "Superposiciones de imagen",
+    "editor.sectionDashboardAreas": "Áreas del panel",
     "editor.showBox": "Mostrar {label}",
+    "editor.showAdvisor": "Mostrar panel del asesor",
+    "editor.showCharts": "Mostrar panel de gráficos",
+    "editor.showElectricVehicle": "Mostrar área de coche eléctrico",
     "editor.showEnergyRangeSelector": "Mostrar selector en vivo/1h/24h/mes/año/total",
     "editor.showHouseSelector": "Mostrar selector de casa",
     "editor.showEnvironmentSensors": "Mostrar mosaicos de sensores ambientales",
     "editor.showLargeConsumers": "Mostrar grandes consumidores en la vista de casa",
+    "editor.showRecords": "Mostrar panel de récords",
     "editor.showGridStatusTile": "Mostrar mosaico de red",
     "editor.showMetricTiles": "Mostrar cajas de métricas bajo la imagen",
     "editor.showPowerFlows": "Mostrar flujos de energía animados",
@@ -11963,11 +12095,16 @@ const I18N = {
     "editor.sectionEnvironmentSensors": "Capteurs d'environnement",
     "editor.sectionLargeConsumers": "Autres gros consommateurs",
     "editor.sectionOverlays": "Superpositions d'image",
+    "editor.sectionDashboardAreas": "Zones du tableau de bord",
     "editor.showBox": "Afficher {label}",
+    "editor.showAdvisor": "Afficher le tableau conseiller",
+    "editor.showCharts": "Afficher le tableau des graphiques",
+    "editor.showElectricVehicle": "Afficher la zone voiture électrique",
     "editor.showEnergyRangeSelector": "Afficher le sélecteur direct/1h/24h/mois/an/total",
     "editor.showHouseSelector": "Afficher le sélecteur de maison",
     "editor.showEnvironmentSensors": "Afficher les tuiles de capteurs d'environnement",
     "editor.showLargeConsumers": "Afficher les gros consommateurs dans la vue maison",
+    "editor.showRecords": "Afficher le tableau des records",
     "editor.showGridStatusTile": "Afficher la tuile réseau",
     "editor.showMetricTiles": "Afficher les boîtes de mesure sous l'image",
     "editor.showPowerFlows": "Afficher les flux d'énergie animés",
@@ -12533,11 +12670,16 @@ const I18N = {
     "editor.sectionEnvironmentSensors": "Czujniki środowiskowe",
     "editor.sectionLargeConsumers": "Dodatkowe duże odbiorniki",
     "editor.sectionOverlays": "Nakładki obrazu",
+    "editor.sectionDashboardAreas": "Obszary panelu",
     "editor.showBox": "Pokaż {label}",
+    "editor.showAdvisor": "Pokaż panel doradcy",
+    "editor.showCharts": "Pokaż panel wykresów",
+    "editor.showElectricVehicle": "Pokaż obszar auta elektrycznego",
     "editor.showEnergyRangeSelector": "Pokaż wybór na żywo/1h/24h/miesiąc/rok/łącznie",
     "editor.showHouseSelector": "Pokaż wybór domu",
     "editor.showEnvironmentSensors": "Pokaż kafelki czujników środowiskowych",
     "editor.showLargeConsumers": "Pokaż duże odbiorniki w widoku domu",
+    "editor.showRecords": "Pokaż panel rekordów",
     "editor.showGridStatusTile": "Pokaż kafelek sieci",
     "editor.showMetricTiles": "Pokaż pola metryk pod obrazem",
     "editor.showPowerFlows": "Pokaż animowane przepływy energii",
@@ -12992,6 +13134,21 @@ class HaSolarDashboardCard extends HTMLElement {
       ?? config.show_irrigation
       ?? gardenSource.enabled
       ?? gardenSource.show;
+    const showAdvisor = config.show_advisor
+      ?? config.show_advisor_dashboard
+      ?? config.show_energy_advisor
+      ?? config.advisor?.enabled
+      ?? config.advisor?.show;
+    const showCharts = config.show_charts
+      ?? config.show_chart_dashboard
+      ?? config.show_chart
+      ?? config.charts?.enabled
+      ?? config.charts?.show;
+    const showRecords = config.show_records
+      ?? config.show_records_dashboard
+      ?? config.show_record_dashboard
+      ?? config.records?.enabled
+      ?? config.records?.show;
     this._hasCustomTitle = Object.prototype.hasOwnProperty.call(config, "title");
 
     const baseConfig = createBaseCardConfig({
@@ -13007,6 +13164,9 @@ class HaSolarDashboardCard extends HTMLElement {
       energy_range: energyRange,
       show_electric_vehicle: showElectricVehicle === undefined ? baseConfig.show_electric_vehicle : showElectricVehicle !== false,
       show_garden: showGarden === undefined ? baseConfig.show_garden : showGarden !== false,
+      show_advisor: showAdvisor === undefined ? baseConfig.show_advisor : showAdvisor !== false,
+      show_charts: showCharts === undefined ? baseConfig.show_charts : showCharts !== false,
+      show_records: showRecords === undefined ? baseConfig.show_records : showRecords !== false,
       units: {
         ...baseConfig.units,
         ...(config.units || {}),
@@ -13149,6 +13309,9 @@ class HaSolarDashboardCard extends HTMLElement {
     const viewMode = this._normalizeViewMode(this._selectedViewMode || this.config?.view_mode) || "house";
     if (viewMode === ELECTRIC_VEHICLE_DASHBOARD_VIEW && this.config?.show_electric_vehicle === false) return "house";
     if (viewMode === GARDEN_DASHBOARD_VIEW && this.config?.show_garden === false) return "house";
+    if (viewMode === "advisor" && this.config?.show_advisor === false) return "house";
+    if (viewMode === CHART_DASHBOARD_VIEW && this.config?.show_charts === false) return "house";
+    if (viewMode === RECORDS_DASHBOARD_VIEW && this.config?.show_records === false) return "house";
     return viewMode === FLOORPLAN_DASHBOARD_VIEW && this.config?.show_floorplan === false ? "house" : viewMode;
   }
 
@@ -13157,6 +13320,9 @@ class HaSolarDashboardCard extends HTMLElement {
       if (option.key === FLOORPLAN_DASHBOARD_VIEW) return this.config?.show_floorplan !== false;
       if (option.key === ELECTRIC_VEHICLE_DASHBOARD_VIEW) return this.config?.show_electric_vehicle !== false;
       if (option.key === GARDEN_DASHBOARD_VIEW) return this.config?.show_garden !== false;
+      if (option.key === "advisor") return this.config?.show_advisor !== false;
+      if (option.key === CHART_DASHBOARD_VIEW) return this.config?.show_charts !== false;
+      if (option.key === RECORDS_DASHBOARD_VIEW) return this.config?.show_records !== false;
       return true;
     });
   }

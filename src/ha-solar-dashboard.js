@@ -394,6 +394,21 @@ class HaSolarDashboardCard extends HTMLElement {
       ?? config.show_irrigation
       ?? gardenSource.enabled
       ?? gardenSource.show;
+    const showAdvisor = config.show_advisor
+      ?? config.show_advisor_dashboard
+      ?? config.show_energy_advisor
+      ?? config.advisor?.enabled
+      ?? config.advisor?.show;
+    const showCharts = config.show_charts
+      ?? config.show_chart_dashboard
+      ?? config.show_chart
+      ?? config.charts?.enabled
+      ?? config.charts?.show;
+    const showRecords = config.show_records
+      ?? config.show_records_dashboard
+      ?? config.show_record_dashboard
+      ?? config.records?.enabled
+      ?? config.records?.show;
     this._hasCustomTitle = Object.prototype.hasOwnProperty.call(config, "title");
 
     const baseConfig = createBaseCardConfig({
@@ -409,6 +424,9 @@ class HaSolarDashboardCard extends HTMLElement {
       energy_range: energyRange,
       show_electric_vehicle: showElectricVehicle === undefined ? baseConfig.show_electric_vehicle : showElectricVehicle !== false,
       show_garden: showGarden === undefined ? baseConfig.show_garden : showGarden !== false,
+      show_advisor: showAdvisor === undefined ? baseConfig.show_advisor : showAdvisor !== false,
+      show_charts: showCharts === undefined ? baseConfig.show_charts : showCharts !== false,
+      show_records: showRecords === undefined ? baseConfig.show_records : showRecords !== false,
       units: {
         ...baseConfig.units,
         ...(config.units || {}),
@@ -551,6 +569,9 @@ class HaSolarDashboardCard extends HTMLElement {
     const viewMode = this._normalizeViewMode(this._selectedViewMode || this.config?.view_mode) || "house";
     if (viewMode === ELECTRIC_VEHICLE_DASHBOARD_VIEW && this.config?.show_electric_vehicle === false) return "house";
     if (viewMode === GARDEN_DASHBOARD_VIEW && this.config?.show_garden === false) return "house";
+    if (viewMode === "advisor" && this.config?.show_advisor === false) return "house";
+    if (viewMode === CHART_DASHBOARD_VIEW && this.config?.show_charts === false) return "house";
+    if (viewMode === RECORDS_DASHBOARD_VIEW && this.config?.show_records === false) return "house";
     return viewMode === FLOORPLAN_DASHBOARD_VIEW && this.config?.show_floorplan === false ? "house" : viewMode;
   }
 
@@ -559,6 +580,9 @@ class HaSolarDashboardCard extends HTMLElement {
       if (option.key === FLOORPLAN_DASHBOARD_VIEW) return this.config?.show_floorplan !== false;
       if (option.key === ELECTRIC_VEHICLE_DASHBOARD_VIEW) return this.config?.show_electric_vehicle !== false;
       if (option.key === GARDEN_DASHBOARD_VIEW) return this.config?.show_garden !== false;
+      if (option.key === "advisor") return this.config?.show_advisor !== false;
+      if (option.key === CHART_DASHBOARD_VIEW) return this.config?.show_charts !== false;
+      if (option.key === RECORDS_DASHBOARD_VIEW) return this.config?.show_records !== false;
       return true;
     });
   }

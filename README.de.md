@@ -43,7 +43,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Dezentes Statuslabel im Bild mit letzter Aktualisierung und optionalem Wetterstatus
 - Optionale Wetterbilder per `weather_entity`, zum Beispiel `_sunny`, `_rainy`, `_cloudy`, `_snowy` oder `_thunderstorm`
 - UI- und Editor-Labels folgen automatisch der Home-Assistant-Sprache (`en`, `de`, `es`, `fr`, `pl`)
-- Optionale Ansichtsauswahl oben in der Karte für `Hausansicht` oder `Advisor Dashboard`
+- Optionale Ansichtsauswahl oben in der Karte für `Hausansicht`, `E-Auto`, `Garten`, `Grundriss`, `Advisor`, `Charts` und `Rekorde`; die Bereiche können im Editor ein- und ausgeblendet werden
 - In der Home-Assistant-Kartenauswahl mit Preview registriert
 
 ## Eigene Bilder und Wettervarianten

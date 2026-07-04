@@ -361,9 +361,45 @@ export function createElectricVehicleDashboardMethods({
         .filter((item) => item.state.configured && item.state.value !== ELECTRIC_VEHICLE_EMPTY_VALUE);
     },
 
-    _electricVehicleImageUrl(path = this._electricVehicleConfig().image) {
+    _electricVehicleImageUrls(path = this._electricVehicleConfig().image) {
       const value = String(path || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE;
-      if (/^(?:https?:)?\/\//i.test(value) || value.startsWith("/") || value.startsWith("data:")) return value;
+      const defaultValue = DEFAULT_ELECTRIC_VEHICLE_IMAGE;
+      const values = [value, ...(value === defaultValue ? [] : [defaultValue])];
+      const urls = values.flatMap((item) => {
+        if (/^(?:https?:)?\/\//i.test(item) || item.startsWith("/") || item.startsWith("data:")) return [item];
+        const withoutImagesPrefix = item.replace(/^images\//, "");
+        const candidates = [item, withoutImagesPrefix]
+          .flatMap((candidate) => (typeof this._imageFormatFiles === "function" ? this._imageFormatFiles(candidate) : [candidate]))
+          .filter(Boolean);
+        return candidates.flatMap((candidate) => {
+          const localCandidates = [
+            `images/${candidate.replace(/^images\//, "")}`,
+            candidate,
+          ];
+          const resolved = [
+            typeof this._remoteImageUrl === "function" ? this._remoteImageUrl(candidate.replace(/^images\//, "")) : "",
+            `/hacsfiles/ha-solar-dashboard/images/${candidate.replace(/^images\//, "")}`,
+            `/hacsfiles/ha-solar-dashboard/${candidate.replace(/^images\//, "")}`,
+            `/local/community/ha-solar-dashboard/images/${candidate.replace(/^images\//, "")}`,
+            `/local/community/ha-solar-dashboard/${candidate.replace(/^images\//, "")}`,
+          ];
+          localCandidates.forEach((localCandidate) => {
+            try {
+              resolved.push(assetUrl(localCandidate));
+            } catch (_err) {
+              // Optional local assets can be unavailable in some install modes.
+            }
+          });
+          return resolved;
+        });
+      });
+      return [...new Set(urls.filter(Boolean))];
+    },
+
+    _electricVehicleImageUrl(path = this._electricVehicleConfig().image) {
+      const [src] = this._electricVehicleImageUrls(path);
+      if (src) return src;
+      const value = String(path || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE;
       try {
         return assetUrl(value);
       } catch (_err) {
@@ -441,7 +477,7 @@ export function createElectricVehicleDashboardMethods({
     _renderElectricVehicleDashboard() {
       const evConfig = this._electricVehicleConfig();
       const configuredFields = this._electricVehicleConfiguredFields();
-      const imageSrc = this._electricVehicleImageUrl(evConfig.image);
+      const [imageSrc, ...imageFallbacks] = this._electricVehicleImageUrls(evConfig.image);
       const title = evConfig.title || this._t("ev.title", {}, "E-Auto");
       const vehicleTitle = this._electricVehicleFieldState(this._electricVehicleDefinition("vehicle_title")).value;
       const subtitle = vehicleTitle && vehicleTitle !== ELECTRIC_VEHICLE_EMPTY_VALUE
@@ -479,7 +515,7 @@ export function createElectricVehicleDashboardMethods({
           </div>
           ${modeControl}
           <div class="electric-vehicle-hero">
-            <img class="electric-vehicle-image" src="${this._escape(imageSrc)}" alt="${this._escape(title)}" />
+            <img class="electric-vehicle-image" src="${this._escape(imageSrc)}" data-fallbacks="${this._escape(imageFallbacks.join("|"))}" alt="${this._escape(title)}" />
             <div class="electric-vehicle-badges">${heroBadges}</div>
           </div>
           ${empty || groups}

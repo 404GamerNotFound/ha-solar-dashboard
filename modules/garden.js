@@ -226,9 +226,46 @@ export function createGardenDashboardMethods({
         .filter((item) => item.state.configured && item.state.value !== GARDEN_EMPTY_VALUE);
     },
 
-    _gardenImageUrl(path = this._gardenConfig().image) {
+    _gardenImageUrls(path = this._gardenConfig().image) {
       const value = String(path || DEFAULT_GARDEN_IMAGE).trim() || DEFAULT_GARDEN_IMAGE;
-      if (/^(?:https?:)?\/\//i.test(value) || value.startsWith("/") || value.startsWith("data:")) return value;
+      const defaultValue = DEFAULT_GARDEN_IMAGE;
+      const values = [value, ...(value === defaultValue ? [] : [defaultValue])];
+      const urls = values.flatMap((item) => {
+        if (/^(?:https?:)?\/\//i.test(item) || item.startsWith("/") || item.startsWith("data:")) return [item];
+        const withoutImagesPrefix = item.replace(/^images\//, "");
+        const candidates = [item, withoutImagesPrefix]
+          .flatMap((candidate) => (typeof this._imageFormatFiles === "function" ? this._imageFormatFiles(candidate) : [candidate]))
+          .filter(Boolean);
+        return candidates.flatMap((candidate) => {
+          const normalized = candidate.replace(/^images\//, "");
+          const localCandidates = [
+            `images/${normalized}`,
+            candidate,
+          ];
+          const resolved = [
+            typeof this._remoteImageUrl === "function" ? this._remoteImageUrl(normalized) : "",
+            `/hacsfiles/ha-solar-dashboard/images/${normalized}`,
+            `/hacsfiles/ha-solar-dashboard/${normalized}`,
+            `/local/community/ha-solar-dashboard/images/${normalized}`,
+            `/local/community/ha-solar-dashboard/${normalized}`,
+          ];
+          localCandidates.forEach((localCandidate) => {
+            try {
+              resolved.push(assetUrl(localCandidate));
+            } catch (_err) {
+              // Optional local assets can be unavailable in some install modes.
+            }
+          });
+          return resolved;
+        });
+      });
+      return [...new Set(urls.filter(Boolean))];
+    },
+
+    _gardenImageUrl(path = this._gardenConfig().image) {
+      const [src] = this._gardenImageUrls(path);
+      if (src) return src;
+      const value = String(path || DEFAULT_GARDEN_IMAGE).trim() || DEFAULT_GARDEN_IMAGE;
       try {
         return assetUrl(value);
       } catch (_err) {
@@ -271,7 +308,7 @@ export function createGardenDashboardMethods({
     _renderGardenDashboard() {
       const gardenConfig = this._gardenConfig();
       const configuredFields = this._gardenConfiguredFields();
-      const imageSrc = this._gardenImageUrl(gardenConfig.image);
+      const [imageSrc, ...imageFallbacks] = this._gardenImageUrls(gardenConfig.image);
       const title = gardenConfig.title || this._t("garden.title", {}, "Garten");
       const mower = this._gardenFieldState(this._gardenDefinition("mower_status"));
       const gardenWater = this._gardenFieldState(this._gardenDefinition("garden_water"));
@@ -316,7 +353,7 @@ export function createGardenDashboardMethods({
             <span>${this._escape(stateLabel)}</span>
           </div>
           <div class="garden-hero">
-            <img class="garden-image" src="${this._escape(imageSrc)}" alt="${this._escape(title)}" />
+            <img class="garden-image" src="${this._escape(imageSrc)}" data-fallbacks="${this._escape(imageFallbacks.join("|"))}" alt="${this._escape(title)}" />
             <div class="garden-overlay">
               ${heroBadges}
             </div>

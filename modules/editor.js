@@ -59,11 +59,29 @@ export function createDashboardEditorClass({
       ?? (config || {}).show_irrigation
       ?? gardenSource.enabled
       ?? gardenSource.show;
+    const showAdvisor = (config || {}).show_advisor
+      ?? (config || {}).show_advisor_dashboard
+      ?? (config || {}).show_energy_advisor
+      ?? (config || {}).advisor?.enabled
+      ?? (config || {}).advisor?.show;
+    const showCharts = (config || {}).show_charts
+      ?? (config || {}).show_chart_dashboard
+      ?? (config || {}).show_chart
+      ?? (config || {}).charts?.enabled
+      ?? (config || {}).charts?.show;
+    const showRecords = (config || {}).show_records
+      ?? (config || {}).show_records_dashboard
+      ?? (config || {}).show_record_dashboard
+      ?? (config || {}).records?.enabled
+      ?? (config || {}).records?.show;
     this._config = {
       ...baseConfig,
       ...config,
       show_electric_vehicle: showElectricVehicle === undefined ? baseConfig.show_electric_vehicle !== false : showElectricVehicle !== false,
       show_garden: showGarden === undefined ? baseConfig.show_garden !== false : showGarden !== false,
+      show_advisor: showAdvisor === undefined ? baseConfig.show_advisor !== false : showAdvisor !== false,
+      show_charts: showCharts === undefined ? baseConfig.show_charts !== false : showCharts !== false,
+      show_records: showRecords === undefined ? baseConfig.show_records !== false : showRecords !== false,
       image_overlays: {
         smoke: {
           ...(((config || {}).overlays || {}).smoke || {}),
@@ -321,6 +339,9 @@ export function createDashboardEditorClass({
     if (root === "show_garden") return true;
     if (root === "garden") return true;
     if (root === "show_floorplan") return true;
+    if (root === "show_advisor") return true;
+    if (root === "show_charts") return true;
+    if (root === "show_records") return true;
     if (root === "floorplan") return true;
     if (root === "environment_sensors") {
       return ["visible", "show_image", "left", "top", "label", "color"].includes(lastPart);
@@ -2998,6 +3019,9 @@ export function createDashboardEditorClass({
       (this._config.show_floorplan === false && normalizedConfiguredViewMode === "floorplan")
       || (this._config.show_electric_vehicle === false && normalizedConfiguredViewMode === "electric_vehicle")
       || (this._config.show_garden === false && normalizedConfiguredViewMode === "garden")
+      || (this._config.show_advisor === false && normalizedConfiguredViewMode === "advisor")
+      || (this._config.show_charts === false && normalizedConfiguredViewMode === "charts")
+      || (this._config.show_records === false && normalizedConfiguredViewMode === "records")
     )
       ? "house"
       : normalizedConfiguredViewMode;
@@ -3007,6 +3031,9 @@ export function createDashboardEditorClass({
         if (option.key === "floorplan") return this._config.show_floorplan !== false;
         if (option.key === "electric_vehicle") return this._config.show_electric_vehicle !== false;
         if (option.key === "garden") return this._config.show_garden !== false;
+        if (option.key === "advisor") return this._config.show_advisor !== false;
+        if (option.key === "charts") return this._config.show_charts !== false;
+        if (option.key === "records") return this._config.show_records !== false;
         return true;
       })
       .map((option) => `<option value="${this._escape(option.key)}"${option.key === viewMode ? " selected" : ""}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`)
@@ -3060,6 +3087,23 @@ export function createDashboardEditorClass({
         <div class="section-body">${content}</div>
       </section>
     `;
+    const dashboardAreasHtml = `
+      <section class="editor-panel editor-dashboard-areas">
+        <div class="editor-panel-title">${this._escape(this._t("editor.sectionDashboardAreas", {}, "Dashboard areas"))}</div>
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="show_view_selector" ${this._config.show_view_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showViewSelector", {}, "Show view selector"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_electric_vehicle" ${this._config.show_electric_vehicle !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showElectricVehicle", {}, "Show E-Auto area"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_garden" ${this._config.show_garden !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGarden", {}, "Show Garten area"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_floorplan" ${this._config.show_floorplan !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showFloorplan", {}, "Show floorplan"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_advisor" ${this._config.show_advisor !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showAdvisor", {}, "Show Advisor Dashboard"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_charts" ${this._config.show_charts !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showCharts", {}, "Show Charts Dashboard"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_records" ${this._config.show_records !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showRecords", {}, "Show Records Dashboard"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_environment_sensors" ${this._config.show_environment_sensors !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnvironmentSensors", {}, "Show environment sensor tiles"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
+        </div>
+      </section>
+    `;
     const generalSettingsHtml = `
       <section class="editor-panel editor-general">
         <div class="editor-panel-title">${this._escape(this._t("editor.sectionGeneral", {}, "General settings"))}</div>
@@ -3075,14 +3119,8 @@ export function createDashboardEditorClass({
         </div>
         <div class="checkbox-grid">
           <label class="inline"><input type="checkbox" data-path="show_title" ${this._config.show_title !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showTitle"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_view_selector" ${this._config.show_view_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showViewSelector", {}, "Show House/Advisor view selector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_metric_tiles" ${this._config.show_metric_tiles !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showMetricTiles"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_environment_sensors" ${this._config.show_environment_sensors !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showEnvironmentSensors", {}, "Show environment sensor tiles"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_large_consumers" ${this._config.show_large_consumers !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showLargeConsumers", {}, "Show large consumers in house view"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_electric_vehicle" ${this._config.show_electric_vehicle !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showElectricVehicle", {}, "Show E-Auto area"))}</label>
-          <label class="inline"><input type="checkbox" data-path="show_garden" ${this._config.show_garden !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGarden", {}, "Show Garten area"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
@@ -3152,7 +3190,7 @@ export function createDashboardEditorClass({
         key: "setup",
         label: this._t("editor.tabSetup", {}, "Setup"),
         status: this._statusText({ configured: this._countConfigured([this._config.house, this._config.title, this._config.weather_entity]) }),
-        content: `${this._renderSetupWizard()}${generalSettingsHtml}`,
+        content: `${this._renderSetupWizard()}${dashboardAreasHtml}${generalSettingsHtml}`,
       },
       {
         key: "energy",

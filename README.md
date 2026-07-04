@@ -92,6 +92,8 @@ view_mode: house
 show_view_selector: true
 show_house_selector: true
 show_environment_sensors: true
+show_electric_vehicle: true
+show_garden: true
 entities:
   pv_roof_power: sensor.pv_dach_leistung
   pv_shed_power: sensor.pv_schuppen_leistung
@@ -277,9 +279,15 @@ large_consumers:
 
 - `title` (string, default: `Energy Flow`)
 - `house` (string, default: `single_family_home`; options: `single_family_home`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, `city_villa_pitched_roof`; legacy German values are still accepted as aliases)
-- `view_mode` (string, default: `house`; options: `house`, `advisor`; controls whether the card opens with the house visualization or the Advisor Dashboard)
+- `view_mode` (string, default: `house`; options: `house`, `electric_vehicle`, `garden`, `floorplan`, `advisor`, `charts`, `records`; controls which dashboard view the card opens with)
 - `show_title` (boolean, default: `true`; shows/hides the title)
-- `show_view_selector` (boolean, default: `true`; shows/hides the House View / Advisor Dashboard selector in the card header)
+- `show_view_selector` (boolean, default: `true`; shows/hides the dashboard view selector in the card header)
+- `show_electric_vehicle` (boolean, default: `true`; shows/hides the E-Auto dashboard view)
+- `show_garden` (boolean, default: `true`; shows/hides the Garden dashboard view)
+- `show_floorplan` (boolean, default: `true`; shows/hides the Floorplan dashboard view)
+- `show_advisor` (boolean, default: `true`; shows/hides the Advisor dashboard view)
+- `show_charts` (boolean, default: `true`; shows/hides the Charts dashboard view)
+- `show_records` (boolean, default: `true`; shows/hides the Records dashboard view)
 - `show_house_selector` (boolean, default: `true`)
 - `show_energy_range_selector` (boolean, default: `false`; shows the `Live` / `1h` / `24h` / `1 month` / `1 year` / `Total` selector in the header when enabled)
 - `show_metric_tiles` (boolean, default: `true`; shows/hides the summary boxes below the image)

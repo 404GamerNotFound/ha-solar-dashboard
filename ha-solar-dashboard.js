@@ -5417,6 +5417,23 @@ function createDashboardEditorClass({
       .replace(/'/g, "&#039;");
   }
 
+  _editorTabIcon(key) {
+    const icons = {
+      setup: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-5"></path><path d="M4 8V3"></path><path d="M12 21v-9"></path><path d="M12 4V3"></path><path d="M20 21v-3"></path><path d="M20 10V3"></path><path d="M2 16h4"></path><path d="M10 8h4"></path><path d="M18 14h4"></path></svg>`,
+      energy: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 10-13h-7Z"></path></svg>`,
+      devices: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v5"></path><path d="M16 2v5"></path><path d="M6 7h12v4a6 6 0 0 1-12 0Z"></path><path d="M12 17v5"></path></svg>`,
+      electric_vehicle: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h14"></path><path d="M6 17l1.5-6.2A3 3 0 0 1 10.42 8h3.16a3 3 0 0 1 2.92 2.8L18 17"></path><path d="M7.5 13h9"></path><circle cx="8" cy="17" r="2"></circle><circle cx="16" cy="17" r="2"></circle><path d="M12 4l-1.4 2.6H13L11.4 10"></path></svg>`,
+      garden: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5C8.7 7.2 6 10.9 6 14a6 6 0 0 0 12 0c0-3.1-2.7-6.8-6-10.5Z"></path></svg>`,
+      environment: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 14.76V5a4 4 0 0 0-8 0v9.76A5 5 0 1 0 14 14.76Z"></path><path d="M10 9h4"></path></svg>`,
+      floorplan: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4h16v16Z"></path><path d="M4 10h7"></path><path d="M14 4v7"></path><path d="M11 10v10"></path><path d="M11 15h9"></path></svg>`,
+      layout: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v6H4Z"></path><path d="M13 5h7v4h-7Z"></path><path d="M13 11h7v8h-7Z"></path><path d="M4 13h7v6H4Z"></path></svg>`,
+      appearance: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v2"></path><path d="M12 19v2"></path><path d="M4.22 4.22 5.64 5.64"></path><path d="M18.36 18.36 19.78 19.78"></path><path d="M3 12h2"></path><path d="M19 12h2"></path><circle cx="12" cy="12" r="4"></circle></svg>`,
+      advisor: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M8 14a6 6 0 1 1 8 0c-.8.7-1 1.4-1 2H9c0-.6-.2-1.3-1-2Z"></path><path d="M10.2 10.8 12 12.6l2.8-3.2"></path></svg>`,
+      advanced: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3"></path><path d="m16 9 4 3-4 3"></path><path d="m14 5-4 14"></path></svg>`,
+    };
+    return icons[key] || icons.setup;
+  }
+
   _renderEntityInput(metric) {
     if (metric.key === "pv_roof_power") return "";
     if (metric.key === "inverter_power") return "";
@@ -7331,12 +7348,16 @@ function createDashboardEditorClass({
         </div>
       </header>
     `;
-    const tabButtons = tabPanels.map((tab) => `
-      <button type="button" class="editor-tab${tab.key === activeTab ? " active" : ""}" data-editor-tab="${this._escape(tab.key)}" aria-pressed="${tab.key === activeTab ? "true" : "false"}">
-        <span>${this._escape(tab.label)}</span>
-        <small>${this._escape(tab.status)}</small>
+    const tabButtons = tabPanels.map((tab) => {
+      const accessibleLabel = `${tab.label}: ${tab.status}`;
+      return `
+      <button type="button" class="editor-tab${tab.key === activeTab ? " active" : ""}" data-editor-tab="${this._escape(tab.key)}" aria-pressed="${tab.key === activeTab ? "true" : "false"}" aria-label="${this._escape(accessibleLabel)}" title="${this._escape(accessibleLabel)}">
+        ${this._editorTabIcon(tab.key)}
+        <span class="editor-tab-label">${this._escape(tab.label)}</span>
+        <small class="editor-tab-status">${this._escape(tab.status)}</small>
       </button>
-    `).join("");
+    `;
+    }).join("");
     const tabContent = tabPanels.map((tab) => `
       <section class="editor-tab-panel${tab.key === activeTab ? " active" : ""}" data-editor-tab-panel="${this._escape(tab.key)}" ${tab.key === activeTab ? "" : "hidden"}>
         ${tab.content}
@@ -7377,13 +7398,15 @@ function createDashboardEditorClass({
         .overview-item span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--editor-muted);font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:0}
         .overview-item strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:18px;line-height:1.15}
         .overview-item.warning{box-shadow:inset 3px 0 0 var(--editor-warning)}
-        .editor-shell{display:grid;grid-template-columns:minmax(176px,220px) minmax(0,1fr);gap:12px;align-items:start;min-width:0}
+        .editor-shell{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start;min-width:0}
         .editor-main{display:grid;gap:12px;min-width:0}
-        .editor-tabs{position:sticky;top:0;display:grid;gap:6px;min-width:0;align-self:start}
-        .editor-tab{display:grid;gap:3px;justify-items:start;text-align:left;padding:10px 11px;border-color:var(--editor-border);background:var(--editor-surface-soft)}
-        .editor-tab span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:850}
-        .editor-tab small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--editor-muted);font-size:11px;font-weight:650}
-        .editor-tab.active{border-color:color-mix(in srgb,var(--editor-accent) 72%,var(--editor-border));background:color-mix(in srgb,var(--editor-accent) 12%,var(--editor-surface));box-shadow:inset 4px 0 0 var(--editor-accent)}
+        .editor-tabs{position:sticky;top:0;z-index:2;display:flex;flex-wrap:nowrap;gap:6px;min-width:0;max-width:100%;align-self:stretch;overflow-x:auto;overflow-y:hidden;padding:2px 0 5px;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--editor-accent) 40%,var(--editor-border)) transparent}
+        .editor-tab{position:relative;flex:1 0 72px;display:grid;grid-template-rows:22px auto;place-items:center;gap:3px;min-height:54px;padding:7px 8px;border-color:var(--editor-border);border-radius:8px;background:var(--editor-surface-soft);text-align:center}
+        .editor-tab-icon{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:var(--editor-muted)}
+        .editor-tab-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;font-weight:850;line-height:1.15}
+        .editor-tab-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+        .editor-tab.active{border-color:color-mix(in srgb,var(--editor-accent) 72%,var(--editor-border));background:color-mix(in srgb,var(--editor-accent) 12%,var(--editor-surface));box-shadow:inset 0 -3px 0 var(--editor-accent)}
+        .editor-tab.active .editor-tab-icon{color:var(--editor-accent)}
         .editor-tab-panel{display:grid;gap:12px;min-width:0}
         .editor-tab-panel[hidden]{display:none}
         .editor-panel,.editor-card{display:grid;gap:10px;min-width:0;padding:12px;border:1px solid var(--editor-border);border-radius:8px;background:color-mix(in srgb,var(--editor-bg) 86%,var(--editor-surface))}

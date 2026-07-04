@@ -1380,6 +1380,23 @@ export function createDashboardEditorClass({
       .replace(/'/g, "&#039;");
   }
 
+  _editorTabIcon(key) {
+    const icons = {
+      setup: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-5"></path><path d="M4 8V3"></path><path d="M12 21v-9"></path><path d="M12 4V3"></path><path d="M20 21v-3"></path><path d="M20 10V3"></path><path d="M2 16h4"></path><path d="M10 8h4"></path><path d="M18 14h4"></path></svg>`,
+      energy: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 10-13h-7Z"></path></svg>`,
+      devices: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v5"></path><path d="M16 2v5"></path><path d="M6 7h12v4a6 6 0 0 1-12 0Z"></path><path d="M12 17v5"></path></svg>`,
+      electric_vehicle: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h14"></path><path d="M6 17l1.5-6.2A3 3 0 0 1 10.42 8h3.16a3 3 0 0 1 2.92 2.8L18 17"></path><path d="M7.5 13h9"></path><circle cx="8" cy="17" r="2"></circle><circle cx="16" cy="17" r="2"></circle><path d="M12 4l-1.4 2.6H13L11.4 10"></path></svg>`,
+      garden: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5C8.7 7.2 6 10.9 6 14a6 6 0 0 0 12 0c0-3.1-2.7-6.8-6-10.5Z"></path></svg>`,
+      environment: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 14.76V5a4 4 0 0 0-8 0v9.76A5 5 0 1 0 14 14.76Z"></path><path d="M10 9h4"></path></svg>`,
+      floorplan: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4h16v16Z"></path><path d="M4 10h7"></path><path d="M14 4v7"></path><path d="M11 10v10"></path><path d="M11 15h9"></path></svg>`,
+      layout: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h7v6H4Z"></path><path d="M13 5h7v4h-7Z"></path><path d="M13 11h7v8h-7Z"></path><path d="M4 13h7v6H4Z"></path></svg>`,
+      appearance: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v2"></path><path d="M12 19v2"></path><path d="M4.22 4.22 5.64 5.64"></path><path d="M18.36 18.36 19.78 19.78"></path><path d="M3 12h2"></path><path d="M19 12h2"></path><circle cx="12" cy="12" r="4"></circle></svg>`,
+      advisor: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M8 14a6 6 0 1 1 8 0c-.8.7-1 1.4-1 2H9c0-.6-.2-1.3-1-2Z"></path><path d="M10.2 10.8 12 12.6l2.8-3.2"></path></svg>`,
+      advanced: `<svg class="editor-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 9-4 3 4 3"></path><path d="m16 9 4 3-4 3"></path><path d="m14 5-4 14"></path></svg>`,
+    };
+    return icons[key] || icons.setup;
+  }
+
   _renderEntityInput(metric) {
     if (metric.key === "pv_roof_power") return "";
     if (metric.key === "inverter_power") return "";
@@ -3294,12 +3311,16 @@ export function createDashboardEditorClass({
         </div>
       </header>
     `;
-    const tabButtons = tabPanels.map((tab) => `
-      <button type="button" class="editor-tab${tab.key === activeTab ? " active" : ""}" data-editor-tab="${this._escape(tab.key)}" aria-pressed="${tab.key === activeTab ? "true" : "false"}">
-        <span>${this._escape(tab.label)}</span>
-        <small>${this._escape(tab.status)}</small>
+    const tabButtons = tabPanels.map((tab) => {
+      const accessibleLabel = `${tab.label}: ${tab.status}`;
+      return `
+      <button type="button" class="editor-tab${tab.key === activeTab ? " active" : ""}" data-editor-tab="${this._escape(tab.key)}" aria-pressed="${tab.key === activeTab ? "true" : "false"}" aria-label="${this._escape(accessibleLabel)}" title="${this._escape(accessibleLabel)}">
+        ${this._editorTabIcon(tab.key)}
+        <span class="editor-tab-label">${this._escape(tab.label)}</span>
+        <small class="editor-tab-status">${this._escape(tab.status)}</small>
       </button>
-    `).join("");
+    `;
+    }).join("");
     const tabContent = tabPanels.map((tab) => `
       <section class="editor-tab-panel${tab.key === activeTab ? " active" : ""}" data-editor-tab-panel="${this._escape(tab.key)}" ${tab.key === activeTab ? "" : "hidden"}>
         ${tab.content}

@@ -3618,8 +3618,8 @@ class HaSolarDashboardCard extends HTMLElement {
       ? `
         <div class="header">
           ${titleHtml ? `<div class="header-title-row">${titleHtml}</div>` : ""}
-          ${headerControlsHtml ? `<div class="header-controls">${headerControlsHtml}</div>` : ""}
           ${viewSelectorHtml ? `<div class="header-tabs">${viewSelectorHtml}</div>` : ""}
+          ${headerControlsHtml ? `<div class="header-controls">${headerControlsHtml}</div>` : ""}
         </div>
       `
       : "";

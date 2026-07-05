@@ -6051,8 +6051,12 @@ function createDashboardEditorClass({
         .sort((a, b) => b.score - a.score || a.entity.entityId.localeCompare(b.entity.entityId));
       const best = candidates[0];
       if (!best) return null;
-      if (!target.path.includes("energy_entities")) usedEntityIds.add(best.entity.entityId);
       const current = this._pathValue(this._config || {}, target.path) || "";
+      if (String(current).trim() === best.entity.entityId) {
+        usedPaths.add(target.path);
+        return null;
+      }
+      if (!target.path.includes("energy_entities")) usedEntityIds.add(best.entity.entityId);
       usedPaths.add(target.path);
       return {
         path: target.path,
@@ -17167,7 +17171,7 @@ class HaSolarDashboardCard extends HTMLElement {
           ? `${icon}<span class="view-mode-label">${this._escape(label)}</span>`
           : this._escape(label);
         return htmlTag("button", {
-          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon), "view-mode-icon-only": Boolean(option.icon) }),
+          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon) }),
           type: "button",
           "data-view-mode": option.key,
           "aria-pressed": active ? "true" : "false",
@@ -17775,12 +17779,21 @@ class HaSolarDashboardCard extends HTMLElement {
     const statusHtml = this.config.show_status_label !== false
       ? `<div class="scene-status" data-accent-key="${STATUS_METRIC.key}" data-status-label style="${this._escape(this._accentStyle(STATUS_METRIC))}">${this._escape(statusLabel)}</div>`
       : "";
-    const headerHtml = [
-      this.config.show_title !== false ? `<div class="title">${this._escape(this._displayTitle())}</div>` : "",
+    const titleHtml = this.config.show_title !== false ? `<div class="title">${this._escape(this._displayTitle())}</div>` : "";
+    const headerControlsHtml = [
       activeView === "house" ? this._renderEnergyRangeSelector() : "",
-      this._renderViewSelector(),
       activeView === "house" ? this._renderHouseSelector(state.activeHouse) : "",
     ].filter(Boolean).join("");
+    const viewSelectorHtml = this._renderViewSelector();
+    const headerHtml = [titleHtml, headerControlsHtml, viewSelectorHtml].some(Boolean)
+      ? `
+        <div class="header">
+          ${titleHtml ? `<div class="header-title-row">${titleHtml}</div>` : ""}
+          ${headerControlsHtml ? `<div class="header-controls">${headerControlsHtml}</div>` : ""}
+          ${viewSelectorHtml ? `<div class="header-tabs">${viewSelectorHtml}</div>` : ""}
+        </div>
+      `
+      : "";
     const gridHtml = visibleTileMetrics.map((metric) => this._renderTile(metric, state.variant)).join("");
     const environmentHtml = environmentMetrics.map((metric) => this._renderTile(metric, state.variant)).join("");
     const largeConsumerHtml = largeConsumerMetrics.map((metric) => this._renderTile(metric, state.variant)).join("");
@@ -17805,18 +17818,21 @@ class HaSolarDashboardCard extends HTMLElement {
       <style>
         :host { display:block; --text-main:#f3f6ff; --text-muted:#9ba3b8; --glass-soft:rgba(255,255,255,.08); --accent-yellow:#ffc233; --accent-blue:#1f8fff; --accent-green:#34d399; --hud-box-opacity:.65; --hud-box-scale:1; --hud-box-bg:rgba(8,16,38,var(--hud-box-opacity)); }
         ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 80% at 15% 0%, #232b44 0%, #111727 70%); color:var(--text-main); box-shadow:0 18px 45px rgba(0,0,0,.55); padding:16px; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
-        .header { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; align-items:center; gap:10px; margin-bottom:12px; }
+        .header { display:grid; grid-template-columns:minmax(0,1fr); align-items:stretch; gap:10px; margin-bottom:12px; min-width:0; }
+        .header-title-row { display:flex; align-items:flex-start; min-width:0; }
+        .header-controls { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-width:0; }
+        .header-tabs { display:block; min-width:0; width:100%; }
         .title { min-width:0; overflow-wrap:anywhere; font-size:1.28rem; font-weight:700; line-height:1.2; }
         .house-select,.energy-range-select,.view-mode-toggle { background:var(--glass-soft); border:1px solid rgba(255,255,255,.2); border-radius:8px; color:var(--text-main); font:inherit; font-size:.88rem; min-height:34px; }
-        .house-select,.energy-range-select { max-width:170px; padding:0 30px 0 10px; }
-        .energy-range-select { max-width:110px; }
-        .view-mode-toggle { display:grid; grid-template-columns:repeat(var(--view-mode-count,5),42px); width:max-content; max-width:100%; padding:2px; box-sizing:border-box; gap:2px; }
-        .view-mode-button { min-width:0; min-height:28px; border:0; border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.82rem; font-weight:800; line-height:1.1; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+        .house-select,.energy-range-select { width:auto; max-width:220px; padding:0 30px 0 10px; }
+        .energy-range-select { min-width:110px; max-width:140px; }
+        .view-mode-toggle { container-type:inline-size; display:grid; grid-template-columns:repeat(var(--view-mode-count,5),minmax(0,1fr)); width:100%; max-width:100%; padding:3px; box-sizing:border-box; gap:3px; }
+        .view-mode-button { min-width:0; min-height:32px; border:0; border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.8rem; font-weight:800; line-height:1.1; padding:0 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
         .view-mode-icon { width:17px; height:17px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
         .view-mode-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .view-mode-icon-only .view-mode-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
         .view-mode-button.active { background:linear-gradient(135deg,rgba(31,143,255,.5),rgba(52,211,153,.22)); color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 4px 12px rgba(31,143,255,.22); }
         .view-mode-button:focus-visible { outline:2px solid rgba(147,197,253,.95); outline-offset:1px; }
+        @container (max-width:560px){ .view-mode-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; } .view-mode-button { padding:0 6px; } }
         .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
         .image-overlay-wrap { position:absolute; z-index:1; width:10%; transform:translate(-50%,var(--overlay-translate-y,-50%)); transform-origin:center bottom; pointer-events:none; user-select:none; }
@@ -18059,7 +18075,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .garden-action-tile { appearance:none; border-style:solid; }
         .garden-tile-note { min-width:0; color:#dbeafe; font-size:.66rem; line-height:1.15; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .garden-empty { display:grid; place-items:center; min-height:120px; padding:18px; border-radius:8px; border:1px dashed rgba(255,255,255,.16); color:var(--text-muted); text-align:center; font-size:.86rem; }
-        @media (max-width:700px){ .hide-mobile{display:none!important;} .header{grid-template-columns:minmax(0,1fr);align-items:stretch;} .house-select,.energy-range-select,.view-mode-toggle{width:100%;max-width:none;} .view-mode-toggle{grid-template-columns:repeat(var(--view-mode-count,5),minmax(0,1fr));} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head,.electric-vehicle-head,.garden-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} .record-loading-item{grid-template-columns:1fr;align-items:start;gap:2px;} .electric-vehicle-head span,.garden-head span{max-width:100%;justify-self:start;} .electric-vehicle-badge{max-width:164px;} .electric-vehicle-grid,.garden-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .electric-vehicle-mode-toggle{grid-template-columns:repeat(2,minmax(0,1fr));} .garden-badge{min-width:78px;max-width:124px;padding:5px 7px;} .garden-badge span{font-size:.6rem;} .garden-badge strong{font-size:.76rem;} }
+        @media (max-width:700px){ .hide-mobile{display:none!important;} .house-select,.energy-range-select{width:100%;max-width:none;} .header-controls{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head,.electric-vehicle-head,.garden-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} .record-loading-item{grid-template-columns:1fr;align-items:start;gap:2px;} .electric-vehicle-head span,.garden-head span{max-width:100%;justify-self:start;} .electric-vehicle-badge{max-width:164px;} .electric-vehicle-grid,.garden-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .electric-vehicle-mode-toggle{grid-template-columns:repeat(2,minmax(0,1fr));} .garden-badge{min-width:78px;max-width:124px;padding:5px 7px;} .garden-badge span{font-size:.6rem;} .garden-badge strong{font-size:.76rem;} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
       </style>
       <style>
@@ -18069,7 +18085,7 @@ class HaSolarDashboardCard extends HTMLElement {
         }
       </style>
       <ha-card>
-        ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
+        ${headerHtml}
         ${voltageAlertHtml}
         ${activeView === "advisor"
           ? advisorHtml

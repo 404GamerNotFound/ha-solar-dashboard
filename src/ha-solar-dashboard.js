@@ -3000,7 +3000,7 @@ class HaSolarDashboardCard extends HTMLElement {
           ? `${icon}<span class="view-mode-label">${this._escape(label)}</span>`
           : this._escape(label);
         return htmlTag("button", {
-          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon), "view-mode-icon-only": Boolean(option.icon) }),
+          class: classNames("view-mode-button", { active, "view-mode-icon-button": Boolean(option.icon) }),
           type: "button",
           "data-view-mode": option.key,
           "aria-pressed": active ? "true" : "false",
@@ -3608,12 +3608,21 @@ class HaSolarDashboardCard extends HTMLElement {
     const statusHtml = this.config.show_status_label !== false
       ? `<div class="scene-status" data-accent-key="${STATUS_METRIC.key}" data-status-label style="${this._escape(this._accentStyle(STATUS_METRIC))}">${this._escape(statusLabel)}</div>`
       : "";
-    const headerHtml = [
-      this.config.show_title !== false ? `<div class="title">${this._escape(this._displayTitle())}</div>` : "",
+    const titleHtml = this.config.show_title !== false ? `<div class="title">${this._escape(this._displayTitle())}</div>` : "";
+    const headerControlsHtml = [
       activeView === "house" ? this._renderEnergyRangeSelector() : "",
-      this._renderViewSelector(),
       activeView === "house" ? this._renderHouseSelector(state.activeHouse) : "",
     ].filter(Boolean).join("");
+    const viewSelectorHtml = this._renderViewSelector();
+    const headerHtml = [titleHtml, headerControlsHtml, viewSelectorHtml].some(Boolean)
+      ? `
+        <div class="header">
+          ${titleHtml ? `<div class="header-title-row">${titleHtml}</div>` : ""}
+          ${headerControlsHtml ? `<div class="header-controls">${headerControlsHtml}</div>` : ""}
+          ${viewSelectorHtml ? `<div class="header-tabs">${viewSelectorHtml}</div>` : ""}
+        </div>
+      `
+      : "";
     const gridHtml = visibleTileMetrics.map((metric) => this._renderTile(metric, state.variant)).join("");
     const environmentHtml = environmentMetrics.map((metric) => this._renderTile(metric, state.variant)).join("");
     const largeConsumerHtml = largeConsumerMetrics.map((metric) => this._renderTile(metric, state.variant)).join("");
@@ -3643,7 +3652,7 @@ class HaSolarDashboardCard extends HTMLElement {
         }
       </style>
       <ha-card>
-        ${headerHtml ? `<div class="header">${headerHtml}</div>` : ""}
+        ${headerHtml}
         ${voltageAlertHtml}
         ${activeView === "advisor"
           ? advisorHtml

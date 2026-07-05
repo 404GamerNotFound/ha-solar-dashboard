@@ -3458,8 +3458,12 @@ function createDashboardEditorClass({
         .sort((a, b) => b.score - a.score || a.entity.entityId.localeCompare(b.entity.entityId));
       const best = candidates[0];
       if (!best) return null;
-      if (!target.path.includes("energy_entities")) usedEntityIds.add(best.entity.entityId);
       const current = this._pathValue(this._config || {}, target.path) || "";
+      if (String(current).trim() === best.entity.entityId) {
+        usedPaths.add(target.path);
+        return null;
+      }
+      if (!target.path.includes("energy_entities")) usedEntityIds.add(best.entity.entityId);
       usedPaths.add(target.path);
       return {
         path: target.path,

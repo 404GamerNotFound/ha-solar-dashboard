@@ -3290,6 +3290,36 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._domCache?.[cacheKey]?.get(String(value)) || [];
   }
 
+  _showEntityMoreInfo(entityId = "") {
+    const id = String(entityId || "").trim();
+    if (!id) return;
+    this.dispatchEvent(new CustomEvent("hass-more-info", {
+      detail: { entityId: id },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _toggleEntity(entityId = "") {
+    const id = String(entityId || "").trim();
+    const domain = id.split(".")[0];
+    if (!id || !domain || !this._hass?.callService) return;
+    Promise.resolve(this._hass.callService(domain, "toggle", { entity_id: id })).catch((error) => {
+      console.warn("HA Solar Dashboard: could not toggle entity", id, error);
+    });
+  }
+
+  _callEntityAction(entityId = "", confirmText = "") {
+    const id = String(entityId || "").trim();
+    const domain = id.split(".")[0];
+    if (!id || !domain || !this._hass?.callService) return;
+    if (confirmText && !window.confirm(confirmText)) return;
+    const service = domain === "button" ? "press" : "turn_on";
+    Promise.resolve(this._hass.callService(domain, service, { entity_id: id })).catch((error) => {
+      console.warn("HA Solar Dashboard: could not call entity action", id, error);
+    });
+  }
+
   _attachControls() {
     const viewModeButtons = Array.from(this.shadowRoot.querySelectorAll("[data-view-mode]"));
     if (viewModeButtons.length > 0) {
@@ -3357,6 +3387,35 @@ class HaSolarDashboardCard extends HTMLElement {
         event.stopPropagation();
         this._electricVehicleSetMode(event.currentTarget.dataset.electricVehicleMode || "");
       });
+    });
+
+    const activateEntityElement = (element, callback) => {
+      ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
+        element.addEventListener(eventName, (event) => event.stopPropagation());
+      });
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        callback(event.currentTarget);
+      });
+      element.addEventListener("keydown", (event) => {
+        if (!["Enter", " "].includes(event.key)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        callback(event.currentTarget);
+      });
+    };
+
+    this.shadowRoot.querySelectorAll("[data-more-info]").forEach((element) => {
+      activateEntityElement(element, (target) => this._showEntityMoreInfo(target.dataset.moreInfo));
+    });
+
+    this.shadowRoot.querySelectorAll("[data-entity-toggle]").forEach((element) => {
+      activateEntityElement(element, (target) => this._toggleEntity(target.dataset.entityToggle));
+    });
+
+    this.shadowRoot.querySelectorAll("[data-call-service-entity]").forEach((element) => {
+      activateEntityElement(element, (target) => this._callEntityAction(target.dataset.callServiceEntity, target.dataset.confirm || ""));
     });
 
     const image = this.shadowRoot.querySelector(".scene-image");

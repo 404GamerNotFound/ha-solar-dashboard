@@ -33,6 +33,10 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Optionale Import-/Export-Box im Bild, standardmäßig unten rechts beim Stromkabel positioniert, plus Netzstatus-Kachel mit Bezug, Einspeisung oder Autarkie; unterstützt einen Vorzeichen-Sensor oder getrennte Bezugs-/Einspeise-Sensoren
 - Optionale Auto-Entitäten für Max-/Ziel-SoC, verbunden/eingesteckt und Laden aktiviert steuern die Advisor-Empfehlungen, damit kein Ladevorschlag erscheint, wenn das Auto schon am Ziel-SoC ist; länger hohe Auto-SoC-Werte über 80%/90% lösen priorisierte Batteriepflege-Hinweise aus
 - Optionaler EVCC-Lademodus-Schalter im E-Auto-Dashboard für Aus, PV, Min+PV und Schnell über `electric_vehicle.entities.mode_control`
+- Optionaler `electric_vehicle.evcc_loadpoint`-Slug für marq24/ha-evcc; typische Loadpoint- und Site-Entitäten wie Ladeleistung, PV-Regelgrund, Netzleistung, Hausakku-SoC und Einspeise-Puffer werden daraus automatisch erkannt
+- E-Auto- und Gartenansicht unterstützen eigene Tag-/Nachtbilder über `electric_vehicle.day_image`/`night_image` und `garden.day_image`/`night_image`
+- Garten-Dashboard mit konfigurierbaren Bewässerungszonen (`garden.zones[]`) inklusive Bildmarker, Zonen-Kacheln, Plantext/Plan-Entität und sicherem More-Info-Standard statt versehentlichem Direkt-Toggle
+- Manuelle Gartenaktionen (`garden.manual_actions[]`) können Script-/Button-Entitäten mit optionalem Bestätigungstext als Kacheln anzeigen
 - Die Bild-Badges im E-Auto- und Garten-Dashboard können über `positions.*.left` und `positions.*.top` im Layout-Editor frei positioniert werden
 - Tooltips pro Wert mit Entität, Rohwert, formatiertem Wert und Aktualisierungszeit
 - Klick auf entity-basierte Boxen und Kacheln öffnet ein 24/48-Stunden-Verlaufsdiagramm aus Home-Assistant-History-Daten

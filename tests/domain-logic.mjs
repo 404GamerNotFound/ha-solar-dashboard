@@ -175,7 +175,8 @@ assert.equal(baseConfig.show_electric_vehicle, true);
 assert.equal(baseConfig.electric_vehicle.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE);
 assert.equal(baseConfig.show_garden, true);
 assert.equal(baseConfig.garden.image, DEFAULT_GARDEN_IMAGE);
-assert.equal(Object.hasOwn(baseConfig.garden, "zones"), false);
+assert.deepEqual(baseConfig.garden.zones, []);
+assert.deepEqual(baseConfig.garden.manual_actions, []);
 assert.equal(createEditorBaseConfig({ floorplanLabel: "Etage 1" }).floorplan.floors[0].label, "Etage 1");
 assert.equal(createEditorBaseConfig().electric_vehicle.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE);
 assert.equal(createEditorBaseConfig().garden.image, DEFAULT_GARDEN_IMAGE);
@@ -197,6 +198,16 @@ assert.equal(electricVehicleConfig.wallbox, "wallbox2_power");
 assert.equal(electricVehicleConfig.entities.mode_control, "select.evcc_charge_mode");
 assert.equal(electricVehicleConfig.entities.vehicle_soc, "sensor.evcc_vehicle_soc");
 assert.equal(electricVehicleConfig.entities.charge_power, "sensor.evcc_charge_power");
+const evccLoadpointConfig = normalizeElectricVehicleConfig({
+  evcc_loadpoint: "Garage - Delta AC MAX",
+  evcc_prefix: "evcc",
+  day_image: "/local/eauto/eauto_day.png",
+  night_image: "/local/eauto/eauto_night.png",
+});
+assert.equal(evccLoadpointConfig.evcc_loadpoint, "garage_delta_ac_max");
+assert.equal(evccLoadpointConfig.evcc_prefix, "evcc");
+assert.equal(evccLoadpointConfig.day_image, "/local/eauto/eauto_day.png");
+assert.equal(evccLoadpointConfig.night_image, "/local/eauto/eauto_night.png");
 const gardenConfig = normalizeGardenConfig({
   image_path: "/local/garden.png",
   garden_entities: {
@@ -206,13 +217,18 @@ const gardenConfig = normalizeGardenConfig({
     automation_enabled: "input_boolean.irrigation_auto",
   },
   zones: [{ id: "z1", label: "Rasen links", left: 12, top: 34 }],
+  manual_actions: [{ label: "Rasen starten", script: "script.bewaesserung_rasen_lauf", confirm: "Start?" }],
 });
 assert.equal(gardenConfig.image, "/local/garden.png");
 assert.equal(gardenConfig.entities.mower_status, "sensor.mower_status");
 assert.equal(gardenConfig.entities.rain_24h, "sensor.rain_24h");
 assert.equal(gardenConfig.entities.garden_water, "switch.garden_water");
 assert.equal(gardenConfig.entities.irrigation_enabled, "input_boolean.irrigation_auto");
-assert.equal(Object.hasOwn(gardenConfig, "zones"), false);
+assert.equal(gardenConfig.zones.length, 1);
+assert.equal(gardenConfig.zones[0].label, "Rasen links");
+assert.equal(gardenConfig.zones[0].left, 12);
+assert.equal(gardenConfig.manual_actions.length, 1);
+assert.equal(gardenConfig.manual_actions[0].entity, "script.bewaesserung_rasen_lauf");
 
 assert.equal(normalizeGridPrice("0,32"), 0.32);
 assert.equal(normalizeGridPrice(""), "");

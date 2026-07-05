@@ -1,62 +1,84 @@
 export const DEFAULT_ELECTRIC_VEHICLE_IMAGE = "images/car_image.png";
 
 export const ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS = Object.freeze({
+  mode: "electric_vehicle_mode",
   status: "electric_vehicle_status",
   charge_power: "electric_vehicle_charge_power",
+  charge_current: "electric_vehicle_charge_current",
+  session_energy: "electric_vehicle_session_energy",
+  grid_power: "electric_vehicle_grid_power",
+  home_battery_soc: "electric_vehicle_home_battery_soc",
+  session_solar_percentage: "electric_vehicle_session_solar_percentage",
   vehicle_soc: "electric_vehicle_vehicle_soc",
   charge_remaining_duration: "electric_vehicle_charge_remaining_duration",
-  session_solar_percentage: "electric_vehicle_session_solar_percentage",
 });
 
 export const ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS = Object.freeze({
-  status: Object.freeze({ left: 13, top: 11 }),
-  charge_power: Object.freeze({ left: 84, top: 11 }),
+  mode: Object.freeze({ left: 13, top: 11 }),
+  status: Object.freeze({ left: 87, top: 12 }),
+  charge_power: Object.freeze({ left: 87, top: 30 }),
+  charge_current: Object.freeze({ left: 87, top: 48 }),
+  session_energy: Object.freeze({ left: 87, top: 66 }),
+  grid_power: Object.freeze({ left: 14, top: 84 }),
+  home_battery_soc: Object.freeze({ left: 36, top: 84 }),
+  session_solar_percentage: Object.freeze({ left: 57, top: 84 }),
   vehicle_soc: Object.freeze({ left: 13, top: 23 }),
   charge_remaining_duration: Object.freeze({ left: 84, top: 23 }),
-  session_solar_percentage: Object.freeze({ left: 50, top: 86 }),
 });
 
 export const ELECTRIC_VEHICLE_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "status", labelKey: "ev.status", label: "Status", group: "state", kind: "status", aliases: ["ev_status", "loadpoint_status", "wallbox_status"] }),
-  Object.freeze({ key: "mode", labelKey: "ev.mode", label: "Mode", group: "state", kind: "text", aliases: ["ev_mode", "loadpoint_mode", "wallbox_mode"] }),
-  Object.freeze({ key: "mode_control", labelKey: "ev.modeControl", label: "Lademodus", group: "controls", kind: "text", control: true, aliases: ["ev_mode_control", "evcc_mode", "evcc_mode_select", "charge_mode", "charge_mode_select", "loadpoint_mode_select", "wallbox_mode_select"] }),
-  Object.freeze({ key: "connected", labelKey: "ev.connected", label: "Connected", group: "state", kind: "boolean", wallboxFallback: "connected", aliases: ["ev_connected", "vehicle_connected", "wallbox_connected"] }),
-  Object.freeze({ key: "charging", labelKey: "ev.charging", label: "Charging", group: "state", kind: "boolean", aliases: ["ev_charging", "vehicle_charging", "wallbox_charging"] }),
-  Object.freeze({ key: "enabled", labelKey: "ev.enabled", label: "Enabled", group: "state", kind: "boolean", wallboxFallback: "chargingEnabled", aliases: ["ev_enabled", "loadpoint_enabled", "wallbox_enabled", "wallbox_charging_enabled"] }),
-  Object.freeze({ key: "vehicle_title", labelKey: "ev.vehicleTitle", label: "Vehicle", group: "vehicle", kind: "text", aliases: ["ev_vehicle_title", "vehicle_title", "wallbox_vehicle_title"] }),
-  Object.freeze({ key: "vehicle_name", labelKey: "ev.vehicleName", label: "Vehicle name", group: "vehicle", kind: "text", aliases: ["ev_vehicle_name", "vehicle_name", "wallbox_vehicle_name"] }),
+  Object.freeze({ key: "pv_status_text", labelKey: "ev.pvStatusText", label: "PV status text", group: "state", kind: "text", evccDomain: "sensor", evccSuffix: "pv_action_value", aliases: ["ev_pv_status_text", "evcc_pv_status_text", "evcc_pv_action_value", "pv_action_value", "loadpoint_pv_action_value", "wallbox_pv_action_value"] }),
+  Object.freeze({ key: "mode", labelKey: "ev.mode", label: "Mode", group: "state", kind: "mode", evccDomain: "select", evccSuffix: "mode", aliases: ["ev_mode", "loadpoint_mode", "wallbox_mode"] }),
+  Object.freeze({ key: "mode_control", labelKey: "ev.modeControl", label: "Lademodus", group: "controls", kind: "mode", control: true, evccDomain: "select", evccSuffix: "mode", aliases: ["ev_mode_control", "evcc_mode", "evcc_mode_select", "charge_mode", "charge_mode_select", "loadpoint_mode_select", "wallbox_mode_select"] }),
+  Object.freeze({ key: "connected", labelKey: "ev.connected", label: "Connected", group: "state", kind: "boolean", wallboxFallback: "connected", evccDomain: "binary_sensor", evccSuffix: "connected", aliases: ["ev_connected", "vehicle_connected", "wallbox_connected"] }),
+  Object.freeze({ key: "charging", labelKey: "ev.charging", label: "Charging", group: "state", kind: "boolean", evccDomain: "binary_sensor", evccSuffix: "charging", aliases: ["ev_charging", "vehicle_charging", "wallbox_charging"] }),
+  Object.freeze({ key: "enabled", labelKey: "ev.enabled", label: "Enabled", group: "state", kind: "boolean", wallboxFallback: "chargingEnabled", evccDomain: "binary_sensor", evccSuffix: "enabled", aliases: ["ev_enabled", "loadpoint_enabled", "wallbox_enabled", "wallbox_charging_enabled"] }),
+  Object.freeze({ key: "vehicle_title", labelKey: "ev.vehicleTitle", label: "Vehicle", group: "vehicle", kind: "text", attr: "vehicle.name", attrFallbacks: ["vehicle.originObject.title", "vehicle.title"], aliases: ["ev_vehicle_title", "vehicle_title", "wallbox_vehicle_title"] }),
+  Object.freeze({ key: "vehicle_name", labelKey: "ev.vehicleName", label: "Vehicle name", group: "vehicle", kind: "text", attr: "vehicle.name", attrFallbacks: ["vehicle.originObject.title", "vehicle.title"], evccDomain: "select", evccSuffix: "vehicle_name", aliases: ["ev_vehicle_name", "vehicle_name", "wallbox_vehicle_name"] }),
   Object.freeze({ key: "vehicle_soc", labelKey: "ev.vehicleSoc", label: "Vehicle SoC", group: "vehicle", kind: "percent", wallboxFallback: "soc", aliases: ["ev_vehicle_soc", "vehicle_soc", "wallbox_soc"] }),
-  Object.freeze({ key: "limit_soc", labelKey: "ev.limitSoc", label: "Target SoC", group: "vehicle", kind: "percent", wallboxFallback: "maxSoc", aliases: ["ev_limit_soc", "vehicle_limit_soc", "target_soc", "wallbox_max_soc", "wallbox_target_soc"] }),
+  Object.freeze({ key: "limit_soc", labelKey: "ev.limitSoc", label: "Target SoC", group: "vehicle", kind: "percent", wallboxFallback: "maxSoc", evccDomain: "number", evccSuffix: "limit_soc", aliases: ["ev_limit_soc", "vehicle_limit_soc", "target_soc", "wallbox_max_soc", "wallbox_target_soc"] }),
   Object.freeze({ key: "min_soc", labelKey: "ev.minSoc", label: "Minimum SoC", group: "vehicle", kind: "percent", aliases: ["ev_min_soc", "vehicle_min_soc", "wallbox_min_soc"] }),
   Object.freeze({ key: "vehicle_range", labelKey: "ev.vehicleRange", label: "Range", group: "vehicle", kind: "distance", aliases: ["ev_vehicle_range", "vehicle_range", "wallbox_vehicle_range"] }),
-  Object.freeze({ key: "charge_power", labelKey: "ev.chargePower", label: "Charging power", group: "charging", kind: "power", wallboxFallback: "power", aliases: ["ev_charge_power", "charge_power", "loadpoint_charge_power", "wallbox_power"] }),
-  Object.freeze({ key: "charge_current", labelKey: "ev.chargeCurrent", label: "Charging current", group: "charging", kind: "current", aliases: ["ev_charge_current", "charge_current", "loadpoint_charge_current", "wallbox_current"] }),
+  Object.freeze({ key: "charge_power", labelKey: "ev.chargePower", label: "Charging power", group: "charging", kind: "power", wallboxFallback: "power", evccDomain: "sensor", evccSuffix: "charge_power", aliases: ["ev_charge_power", "charge_power", "loadpoint_charge_power", "wallbox_power"] }),
+  Object.freeze({ key: "charge_current", labelKey: "ev.chargeCurrent", label: "Charging current", group: "charging", kind: "current", evccDomain: "sensor", evccSuffix: "charge_current", aliases: ["ev_charge_current", "charge_current", "loadpoint_charge_current", "wallbox_current"] }),
   Object.freeze({ key: "charged_energy", labelKey: "ev.chargedEnergy", label: "Charged energy", group: "charging", kind: "energy", aliases: ["ev_charged_energy", "charged_energy", "loadpoint_charged_energy"] }),
-  Object.freeze({ key: "session_energy", labelKey: "ev.sessionEnergy", label: "Session energy", group: "charging", kind: "energy", aliases: ["ev_session_energy", "session_energy", "wallbox_session_energy"] }),
-  Object.freeze({ key: "session_solar_percentage", labelKey: "ev.sessionSolarPercentage", label: "Session solar", group: "charging", kind: "percent", aliases: ["ev_session_solar_percentage", "session_solar_percentage", "session_solar_share"] }),
+  Object.freeze({ key: "session_energy", labelKey: "ev.sessionEnergy", label: "Session energy", group: "charging", kind: "energy", evccDomain: "sensor", evccSuffix: "session_energy", aliases: ["ev_session_energy", "session_energy", "wallbox_session_energy"] }),
+  Object.freeze({ key: "session_solar_percentage", labelKey: "ev.sessionSolarPercentage", label: "Session solar", group: "charging", kind: "percent", evccDomain: "sensor", evccSuffix: "session_solar_percentage", aliases: ["ev_session_solar_percentage", "session_solar_percentage", "session_solar_share"] }),
   Object.freeze({ key: "charge_total_import", labelKey: "ev.chargeTotalImport", label: "Charge meter", group: "charging", kind: "energy", aliases: ["ev_charge_total_import", "charge_total_import", "wallbox_energy_total"] }),
-  Object.freeze({ key: "charge_duration", labelKey: "ev.chargeDuration", label: "Charge duration", group: "charging", kind: "duration", aliases: ["ev_charge_duration", "charge_duration", "wallbox_charge_duration"] }),
-  Object.freeze({ key: "charge_remaining_duration", labelKey: "ev.chargeRemainingDuration", label: "Remaining time", group: "charging", kind: "duration", wallboxFallback: "remainingTime", aliases: ["ev_charge_remaining_duration", "remaining_time", "wallbox_remaining_time"] }),
-  Object.freeze({ key: "charge_remaining_energy", labelKey: "ev.chargeRemainingEnergy", label: "Remaining energy", group: "charging", kind: "energy", aliases: ["ev_charge_remaining_energy", "charge_remaining_energy"] }),
-  Object.freeze({ key: "phases_active", labelKey: "ev.phasesActive", label: "Active phases", group: "limits", kind: "phases", wallboxFallback: "phase", aliases: ["ev_phases_active", "phases_active", "wallbox_phase"] }),
-  Object.freeze({ key: "phases_configured", labelKey: "ev.phasesConfigured", label: "Configured phases", group: "limits", kind: "phases", aliases: ["ev_phases_configured", "phases_configured", "wallbox_phases_configured"] }),
+  Object.freeze({ key: "charge_duration", labelKey: "ev.chargeDuration", label: "Charge duration", group: "charging", kind: "duration", evccDomain: "sensor", evccSuffix: "charge_duration", aliases: ["ev_charge_duration", "charge_duration", "wallbox_charge_duration"] }),
+  Object.freeze({ key: "charge_remaining_duration", labelKey: "ev.chargeRemainingDuration", label: "Remaining time", group: "charging", kind: "duration", wallboxFallback: "remainingTime", evccDomain: "sensor", evccSuffix: "charge_remaining_duration", aliases: ["ev_charge_remaining_duration", "remaining_time", "wallbox_remaining_time"] }),
+  Object.freeze({ key: "charge_remaining_energy", labelKey: "ev.chargeRemainingEnergy", label: "Remaining energy", group: "charging", kind: "energy", evccDomain: "sensor", evccSuffix: "charge_remaining_energy", aliases: ["ev_charge_remaining_energy", "charge_remaining_energy"] }),
+  Object.freeze({ key: "phases_active", labelKey: "ev.phasesActive", label: "Active phases", group: "limits", kind: "phases", wallboxFallback: "phase", evccDomain: "sensor", evccSuffix: "phases_active", aliases: ["ev_phases_active", "phases_active", "wallbox_phase"] }),
+  Object.freeze({ key: "phases_configured", labelKey: "ev.phasesConfigured", label: "Configured phases", group: "limits", kind: "phases", evccDomain: "select", evccSuffix: "phases_configured", aliases: ["ev_phases_configured", "phases_configured", "wallbox_phases_configured"] }),
   Object.freeze({ key: "phase_action", labelKey: "ev.phaseAction", label: "Upcoming phase action", group: "limits", kind: "text", wallboxFallback: "phaseAction", aliases: ["ev_phase_action", "phase_action", "wallbox_phase_action"] }),
   Object.freeze({ key: "phase_remaining", labelKey: "ev.phaseRemaining", label: "Phase action remaining", group: "limits", kind: "duration", wallboxFallback: "phaseRemaining", aliases: ["ev_phase_remaining", "phase_remaining", "wallbox_phase_remaining"] }),
-  Object.freeze({ key: "min_current", labelKey: "ev.minCurrent", label: "Minimum current", group: "limits", kind: "current", aliases: ["ev_min_current", "min_current", "wallbox_min_current"] }),
-  Object.freeze({ key: "max_current", labelKey: "ev.maxCurrent", label: "Maximum current", group: "limits", kind: "current", aliases: ["ev_max_current", "max_current", "wallbox_max_current"] }),
-  Object.freeze({ key: "limit_energy", labelKey: "ev.limitEnergy", label: "Energy limit", group: "limits", kind: "energy", aliases: ["ev_limit_energy", "limit_energy", "wallbox_limit_energy"] }),
-  Object.freeze({ key: "enable_threshold", labelKey: "ev.enableThreshold", label: "Enable threshold", group: "limits", kind: "power", aliases: ["ev_enable_threshold", "enable_threshold", "wallbox_enable_threshold"] }),
-  Object.freeze({ key: "enable_delay", labelKey: "ev.enableDelay", label: "Enable delay", group: "limits", kind: "duration", aliases: ["ev_enable_delay", "enable_delay", "wallbox_enable_delay"] }),
-  Object.freeze({ key: "disable_threshold", labelKey: "ev.disableThreshold", label: "Disable threshold", group: "limits", kind: "power", aliases: ["ev_disable_threshold", "disable_threshold", "wallbox_disable_threshold"] }),
-  Object.freeze({ key: "disable_delay", labelKey: "ev.disableDelay", label: "Disable delay", group: "limits", kind: "duration", aliases: ["ev_disable_delay", "disable_delay", "wallbox_disable_delay"] }),
+  Object.freeze({ key: "min_current", labelKey: "ev.minCurrent", label: "Minimum current", group: "limits", kind: "current", evccDomain: "select", evccSuffix: "min_current", aliases: ["ev_min_current", "min_current", "wallbox_min_current"] }),
+  Object.freeze({ key: "max_current", labelKey: "ev.maxCurrent", label: "Maximum current", group: "limits", kind: "current", evccDomain: "select", evccSuffix: "max_current", aliases: ["ev_max_current", "max_current", "wallbox_max_current"] }),
+  Object.freeze({ key: "limit_energy", labelKey: "ev.limitEnergy", label: "Energy limit", group: "limits", kind: "energy", evccDomain: "number", evccSuffix: "limit_energy", aliases: ["ev_limit_energy", "limit_energy", "wallbox_limit_energy"] }),
+  Object.freeze({ key: "enable_threshold", labelKey: "ev.enableThreshold", label: "Enable threshold", group: "limits", kind: "power", evccDomain: "number", evccSuffix: "enable_threshold", aliases: ["ev_enable_threshold", "enable_threshold", "wallbox_enable_threshold"] }),
+  Object.freeze({ key: "enable_delay", labelKey: "ev.enableDelay", label: "Enable delay", group: "limits", kind: "duration", evccDomain: "number", evccSuffix: "enable_delay", aliases: ["ev_enable_delay", "enable_delay", "wallbox_enable_delay"] }),
+  Object.freeze({ key: "disable_threshold", labelKey: "ev.disableThreshold", label: "Disable threshold", group: "limits", kind: "power", evccDomain: "number", evccSuffix: "disable_threshold", aliases: ["ev_disable_threshold", "disable_threshold", "wallbox_disable_threshold"] }),
+  Object.freeze({ key: "disable_delay", labelKey: "ev.disableDelay", label: "Disable delay", group: "limits", kind: "duration", evccDomain: "number", evccSuffix: "disable_delay", aliases: ["ev_disable_delay", "disable_delay", "wallbox_disable_delay"] }),
   Object.freeze({ key: "plan_active", labelKey: "ev.planActive", label: "Plan active", group: "planning", kind: "boolean", aliases: ["ev_plan_active", "plan_active", "wallbox_plan_active"] }),
   Object.freeze({ key: "smart_cost_active", labelKey: "ev.smartCostActive", label: "Smart cost active", group: "planning", kind: "boolean", aliases: ["ev_smart_cost_active", "smart_cost_active", "wallbox_smart_cost_active"] }),
   Object.freeze({ key: "effective_priority", labelKey: "ev.effectivePriority", label: "Effective priority", group: "planning", kind: "text", aliases: ["ev_effective_priority", "effective_priority", "wallbox_effective_priority"] }),
   Object.freeze({ key: "priority", labelKey: "ev.priority", label: "Priority", group: "planning", kind: "text", aliases: ["ev_priority", "wallbox_priority"] }),
-  Object.freeze({ key: "battery_boost", labelKey: "ev.batteryBoost", label: "Battery boost", group: "planning", kind: "boolean", aliases: ["ev_battery_boost", "batteryboost", "battery_boost", "wallbox_battery_boost"] }),
+  Object.freeze({ key: "battery_boost", labelKey: "ev.batteryBoost", label: "Battery boost", group: "planning", kind: "boolean", evccDomain: "switch", evccSuffix: "battery_boost", aliases: ["ev_battery_boost", "batteryboost", "battery_boost", "wallbox_battery_boost"] }),
   Object.freeze({ key: "battery_boost_limit", labelKey: "ev.batteryBoostLimit", label: "Battery boost limit", group: "planning", kind: "percent", aliases: ["ev_battery_boost_limit", "battery_boost_limit", "wallbox_battery_boost_limit"] }),
   Object.freeze({ key: "smart_cost_limit", labelKey: "ev.smartCostLimit", label: "Smart cost limit", group: "planning", kind: "text", aliases: ["ev_smart_cost_limit", "smart_cost_limit", "wallbox_smart_cost_limit"] }),
   Object.freeze({ key: "smart_feed_in_priority_limit", labelKey: "ev.smartFeedInPriorityLimit", label: "Feed-in priority limit", group: "planning", kind: "text", aliases: ["ev_smart_feed_in_priority_limit", "smart_feed_in_priority_limit", "wallbox_smart_feed_in_priority_limit"] }),
+  Object.freeze({ key: "grid_power", labelKey: "ev.gridPower", label: "Grid", group: "site", kind: "grid_power", evccDomain: "sensor", evccSuffix: "grid_power", evccSite: true, aliases: ["ev_grid_power", "evcc_grid_power", "site_grid_power"] }),
+  Object.freeze({ key: "pv_power", labelKey: "ev.pvPower", label: "PV power", group: "site", kind: "power", evccDomain: "sensor", evccSuffix: "pv_power", evccSite: true, aliases: ["ev_pv_power", "evcc_pv_power", "site_pv_power"] }),
+  Object.freeze({ key: "home_power", labelKey: "ev.homePower", label: "Home load", group: "site", kind: "power", evccDomain: "sensor", evccSuffix: "home_power", evccSite: true, aliases: ["ev_home_power", "evcc_home_power", "site_home_power"] }),
+  Object.freeze({ key: "home_battery_power", labelKey: "ev.homeBatteryPower", label: "House battery power", group: "site", kind: "power", evccDomain: "sensor", evccSuffix: "battery_power", evccSite: true, aliases: ["ev_home_battery_power", "home_battery_power", "evcc_battery_power"] }),
+  Object.freeze({ key: "home_battery_soc", labelKey: "ev.homeBatterySoc", label: "House battery", group: "site", kind: "percent", evccDomain: "sensor", evccSuffix: "battery_soc", evccSite: true, aliases: ["ev_home_battery_soc", "home_battery_soc", "evcc_battery_soc"] }),
+  Object.freeze({ key: "solar_forecast", labelKey: "ev.solarForecast", label: "Solar forecast", group: "site", kind: "power", evccDomain: "sensor", evccSuffix: "tariff_solar", evccSite: true, aliases: ["ev_solar_forecast", "solar_forecast", "evcc_tariff_solar"] }),
+  Object.freeze({ key: "residual_power", labelKey: "ev.residualPower", label: "Feed-in buffer", group: "site", kind: "power", evccDomain: "number", evccSuffix: "residual_power", evccSite: true, aliases: ["ev_residual_power", "evcc_residual_power", "residual_power"] }),
+  Object.freeze({ key: "priority_soc", labelKey: "ev.prioritySoc", label: "House priority until", group: "site", kind: "percent", evccDomain: "select", evccSuffix: "priority_soc", evccSite: true, aliases: ["ev_priority_soc", "evcc_priority_soc", "priority_soc"] }),
+  Object.freeze({ key: "buffer_soc", labelKey: "ev.bufferSoc", label: "EV may use battery from", group: "site", kind: "percent", evccDomain: "select", evccSuffix: "buffer_soc", evccSite: true, aliases: ["ev_buffer_soc", "evcc_buffer_soc", "buffer_soc"] }),
+  Object.freeze({ key: "buffer_start_soc", labelKey: "ev.bufferStartSoc", label: "EV starts from battery", group: "site", kind: "percent", evccDomain: "select", evccSuffix: "buffer_start_soc", evccSite: true, aliases: ["ev_buffer_start_soc", "evcc_buffer_start_soc", "buffer_start_soc"] }),
+  Object.freeze({ key: "battery_discharge_control", labelKey: "ev.batteryDischargeControl", label: "Battery discharge control", group: "site", kind: "boolean", evccDomain: "switch", evccSuffix: "battery_discharge_control", evccSite: true, aliases: ["ev_battery_discharge_control", "evcc_battery_discharge_control", "battery_discharge_control"] }),
 ]);
 
 const ELECTRIC_VEHICLE_GROUPS = Object.freeze([
@@ -66,6 +88,7 @@ const ELECTRIC_VEHICLE_GROUPS = Object.freeze([
   Object.freeze({ key: "charging", labelKey: "ev.groupCharging", label: "Charging" }),
   Object.freeze({ key: "limits", labelKey: "ev.groupLimits", label: "Limits" }),
   Object.freeze({ key: "planning", labelKey: "ev.groupPlanning", label: "Planning" }),
+  Object.freeze({ key: "site", labelKey: "ev.groupSite", label: "Site & battery" }),
 ]);
 
 const ELECTRIC_VEHICLE_MODE_OPTIONS = Object.freeze([
@@ -139,6 +162,25 @@ function normalizeElectricVehicleWallbox(value) {
   return "wallbox_power";
 }
 
+function normalizeElectricVehicleLoadpoint(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  if (["1", "2", "wallbox", "wallbox1", "wallbox2", "wallbox_2", "wallbox_power", "wallbox2_power"].includes(normalized.toLowerCase())) return "";
+  return normalized
+    .replace(/^evcc[_-]/i, "")
+    .replace(/[^a-z0-9]+/gi, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function normalizeElectricVehiclePrefix(value) {
+  return String(value || "evcc")
+    .trim()
+    .replace(/[^a-z0-9]+/gi, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase() || "evcc";
+}
+
 function normalizeElectricVehicleEntities(entities = {}) {
   const source = entities && typeof entities === "object" ? entities : {};
   return Object.fromEntries(
@@ -155,10 +197,15 @@ export function normalizeElectricVehicleConfig(config = {}) {
     : config && typeof config === "object"
       ? config
       : {};
+  const loadpoint = normalizeElectricVehicleLoadpoint(source.evcc_loadpoint || source.loadpoint_slug || source.loadpoint_id || source.loadpoint);
   return {
     title: String(source.title || source.label || "").trim(),
     image: String(source.image || source.image_path || source.car_image || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE,
+    day_image: String(source.day_image || source.image_day || source.eauto_day_image || "").trim(),
+    night_image: String(source.night_image || source.image_night || source.eauto_night_image || "").trim(),
     wallbox: normalizeElectricVehicleWallbox(source.wallbox || source.wallbox_key || source.loadpoint || source.loadpoint_id),
+    evcc_loadpoint: loadpoint,
+    evcc_prefix: normalizeElectricVehiclePrefix(source.evcc_prefix || source.integration_prefix || source.prefix),
     entities: normalizeElectricVehicleEntities(source.entities || source.evcc_entities || {}),
   };
 }
@@ -194,12 +241,33 @@ export function createElectricVehicleDashboardMethods({
         : { key: wallboxKey, label: wallboxKey, unit: "power" };
     },
 
+    _electricVehicleEvccEntityCandidates(definition = {}) {
+      const evConfig = this._electricVehicleConfig();
+      const prefix = normalizeElectricVehiclePrefix(evConfig.evcc_prefix);
+      const suffix = String(definition.evccSuffix || "").trim();
+      const domain = String(definition.evccDomain || "").trim();
+      if (!prefix || !suffix || !domain) return [];
+      const loadpoint = normalizeElectricVehicleLoadpoint(evConfig.evcc_loadpoint);
+      const entityObjectId = definition.evccSite ? `${prefix}_${suffix}` : loadpoint ? `${prefix}_${loadpoint}_${suffix}` : "";
+      return entityObjectId ? [`${domain}.${entityObjectId}`] : [];
+    },
+
+    _electricVehicleEvccEntityId(definition = {}) {
+      const candidates = this._electricVehicleEvccEntityCandidates(definition);
+      if (candidates.length === 0) return "";
+      if (!this._hass?.states) return "";
+      return candidates.find((entityId) => this._hass.states[entityId]) || "";
+    },
+
     _electricVehicleEntityId(key) {
       const definition = this._electricVehicleDefinition(key);
       const evConfig = this._electricVehicleConfig();
       const evEntities = evConfig.entities || {};
       const direct = evEntities[key] || definition?.aliases?.map((alias) => evEntities[alias]).find(Boolean);
       if (direct) return direct;
+
+      const evccEntityId = this._electricVehicleEvccEntityId(definition);
+      if (evccEntityId) return evccEntityId;
 
       const fallbackKey = definition?.wallboxFallback ? this._electricVehicleWallboxEntityKey(definition.wallboxFallback) : "";
       if (fallbackKey && this.config.entities?.[fallbackKey]) return this.config.entities[fallbackKey];
@@ -212,6 +280,17 @@ export function createElectricVehicleDashboardMethods({
         ...(definition?.aliases || []),
       ];
       return topLevelAliases.map((alias) => this.config.entities?.[alias]).find(Boolean) || "";
+    },
+
+    _electricVehicleAttributeValue(entityId = "", paths = []) {
+      const entity = this._getEntity?.(entityId);
+      if (!entity?.attributes) return undefined;
+      const pathList = Array.isArray(paths) ? paths : [paths];
+      for (const path of pathList) {
+        const value = String(path || "").split(".").reduce((cursor, part) => (cursor == null ? undefined : cursor[part]), entity.attributes);
+        if (!isUnavailableElectricVehicleValue(value)) return value;
+      }
+      return undefined;
     },
 
     _electricVehicleRawValue(key) {
@@ -335,14 +414,34 @@ export function createElectricVehicleDashboardMethods({
       return this._formatRemainingChargeTimeValue(rawValue, entityUnit) || ELECTRIC_VEHICLE_EMPTY_VALUE;
     },
 
+    _electricVehicleFormatGridPower(rawValue, entityUnit = "") {
+      if (isUnavailableElectricVehicleValue(rawValue)) return ELECTRIC_VEHICLE_EMPTY_VALUE;
+      const watts = this._valueAsWatts
+        ? this._valueAsWatts(rawValue, entityUnit || "W")
+        : this._electricVehicleNumericState(rawValue);
+      if (!Number.isFinite(watts)) return `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+      const formatted = this._formatPowerValue(Math.abs(watts), this.config.units?.power || "auto", "W");
+      const direction = watts >= 0
+        ? this._t("ev.gridImport", {}, "Import")
+        : this._t("ev.gridExport", {}, "Export");
+      return `${formatted} ${direction}`;
+    },
+
     _electricVehicleFormatValue(definition) {
       const key = definition?.key || "";
       if (key === "status") return this._electricVehicleStatusLabel();
       const entityId = this._electricVehicleEntityId(key);
-      const rawValue = entityId ? this._getEntityValue(entityId, undefined) : undefined;
+      const attrValue = entityId && (definition.attr || definition.attrFallbacks)
+        ? this._electricVehicleAttributeValue(entityId, [definition.attr, ...(definition.attrFallbacks || [])].filter(Boolean))
+        : undefined;
+      const rawValue = !isUnavailableElectricVehicleValue(attrValue)
+        ? attrValue
+        : entityId ? this._getEntityValue(entityId, undefined) : undefined;
       const unit = entityId ? this._getEntityUnit(entityId) || "" : "";
       if (!entityId || isUnavailableElectricVehicleValue(rawValue)) return ELECTRIC_VEHICLE_EMPTY_VALUE;
 
+      if (definition.kind === "mode") return this._electricVehicleModeLabel(rawValue);
+      if (definition.kind === "grid_power") return this._electricVehicleFormatGridPower(rawValue, unit);
       if (definition.kind === "boolean") {
         const bool = this._electricVehicleBooleanValue(key);
         if (bool === true) return this._t("ev.yes", {}, "Yes");
@@ -393,7 +492,16 @@ export function createElectricVehicleDashboardMethods({
         .filter((item) => item.state.configured && item.state.value !== ELECTRIC_VEHICLE_EMPTY_VALUE);
     },
 
-    _electricVehicleImageUrls(path = this._electricVehicleConfig().image) {
+    _electricVehicleImagePath() {
+      const evConfig = this._electricVehicleConfig();
+      if (typeof this._isDaylight === "function") {
+        if (this._isDaylight() && evConfig.day_image) return evConfig.day_image;
+        if (!this._isDaylight() && evConfig.night_image) return evConfig.night_image;
+      }
+      return evConfig.image;
+    },
+
+    _electricVehicleImageUrls(path = this._electricVehicleImagePath()) {
       const value = String(path || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE;
       const defaultValue = DEFAULT_ELECTRIC_VEHICLE_IMAGE;
       const values = [value, ...(value === defaultValue ? [] : [defaultValue])];
@@ -428,7 +536,7 @@ export function createElectricVehicleDashboardMethods({
       return [...new Set(urls.filter(Boolean))];
     },
 
-    _electricVehicleImageUrl(path = this._electricVehicleConfig().image) {
+    _electricVehicleImageUrl(path = this._electricVehicleImagePath()) {
       const [src] = this._electricVehicleImageUrls(path);
       if (src) return src;
       const value = String(path || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE;
@@ -439,14 +547,47 @@ export function createElectricVehicleDashboardMethods({
       }
     },
 
+    _electricVehicleHeroBadgeVisible(definitionKey, state) {
+      if (!state.configured || state.value === ELECTRIC_VEHICLE_EMPTY_VALUE) return false;
+      if (definitionKey === "vehicle_soc") {
+        const rawValue = this._electricVehicleRawValue("vehicle_soc");
+        const soc = this._electricVehicleNumericState(rawValue);
+        if (Number.isFinite(soc) && soc <= 0) return false;
+      }
+      return true;
+    },
+
+    _electricVehicleBadgeAccent(definition, key = definition?.key || "") {
+      if (key === "status") {
+        if (this._electricVehicleBooleanValue("charging") === true) return "#34d399";
+        if (this._electricVehicleBooleanValue("connected") === true) return "#38bdf8";
+        return "#9ba3b8";
+      }
+      if (key === "grid_power") {
+        const rawValue = this._electricVehicleRawValue("grid_power");
+        const watts = this._valueAsWatts
+          ? this._valueAsWatts(rawValue, this._getEntityUnit(this._electricVehicleEntityId("grid_power")) || "W")
+          : this._electricVehicleNumericState(rawValue);
+        return Number.isFinite(watts) && watts < 0 ? "#34d399" : "#f59e0b";
+      }
+      return this._electricVehicleAccent(definition);
+    },
+
+    _electricVehicleBadgeGlow(key = "") {
+      if (key === "status" && this._electricVehicleBooleanValue("charging") === true) return "rgba(52,211,153,.55)";
+      if (key === "charge_power" && this._electricVehicleBooleanValue("charging") === true) return "rgba(31,143,255,.48)";
+      return "transparent";
+    },
+
     _renderElectricVehicleHeroBadge(definitionKey) {
       const definition = this._electricVehicleDefinition(definitionKey);
       if (!definition) return "";
       const state = this._electricVehicleFieldState(definition);
-      if (!state.configured || state.value === ELECTRIC_VEHICLE_EMPTY_VALUE) return "";
+      if (!this._electricVehicleHeroBadgeVisible(definitionKey, state)) return "";
       const position = this._electricVehicleHeroBadgePosition(definitionKey);
+      const entityAttr = state.entityId ? ` data-more-info="${this._escape(state.entityId)}"` : "";
       return `
-        <div class="electric-vehicle-badge" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleAccent(definition))}">
+        <div class="electric-vehicle-badge" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${entityAttr}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -456,8 +597,13 @@ export function createElectricVehicleDashboardMethods({
     _renderElectricVehicleField(item) {
       const { definition, state } = item;
       const entityTitle = state.entityId ? `${state.label}: ${state.entityId}` : state.label;
+      const toggleDomains = new Set(["switch", "input_boolean", "automation"]);
+      const domain = electricVehicleEntityDomain(state.entityId);
+      const actionAttr = toggleDomains.has(domain)
+        ? ` data-entity-toggle="${this._escape(state.entityId)}" tabindex="0" role="button"`
+        : state.entityId ? ` data-more-info="${this._escape(state.entityId)}" tabindex="0" role="button"` : "";
       return `
-        <div class="electric-vehicle-tile" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}">
+        <div class="electric-vehicle-tile" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${actionAttr}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -504,22 +650,34 @@ export function createElectricVehicleDashboardMethods({
       if (definition.group === "charging") return "#ffc233";
       if (definition.group === "limits") return "#60a5fa";
       if (definition.group === "planning") return "#a78bfa";
+      if (definition.group === "site") return "#38bdf8";
       return "#1f8fff";
+    },
+
+    _electricVehiclePvStatusText() {
+      const entityId = this._electricVehicleEntityId("pv_status_text") || this._electricVehicleEntityId("status");
+      const value = entityId ? this._getEntityValue(entityId, undefined) : undefined;
+      return isUnavailableElectricVehicleValue(value) ? "" : String(value).trim();
     },
 
     _renderElectricVehicleDashboard() {
       const evConfig = this._electricVehicleConfig();
       const configuredFields = this._electricVehicleConfiguredFields();
-      const [imageSrc, ...imageFallbacks] = this._electricVehicleImageUrls(evConfig.image);
+      const [imageSrc, ...imageFallbacks] = this._electricVehicleImageUrls();
       const title = evConfig.title || this._t("ev.title", {}, "E-Auto");
       const vehicleTitle = this._electricVehicleFieldState(this._electricVehicleDefinition("vehicle_title")).value;
-      const subtitle = vehicleTitle && vehicleTitle !== ELECTRIC_VEHICLE_EMPTY_VALUE
-        ? vehicleTitle
-        : this._t("ev.subtitle", {}, "EVCC loadpoint");
-      const heroBadges = ["status", "charge_power", "vehicle_soc", "charge_remaining_duration", "session_solar_percentage"]
+      const vehicleName = this._electricVehicleFieldState(this._electricVehicleDefinition("vehicle_name")).value;
+      const vehicleSubtitle = [vehicleTitle, vehicleName].find((value) => value && value !== ELECTRIC_VEHICLE_EMPTY_VALUE);
+      const subtitle = vehicleSubtitle
+        || (evConfig.evcc_loadpoint
+          ? `${this._t("ev.subtitle", {}, "EVCC loadpoint")}: ${evConfig.evcc_loadpoint}`
+          : this._t("ev.subtitle", {}, "EVCC loadpoint"));
+      const heroBadges = ["mode", "status", "charge_power", "charge_current", "session_energy", "grid_power", "home_battery_soc", "session_solar_percentage", "vehicle_soc", "charge_remaining_duration"]
         .map((key) => this._renderElectricVehicleHeroBadge(key))
         .join("");
       const modeControl = this._renderElectricVehicleModeControl();
+      const pvStatusText = this._electricVehiclePvStatusText();
+      const pvStatusEntityId = this._electricVehicleEntityId("pv_status_text") || "";
       const groups = ELECTRIC_VEHICLE_GROUPS.map((group) => {
         const items = configuredFields.filter((item) => item.definition.group === group.key && item.definition.control !== true);
         if (items.length === 0) return "";
@@ -550,6 +708,7 @@ export function createElectricVehicleDashboardMethods({
           <div class="electric-vehicle-hero">
             <img class="electric-vehicle-image" src="${this._escape(imageSrc)}" data-fallbacks="${this._escape(imageFallbacks.join("|"))}" alt="${this._escape(title)}" />
             <div class="electric-vehicle-badges">${heroBadges}</div>
+            ${pvStatusText ? `<div class="scene-status electric-vehicle-pv-status"${pvStatusEntityId ? ` data-more-info="${this._escape(pvStatusEntityId)}"` : ""}>${this._escape(pvStatusText)}</div>` : ""}
           </div>
           ${empty || groups}
         </section>

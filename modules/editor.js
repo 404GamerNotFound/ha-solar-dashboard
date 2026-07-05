@@ -339,7 +339,7 @@ export function createDashboardEditorClass({
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
     if (root === "show_electric_vehicle") return true;
-    if (root === "electric_vehicle" && ["image", "wallbox", "title"].includes(lastPart)) return true;
+    if (root === "electric_vehicle" && ["image", "day_image", "night_image", "wallbox", "title", "evcc_loadpoint", "evcc_prefix"].includes(lastPart)) return true;
     if (root === "show_garden") return true;
     if (root === "garden") return true;
     if (root === "show_floorplan") return true;
@@ -919,6 +919,67 @@ export function createDashboardEditorClass({
     this._render();
   }
 
+  _addGardenZone() {
+    const next = this._cloneConfig(this._config || {});
+    next.garden = normalizeGardenConfig?.(next.garden || {}) || next.garden || {};
+    next.garden.zones = Array.isArray(next.garden.zones) ? next.garden.zones : [];
+    const index = next.garden.zones.length;
+    next.garden.zones.push({
+      id: `zone_${Date.now()}`,
+      label: `Zone ${index + 1}`,
+      short: `Z${index + 1}`,
+      entity: "",
+      plan_entity: "",
+      plan_text: "",
+      left: Math.min(90, 12 + index * 12),
+      top: 44,
+      color: index % 4 === 3 ? "#38bdf8" : "#34d399",
+      visible: true,
+      toggle: false,
+    });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeGardenZone(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.garden = normalizeGardenConfig?.(next.garden || {}) || next.garden || {};
+    next.garden.zones = Array.isArray(next.garden.zones) ? next.garden.zones : [];
+    next.garden.zones.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _addGardenAction() {
+    const next = this._cloneConfig(this._config || {});
+    next.garden = normalizeGardenConfig?.(next.garden || {}) || next.garden || {};
+    next.garden.manual_actions = Array.isArray(next.garden.manual_actions) ? next.garden.manual_actions : [];
+    next.garden.manual_actions.push({
+      id: `action_${Date.now()}`,
+      label: this._t("editor.gardenAction", {}, "Manual action"),
+      caption: this._t("garden.manualAction", {}, "Manual action"),
+      entity: "",
+      confirm_text: "",
+      color: "#38bdf8",
+      visible: true,
+    });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeGardenAction(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.garden = normalizeGardenConfig?.(next.garden || {}) || next.garden || {};
+    next.garden.manual_actions = Array.isArray(next.garden.manual_actions) ? next.garden.manual_actions : [];
+    next.garden.manual_actions.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
   _addPvRoofString() {
     const next = this._cloneConfig(this._config || {});
     next.pv_roof_strings = normalizePvRoofStrings(next.pv_roof_strings || []);
@@ -1189,11 +1250,17 @@ export function createDashboardEditorClass({
     };
     const evccTargets = [
       { path: "electric_vehicle.entities.status", ...evccTextTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["status", "state", "zustand"]], include: [evccTerms, { terms: ["status", "state", "zustand"], weight: 30 }], threshold: 58 },
+      { path: "electric_vehicle.entities.pv_status_text", domains: ["sensor"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["pv", "solar", "action", "aktion", "status"]], include: [evccTerms, { terms: ["pv action value", "pv status", "action value", "regelgrund", "diagnose"], weight: 44 }], threshold: 58 },
       { path: "electric_vehicle.entities.mode_control", domains: ["select", "input_select"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["mode", "modus", "charge mode", "lademodus"]], include: [evccTerms, { terms: ["mode", "modus", "charge mode", "lademodus", "minpv", "min+pv", "pv", "schnell", "fast"], weight: 38 }], threshold: 58 },
       { path: "electric_vehicle.entities.mode", ...evccTextTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["mode", "modus"]], include: [evccTerms, { terms: ["mode", "modus"], weight: 30 }], exclude: ["control", "steuerung"], threshold: 58 },
       { path: "electric_vehicle.entities.vehicle_title", ...evccTextTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["vehicle", "fahrzeug", "auto", "title", "name"]], include: [evccTerms, { terms: ["vehicle title", "vehicle name", "fahrzeug", "auto"], weight: 30 }], threshold: 58 },
+      { path: "electric_vehicle.entities.vehicle_name", domains: ["select", "sensor"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["vehicle", "fahrzeug", "auto", "name"]], include: [evccTerms, { terms: ["vehicle name", "fahrzeugname", "auto name"], weight: 34 }], threshold: 58 },
+      { path: "electric_vehicle.entities.connected", ...evccBooleanTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["connected", "plugged", "verbunden", "eingesteckt"]], include: [evccTerms, { terms: ["connected", "plugged", "verbunden", "eingesteckt"], weight: 34 }], threshold: 58 },
       { path: "electric_vehicle.entities.charging", ...evccBooleanTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["charging", "laedt", "laden"]], include: [evccTerms, { terms: ["charging", "laedt", "laden"], weight: 30 }], exclude: ["enabled", "freigabe"], threshold: 58 },
+      { path: "electric_vehicle.entities.enabled", ...evccBooleanTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["enabled", "freigabe", "aktiv"]], include: [evccTerms, { terms: ["enabled", "freigabe", "aktiv"], weight: 32 }], threshold: 58 },
+      { path: "electric_vehicle.entities.charge_power", domains: ["sensor"], units: ["w", "kw"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["charge", "charging", "lade"], ["power", "leistung"]], include: [evccTerms, { terms: ["charge power", "ladeleistung"], weight: 42 }, ...powerTarget.include], threshold: 58 },
       { path: "electric_vehicle.entities.charge_current", domains: ["sensor"], units: ["a"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["current", "strom", "ampere"]], include: [evccTerms, { terms: ["current", "strom", "ampere"], weight: 32 }], exclude: ["min", "max"], threshold: 58 },
+      { path: "electric_vehicle.entities.session_energy", ...energyTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["session", "sitzung"], ["energy", "energie", "kwh", "wh"]], include: [evccTerms, { terms: ["session energy", "session geladen", "sitzung energie"], weight: 36 }, ...energyTarget.include], threshold: 58 },
       { path: "electric_vehicle.entities.charged_energy", ...energyTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["charged", "geladen", "session", "sitzung"]], include: [evccTerms, { terms: ["charged energy", "geladene energie", "session", "sitzung"], weight: 32 }, ...energyTarget.include], threshold: 58 },
       { path: "electric_vehicle.entities.session_solar_percentage", domains: ["sensor"], units: ["%"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["solar", "pv", "green", "eigenerzeugung"], ["session", "sitzung"]], include: [evccTerms, { terms: ["solar percentage", "solar share", "pv anteil", "eigenerzeugung"], weight: 34 }], threshold: 58 },
       { path: "electric_vehicle.entities.charge_remaining_duration", domains: ["sensor"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["remaining", "rest", "verbleibend", "duration", "dauer"]], include: [evccTerms, { terms: ["remaining duration", "remaining time", "restzeit", "verbleibend"], weight: 34 }], threshold: 58 },
@@ -1205,6 +1272,17 @@ export function createDashboardEditorClass({
       { path: "electric_vehicle.entities.smart_cost_active", ...evccBooleanTarget, required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["smart cost", "smartcost", "kosten"], ["active", "aktiv"]], include: [evccTerms, { terms: ["smart cost active", "smartcost", "kosten aktiv"], weight: 36 }], threshold: 58 },
       { path: "electric_vehicle.entities.min_current", domains: ["sensor", "number", "input_number"], units: ["a"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["min", "minimum"], ["current", "strom", "ampere"]], include: [evccTerms, { terms: ["min current", "minimum current", "minimaler strom"], weight: 36 }], threshold: 58 },
       { path: "electric_vehicle.entities.max_current", domains: ["sensor", "number", "input_number"], units: ["a"], required: [["evcc", "loadpoint", "ladepunkt", "wallbox"], ["max", "maximum"], ["current", "strom", "ampere"]], include: [evccTerms, { terms: ["max current", "maximum current", "maximaler strom"], weight: 36 }], threshold: 58 },
+      { path: "electric_vehicle.entities.grid_power", domains: ["sensor"], units: ["w", "kw"], required: [["evcc"], ["grid", "netz"], ["power", "leistung"]], include: [evccTerms, { terms: ["grid power", "netzleistung", "bezug einspeisung"], weight: 44 }, ...powerTarget.include], threshold: 56 },
+      { path: "electric_vehicle.entities.pv_power", domains: ["sensor"], units: ["w", "kw"], required: [["evcc"], ["pv", "solar"], ["power", "leistung"]], include: [evccTerms, { terms: ["pv power", "solar power", "pv leistung"], weight: 40 }, ...powerTarget.include], threshold: 56 },
+      { path: "electric_vehicle.entities.home_power", domains: ["sensor"], units: ["w", "kw"], required: [["evcc"], ["home", "house", "haus"], ["power", "verbrauch", "leistung"]], include: [evccTerms, { terms: ["home power", "hausverbrauch", "home consumption"], weight: 40 }, ...powerTarget.include], threshold: 56 },
+      { path: "electric_vehicle.entities.home_battery_soc", domains: ["sensor"], units: ["%"], required: [["evcc"], ["battery", "batterie", "akku"], ["soc", "level", "stand"]], include: [evccTerms, batteryTerms, { terms: ["battery soc", "batterie soc", "akku stand"], weight: 42 }], threshold: 56 },
+      { path: "electric_vehicle.entities.home_battery_power", domains: ["sensor"], units: ["w", "kw"], required: [["evcc"], ["battery", "batterie", "akku"], ["power", "leistung"]], include: [evccTerms, batteryTerms, { terms: ["battery power", "batterie leistung", "akku leistung"], weight: 40 }, ...powerTarget.include], threshold: 56 },
+      { path: "electric_vehicle.entities.solar_forecast", domains: ["sensor"], units: ["w", "kw"], required: [["evcc"], ["tariff", "forecast", "prognose", "solar"]], include: [evccTerms, { terms: ["tariff solar", "solar forecast", "solar prognose"], weight: 42 }, ...powerTarget.include], threshold: 56 },
+      { path: "electric_vehicle.entities.residual_power", domains: ["number", "sensor"], units: ["w", "kw"], required: [["evcc"], ["residual", "puffer", "einspeise"], ["power", "leistung"]], include: [evccTerms, { terms: ["residual power", "einspeise puffer", "feed in buffer"], weight: 44 }, ...powerTarget.include], threshold: 56 },
+      { path: "electric_vehicle.entities.priority_soc", domains: ["select", "number", "sensor"], units: ["%"], required: [["evcc"], ["priority", "prioritaet", "priorität"], ["soc"]], include: [evccTerms, { terms: ["priority soc", "haus vorrang", "battery priority"], weight: 42 }], threshold: 56 },
+      { path: "electric_vehicle.entities.buffer_soc", domains: ["select", "number", "sensor"], units: ["%"], required: [["evcc"], ["buffer"], ["soc"]], include: [evccTerms, { terms: ["buffer soc", "auto darf akku", "battery buffer"], weight: 42 }], threshold: 56 },
+      { path: "electric_vehicle.entities.buffer_start_soc", domains: ["select", "number", "sensor"], units: ["%"], required: [["evcc"], ["buffer", "start"], ["soc"]], include: [evccTerms, { terms: ["buffer start soc", "auto start akku"], weight: 42 }], threshold: 56 },
+      { path: "electric_vehicle.entities.battery_discharge_control", domains: ["switch", "binary_sensor"], required: [["evcc"], ["battery", "batterie", "akku"], ["discharge", "entlade"]], include: [evccTerms, batteryTerms, { terms: ["battery discharge control", "entladesperre", "entlade control"], weight: 44 }], threshold: 56 },
     ];
 
     return [
@@ -1259,6 +1337,7 @@ export function createDashboardEditorClass({
       { path: "garden.entities.mower_next_start", domains: ["sensor"], required: [["mower", "maeher", "maher", "mähroboter", "maehroboter", "automower", "landroid", "sileno"], ["next", "schedule", "start", "naechst", "nächst", "zeitplan"]], include: [mowerTerms, { terms: ["next start", "schedule", "zeitplan", "naechster start", "nächster start"], weight: 32 }], threshold: 58 },
       { path: "garden.entities.mower_error", domains: ["sensor", "binary_sensor"], required: [["mower", "maeher", "maher", "mähroboter", "maehroboter", "automower", "landroid", "sileno"], ["error", "fault", "problem", "fehler", "stoerung", "störung"]], include: [mowerTerms, { terms: ["error", "fault", "fehler", "stoerung", "störung"], weight: 34 }], threshold: 58 },
       { path: "garden.entities.garden_water", domains: ["switch", "binary_sensor", "sensor", "input_boolean"], required: [["garden", "garten", "garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung", "sprinkler"]], include: [gardenTerms, irrigationTerms, { terms: ["garden water", "gartenwasser", "status", "state", "active", "watering", "ventil", "valve"], weight: 34 }], threshold: 54 },
+      { path: "garden.entities.irrigation_status_text", domains: ["input_text", "sensor"], required: [["garden", "garten", "irrigation", "watering", "bewasserung", "bewaesserung"], ["status", "text", "meldung"]], include: [gardenTerms, irrigationTerms, { terms: ["status text", "bewasserung status", "watering status", "meldung"], weight: 38 }], threshold: 54 },
       { path: "garden.entities.irrigation_enabled", domains: ["switch", "binary_sensor", "input_boolean", "sensor"], required: [["garden", "garten", "garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung"], ["auto", "automatic", "automatik", "enabled", "aktiv"]], include: [gardenTerms, irrigationTerms, { terms: ["automatic", "automatik", "enabled", "aktiv"], weight: 32 }], threshold: 56 },
       { path: "garden.entities.irrigation_next_start", domains: ["sensor"], required: [["garden", "garten", "garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung"], ["schedule", "zeitplan", "plan", "next", "naechst", "nächst"]], include: [gardenTerms, irrigationTerms, { terms: ["schedule", "zeitplan", "plan", "next", "naechste", "nächste"], weight: 32 }], threshold: 56 },
       { path: "garden.entities.irrigation_remaining", domains: ["sensor"], required: [["garden", "garten", "garden water", "gartenwasser", "irrigation", "watering", "bewasserung", "bewaesserung"], ["remaining", "rest", "restzeit", "duration", "dauer"]], include: [gardenTerms, irrigationTerms, { terms: ["remaining", "restzeit", "verbleibend", "dauer"], weight: 34 }], threshold: 56 },
@@ -2721,7 +2800,25 @@ export function createDashboardEditorClass({
           };
         })
         .filter(Boolean);
-    return [...metricItems, ...overlayItems, ...environmentItems, ...electricVehicleItems, ...gardenItems];
+    const gardenZoneItems = this._config.show_garden === false
+      ? []
+      : (normalizeGardenConfig?.(this._config.garden || {})?.zones || [])
+        .map((zone, index) => {
+          if (zone.visible === false) return undefined;
+          return {
+            key: `garden-zone:${index}`,
+            label: `${this._t("view.garden", {}, "Garten")}: ${zone.label || zone.short || this._t("editor.gardenZone", {}, "Irrigation zone")}`,
+            scope: "garden",
+            left: Number.isFinite(Number(zone.left)) ? Number(zone.left) : 50,
+            top: Number.isFinite(Number(zone.top)) ? Number(zone.top) : 50,
+            leftPath: `garden.zones.${index}.left`,
+            topPath: `garden.zones.${index}.top`,
+            color: zone.color || "#34d399",
+            type: this._t("editor.gardenZone", {}, "Irrigation zone"),
+          };
+        })
+        .filter(Boolean);
+    return [...metricItems, ...overlayItems, ...environmentItems, ...electricVehicleItems, ...gardenItems, ...gardenZoneItems];
   }
 
   _selectedLayoutItem(items) {
@@ -3003,6 +3100,7 @@ export function createDashboardEditorClass({
       ["charging", "ev.groupCharging", "Charging"],
       ["limits", "ev.groupLimits", "Limits"],
       ["planning", "ev.groupPlanning", "Planning"],
+      ["site", "ev.groupSite", "Site & battery"],
     ];
   }
 
@@ -3040,6 +3138,10 @@ export function createDashboardEditorClass({
     const missing = this._missingEntityCount(entityValues);
     const wallbox = normalized.wallbox || "wallbox_power";
     const image = normalized.image || DEFAULT_ELECTRIC_VEHICLE_IMAGE || "images/car_image.png";
+    const dayImage = normalized.day_image || "";
+    const nightImage = normalized.night_image || "";
+    const evccLoadpoint = normalized.evcc_loadpoint || "";
+    const evccPrefix = normalized.evcc_prefix || "evcc";
     const title = normalized.title || "";
     const groupHtml = this._electricVehicleGroups().map(([groupKey, labelKey, fallback]) => {
       const definitions = this._electricVehicleDefinitions().filter((definition) => definition.group === groupKey);
@@ -3068,6 +3170,18 @@ export function createDashboardEditorClass({
           <label>${this._labelText(this._t("editor.electricVehicleImage", {}, "Vehicle image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
             <input data-path="electric_vehicle.image" placeholder="${this._escape(DEFAULT_ELECTRIC_VEHICLE_IMAGE || "images/car_image.png")}" value="${this._escape(image)}" autocomplete="off" />
           </label>
+          <label>${this._labelText(this._t("editor.electricVehicleDayImage", {}, "Vehicle day image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
+            <input data-path="electric_vehicle.day_image" placeholder="/local/eauto/eauto_day.png" value="${this._escape(dayImage)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.electricVehicleNightImage", {}, "Vehicle night image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
+            <input data-path="electric_vehicle.night_image" placeholder="/local/eauto/eauto_night.png" value="${this._escape(nightImage)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.electricVehicleEvccLoadpoint", {}, "evcc loadpoint slug"), this._t("editor.electricVehicleEvccLoadpointHelp", {}, "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities."))}
+            <input data-path="electric_vehicle.evcc_loadpoint" placeholder="garage_delta_ac_max" value="${this._escape(evccLoadpoint)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.electricVehicleEvccPrefix", {}, "evcc entity prefix"), this._t("editor.electricVehicleEvccPrefixHelp", {}, "Usually evcc. Used for generated marq24/ha-evcc entity ids."))}
+            <input data-path="electric_vehicle.evcc_prefix" placeholder="evcc" value="${this._escape(evccPrefix)}" autocomplete="off" />
+          </label>
           <label>${this._escape(this._t("editor.electricVehicleWallbox", {}, "Wallbox fallback"))}
             <select data-path="electric_vehicle.wallbox">
               <option value="wallbox_power"${wallbox !== "wallbox2_power" ? " selected" : ""}>${this._escape(this._t("metrics.wallbox_power", {}, "EV Charger"))}</option>
@@ -3089,9 +3203,12 @@ export function createDashboardEditorClass({
 
   _gardenConfiguredValues(garden = this._config.garden || {}) {
     const normalized = normalizeGardenConfig?.(garden) || garden || {};
-    return this._gardenDefinitions()
+    const entityValues = this._gardenDefinitions()
       .map((definition) => normalized.entities?.[definition.key])
       .filter(Boolean);
+    const zoneValues = (normalized.zones || []).flatMap((zone) => [zone.entity, zone.plan_entity]).filter(Boolean);
+    const actionValues = (normalized.manual_actions || []).map((action) => action.entity).filter(Boolean);
+    return [...entityValues, ...zoneValues, ...actionValues];
   }
 
   _gardenGroups() {
@@ -3131,12 +3248,108 @@ export function createDashboardEditorClass({
     `;
   }
 
+  _renderGardenZoneField(zone = {}, index = 0) {
+    const detailsKey = `garden-zone-${index}`;
+    const label = zone.label || `Zone ${index + 1}`;
+    const status = this._statusText({
+      configured: this._countConfigured([zone.entity]),
+      missing: this._missingEntityCount([zone.entity, zone.plan_entity]),
+    });
+    return `
+      <details class="box-field garden-zone-field" data-editor-section="${this._escape(detailsKey)}"${this._detailsOpen(detailsKey) ? " open" : ""}>
+        <summary class="box-summary">
+          <span class="box-summary-main">
+            <strong>${this._escape(label)}</strong>
+            <small>${this._escape(zone.entity || this._t("editor.gardenZone", {}, "Irrigation zone"))}</small>
+          </span>
+          <span class="box-summary-side">
+            <span class="section-status">${this._escape(status)}</span>
+          </span>
+        </summary>
+        <div class="box-body">
+          <label class="inline"><input type="checkbox" data-path="garden.zones.${index}.visible" ${zone.visible !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label }, `Show ${label}`))}</label>
+          <label class="inline"><input type="checkbox" data-path="garden.zones.${index}.toggle" ${zone.toggle === true ? "checked" : ""}/> ${this._escape(this._t("editor.gardenZoneDirectToggle", {}, "Allow direct toggle"))}</label>
+          <label>${this._labelText(this._t("editor.gardenZoneLabel", {}, "Zone label"))}
+            <input data-path="garden.zones.${index}.label" placeholder="Zone ${this._escape(index + 1)}" value="${this._escape(zone.label || "")}" />
+          </label>
+          <label>${this._labelText(this._t("editor.gardenZoneShort", {}, "Short label"))}
+            <input data-path="garden.zones.${index}.short" placeholder="Z${this._escape(index + 1)}" value="${this._escape(zone.short || "")}" />
+          </label>
+          <label>${this._labelText(this._t("editor.gardenZoneEntity", {}, "Valve entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}
+            <input data-path="garden.zones.${index}.entity" list="ha-solar-dashboard-entities" placeholder="switch.magnetventil_${this._escape(index + 1)}" value="${this._escape(zone.entity || "")}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.gardenZonePlanEntity", {}, "Plan entity"))}
+            <input data-path="garden.zones.${index}.plan_entity" list="ha-solar-dashboard-entities" placeholder="sensor.bewaesserung_plan" value="${this._escape(zone.plan_entity || "")}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.gardenZonePlanText", {}, "Static plan text"))}
+            <input data-path="garden.zones.${index}.plan_text" placeholder="${this._escape(this._t("garden.ready", {}, "Ready"))}" value="${this._escape(zone.plan_text || "")}" />
+          </label>
+          <label>${this._labelText(`X (${this._formatFloorplanNumber(zone.left ?? 50)})`)}
+            <input type="range" min="0" max="100" step="1" data-path="garden.zones.${index}.left" value="${this._escape(zone.left ?? 50)}" />
+          </label>
+          <label>${this._labelText(`Y (${this._formatFloorplanNumber(zone.top ?? 50)})`)}
+            <input type="range" min="0" max="100" step="1" data-path="garden.zones.${index}.top" value="${this._escape(zone.top ?? 50)}" />
+          </label>
+          <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}
+            <input data-path="garden.zones.${index}.color" placeholder="#34d399" value="${this._escape(zone.color || "#34d399")}" />
+          </label>
+          <button type="button" data-action="remove-garden-zone" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove", {}, "Remove"))}</button>
+        </div>
+      </details>
+    `;
+  }
+
+  _renderGardenActionField(action = {}, index = 0) {
+    const detailsKey = `garden-action-${index}`;
+    const label = action.label || this._t("editor.gardenAction", {}, "Manual action");
+    const status = this._statusText({
+      configured: this._countConfigured([action.entity]),
+      missing: this._missingEntityCount([action.entity]),
+    });
+    return `
+      <details class="box-field garden-action-field" data-editor-section="${this._escape(detailsKey)}"${this._detailsOpen(detailsKey) ? " open" : ""}>
+        <summary class="box-summary">
+          <span class="box-summary-main">
+            <strong>${this._escape(label)}</strong>
+            <small>${this._escape(action.entity || this._t("editor.gardenAction", {}, "Manual action"))}</small>
+          </span>
+          <span class="box-summary-side">
+            <span class="section-status">${this._escape(status)}</span>
+          </span>
+        </summary>
+        <div class="box-body">
+          <label class="inline"><input type="checkbox" data-path="garden.manual_actions.${index}.visible" ${action.visible !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showBox", { label }, `Show ${label}`))}</label>
+          <label>${this._labelText(this._t("editor.gardenActionLabel", {}, "Action label"))}
+            <input data-path="garden.manual_actions.${index}.label" placeholder="${this._escape(label)}" value="${this._escape(action.label || "")}" />
+          </label>
+          <label>${this._labelText(this._t("editor.gardenActionCaption", {}, "Caption"))}
+            <input data-path="garden.manual_actions.${index}.caption" placeholder="${this._escape(this._t("garden.manualAction", {}, "Manual action"))}" value="${this._escape(action.caption || "")}" />
+          </label>
+          <label>${this._labelText(this._t("editor.gardenActionEntity", {}, "Script/button entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}
+            <input data-path="garden.manual_actions.${index}.entity" list="ha-solar-dashboard-entities" placeholder="script.bewaesserung_rasen_lauf" value="${this._escape(action.entity || "")}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.gardenActionConfirm", {}, "Confirmation text"))}
+            <input data-path="garden.manual_actions.${index}.confirm_text" placeholder="${this._escape(this._t("editor.gardenActionConfirmPlaceholder", {}, "Leave empty to run immediately"))}" value="${this._escape(action.confirm_text || "")}" />
+          </label>
+          <label>${this._labelText(this._t("editor.kpiColor", {}, "Color"))}
+            <input data-path="garden.manual_actions.${index}.color" placeholder="#38bdf8" value="${this._escape(action.color || "#38bdf8")}" />
+          </label>
+          <button type="button" data-action="remove-garden-action" data-index="${this._escape(index)}">${this._escape(this._t("editor.kpiRemove", {}, "Remove"))}</button>
+        </div>
+      </details>
+    `;
+  }
+
   _renderGardenEditor(garden = this._config.garden || {}) {
     const normalized = normalizeGardenConfig?.(garden) || garden;
     const entityValues = this._gardenConfiguredValues(normalized);
     const missing = this._missingEntityCount(entityValues);
     const image = normalized.image || DEFAULT_GARDEN_IMAGE || "images/single_family_home_top_view_garden.png";
+    const dayImage = normalized.day_image || "";
+    const nightImage = normalized.night_image || "";
     const title = normalized.title || "";
+    const zones = Array.isArray(normalized.zones) ? normalized.zones : [];
+    const actions = Array.isArray(normalized.manual_actions) ? normalized.manual_actions : [];
     const groupHtml = this._gardenGroups().map(([groupKey, labelKey, fallback]) => {
       const definitions = this._gardenDefinitions().filter((definition) => definition.group === groupKey);
       if (!definitions.length) return "";
@@ -3163,10 +3376,36 @@ export function createDashboardEditorClass({
           <label>${this._labelText(this._t("editor.gardenImage", {}, "Garden image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
             <input data-path="garden.image" placeholder="${this._escape(DEFAULT_GARDEN_IMAGE || "images/single_family_home_top_view_garden.png")}" value="${this._escape(image)}" autocomplete="off" />
           </label>
+          <label>${this._labelText(this._t("editor.gardenDayImage", {}, "Garden day image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
+            <input data-path="garden.day_image" placeholder="/local/garten/sommer_tag.png" value="${this._escape(dayImage)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.gardenNightImage", {}, "Garden night image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
+            <input data-path="garden.night_image" placeholder="/local/garten/sommer_nacht.png" value="${this._escape(nightImage)}" autocomplete="off" />
+          </label>
         </div>
         <div class="checkbox-grid">
           <label class="inline"><input type="checkbox" data-path="show_garden" ${this._config.show_garden !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGarden", {}, "Show Garten area"))}</label>
         </div>
+      </section>
+      <section class="editor-card metric-group-card">
+        <div class="editor-card-head">
+          <strong>${this._escape(this._t("editor.gardenZones", {}, "Irrigation zones"))}</strong>
+          <span class="section-status">${this._escape(this._statusText({ configured: this._countConfigured(zones.map((zone) => zone.entity)), total: zones.length, missing: this._missingEntityCount(zones.flatMap((zone) => [zone.entity, zone.plan_entity])) }))}</span>
+        </div>
+        <div class="metric-grid">
+          ${zones.map((zone, index) => this._renderGardenZoneField(zone, index)).join("")}
+        </div>
+        <div class="action-row"><button type="button" data-action="add-garden-zone">${this._escape(this._t("editor.gardenZoneAdd", {}, "Add zone"))}</button></div>
+      </section>
+      <section class="editor-card metric-group-card">
+        <div class="editor-card-head">
+          <strong>${this._escape(this._t("editor.gardenActions", {}, "Manual actions"))}</strong>
+          <span class="section-status">${this._escape(this._statusText({ configured: this._countConfigured(actions.map((action) => action.entity)), total: actions.length, missing: this._missingEntityCount(actions.map((action) => action.entity)) }))}</span>
+        </div>
+        <div class="metric-grid">
+          ${actions.map((action, index) => this._renderGardenActionField(action, index)).join("")}
+        </div>
+        <div class="action-row"><button type="button" data-action="add-garden-action">${this._escape(this._t("editor.gardenActionAdd", {}, "Add action"))}</button></div>
       </section>
       ${groupHtml}
       ${groupHtml ? "" : `<div class="layout-empty">${this._escape(this._t("editor.tabGarden", {}, "Garten"))}: ${this._escape(this._statusText({ configured: this._countConfigured(entityValues), total: this._gardenDefinitions().length, missing }))}</div>`}
@@ -3532,6 +3771,10 @@ export function createDashboardEditorClass({
         if (target.dataset.action === "remove-kpi") this._removeCustomKpi(Number(target.dataset.index));
         if (target.dataset.action === "add-environment-sensor") this._addEnvironmentSensor(target.dataset.template || "custom");
         if (target.dataset.action === "remove-environment-sensor") this._removeEnvironmentSensor(Number(target.dataset.index));
+        if (target.dataset.action === "add-garden-zone") this._addGardenZone();
+        if (target.dataset.action === "remove-garden-zone") this._removeGardenZone(Number(target.dataset.index));
+        if (target.dataset.action === "add-garden-action") this._addGardenAction();
+        if (target.dataset.action === "remove-garden-action") this._removeGardenAction(Number(target.dataset.index));
         if (target.dataset.action === "add-floorplan-floor") this._addFloorplanFloor();
         if (target.dataset.action === "remove-floorplan-item") this._removeSelectedFloorplanItem();
         if (target.dataset.action === "add-pv-roof-string") this._addPvRoofString();

@@ -37,7 +37,11 @@ export function createDefaultElectricVehicleConfig() {
   return {
     title: "",
     image: DEFAULT_EV_IMAGE_PATH,
+    day_image: "",
+    night_image: "",
     wallbox: "wallbox_power",
+    evcc_loadpoint: "",
+    evcc_prefix: "evcc",
     entities: {},
   };
 }
@@ -46,7 +50,12 @@ export function createDefaultGardenConfig() {
   return {
     title: "",
     image: DEFAULT_GARDEN_IMAGE_PATH,
+    day_image: "",
+    night_image: "",
     entities: {},
+    zones: [],
+    manual_actions: [],
+    activity_log: {},
   };
 }
 

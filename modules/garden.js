@@ -3,14 +3,18 @@ export const DEFAULT_GARDEN_IMAGE = "images/single_family_home_top_view_garden.p
 export const GARDEN_HERO_BADGE_POSITION_KEYS = Object.freeze({
   mower_status: "garden_mower_status",
   garden_water: "garden_water",
+  irrigation_enabled: "garden_irrigation_enabled",
   rain_24h: "garden_rain_24h",
+  outdoor_temperature: "garden_outdoor_temperature",
   soil_moisture: "garden_soil_moisture",
 });
 
 export const GARDEN_HERO_BADGE_POSITIONS = Object.freeze({
-  mower_status: Object.freeze({ left: 13, top: 10 }),
+  mower_status: Object.freeze({ left: 10, top: 9 }),
   garden_water: Object.freeze({ left: 84, top: 11 }),
+  irrigation_enabled: Object.freeze({ left: 84, top: 10 }),
   rain_24h: Object.freeze({ left: 28, top: 86 }),
+  outdoor_temperature: Object.freeze({ left: 47, top: 86 }),
   soil_moisture: Object.freeze({ left: 43, top: 86 }),
 });
 
@@ -20,6 +24,7 @@ export const GARDEN_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "mower_next_start", labelKey: "garden.mowerNextStart", label: "Nächster Mähstart", group: "mower", kind: "text", aliases: ["mower_next_start", "maeher_next_start", "mower_schedule", "robot_mower_next_start"] }),
   Object.freeze({ key: "mower_error", labelKey: "garden.mowerError", label: "Mäher Fehler", group: "mower", kind: "text", aliases: ["mower_error", "maeher_error", "robot_mower_error"] }),
   Object.freeze({ key: "garden_water", labelKey: "garden.gardenWater", label: "Gartenwasser", group: "water", kind: "status", aliases: ["garden_water", "gartenwasser", "garden_water_status", "gartenwasser_status", "irrigation_status", "watering_status", "bewasserung_status", "bewaesserung_status", "sprinkler_status"] }),
+  Object.freeze({ key: "irrigation_status_text", labelKey: "garden.irrigationStatusText", label: "Bewässerungsstatus", group: "water", kind: "text", aliases: ["irrigation_status_text", "watering_status_text", "bewasserung_status_text", "bewaesserung_status_text", "input_text_bewasserung_status"] }),
   Object.freeze({ key: "irrigation_enabled", labelKey: "garden.irrigationEnabled", label: "Bewässerung aktiv", group: "water", kind: "boolean", aliases: ["automation", "automatic", "automation_enabled", "irrigation_enabled", "watering_enabled", "garden_water_enabled", "bewasserung_automatik", "bewaesserung_automatik", "irrigation_automation"] }),
   Object.freeze({ key: "irrigation_next_start", labelKey: "garden.irrigationNextStart", label: "Nächste Bewässerung", group: "water", kind: "text", aliases: ["automation_schedule", "irrigation_schedule", "irrigation_next_start", "watering_schedule", "watering_next_start", "bewasserung_zeitplan", "bewaesserung_zeitplan", "naechste_bewasserung"] }),
   Object.freeze({ key: "irrigation_remaining", labelKey: "garden.irrigationRemaining", label: "Restlaufzeit", group: "water", kind: "duration", aliases: ["irrigation_remaining", "watering_remaining", "remaining", "remaining_time", "restzeit", "bewasserung_restzeit", "bewaesserung_restzeit"] }),
@@ -70,6 +75,10 @@ function normalizeGardenBadgeCoordinate(value, fallback = 50) {
   return Math.max(0, Math.min(100, number));
 }
 
+function gardenEntityDomain(entityId = "") {
+  return String(entityId || "").split(".")[0];
+}
+
 function normalizeGardenEntities(entities = {}) {
   const source = entities && typeof entities === "object" ? entities : {};
   return Object.fromEntries(
@@ -83,6 +92,82 @@ function normalizeGardenEntities(entities = {}) {
   );
 }
 
+function normalizeGardenZone(zone, index = 0) {
+  if (!zone || typeof zone !== "object") return undefined;
+  const entity = String(zone.entity || zone.switch || zone.valve || "").trim();
+  const label = String(zone.label || zone.name || `Zone ${index + 1}`).trim();
+  const short = String(zone.short || zone.short_label || zone.key || `Z${index + 1}`).trim();
+  if (!entity && !label) return undefined;
+  return {
+    id: String(zone.id || zone.key || entity || `zone_${index + 1}`).trim().replace(/[^\w-]+/g, "_") || `zone_${index + 1}`,
+    label,
+    short,
+    entity,
+    plan_entity: String(zone.plan_entity || zone.planEntity || zone.plan || "").trim(),
+    plan_text: String(zone.plan_text || zone.planText || zone.plan_static || zone.planStatic || "").trim(),
+    left: normalizeGardenBadgeCoordinate(zone.left ?? zone.x, 12 + index * 12),
+    top: normalizeGardenBadgeCoordinate(zone.top ?? zone.y, 44),
+    color: String(zone.color || zone.accent || (index % 4 === 3 ? "#38bdf8" : "#34d399")).trim(),
+    glow: String(zone.glow || "").trim(),
+    toggle: zone.toggle === true || zone.direct_toggle === true,
+    visible: zone.visible !== false,
+  };
+}
+
+function normalizeGardenZones(zones = []) {
+  const source = Array.isArray(zones)
+    ? zones
+    : zones && typeof zones === "object"
+      ? Object.entries(zones).map(([id, zone]) => (
+        typeof zone === "string"
+          ? { id, entity: zone, label: id }
+          : { id, ...(zone || {}) }
+      ))
+      : [];
+  return source.map((zone, index) => normalizeGardenZone(zone, index)).filter(Boolean);
+}
+
+function normalizeGardenManualAction(action, index = 0) {
+  if (!action || typeof action !== "object") return undefined;
+  const entity = String(action.entity || action.script || action.service || "").trim();
+  const label = String(action.label || action.name || `Action ${index + 1}`).trim();
+  if (!entity && !label) return undefined;
+  return {
+    id: String(action.id || action.key || entity || `action_${index + 1}`).trim().replace(/[^\w-]+/g, "_") || `action_${index + 1}`,
+    label,
+    caption: String(action.caption || action.cap || "").trim(),
+    entity,
+    confirm_text: String(action.confirm_text || action.confirmText || action.confirm || "").trim(),
+    color: String(action.color || action.accent || "#38bdf8").trim(),
+    visible: action.visible !== false,
+  };
+}
+
+function normalizeGardenManualActions(actions = []) {
+  const source = Array.isArray(actions)
+    ? actions
+    : actions && typeof actions === "object"
+      ? Object.entries(actions).map(([id, action]) => (
+        typeof action === "string"
+          ? { id, entity: action, label: id }
+          : { id, ...(action || {}) }
+      ))
+      : [];
+  return source.map((action, index) => normalizeGardenManualAction(action, index)).filter(Boolean);
+}
+
+function normalizeGardenActivityLog(config = {}) {
+  const source = config && typeof config === "object" ? config : {};
+  const entities = Array.isArray(source.entities)
+    ? source.entities.map((entity) => String(entity || "").trim()).filter(Boolean)
+    : [];
+  return {
+    entities,
+    hours: Math.max(1, Math.min(168, Number(source.hours || 72) || 72)),
+    max_rows: Math.max(1, Math.min(50, Number(source.max_rows || source.maxRows || 15) || 15)),
+  };
+}
+
 export function normalizeGardenConfig(config = {}) {
   const source = typeof config === "string"
     ? { image: config }
@@ -93,7 +178,12 @@ export function normalizeGardenConfig(config = {}) {
   return {
     title: String(source.title || source.label || "").trim(),
     image: String(source.image || source.image_path || source.garden_image || DEFAULT_GARDEN_IMAGE).trim() || DEFAULT_GARDEN_IMAGE,
+    day_image: String(source.day_image || source.image_day || source.garden_day_image || "").trim(),
+    night_image: String(source.night_image || source.image_night || source.garden_night_image || "").trim(),
     entities: normalizeGardenEntities(entities),
+    zones: normalizeGardenZones(source.zones || source.irrigation_zones || source.valves || []),
+    manual_actions: normalizeGardenManualActions(source.manual_actions || source.actions || []),
+    activity_log: normalizeGardenActivityLog(source.activity_log || {}),
   };
 }
 
@@ -149,6 +239,25 @@ export function createGardenDashboardMethods({
       return undefined;
     },
 
+    _gardenFormatNextTime(rawValue) {
+      if (isUnavailableGardenValue(rawValue)) return GARDEN_EMPTY_VALUE;
+      const raw = String(rawValue ?? "").trim();
+      const timestamp = Date.parse(raw);
+      if (!Number.isFinite(timestamp)) return raw;
+      const date = new Date(timestamp);
+      const now = new Date();
+      const dayMs = 24 * 60 * 60 * 1000;
+      const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const dayDiff = Math.round((dateDay - nowDay) / dayMs);
+      const pad = (value) => String(value).padStart(2, "0");
+      const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      if (dayDiff === 0) return `${this._t("garden.today", {}, "today")} ${time}`;
+      if (dayDiff === 1) return `${this._t("garden.tomorrow", {}, "tomorrow")} ${time}`;
+      const locale = typeof this._language === "function" ? this._language() : undefined;
+      return `${date.toLocaleDateString(locale, { weekday: "short" })} ${time}`;
+    },
+
     _gardenStatusLabel(rawValue, fallback = GARDEN_EMPTY_VALUE) {
       if (isUnavailableGardenValue(rawValue)) return fallback;
       const normalized = normalizedGardenText(rawValue).replace(/[\s-]+/g, "_");
@@ -164,10 +273,11 @@ export function createGardenDashboardMethods({
         true: "An",
         enabled: "An",
         charging: "Lädt",
-        docked: "Docked",
+        docked: "Angedockt",
         parked: "Parkt",
         idle: "Aus",
         paused: "Pause",
+        returning: "Rückkehr",
         inactive: "Aus",
         off: "Aus",
         closed: "Aus",
@@ -195,6 +305,7 @@ export function createGardenDashboardMethods({
 
     _gardenFormatValue(definition, rawValue, entityUnit = "") {
       if (!definition || isUnavailableGardenValue(rawValue)) return GARDEN_EMPTY_VALUE;
+      if (["mower_next_start", "irrigation_next_start"].includes(definition.key)) return this._gardenFormatNextTime(rawValue);
       if (definition.kind === "status") return this._gardenStatusLabel(rawValue);
       if (definition.kind === "boolean") {
         const bool = this._gardenBooleanValueFromRaw(rawValue);
@@ -246,7 +357,16 @@ export function createGardenDashboardMethods({
         .filter((item) => item.state.configured && item.state.value !== GARDEN_EMPTY_VALUE);
     },
 
-    _gardenImageUrls(path = this._gardenConfig().image) {
+    _gardenImagePath() {
+      const gardenConfig = this._gardenConfig();
+      if (typeof this._isDaylight === "function") {
+        if (this._isDaylight() && gardenConfig.day_image) return gardenConfig.day_image;
+        if (!this._isDaylight() && gardenConfig.night_image) return gardenConfig.night_image;
+      }
+      return gardenConfig.image;
+    },
+
+    _gardenImageUrls(path = this._gardenImagePath()) {
       const value = String(path || DEFAULT_GARDEN_IMAGE).trim() || DEFAULT_GARDEN_IMAGE;
       const defaultValue = DEFAULT_GARDEN_IMAGE;
       const values = [value, ...(value === defaultValue ? [] : [defaultValue])];
@@ -282,7 +402,7 @@ export function createGardenDashboardMethods({
       return [...new Set(urls.filter(Boolean))];
     },
 
-    _gardenImageUrl(path = this._gardenConfig().image) {
+    _gardenImageUrl(path = this._gardenImagePath()) {
       const [src] = this._gardenImageUrls(path);
       if (src) return src;
       const value = String(path || DEFAULT_GARDEN_IMAGE).trim() || DEFAULT_GARDEN_IMAGE;
@@ -317,8 +437,15 @@ export function createGardenDashboardMethods({
       const state = this._gardenFieldState(definition);
       if (!state.configured || state.value === GARDEN_EMPTY_VALUE) return "";
       const position = this._gardenHeroBadgePosition(definitionKey);
+      const bool = this._gardenBooleanValueFromRaw(this._gardenRawValue(definitionKey));
+      const canToggle = ["switch", "input_boolean"].includes(gardenEntityDomain(state.entityId));
+      const actionAttr = canToggle
+        ? ` data-entity-toggle="${this._escape(state.entityId)}" tabindex="0" role="button"`
+        : state.entityId ? ` data-more-info="${this._escape(state.entityId)}" tabindex="0" role="button"` : "";
+      const glow = bool === true ? "rgba(52,211,153,.45)" : "transparent";
+      const accent = bool === false ? "#9ba3b8" : this._gardenAccent(definition.group);
       return `
-        <div class="garden-badge ${this._escape(className)}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._gardenAccent(definition.group))}">
+        <div class="garden-badge ${this._escape(className)}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(accent)};--tile-glow:${this._escape(glow)}"${actionAttr}>
           <span>${this._escape(state.label)}</span>
           <strong data-garden-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -328,37 +455,130 @@ export function createGardenDashboardMethods({
     _renderGardenMetricTile(item) {
       const { definition, state } = item;
       const entityTitle = state.entityId ? `${state.label}: ${state.entityId}` : state.label;
+      const toggleDomains = new Set(["switch", "input_boolean", "automation"]);
+      const domain = gardenEntityDomain(state.entityId);
+      const actionAttr = toggleDomains.has(domain)
+        ? ` data-entity-toggle="${this._escape(state.entityId)}" tabindex="0" role="button"`
+        : state.entityId ? ` data-more-info="${this._escape(state.entityId)}" tabindex="0" role="button"` : "";
       return `
-        <div class="garden-tile" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._gardenAccent(definition.group))}">
+        <div class="garden-tile" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._gardenAccent(definition.group))}"${actionAttr}>
           <span>${this._escape(state.label)}</span>
           <strong>${this._escape(state.value)}</strong>
         </div>
       `;
     },
 
+    _gardenZones() {
+      return (this._gardenConfig().zones || []).filter((zone) => zone.visible !== false);
+    },
+
+    _gardenManualActions() {
+      return (this._gardenConfig().manual_actions || []).filter((action) => action.visible !== false);
+    },
+
+    _gardenZoneIsOn(zone) {
+      if (!zone?.entity) return false;
+      return this._gardenBooleanValueFromRaw(this._getEntityValue(zone.entity, undefined)) === true;
+    },
+
+    _gardenZonePlanValue(zone) {
+      if (!zone) return "";
+      if (zone.plan_entity) {
+        const value = this._getEntityValue(zone.plan_entity, undefined);
+        return isUnavailableGardenValue(value) ? "" : this._gardenFormatNextTime(value);
+      }
+      return zone.plan_text || "";
+    },
+
+    _renderGardenZoneBadge(zone) {
+      if (!zone?.entity) return "";
+      const active = this._gardenZoneIsOn(zone);
+      const value = active ? this._t("garden.zoneRunning", {}, "Running") : this._t("garden.off", {}, "Off");
+      const glow = active ? zone.glow || "rgba(52,211,153,.55)" : "transparent";
+      const actionAttr = zone.toggle
+        ? ` data-entity-toggle="${this._escape(zone.entity)}" tabindex="0" role="button"`
+        : ` data-more-info="${this._escape(zone.entity)}" tabindex="0" role="button"`;
+      return `
+        <div class="garden-badge garden-zone-badge" style="left:${this._escape(zone.left)}%;top:${this._escape(zone.top)}%;--tile-accent:${this._escape(active ? zone.color : "#9ba3b8")};--tile-glow:${this._escape(glow)}"${actionAttr}>
+          <span>${this._escape(zone.short || zone.label)}</span>
+          <strong>${this._escape(value)}</strong>
+          <div class="metric-meter"><span style="width:${active ? 100 : 0}%"></span></div>
+        </div>
+      `;
+    },
+
+    _renderGardenZoneTile(zone) {
+      if (!zone?.entity) return "";
+      const active = this._gardenZoneIsOn(zone);
+      const value = active ? this._t("garden.zoneRunning", {}, "Running") : this._t("garden.off", {}, "Off");
+      const plan = this._gardenZonePlanValue(zone);
+      const actionAttr = zone.toggle
+        ? ` data-entity-toggle="${this._escape(zone.entity)}" tabindex="0" role="button"`
+        : ` data-more-info="${this._escape(zone.entity)}" tabindex="0" role="button"`;
+      return `
+        <div class="garden-tile garden-zone-tile" title="${this._escape(`${zone.label}: ${zone.entity}`)}" style="--tile-accent:${this._escape(active ? zone.color : "#9ba3b8")};--tile-glow:${this._escape(active ? zone.glow || "rgba(52,211,153,.35)" : "transparent")}"${actionAttr}>
+          <span>${this._escape(zone.label)}</span>
+          <strong>${this._escape(value)}</strong>
+          ${plan ? `<small class="garden-tile-note">${this._escape(plan)}</small>` : ""}
+          <div class="metric-meter"><span style="width:${active ? 100 : 0}%"></span></div>
+        </div>
+      `;
+    },
+
+    _renderGardenManualAction(action) {
+      if (!action?.entity) return "";
+      const caption = action.caption || this._t("garden.manualAction", {}, "Manual action");
+      return `
+        <button type="button" class="garden-tile garden-action-tile" style="--tile-accent:${this._escape(action.color)}" data-call-service-entity="${this._escape(action.entity)}" data-confirm="${this._escape(action.confirm_text || "")}">
+          <span>${this._escape(caption)}</span>
+          <strong>${this._escape(action.label)}</strong>
+        </button>
+      `;
+    },
+
+    _gardenActiveZone() {
+      return this._gardenZones().find((zone) => this._gardenZoneIsOn(zone));
+    },
+
+    _gardenStatusText() {
+      const activeZone = this._gardenActiveZone();
+      if (activeZone) return this._t("garden.zoneWatering", { zone: activeZone.short || activeZone.label }, `${activeZone.short || activeZone.label} watering`);
+      const statusText = this._gardenFieldState(this._gardenDefinition("irrigation_status_text"));
+      if (statusText.configured && statusText.value !== GARDEN_EMPTY_VALUE) return statusText.value;
+      const gardenWater = this._gardenFieldState(this._gardenDefinition("garden_water"));
+      if (gardenWater.configured && gardenWater.value !== GARDEN_EMPTY_VALUE) return gardenWater.value;
+      return "";
+    },
+
     _renderGardenDashboard() {
       const gardenConfig = this._gardenConfig();
       const configuredFields = this._gardenConfiguredFields();
-      const [imageSrc, ...imageFallbacks] = this._gardenImageUrls(gardenConfig.image);
+      const [imageSrc, ...imageFallbacks] = this._gardenImageUrls();
       const title = gardenConfig.title || this._t("garden.title", {}, "Garten");
       const mower = this._gardenFieldState(this._gardenDefinition("mower_status"));
       const gardenWater = this._gardenFieldState(this._gardenDefinition("garden_water"));
       const irrigationEnabled = this._gardenFieldState(this._gardenDefinition("irrigation_enabled"));
-      const stateLabel = gardenWater.configured && gardenWater.value !== GARDEN_EMPTY_VALUE
-        ? gardenWater.value
-        : irrigationEnabled.configured && irrigationEnabled.value !== GARDEN_EMPTY_VALUE
+      const statusText = this._gardenStatusText();
+      const stateLabel = statusText
+        || (irrigationEnabled.configured && irrigationEnabled.value !== GARDEN_EMPTY_VALUE
           ? irrigationEnabled.value
-        : mower.configured && mower.value !== GARDEN_EMPTY_VALUE
-          ? mower.value
-          : this._t("garden.ready", {}, "Bereit");
+          : mower.configured && mower.value !== GARDEN_EMPTY_VALUE
+            ? mower.value
+            : this._t("garden.ready", {}, "Bereit"));
+      const waterBadge = irrigationEnabled.configured
+        ? this._renderGardenHeroBadge("irrigation_enabled", "garden-badge-water")
+        : this._renderGardenHeroBadge("garden_water", "garden-badge-water");
       const heroBadges = [
         this._renderGardenHeroBadge("mower_status", "garden-badge-mower"),
-        this._renderGardenHeroBadge("garden_water", "garden-badge-water"),
+        waterBadge,
         this._renderGardenHeroBadge("rain_24h", "garden-badge-rain"),
+        this._renderGardenHeroBadge("outdoor_temperature", "garden-badge-temp"),
         this._renderGardenHeroBadge("soil_moisture", "garden-badge-soil"),
+        ...this._gardenZones().map((zone) => this._renderGardenZoneBadge(zone)),
       ].join("");
+      const configuredFieldItems = configuredFields.filter((item) => item.definition.key !== "irrigation_status_text");
       const groups = GARDEN_GROUPS.map((group) => {
-        const items = configuredFields.filter((item) => item.definition.group === group.key);
+        const items = configuredFieldItems.filter((item) => item.definition.group === group.key);
         if (items.length === 0) return "";
         return `
           <section class="garden-section">
@@ -369,7 +589,23 @@ export function createGardenDashboardMethods({
           </section>
         `;
       }).join("");
-      const empty = configuredFields.length === 0
+      const zoneTiles = this._gardenZones().length > 0
+        ? `
+          <section class="garden-section">
+            <div class="garden-section-title">${this._escape(this._t("garden.groupZones", {}, "Irrigation zones"))}</div>
+            <div class="garden-grid garden-zone-grid">${this._gardenZones().map((zone) => this._renderGardenZoneTile(zone)).join("")}</div>
+          </section>
+        `
+        : "";
+      const actionTiles = this._gardenManualActions().length > 0
+        ? `
+          <section class="garden-section">
+            <div class="garden-section-title">${this._escape(this._t("garden.groupActions", {}, "Manual actions"))}</div>
+            <div class="garden-grid garden-action-grid">${this._gardenManualActions().map((action) => this._renderGardenManualAction(action)).join("")}</div>
+          </section>
+        `
+        : "";
+      const empty = configuredFields.length === 0 && !zoneTiles && !actionTiles
         ? `<div class="garden-empty">${this._escape(this._t("garden.empty", {}, "Keine Garten-Entitäten konfiguriert."))}</div>`
         : "";
 
@@ -388,8 +624,9 @@ export function createGardenDashboardMethods({
             <div class="garden-overlay">
               ${heroBadges}
             </div>
+            ${statusText ? `<div class="scene-status garden-scene-status">${this._escape(statusText)}</div>` : ""}
           </div>
-          ${empty || groups}
+          ${empty || `${zoneTiles}${actionTiles}${groups}`}
         </section>
       `;
     },

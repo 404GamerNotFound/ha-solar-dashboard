@@ -43,6 +43,7 @@ export function createDefaultElectricVehicleConfig() {
     evcc_loadpoint: "",
     evcc_prefix: "evcc",
     entities: {},
+    display: {},
   };
 }
 

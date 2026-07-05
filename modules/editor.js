@@ -7,6 +7,8 @@ export function createDashboardEditorClass({
   ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
   ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
   ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
+  electricVehicleHeroBadgeFallbackPosition,
+  electricVehicleHeroBadgePositionKey,
   GARDEN_ENTITY_DEFINITIONS,
   GARDEN_HERO_BADGE_POSITIONS,
   GARDEN_HERO_BADGE_POSITION_KEYS,
@@ -339,6 +341,7 @@ export function createDashboardEditorClass({
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
     if (root === "show_electric_vehicle") return true;
+    if (root === "electric_vehicle" && parts[1] === "display") return true;
     if (root === "electric_vehicle" && ["image", "day_image", "night_image", "wallbox", "title", "evcc_loadpoint", "evcc_prefix"].includes(lastPart)) return true;
     if (root === "show_garden") return true;
     if (root === "garden") return true;
@@ -1288,6 +1291,8 @@ export function createDashboardEditorClass({
     return [
       { path: "weather_entity", domains: ["weather"], include: [{ terms: ["weather", "wetter", "home", "haus"], weight: 14 }], threshold: 35 },
       { path: "entities.electricity_price", domains: ["sensor"], include: [{ terms: ["electricity price", "strompreis", "price", "tariff", "tarif", "tibber", "awattar"], weight: 34 }], exclude: ["power", "leistung", "energy", "kwh total"], threshold: 42 },
+      { path: "image_overlays.smoke.entity", domains: ["sensor"], include: [{ terms: ["gas", "gas meter", "gaszaehler", "gaszahler", "zaehlerstand", "zählerstand", "meter", "counter"], weight: 34 }], exclude: ["power", "leistung", "electricity", "strom"], threshold: 48 },
+      { path: "image_overlays.heatpump.entity", ...powerTarget, required: [["heatpump", "heat pump", "waermepumpe", "wärmepumpe", "wp"]], include: [{ terms: ["heatpump", "heat pump", "waermepumpe", "wärmepumpe", "wp"], weight: 38 }, ...powerTarget.include], threshold: 54 },
       { path: "entities.pv_roof_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["roof", "dach", "rooftop"]], include: [pvTerms, { terms: ["roof", "dach", "rooftop"], weight: 24 }, ...powerTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", "forecast", "prognose"], threshold: 60 },
       { path: "entities.pv_roof_power_voltage", ...voltageTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["roof", "dach", "rooftop"]], include: [pvTerms, { terms: ["roof", "dach", "rooftop"], weight: 24 }, ...voltageTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", ...voltageTarget.exclude], threshold: 62 },
       { path: "entities.pv_shed_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["shed", "garage", "carport", "schuppen", "balkon", "balcony"]], include: [pvTerms, { terms: ["shed", "garage", "carport", "schuppen", "balkon", "balcony"], weight: 28 }, ...powerTarget.include], exclude: ["roof", "dach", "total", "gesamt", "forecast", "prognose"], threshold: 62 },
@@ -1368,6 +1373,26 @@ export function createDashboardEditorClass({
     ];
   }
 
+  _autoDetectScopeForPath(path = "") {
+    if (path.startsWith("electric_vehicle.")) return "electric_vehicle";
+    if (path.startsWith("garden.")) return "garden";
+    if (path.startsWith("image_overlays.") || path.startsWith("large_consumers.")) return "devices";
+    if (path.startsWith("environment_sensors.")) return "environment";
+    if (path.startsWith("floorplan.")) return "floorplan";
+    if (path.startsWith("custom_kpis.")) return "advanced";
+    if (path === "entities.electricity_price") return "advisor";
+    if (path === "weather_entity") return "setup";
+    if (path.startsWith("entities.") || path.startsWith("energy_entities.")) return "energy";
+    return "setup";
+  }
+
+  _autoDetectTargetsForScope(scope = "all") {
+    const normalizedScope = String(scope || "all");
+    const targets = this._autoDetectTargets();
+    if (normalizedScope === "all") return targets;
+    return targets.filter((target) => this._autoDetectScopeForPath(target.path) === normalizedScope);
+  }
+
   _scoreEntityForTarget(entity, target) {
     if (target.required?.some((terms) => !(terms || []).some((term) => this._searchMatches(entity.haystack, term)))) {
       return 0;
@@ -1398,12 +1423,12 @@ export function createDashboardEditorClass({
     return Math.max(0, Math.min(100, score));
   }
 
-  _autoDetectSuggestions() {
+  _autoDetectSuggestions(scope = "all") {
     const catalog = this._entityCatalog();
     if (catalog.length === 0) return [];
     const usedEntityIds = new Set();
     const usedPaths = new Set();
-    return this._autoDetectTargets().map((target) => {
+    return this._autoDetectTargetsForScope(scope).map((target) => {
       if (usedPaths.has(target.path)) return null;
       const candidates = catalog
         .filter((entity) => !usedEntityIds.has(entity.entityId) || target.path.includes("energy_entities"))
@@ -1422,12 +1447,37 @@ export function createDashboardEditorClass({
         score: best.score,
         current,
         name: best.entity.name,
+        scope: this._autoDetectScopeForPath(target.path),
       };
     }).filter(Boolean);
   }
 
-  _applyAutoDetection(mode = "fill", onePath = "") {
-    const suggestions = this._autoDetectSuggestions().filter((suggestion) => !onePath || suggestion.path === onePath);
+  _wizardMessage(scope = "all") {
+    return this._wizardMessages?.[scope] || (scope === "all" ? this._wizardMessage : "");
+  }
+
+  _setWizardMessage(scope = "all", message = "") {
+    this._wizardMessages = {
+      ...(this._wizardMessages || {}),
+      [scope]: message,
+    };
+    if (scope === "all") this._wizardMessage = message;
+  }
+
+  _isSetupWizardOpen(scope = "all") {
+    if (this._setupWizardOpenScopes instanceof Set && this._setupWizardOpenScopes.has(scope)) return true;
+    return scope === "all" ? Boolean(this._setupWizardOpen) : false;
+  }
+
+  _setSetupWizardOpen(scope = "all", open = false) {
+    this._setupWizardOpenScopes = this._setupWizardOpenScopes instanceof Set ? this._setupWizardOpenScopes : new Set();
+    if (open) this._setupWizardOpenScopes.add(scope);
+    else this._setupWizardOpenScopes.delete(scope);
+    if (scope === "all") this._setupWizardOpen = open;
+  }
+
+  _applyAutoDetection(mode = "fill", onePath = "", scope = "all") {
+    const suggestions = this._autoDetectSuggestions(scope).filter((suggestion) => !onePath || suggestion.path === onePath);
     const next = this._cloneConfig(this._config || {});
     let changed = 0;
     suggestions.forEach((suggestion) => {
@@ -1438,6 +1488,10 @@ export function createDashboardEditorClass({
       this._setPath(next, suggestion.path.split("."), suggestion.entityId);
       if (suggestion.path.startsWith("electric_vehicle.entities.")) next.show_electric_vehicle = true;
       if (suggestion.path.startsWith("garden.")) next.show_garden = true;
+      if (suggestion.path.startsWith("image_overlays.")) {
+        const overlayKey = suggestion.path.split(".")[1];
+        if (overlayKey) this._setPath(next, ["image_overlays", overlayKey, "enabled"], true);
+      }
       if (suggestion.path.startsWith("entities.wallbox2_")) this._setPath(next, ["visible_boxes", "wallbox2_power"], true);
       if (suggestion.path === "entities.water_meter") this._setPath(next, ["visible_boxes", "water_meter"], true);
       if (suggestion.path === "entities.import_export_power" || suggestion.path === "entities.import_power" || suggestion.path === "entities.export_power") {
@@ -1447,9 +1501,9 @@ export function createDashboardEditorClass({
       changed += 1;
     });
     this._config = next;
-    this._wizardMessage = changed > 0
+    this._setWizardMessage(scope, changed > 0
       ? this._t("editor.setupApplied", { count: changed }, `Applied ${changed} suggestion(s).`)
-      : this._t("editor.setupApplyNone", {}, "No empty fields were changed.");
+      : this._t("editor.setupApplyNone", {}, "No empty fields were changed."));
     if (changed > 0) this._dispatchConfig(next);
     this._render();
   }
@@ -2536,9 +2590,13 @@ export function createDashboardEditorClass({
     `;
   }
 
-  _renderSetupWizard() {
+  _renderSetupWizard(scope = "all") {
+    const normalizedScope = String(scope || "all");
+    const scoped = normalizedScope !== "all";
+    if (scoped && this._autoDetectTargetsForScope(normalizedScope).length === 0) return "";
     const entityCount = this._entityOptions().length;
-    const suggestions = this._autoDetectSuggestions();
+    const suggestions = this._autoDetectSuggestions(normalizedScope);
+    const wizardMessage = this._wizardMessage(normalizedScope);
     const suggestionRows = suggestions.map((suggestion) => {
       const current = suggestion.current ? `
         <div class="wizard-current">
@@ -2555,28 +2613,28 @@ export function createDashboardEditorClass({
           </div>
           <div class="wizard-suggestion-side">
             <span>${this._escape(this._t("editor.setupConfidence", { score: suggestion.score }, `${suggestion.score}% match`))}</span>
-            <button type="button" data-action="apply-suggestion" data-path="${this._escape(suggestion.path)}">${this._escape(this._t("editor.setupApplyOne", {}, "Use"))}</button>
+            <button type="button" data-action="apply-suggestion" data-scope="${this._escape(normalizedScope)}" data-path="${this._escape(suggestion.path)}">${this._escape(this._t("editor.setupApplyOne", {}, "Use"))}</button>
           </div>
         </div>
       `;
     }).join("");
 
     return `
-      <details class="setup-wizard" data-setup-wizard${this._setupWizardOpen ? " open" : ""}>
-        <summary>${this._escape(this._t("editor.setupWizard", {}, "Setup wizard"))}</summary>
+      <details class="setup-wizard" data-setup-wizard data-setup-scope="${this._escape(normalizedScope)}"${this._isSetupWizardOpen(normalizedScope) ? " open" : ""}>
+        <summary>${this._escape(scoped ? this._t("editor.setupWizardPage", {}, "Setup wizard for this page") : this._t("editor.setupWizard", {}, "Setup wizard"))}</summary>
         <div class="wizard-body">
-          <p>${this._escape(this._t("editor.setupIntro", {}, "Detect likely Home Assistant entities and fill the card configuration."))}</p>
-          <p>${this._escape(this._t("editor.setupHelp", {}, "Review the suggestions before applying them. Use Fill empty fields for a safe first pass or Replace detected fields when you want to overwrite existing detected assignments."))}</p>
+          <p>${this._escape(scoped ? this._t("editor.setupPageIntro", {}, "Detect likely Home Assistant entities for the current editor page.") : this._t("editor.setupIntro", {}, "Detect likely Home Assistant entities and fill the card configuration."))}</p>
+          <p>${this._escape(scoped ? this._t("editor.setupPageHelp", {}, "These actions only apply suggestions for this page.") : this._t("editor.setupHelp", {}, "Review the suggestions before applying them. Use Fill empty fields for a safe first pass or Replace detected fields when you want to overwrite existing detected assignments."))}</p>
           <div class="wizard-status">
             ${entityCount > 0
               ? this._escape(this._t("editor.setupEntityCount", { count: entityCount }, `${entityCount} entities available`))
               : this._escape(this._t("editor.setupNoEntities", {}, "Open this editor in Home Assistant so entities can be detected."))}
           </div>
           <div class="wizard-actions">
-            <button type="button" data-action="auto-detect" data-mode="fill" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupFillEmpty", {}, "Fill empty fields"))}</button>
-            <button type="button" data-action="auto-detect" data-mode="replace" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupReplaceAll", {}, "Replace detected fields"))}</button>
+            <button type="button" data-action="auto-detect" data-mode="fill" data-scope="${this._escape(normalizedScope)}" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupFillEmpty", {}, "Fill empty fields"))}</button>
+            <button type="button" data-action="auto-detect" data-mode="replace" data-scope="${this._escape(normalizedScope)}" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupReplaceAll", {}, "Replace detected fields"))}</button>
           </div>
-          ${this._wizardMessage ? `<div class="wizard-message">${this._escape(this._wizardMessage)}</div>` : ""}
+          ${wizardMessage ? `<div class="wizard-message">${this._escape(wizardMessage)}</div>` : ""}
           <div class="wizard-suggestions-title">${this._escape(this._t("editor.setupSuggestions", {}, "Detected suggestions"))}</div>
           <div class="wizard-suggestions">
             ${suggestionRows || `<div class="wizard-empty">${this._escape(this._t("editor.setupNoSuggestions", {}, "No strong entity matches found yet."))}</div>`}
@@ -2643,7 +2701,39 @@ export function createDashboardEditorClass({
   }
 
   _electricVehicleHeroBadgePositionKey(key = "") {
+    if (typeof electricVehicleHeroBadgePositionKey === "function") return electricVehicleHeroBadgePositionKey(key);
     return ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS?.[key] || `electric_vehicle_${key}`;
+  }
+
+  _electricVehicleHeroBadgeFallbackPosition(key = "", index = 0) {
+    if (typeof electricVehicleHeroBadgeFallbackPosition === "function") return electricVehicleHeroBadgeFallbackPosition(key, index);
+    if (ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS?.[key]) return ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[key];
+    const safeIndex = Math.max(0, Number(index) || 0);
+    return {
+      left: 14 + (safeIndex % 4) * 24,
+      top: 12 + (Math.floor(safeIndex / 4) % 4) * 20,
+    };
+  }
+
+  _electricVehicleDisplayModeOptions(selected = "both") {
+    const normalized = ["hidden", "mobile", "desktop", "both"].includes(selected) ? selected : "both";
+    return [
+      ["both", "editor.displayBoth", "Mobile + desktop"],
+      ["mobile", "editor.displayMobile", "Mobile only"],
+      ["desktop", "editor.displayDesktop", "Desktop only"],
+      ["hidden", "editor.displayHidden", "Hidden"],
+    ].map(([value, key, fallback]) => `<option value="${value}"${normalized === value ? " selected" : ""}>${this._escape(this._t(key, {}, fallback))}</option>`).join("");
+  }
+
+  _electricVehicleDisplayConfig(electricVehicle = this._config.electric_vehicle || {}, definition = {}, index = 0) {
+    const normalized = normalizeElectricVehicleConfig?.(electricVehicle || {}) || electricVehicle || {};
+    const display = normalized.display?.[definition.key] || {};
+    const groupIndex = Math.max(0, this._electricVehicleGroups().findIndex(([groupKey]) => groupKey === definition.group));
+    return {
+      image: display.image || (ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS?.[definition.key] ? "both" : "hidden"),
+      tile: display.tile || (definition.control === true ? "hidden" : "both"),
+      tile_position: Number.isFinite(Number(display.tile_position)) ? Number(display.tile_position) : groupIndex * 100 + index,
+    };
   }
 
   _electricVehicleWallboxKey() {
@@ -2754,15 +2844,18 @@ export function createDashboardEditorClass({
         };
       })
       .filter(Boolean);
+    const electricVehicleConfig = normalizeElectricVehicleConfig?.(this._config.electric_vehicle || {}) || this._config.electric_vehicle || {};
     const electricVehicleItems = this._config.show_electric_vehicle === false
       ? []
-      : Object.entries(ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS || {})
-        .map(([key, fallback]) => {
-          const definition = this._electricVehicleDefinitions().find((item) => item.key === key);
-          if (!definition) return undefined;
+      : this._electricVehicleDefinitions()
+        .map((definition, index) => {
+          const key = definition.key;
+          const display = this._electricVehicleDisplayConfig(electricVehicleConfig, definition, index);
+          if (display.image === "hidden") return undefined;
           const positionKey = this._electricVehicleHeroBadgePositionKey(key);
           const entityId = this._electricVehicleLayoutEntityId(definition);
           if (key !== "status" && !entityId && !this._layoutPositionConfigured(positionKey)) return undefined;
+          const fallback = this._electricVehicleHeroBadgeFallbackPosition(key, index);
           const position = this._layoutPosition(positionKey, fallback);
           return {
             key: `electric_vehicle:${key}`,
@@ -3108,6 +3201,10 @@ export function createDashboardEditorClass({
     const value = electricVehicle.entities?.[definition.key] || "";
     const aliases = definition.aliases?.slice(0, 3).join(", ") || `sensor.evcc_${definition.key}`;
     const detailsKey = `electric-vehicle-${definition.key}`;
+    const definitionIndex = this._electricVehicleDefinitions().findIndex((item) => item.key === definition.key);
+    const display = this._electricVehicleDisplayConfig(electricVehicle, definition, definitionIndex);
+    const positionKey = this._electricVehicleHeroBadgePositionKey(definition.key);
+    const position = this._layoutPosition(positionKey, this._electricVehicleHeroBadgeFallbackPosition(definition.key, definitionIndex));
     const status = this._statusText({
       configured: this._countConfigured([value]),
       missing: this._missingEntityCount([value]),
@@ -3124,9 +3221,26 @@ export function createDashboardEditorClass({
           </span>
         </summary>
         <div class="box-body">
-          <label>${this._labelText(this._t("editor.electricVehicleEntity", {}, "EVCC entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}
-            <input data-path="electric_vehicle.entities.${this._escape(definition.key)}" list="ha-solar-dashboard-entities" placeholder="${this._escape(aliases.split(", ")[0] || `sensor.evcc_${definition.key}`)}" value="${this._escape(value)}" autocomplete="off" />
-          </label>
+          <div class="settings-grid">
+            <label>${this._labelText(this._t("editor.electricVehicleEntity", {}, "EVCC entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}
+              <input data-path="electric_vehicle.entities.${this._escape(definition.key)}" list="ha-solar-dashboard-entities" placeholder="${this._escape(aliases.split(", ")[0] || `sensor.evcc_${definition.key}`)}" value="${this._escape(value)}" autocomplete="off" />
+            </label>
+            <label>${this._labelText(this._t("editor.electricVehicleImageVisibility", {}, "Image badge"), this._t("editor.electricVehicleImageVisibilityHelp", {}, "Controls whether this EVCC value appears on the vehicle image."))}
+              <select data-path="electric_vehicle.display.${this._escape(definition.key)}.image">${this._electricVehicleDisplayModeOptions(display.image)}</select>
+            </label>
+            <label>${this._labelText(this._t("editor.electricVehicleTileVisibility", {}, "Tile below image"), this._t("editor.electricVehicleTileVisibilityHelp", {}, "Controls whether this EVCC value appears as a tile below the image."))}
+              <select data-path="electric_vehicle.display.${this._escape(definition.key)}.tile">${this._electricVehicleDisplayModeOptions(display.tile)}</select>
+            </label>
+            <label>${this._labelText(`${this._t("editor.electricVehicleTilePosition", {}, "Tile position")} (${display.tile_position})`, this._t("editor.helpFooterOrder", {}, "Controls the order of tiles below the image. Lower numbers appear earlier."))}
+              <input type="number" min="0" max="999" step="1" data-path="electric_vehicle.display.${this._escape(definition.key)}.tile_position" value="${this._escape(display.tile_position)}" />
+            </label>
+            <label>${this._labelText(`X (${Math.round(position.left)})`, this._t("editor.electricVehicleBadgePositionHelp", {}, "Controls the image badge position when this EVCC value is shown on the vehicle image."))}
+              <input type="range" min="0" max="100" step="1" data-path="positions.${this._escape(positionKey)}.left" value="${this._escape(position.left)}" />
+            </label>
+            <label>${this._labelText(`Y (${Math.round(position.top)})`, this._t("editor.electricVehicleBadgePositionHelp", {}, "Controls the image badge position when this EVCC value is shown on the vehicle image."))}
+              <input type="range" min="0" max="100" step="1" data-path="positions.${this._escape(positionKey)}.top" value="${this._escape(position.top)}" />
+            </label>
+          </div>
         </div>
       </details>
     `;
@@ -3618,19 +3732,20 @@ export function createDashboardEditorClass({
         key: "setup",
         label: this._t("editor.tabSetup", {}, "Setup"),
         status: this._statusText({ configured: this._countConfigured([this._config.house, this._config.title, this._config.weather_entity]) }),
-        content: `${this._renderSetupWizard()}${dashboardAreasHtml}${generalSettingsHtml}`,
+        content: `${this._renderSetupWizard("all")}${dashboardAreasHtml}${generalSettingsHtml}`,
       },
       {
         key: "energy",
         label: this._t("editor.tabEnergy", {}, "Energy"),
         status: this._statusText({ configured: configuredTileEntities.length, total: TILE_METRICS.length, missing: this._missingEntityCount(configuredTileEntities) }),
-        content: boxSettingsHtml,
+        content: `${this._renderSetupWizard("energy")}${boxSettingsHtml}`,
       },
       {
         key: "devices",
         label: this._t("editor.tabDevices", {}, "Devices"),
         status: this._statusText({ configured: overlayCount + largeConsumerConfigured, total: IMAGE_OVERLAY_KEYS.length + largeConsumers.length }),
         content: [
+          this._renderSetupWizard("devices"),
           renderEditorCard(this._t("editor.sectionOverlays", {}, "Image overlays"), this._statusText({ configured: overlayCount, total: IMAGE_OVERLAY_KEYS.length }), `<div class="grid">${overlayFields}</div>`),
           renderEditorCard(this._t("editor.sectionLargeConsumers", {}, "Additional large consumers"), this._statusText({ configured: largeConsumerConfigured, total: largeConsumers.length, hidden: largeConsumers.filter((consumer) => consumer.visible === false).length }), largeConsumerSettingsHtml),
         ].join(""),
@@ -3639,13 +3754,13 @@ export function createDashboardEditorClass({
         key: "electric_vehicle",
         label: this._t("editor.tabElectricVehicle", {}, "E-Auto"),
         status: this._statusText({ configured: electricVehicleConfigured, total: this._electricVehicleDefinitions().length, hidden: this._config.show_electric_vehicle === false ? 1 : 0, missing: electricVehicleMissing }),
-        content: this._renderElectricVehicleEditor(electricVehicle),
+        content: `${this._renderSetupWizard("electric_vehicle")}${this._renderElectricVehicleEditor(electricVehicle)}`,
       },
       {
         key: "garden",
         label: this._t("editor.tabGarden", {}, "Garten"),
         status: this._statusText({ configured: gardenConfigured, total: gardenTotal, hidden: this._config.show_garden === false ? 1 : 0, missing: gardenMissing }),
-        content: this._renderGardenEditor(garden),
+        content: `${this._renderSetupWizard("garden")}${this._renderGardenEditor(garden)}`,
       },
       {
         key: "environment",
@@ -3675,7 +3790,7 @@ export function createDashboardEditorClass({
         key: "advisor",
         label: this._t("editor.tabAdvisor", {}, "Advisor"),
         status: this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]) }),
-        content: renderEditorCard(this._t("editor.sectionAdvisor", {}, "Advisor and prices"), this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]), advanced: true }), advisorSettingsHtml),
+        content: `${this._renderSetupWizard("advisor")}${renderEditorCard(this._t("editor.sectionAdvisor", {}, "Advisor and prices"), this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]), advanced: true }), advisorSettingsHtml)}`,
       },
       {
         key: "advanced",
@@ -3783,8 +3898,8 @@ export function createDashboardEditorClass({
         if (target.dataset.action === "remove-inverter") this._removeInverter(Number(target.dataset.index));
         if (target.dataset.action === "add-large-consumer") this._addLargeConsumer();
         if (target.dataset.action === "remove-large-consumer") this._removeLargeConsumer(Number(target.dataset.index));
-        if (target.dataset.action === "auto-detect") this._applyAutoDetection(target.dataset.mode || "fill");
-        if (target.dataset.action === "apply-suggestion") this._applyAutoDetection("replace", target.dataset.path || "");
+        if (target.dataset.action === "auto-detect") this._applyAutoDetection(target.dataset.mode || "fill", "", target.dataset.scope || "all");
+        if (target.dataset.action === "apply-suggestion") this._applyAutoDetection("replace", target.dataset.path || "", target.dataset.scope || "all");
       });
     });
     this.shadowRoot.querySelectorAll("button[data-editor-tab]").forEach((button) => {
@@ -3894,12 +4009,11 @@ export function createDashboardEditorClass({
         this._render();
       });
     }
-    const setupWizard = this.shadowRoot.querySelector("details[data-setup-wizard]");
-    if (setupWizard) {
+    this.shadowRoot.querySelectorAll("details[data-setup-wizard]").forEach((setupWizard) => {
       setupWizard.addEventListener("toggle", (event) => {
-        this._setupWizardOpen = event.currentTarget.open;
+        this._setSetupWizardOpen(event.currentTarget.dataset.setupScope || "all", event.currentTarget.open);
       });
-    }
+    });
     this.shadowRoot.querySelectorAll("details[data-editor-section]").forEach((details) => {
       details.addEventListener("toggle", (event) => {
         const key = event.currentTarget.dataset.editorSection;

@@ -26,6 +26,9 @@ export const ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS = Object.freeze({
   charge_remaining_duration: Object.freeze({ left: 84, top: 23 }),
 });
 
+const ELECTRIC_VEHICLE_IMAGE_BADGE_COLUMNS = 4;
+const ELECTRIC_VEHICLE_IMAGE_BADGE_ROWS = 4;
+
 export const ELECTRIC_VEHICLE_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "status", labelKey: "ev.status", label: "Status", group: "state", kind: "status", aliases: ["ev_status", "loadpoint_status", "wallbox_status"] }),
   Object.freeze({ key: "pv_status_text", labelKey: "ev.pvStatusText", label: "PV status text", group: "state", kind: "text", evccDomain: "sensor", evccSuffix: "pv_action_value", aliases: ["ev_pv_status_text", "evcc_pv_status_text", "evcc_pv_action_value", "pv_action_value", "loadpoint_pv_action_value", "wallbox_pv_action_value"] }),
@@ -125,6 +128,7 @@ const WALLBOX_ENTITY_FALLBACKS = Object.freeze({
 
 const UNAVAILABLE_ELECTRIC_VEHICLE_VALUES = Object.freeze(["unknown", "unavailable", "none", "null", "offline"]);
 const ELECTRIC_VEHICLE_EMPTY_VALUE = "\u2014";
+const ELECTRIC_VEHICLE_DISPLAY_MODES = Object.freeze(["hidden", "mobile", "desktop", "both"]);
 
 function normalizedElectricVehicleText(value) {
   return String(value ?? "").trim().toLowerCase();
@@ -154,6 +158,46 @@ function normalizeElectricVehicleBadgeCoordinate(value, fallback = 50) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.max(0, Math.min(100, number));
+}
+
+function normalizeElectricVehicleDisplayMode(value, fallback = "both") {
+  if (value === true) return "both";
+  if (value === false || value === null) return "hidden";
+  const normalized = normalizedElectricVehicleText(value).replace(/[\s_-]+/g, "");
+  if (!normalized) return fallback;
+  if (["hidden", "hide", "none", "off", "false", "0", "aus", "disabled", "disable"].includes(normalized)) return "hidden";
+  if (["mobile", "mobil", "phone", "smartphone", "handy"].includes(normalized)) return "mobile";
+  if (["desktop", "desk", "wide", "computer", "pc", "tablet"].includes(normalized)) return "desktop";
+  if (["both", "all", "always", "true", "1", "on", "show", "visible", "anzeigen", "bothvariants", "mobiledesktop", "desktopmobile"].includes(normalized)) return "both";
+  return ELECTRIC_VEHICLE_DISPLAY_MODES.includes(normalized) ? normalized : fallback;
+}
+
+export function electricVehicleHeroBadgePositionKey(key = "") {
+  return ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS[key] || `electric_vehicle_${key}`;
+}
+
+export function electricVehicleHeroBadgeFallbackPosition(key = "", index = 0) {
+  if (ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[key]) return ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[key];
+  const safeIndex = Math.max(0, Number(index) || 0);
+  const column = safeIndex % ELECTRIC_VEHICLE_IMAGE_BADGE_COLUMNS;
+  const row = Math.floor(safeIndex / ELECTRIC_VEHICLE_IMAGE_BADGE_COLUMNS) % ELECTRIC_VEHICLE_IMAGE_BADGE_ROWS;
+  return {
+    left: 14 + column * 24,
+    top: 12 + row * 20,
+  };
+}
+
+function electricVehicleDefaultImageVisibility(key = "") {
+  return ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[key] ? "both" : "hidden";
+}
+
+function electricVehicleDefaultTileVisibility(definition = {}) {
+  return definition.control === true ? "hidden" : "both";
+}
+
+function electricVehicleDefaultTilePosition(definition = {}, index = 0) {
+  const groupIndex = Math.max(0, ELECTRIC_VEHICLE_GROUPS.findIndex((group) => group.key === definition.group));
+  return groupIndex * 100 + index;
 }
 
 function normalizeElectricVehicleWallbox(value) {
@@ -191,6 +235,34 @@ function normalizeElectricVehicleEntities(entities = {}) {
   );
 }
 
+function electricVehicleDisplayEntry(source = {}, key = "") {
+  const displaySource = source.display || source.entity_display || source.entityDisplay || source.visibility || {};
+  const entry = displaySource && typeof displaySource === "object" ? displaySource[key] : undefined;
+  if (entry && typeof entry === "object") return entry;
+  if (entry !== undefined) return { image: entry, tile: entry };
+  return {};
+}
+
+function normalizeElectricVehicleDisplayConfig(source = {}) {
+  return Object.fromEntries(
+    ELECTRIC_VEHICLE_ENTITY_DEFINITIONS.map((definition, index) => {
+      const key = definition.key;
+      const entry = electricVehicleDisplayEntry(source, key);
+      const legacyImage = source.image_badges?.[key] ?? source.image_entities?.[key] ?? source.show_image?.[key];
+      const legacyTile = source.tiles?.[key] ?? source.footer_tiles?.[key] ?? source.show_tile?.[key] ?? source.show_footer?.[key];
+      const tilePosition = Number(entry.tile_position ?? entry.tilePosition ?? entry.position ?? entry.order);
+      return [
+        key,
+        {
+          image: normalizeElectricVehicleDisplayMode(entry.image_visibility ?? entry.imageVisibility ?? entry.image_display ?? entry.imageDisplay ?? entry.image ?? entry.show_image ?? legacyImage, electricVehicleDefaultImageVisibility(key)),
+          tile: normalizeElectricVehicleDisplayMode(entry.tile_visibility ?? entry.tileVisibility ?? entry.tile_display ?? entry.tileDisplay ?? entry.tile ?? entry.show_tile ?? entry.show_footer ?? entry.footer ?? entry.visible ?? legacyTile, electricVehicleDefaultTileVisibility(definition)),
+          tile_position: Number.isFinite(tilePosition) ? tilePosition : electricVehicleDefaultTilePosition(definition, index),
+        },
+      ];
+    }),
+  );
+}
+
 export function normalizeElectricVehicleConfig(config = {}) {
   const source = typeof config === "string"
     ? { image: config }
@@ -207,6 +279,7 @@ export function normalizeElectricVehicleConfig(config = {}) {
     evcc_loadpoint: loadpoint,
     evcc_prefix: normalizeElectricVehiclePrefix(source.evcc_prefix || source.integration_prefix || source.prefix),
     entities: normalizeElectricVehicleEntities(source.entities || source.evcc_entities || {}),
+    display: normalizeElectricVehicleDisplayConfig(source),
   };
 }
 
@@ -390,13 +463,42 @@ export function createElectricVehicleDashboardMethods({
     },
 
     _electricVehicleHeroBadgePosition(definitionKey) {
-      const positionKey = ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS[definitionKey] || `electric_vehicle_${definitionKey}`;
-      const fallback = ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[definitionKey] || { left: 50, top: 50 };
+      const positionKey = electricVehicleHeroBadgePositionKey(definitionKey);
+      const definitionIndex = ELECTRIC_VEHICLE_ENTITY_DEFINITIONS.findIndex((definition) => definition.key === definitionKey);
+      const fallback = electricVehicleHeroBadgeFallbackPosition(definitionKey, definitionIndex);
       const configured = this.config.positions?.[positionKey] || {};
       return {
         left: normalizeElectricVehicleBadgeCoordinate(configured.left, fallback.left),
         top: normalizeElectricVehicleBadgeCoordinate(configured.top, fallback.top),
       };
+    },
+
+    _electricVehicleDisplayConfig(definitionKey) {
+      const definition = this._electricVehicleDefinition(definitionKey) || {};
+      const definitionIndex = ELECTRIC_VEHICLE_ENTITY_DEFINITIONS.findIndex((item) => item.key === definitionKey);
+      return this._electricVehicleConfig().display?.[definitionKey] || {
+        image: electricVehicleDefaultImageVisibility(definitionKey),
+        tile: electricVehicleDefaultTileVisibility(definition),
+        tile_position: electricVehicleDefaultTilePosition(definition, definitionIndex),
+      };
+    },
+
+    _electricVehicleDisplayMode(definitionKey, area = "tile") {
+      const display = this._electricVehicleDisplayConfig(definitionKey);
+      return normalizeElectricVehicleDisplayMode(display?.[area], area === "image" ? electricVehicleDefaultImageVisibility(definitionKey) : "both");
+    },
+
+    _electricVehicleDisplayClass(mode = "both") {
+      if (mode === "mobile") return "hide-desktop";
+      if (mode === "desktop") return "hide-mobile";
+      return "";
+    },
+
+    _electricVehicleTilePosition(definition = {}) {
+      const definitionIndex = ELECTRIC_VEHICLE_ENTITY_DEFINITIONS.findIndex((item) => item.key === definition.key);
+      const display = this._electricVehicleDisplayConfig(definition.key);
+      const position = Number(display?.tile_position);
+      return Number.isFinite(position) ? position : electricVehicleDefaultTilePosition(definition, definitionIndex);
     },
 
     _electricVehicleFormatDuration(rawValue, entityUnit = "") {
@@ -548,6 +650,7 @@ export function createElectricVehicleDashboardMethods({
     },
 
     _electricVehicleHeroBadgeVisible(definitionKey, state) {
+      if (this._electricVehicleDisplayMode(definitionKey, "image") === "hidden") return false;
       if (!state.configured || state.value === ELECTRIC_VEHICLE_EMPTY_VALUE) return false;
       if (definitionKey === "vehicle_soc") {
         const rawValue = this._electricVehicleRawValue("vehicle_soc");
@@ -585,9 +688,10 @@ export function createElectricVehicleDashboardMethods({
       const state = this._electricVehicleFieldState(definition);
       if (!this._electricVehicleHeroBadgeVisible(definitionKey, state)) return "";
       const position = this._electricVehicleHeroBadgePosition(definitionKey);
+      const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definitionKey, "image"));
       const entityAttr = state.entityId ? ` data-more-info="${this._escape(state.entityId)}"` : "";
       return `
-        <div class="electric-vehicle-badge" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${entityAttr}>
+        <div class="electric-vehicle-badge${modeClass ? ` ${modeClass}` : ""}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${entityAttr}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -596,6 +700,7 @@ export function createElectricVehicleDashboardMethods({
 
     _renderElectricVehicleField(item) {
       const { definition, state } = item;
+      const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definition.key, "tile"));
       const entityTitle = state.entityId ? `${state.label}: ${state.entityId}` : state.label;
       const toggleDomains = new Set(["switch", "input_boolean", "automation"]);
       const domain = electricVehicleEntityDomain(state.entityId);
@@ -603,7 +708,7 @@ export function createElectricVehicleDashboardMethods({
         ? ` data-entity-toggle="${this._escape(state.entityId)}" tabindex="0" role="button"`
         : state.entityId ? ` data-more-info="${this._escape(state.entityId)}" tabindex="0" role="button"` : "";
       return `
-        <div class="electric-vehicle-tile" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${actionAttr}>
+        <div class="electric-vehicle-tile${modeClass ? ` ${modeClass}` : ""}" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${actionAttr}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -672,14 +777,16 @@ export function createElectricVehicleDashboardMethods({
         || (evConfig.evcc_loadpoint
           ? `${this._t("ev.subtitle", {}, "EVCC loadpoint")}: ${evConfig.evcc_loadpoint}`
           : this._t("ev.subtitle", {}, "EVCC loadpoint"));
-      const heroBadges = ["mode", "status", "charge_power", "charge_current", "session_energy", "grid_power", "home_battery_soc", "session_solar_percentage", "vehicle_soc", "charge_remaining_duration"]
-        .map((key) => this._renderElectricVehicleHeroBadge(key))
+      const heroBadges = ELECTRIC_VEHICLE_ENTITY_DEFINITIONS
+        .map((definition) => this._renderElectricVehicleHeroBadge(definition.key))
         .join("");
       const modeControl = this._renderElectricVehicleModeControl();
       const pvStatusText = this._electricVehiclePvStatusText();
       const pvStatusEntityId = this._electricVehicleEntityId("pv_status_text") || "";
       const groups = ELECTRIC_VEHICLE_GROUPS.map((group) => {
-        const items = configuredFields.filter((item) => item.definition.group === group.key && item.definition.control !== true);
+        const items = configuredFields
+          .filter((item) => item.definition.group === group.key && this._electricVehicleDisplayMode(item.definition.key, "tile") !== "hidden")
+          .sort((a, b) => this._electricVehicleTilePosition(a.definition) - this._electricVehicleTilePosition(b.definition));
         if (items.length === 0) return "";
         return `
           <section class="electric-vehicle-section">

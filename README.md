@@ -82,6 +82,8 @@ When the card is edited in Home Assistant, the editor includes a setup wizard th
 
 The wizard uses entity ids, friendly names, units, `device_class`, and `state_class` to suggest common sensors such as PV power, battery SoC and flow, inverter power, wallbox power and badges, grid import/export, house consumption, weather, and cumulative kWh counters. Review the suggestions before applying them, especially when your system has multiple inverters, batteries, EV chargers, or split import/export sensors.
 
+The global wizard remains available on the Setup tab. The Energy, Devices, E-Auto, Garden, and Advisor tabs also show a page-scoped wizard that only applies suggestions for the entities on that editor page.
+
 ## Example configuration
 
 ```yaml
@@ -318,7 +320,7 @@ large_consumers:
 - `currency` (string, default: `€`; use a symbol such as `€` or an ISO code such as `EUR`)
 - `show_grid_daily_finance` (boolean, default: `true`; shows today's grid costs and feed-in revenue as compact labels on the import/export HUD and tile when counters and prices are configured)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
-- `positions.electric_vehicle_*` (optional `left`/`top` percentages for E-Auto image badges, including `status`, `mode`, `charge_power`, `charge_current`, `session_energy`, `grid_power`, `home_battery_soc`, `vehicle_soc`, `charge_remaining_duration`, and `session_solar_percentage`)
+- `positions.electric_vehicle_*` (optional `left`/`top` percentages for E-Auto image badges; every EVCC definition can be positioned when its image badge is enabled via `electric_vehicle.display.<key>.image`)
 - `positions.garden_*` (optional `left`/`top` percentages for garden image badges, including `mower_status`, `garden_water`, `irrigation_enabled`, `rain_24h`, `outdoor_temperature`, and `soil_moisture`; `garden.zones[].left/top` controls irrigation zone markers)
 - `entities.pv_roof_power` (entity id)
 - `entities.pv_shed_power` (entity id)
@@ -348,6 +350,9 @@ large_consumers:
 - `electric_vehicle.entities.mode_control` (`select`/`input_select` entity id, optional; enables the EVCC charge mode control in the E-Auto dashboard for `Off`, `PV`, `Min+PV`, and `Fast`)
 - `electric_vehicle.entities.pv_status_text` (sensor, optional; EVCC PV action/reason text shown as a diagnostic pill on the vehicle image)
 - `electric_vehicle.entities.grid_power`, `pv_power`, `home_power`, `home_battery_soc`, `home_battery_power`, `solar_forecast`, `residual_power`, `priority_soc`, `buffer_soc`, `buffer_start_soc`, and `battery_discharge_control` (optional EVCC site-level entities; when `evcc_loadpoint` is set, common marq24 site ids such as `sensor.evcc_grid_power` and `number.evcc_residual_power` are auto-detected)
+- `electric_vehicle.display.<key>.image` (`hidden`, `mobile`, `desktop`, or `both`; controls whether an EVCC value is shown as a badge on the vehicle image. Existing hero badges such as `status`, `charge_power`, `vehicle_soc`, `grid_power`, and `home_battery_soc` default to `both`; other EVCC values default to `hidden`)
+- `electric_vehicle.display.<key>.tile` (`hidden`, `mobile`, `desktop`, or `both`; controls whether an EVCC value is shown as a tile below the image. Non-control values default to `both`)
+- `electric_vehicle.display.<key>.tile_position` (number, optional; controls the order of EVCC tiles within their group below the image. Lower numbers appear earlier)
 - `garden.day_image` / `garden.night_image` (strings, optional; custom day/night garden images selected via `daylight_entity`)
 - `garden.entities.irrigation_status_text` (entity id, optional; free-text status shown as a garden image status pill when no configured zone is running)
 - `garden.zones[]` (array, optional; irrigation zone markers and tiles. Each zone supports `label`, `short`, `entity`, `plan_entity`, `plan_text`, `left`, `top`, `color`, `visible`, and `toggle`; by default zone clicks open Home Assistant more-info, while `toggle: true` allows direct switching)

@@ -619,5 +619,18 @@
   "garden.gardenLights": "Gartenlicht",
   "garden.gardenOutlet": "Gartensteckdose",
   "garden.pondPump": "Teichpumpe",
-  "garden.poolPump": "Poolpumpe"
+  "garden.poolPump": "Poolpumpe",
+  "editor.displayBoth": "Mobil + Desktop",
+  "editor.displayMobile": "Nur mobil",
+  "editor.displayDesktop": "Nur Desktop",
+  "editor.displayHidden": "Ausgeblendet",
+  "editor.electricVehicleImageVisibility": "Bild-Badge",
+  "editor.electricVehicleImageVisibilityHelp": "Steuert, ob dieser EVCC-Wert auf dem Fahrzeugbild erscheint.",
+  "editor.electricVehicleTileVisibility": "Kachel unter dem Bild",
+  "editor.electricVehicleTileVisibilityHelp": "Steuert, ob dieser EVCC-Wert als Kachel unter dem Bild erscheint.",
+  "editor.electricVehicleTilePosition": "Kachelposition",
+  "editor.electricVehicleBadgePositionHelp": "Steuert die Bild-Badge-Position, wenn dieser EVCC-Wert auf dem Fahrzeugbild angezeigt wird.",
+  "editor.setupWizardPage": "Einrichtungs-Assistent für diese Seite",
+  "editor.setupPageIntro": "Erkennt passende Home-Assistant-Entitäten für die aktuelle Editor-Seite.",
+  "editor.setupPageHelp": "Diese Aktionen übernehmen nur Vorschläge für diese Seite."
 }

@@ -2919,6 +2919,7 @@ function createDefaultElectricVehicleConfig() {
     evcc_loadpoint: "",
     evcc_prefix: "evcc",
     entities: {},
+    display: {},
   };
 }
 
@@ -3178,6 +3179,9 @@ const ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS = Object.freeze({
   charge_remaining_duration: Object.freeze({ left: 84, top: 23 }),
 });
 
+const ELECTRIC_VEHICLE_IMAGE_BADGE_COLUMNS = 4;
+const ELECTRIC_VEHICLE_IMAGE_BADGE_ROWS = 4;
+
 const ELECTRIC_VEHICLE_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "status", labelKey: "ev.status", label: "Status", group: "state", kind: "status", aliases: ["ev_status", "loadpoint_status", "wallbox_status"] }),
   Object.freeze({ key: "pv_status_text", labelKey: "ev.pvStatusText", label: "PV status text", group: "state", kind: "text", evccDomain: "sensor", evccSuffix: "pv_action_value", aliases: ["ev_pv_status_text", "evcc_pv_status_text", "evcc_pv_action_value", "pv_action_value", "loadpoint_pv_action_value", "wallbox_pv_action_value"] }),
@@ -3277,6 +3281,7 @@ const WALLBOX_ENTITY_FALLBACKS = Object.freeze({
 
 const UNAVAILABLE_ELECTRIC_VEHICLE_VALUES = Object.freeze(["unknown", "unavailable", "none", "null", "offline"]);
 const ELECTRIC_VEHICLE_EMPTY_VALUE = "\u2014";
+const ELECTRIC_VEHICLE_DISPLAY_MODES = Object.freeze(["hidden", "mobile", "desktop", "both"]);
 
 function normalizedElectricVehicleText(value) {
   return String(value ?? "").trim().toLowerCase();
@@ -3306,6 +3311,46 @@ function normalizeElectricVehicleBadgeCoordinate(value, fallback = 50) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.max(0, Math.min(100, number));
+}
+
+function normalizeElectricVehicleDisplayMode(value, fallback = "both") {
+  if (value === true) return "both";
+  if (value === false || value === null) return "hidden";
+  const normalized = normalizedElectricVehicleText(value).replace(/[\s_-]+/g, "");
+  if (!normalized) return fallback;
+  if (["hidden", "hide", "none", "off", "false", "0", "aus", "disabled", "disable"].includes(normalized)) return "hidden";
+  if (["mobile", "mobil", "phone", "smartphone", "handy"].includes(normalized)) return "mobile";
+  if (["desktop", "desk", "wide", "computer", "pc", "tablet"].includes(normalized)) return "desktop";
+  if (["both", "all", "always", "true", "1", "on", "show", "visible", "anzeigen", "bothvariants", "mobiledesktop", "desktopmobile"].includes(normalized)) return "both";
+  return ELECTRIC_VEHICLE_DISPLAY_MODES.includes(normalized) ? normalized : fallback;
+}
+
+function electricVehicleHeroBadgePositionKey(key = "") {
+  return ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS[key] || `electric_vehicle_${key}`;
+}
+
+function electricVehicleHeroBadgeFallbackPosition(key = "", index = 0) {
+  if (ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[key]) return ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[key];
+  const safeIndex = Math.max(0, Number(index) || 0);
+  const column = safeIndex % ELECTRIC_VEHICLE_IMAGE_BADGE_COLUMNS;
+  const row = Math.floor(safeIndex / ELECTRIC_VEHICLE_IMAGE_BADGE_COLUMNS) % ELECTRIC_VEHICLE_IMAGE_BADGE_ROWS;
+  return {
+    left: 14 + column * 24,
+    top: 12 + row * 20,
+  };
+}
+
+function electricVehicleDefaultImageVisibility(key = "") {
+  return ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[key] ? "both" : "hidden";
+}
+
+function electricVehicleDefaultTileVisibility(definition = {}) {
+  return definition.control === true ? "hidden" : "both";
+}
+
+function electricVehicleDefaultTilePosition(definition = {}, index = 0) {
+  const groupIndex = Math.max(0, ELECTRIC_VEHICLE_GROUPS.findIndex((group) => group.key === definition.group));
+  return groupIndex * 100 + index;
 }
 
 function normalizeElectricVehicleWallbox(value) {
@@ -3343,6 +3388,34 @@ function normalizeElectricVehicleEntities(entities = {}) {
   );
 }
 
+function electricVehicleDisplayEntry(source = {}, key = "") {
+  const displaySource = source.display || source.entity_display || source.entityDisplay || source.visibility || {};
+  const entry = displaySource && typeof displaySource === "object" ? displaySource[key] : undefined;
+  if (entry && typeof entry === "object") return entry;
+  if (entry !== undefined) return { image: entry, tile: entry };
+  return {};
+}
+
+function normalizeElectricVehicleDisplayConfig(source = {}) {
+  return Object.fromEntries(
+    ELECTRIC_VEHICLE_ENTITY_DEFINITIONS.map((definition, index) => {
+      const key = definition.key;
+      const entry = electricVehicleDisplayEntry(source, key);
+      const legacyImage = source.image_badges?.[key] ?? source.image_entities?.[key] ?? source.show_image?.[key];
+      const legacyTile = source.tiles?.[key] ?? source.footer_tiles?.[key] ?? source.show_tile?.[key] ?? source.show_footer?.[key];
+      const tilePosition = Number(entry.tile_position ?? entry.tilePosition ?? entry.position ?? entry.order);
+      return [
+        key,
+        {
+          image: normalizeElectricVehicleDisplayMode(entry.image_visibility ?? entry.imageVisibility ?? entry.image_display ?? entry.imageDisplay ?? entry.image ?? entry.show_image ?? legacyImage, electricVehicleDefaultImageVisibility(key)),
+          tile: normalizeElectricVehicleDisplayMode(entry.tile_visibility ?? entry.tileVisibility ?? entry.tile_display ?? entry.tileDisplay ?? entry.tile ?? entry.show_tile ?? entry.show_footer ?? entry.footer ?? entry.visible ?? legacyTile, electricVehicleDefaultTileVisibility(definition)),
+          tile_position: Number.isFinite(tilePosition) ? tilePosition : electricVehicleDefaultTilePosition(definition, index),
+        },
+      ];
+    }),
+  );
+}
+
 function normalizeElectricVehicleConfig(config = {}) {
   const source = typeof config === "string"
     ? { image: config }
@@ -3359,6 +3432,7 @@ function normalizeElectricVehicleConfig(config = {}) {
     evcc_loadpoint: loadpoint,
     evcc_prefix: normalizeElectricVehiclePrefix(source.evcc_prefix || source.integration_prefix || source.prefix),
     entities: normalizeElectricVehicleEntities(source.entities || source.evcc_entities || {}),
+    display: normalizeElectricVehicleDisplayConfig(source),
   };
 }
 
@@ -3542,13 +3616,42 @@ function createElectricVehicleDashboardMethods({
     },
 
     _electricVehicleHeroBadgePosition(definitionKey) {
-      const positionKey = ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS[definitionKey] || `electric_vehicle_${definitionKey}`;
-      const fallback = ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[definitionKey] || { left: 50, top: 50 };
+      const positionKey = electricVehicleHeroBadgePositionKey(definitionKey);
+      const definitionIndex = ELECTRIC_VEHICLE_ENTITY_DEFINITIONS.findIndex((definition) => definition.key === definitionKey);
+      const fallback = electricVehicleHeroBadgeFallbackPosition(definitionKey, definitionIndex);
       const configured = this.config.positions?.[positionKey] || {};
       return {
         left: normalizeElectricVehicleBadgeCoordinate(configured.left, fallback.left),
         top: normalizeElectricVehicleBadgeCoordinate(configured.top, fallback.top),
       };
+    },
+
+    _electricVehicleDisplayConfig(definitionKey) {
+      const definition = this._electricVehicleDefinition(definitionKey) || {};
+      const definitionIndex = ELECTRIC_VEHICLE_ENTITY_DEFINITIONS.findIndex((item) => item.key === definitionKey);
+      return this._electricVehicleConfig().display?.[definitionKey] || {
+        image: electricVehicleDefaultImageVisibility(definitionKey),
+        tile: electricVehicleDefaultTileVisibility(definition),
+        tile_position: electricVehicleDefaultTilePosition(definition, definitionIndex),
+      };
+    },
+
+    _electricVehicleDisplayMode(definitionKey, area = "tile") {
+      const display = this._electricVehicleDisplayConfig(definitionKey);
+      return normalizeElectricVehicleDisplayMode(display?.[area], area === "image" ? electricVehicleDefaultImageVisibility(definitionKey) : "both");
+    },
+
+    _electricVehicleDisplayClass(mode = "both") {
+      if (mode === "mobile") return "hide-desktop";
+      if (mode === "desktop") return "hide-mobile";
+      return "";
+    },
+
+    _electricVehicleTilePosition(definition = {}) {
+      const definitionIndex = ELECTRIC_VEHICLE_ENTITY_DEFINITIONS.findIndex((item) => item.key === definition.key);
+      const display = this._electricVehicleDisplayConfig(definition.key);
+      const position = Number(display?.tile_position);
+      return Number.isFinite(position) ? position : electricVehicleDefaultTilePosition(definition, definitionIndex);
     },
 
     _electricVehicleFormatDuration(rawValue, entityUnit = "") {
@@ -3700,6 +3803,7 @@ function createElectricVehicleDashboardMethods({
     },
 
     _electricVehicleHeroBadgeVisible(definitionKey, state) {
+      if (this._electricVehicleDisplayMode(definitionKey, "image") === "hidden") return false;
       if (!state.configured || state.value === ELECTRIC_VEHICLE_EMPTY_VALUE) return false;
       if (definitionKey === "vehicle_soc") {
         const rawValue = this._electricVehicleRawValue("vehicle_soc");
@@ -3737,9 +3841,10 @@ function createElectricVehicleDashboardMethods({
       const state = this._electricVehicleFieldState(definition);
       if (!this._electricVehicleHeroBadgeVisible(definitionKey, state)) return "";
       const position = this._electricVehicleHeroBadgePosition(definitionKey);
+      const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definitionKey, "image"));
       const entityAttr = state.entityId ? ` data-more-info="${this._escape(state.entityId)}"` : "";
       return `
-        <div class="electric-vehicle-badge" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${entityAttr}>
+        <div class="electric-vehicle-badge${modeClass ? ` ${modeClass}` : ""}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${entityAttr}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -3748,6 +3853,7 @@ function createElectricVehicleDashboardMethods({
 
     _renderElectricVehicleField(item) {
       const { definition, state } = item;
+      const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definition.key, "tile"));
       const entityTitle = state.entityId ? `${state.label}: ${state.entityId}` : state.label;
       const toggleDomains = new Set(["switch", "input_boolean", "automation"]);
       const domain = electricVehicleEntityDomain(state.entityId);
@@ -3755,7 +3861,7 @@ function createElectricVehicleDashboardMethods({
         ? ` data-entity-toggle="${this._escape(state.entityId)}" tabindex="0" role="button"`
         : state.entityId ? ` data-more-info="${this._escape(state.entityId)}" tabindex="0" role="button"` : "";
       return `
-        <div class="electric-vehicle-tile" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${actionAttr}>
+        <div class="electric-vehicle-tile${modeClass ? ` ${modeClass}` : ""}" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${actionAttr}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -3824,14 +3930,16 @@ function createElectricVehicleDashboardMethods({
         || (evConfig.evcc_loadpoint
           ? `${this._t("ev.subtitle", {}, "EVCC loadpoint")}: ${evConfig.evcc_loadpoint}`
           : this._t("ev.subtitle", {}, "EVCC loadpoint"));
-      const heroBadges = ["mode", "status", "charge_power", "charge_current", "session_energy", "grid_power", "home_battery_soc", "session_solar_percentage", "vehicle_soc", "charge_remaining_duration"]
-        .map((key) => this._renderElectricVehicleHeroBadge(key))
+      const heroBadges = ELECTRIC_VEHICLE_ENTITY_DEFINITIONS
+        .map((definition) => this._renderElectricVehicleHeroBadge(definition.key))
         .join("");
       const modeControl = this._renderElectricVehicleModeControl();
       const pvStatusText = this._electricVehiclePvStatusText();
       const pvStatusEntityId = this._electricVehicleEntityId("pv_status_text") || "";
       const groups = ELECTRIC_VEHICLE_GROUPS.map((group) => {
-        const items = configuredFields.filter((item) => item.definition.group === group.key && item.definition.control !== true);
+        const items = configuredFields
+          .filter((item) => item.definition.group === group.key && this._electricVehicleDisplayMode(item.definition.key, "tile") !== "hidden")
+          .sort((a, b) => this._electricVehicleTilePosition(a.definition) - this._electricVehicleTilePosition(b.definition));
         if (items.length === 0) return "";
         return `
           <section class="electric-vehicle-section">
@@ -4513,6 +4621,8 @@ function createDashboardEditorClass({
   ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
   ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
   ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
+  electricVehicleHeroBadgeFallbackPosition,
+  electricVehicleHeroBadgePositionKey,
   GARDEN_ENTITY_DEFINITIONS,
   GARDEN_HERO_BADGE_POSITIONS,
   GARDEN_HERO_BADGE_POSITION_KEYS,
@@ -4845,6 +4955,7 @@ function createDashboardEditorClass({
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
     if (root === "show_electric_vehicle") return true;
+    if (root === "electric_vehicle" && parts[1] === "display") return true;
     if (root === "electric_vehicle" && ["image", "day_image", "night_image", "wallbox", "title", "evcc_loadpoint", "evcc_prefix"].includes(lastPart)) return true;
     if (root === "show_garden") return true;
     if (root === "garden") return true;
@@ -5794,6 +5905,8 @@ function createDashboardEditorClass({
     return [
       { path: "weather_entity", domains: ["weather"], include: [{ terms: ["weather", "wetter", "home", "haus"], weight: 14 }], threshold: 35 },
       { path: "entities.electricity_price", domains: ["sensor"], include: [{ terms: ["electricity price", "strompreis", "price", "tariff", "tarif", "tibber", "awattar"], weight: 34 }], exclude: ["power", "leistung", "energy", "kwh total"], threshold: 42 },
+      { path: "image_overlays.smoke.entity", domains: ["sensor"], include: [{ terms: ["gas", "gas meter", "gaszaehler", "gaszahler", "zaehlerstand", "zählerstand", "meter", "counter"], weight: 34 }], exclude: ["power", "leistung", "electricity", "strom"], threshold: 48 },
+      { path: "image_overlays.heatpump.entity", ...powerTarget, required: [["heatpump", "heat pump", "waermepumpe", "wärmepumpe", "wp"]], include: [{ terms: ["heatpump", "heat pump", "waermepumpe", "wärmepumpe", "wp"], weight: 38 }, ...powerTarget.include], threshold: 54 },
       { path: "entities.pv_roof_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["roof", "dach", "rooftop"]], include: [pvTerms, { terms: ["roof", "dach", "rooftop"], weight: 24 }, ...powerTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", "forecast", "prognose"], threshold: 60 },
       { path: "entities.pv_roof_power_voltage", ...voltageTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["roof", "dach", "rooftop"]], include: [pvTerms, { terms: ["roof", "dach", "rooftop"], weight: 24 }, ...voltageTarget.include], exclude: ["shed", "garage", "carport", "schuppen", "total", "gesamt", ...voltageTarget.exclude], threshold: 62 },
       { path: "entities.pv_shed_power", ...powerTarget, required: [["pv", "solar", "photovoltaic", "photovoltaik"], ["shed", "garage", "carport", "schuppen", "balkon", "balcony"]], include: [pvTerms, { terms: ["shed", "garage", "carport", "schuppen", "balkon", "balcony"], weight: 28 }, ...powerTarget.include], exclude: ["roof", "dach", "total", "gesamt", "forecast", "prognose"], threshold: 62 },
@@ -5874,6 +5987,26 @@ function createDashboardEditorClass({
     ];
   }
 
+  _autoDetectScopeForPath(path = "") {
+    if (path.startsWith("electric_vehicle.")) return "electric_vehicle";
+    if (path.startsWith("garden.")) return "garden";
+    if (path.startsWith("image_overlays.") || path.startsWith("large_consumers.")) return "devices";
+    if (path.startsWith("environment_sensors.")) return "environment";
+    if (path.startsWith("floorplan.")) return "floorplan";
+    if (path.startsWith("custom_kpis.")) return "advanced";
+    if (path === "entities.electricity_price") return "advisor";
+    if (path === "weather_entity") return "setup";
+    if (path.startsWith("entities.") || path.startsWith("energy_entities.")) return "energy";
+    return "setup";
+  }
+
+  _autoDetectTargetsForScope(scope = "all") {
+    const normalizedScope = String(scope || "all");
+    const targets = this._autoDetectTargets();
+    if (normalizedScope === "all") return targets;
+    return targets.filter((target) => this._autoDetectScopeForPath(target.path) === normalizedScope);
+  }
+
   _scoreEntityForTarget(entity, target) {
     if (target.required?.some((terms) => !(terms || []).some((term) => this._searchMatches(entity.haystack, term)))) {
       return 0;
@@ -5904,12 +6037,12 @@ function createDashboardEditorClass({
     return Math.max(0, Math.min(100, score));
   }
 
-  _autoDetectSuggestions() {
+  _autoDetectSuggestions(scope = "all") {
     const catalog = this._entityCatalog();
     if (catalog.length === 0) return [];
     const usedEntityIds = new Set();
     const usedPaths = new Set();
-    return this._autoDetectTargets().map((target) => {
+    return this._autoDetectTargetsForScope(scope).map((target) => {
       if (usedPaths.has(target.path)) return null;
       const candidates = catalog
         .filter((entity) => !usedEntityIds.has(entity.entityId) || target.path.includes("energy_entities"))
@@ -5928,12 +6061,37 @@ function createDashboardEditorClass({
         score: best.score,
         current,
         name: best.entity.name,
+        scope: this._autoDetectScopeForPath(target.path),
       };
     }).filter(Boolean);
   }
 
-  _applyAutoDetection(mode = "fill", onePath = "") {
-    const suggestions = this._autoDetectSuggestions().filter((suggestion) => !onePath || suggestion.path === onePath);
+  _wizardMessage(scope = "all") {
+    return this._wizardMessages?.[scope] || (scope === "all" ? this._wizardMessage : "");
+  }
+
+  _setWizardMessage(scope = "all", message = "") {
+    this._wizardMessages = {
+      ...(this._wizardMessages || {}),
+      [scope]: message,
+    };
+    if (scope === "all") this._wizardMessage = message;
+  }
+
+  _isSetupWizardOpen(scope = "all") {
+    if (this._setupWizardOpenScopes instanceof Set && this._setupWizardOpenScopes.has(scope)) return true;
+    return scope === "all" ? Boolean(this._setupWizardOpen) : false;
+  }
+
+  _setSetupWizardOpen(scope = "all", open = false) {
+    this._setupWizardOpenScopes = this._setupWizardOpenScopes instanceof Set ? this._setupWizardOpenScopes : new Set();
+    if (open) this._setupWizardOpenScopes.add(scope);
+    else this._setupWizardOpenScopes.delete(scope);
+    if (scope === "all") this._setupWizardOpen = open;
+  }
+
+  _applyAutoDetection(mode = "fill", onePath = "", scope = "all") {
+    const suggestions = this._autoDetectSuggestions(scope).filter((suggestion) => !onePath || suggestion.path === onePath);
     const next = this._cloneConfig(this._config || {});
     let changed = 0;
     suggestions.forEach((suggestion) => {
@@ -5944,6 +6102,10 @@ function createDashboardEditorClass({
       this._setPath(next, suggestion.path.split("."), suggestion.entityId);
       if (suggestion.path.startsWith("electric_vehicle.entities.")) next.show_electric_vehicle = true;
       if (suggestion.path.startsWith("garden.")) next.show_garden = true;
+      if (suggestion.path.startsWith("image_overlays.")) {
+        const overlayKey = suggestion.path.split(".")[1];
+        if (overlayKey) this._setPath(next, ["image_overlays", overlayKey, "enabled"], true);
+      }
       if (suggestion.path.startsWith("entities.wallbox2_")) this._setPath(next, ["visible_boxes", "wallbox2_power"], true);
       if (suggestion.path === "entities.water_meter") this._setPath(next, ["visible_boxes", "water_meter"], true);
       if (suggestion.path === "entities.import_export_power" || suggestion.path === "entities.import_power" || suggestion.path === "entities.export_power") {
@@ -5953,9 +6115,9 @@ function createDashboardEditorClass({
       changed += 1;
     });
     this._config = next;
-    this._wizardMessage = changed > 0
+    this._setWizardMessage(scope, changed > 0
       ? this._t("editor.setupApplied", { count: changed }, `Applied ${changed} suggestion(s).`)
-      : this._t("editor.setupApplyNone", {}, "No empty fields were changed.");
+      : this._t("editor.setupApplyNone", {}, "No empty fields were changed."));
     if (changed > 0) this._dispatchConfig(next);
     this._render();
   }
@@ -7042,9 +7204,13 @@ function createDashboardEditorClass({
     `;
   }
 
-  _renderSetupWizard() {
+  _renderSetupWizard(scope = "all") {
+    const normalizedScope = String(scope || "all");
+    const scoped = normalizedScope !== "all";
+    if (scoped && this._autoDetectTargetsForScope(normalizedScope).length === 0) return "";
     const entityCount = this._entityOptions().length;
-    const suggestions = this._autoDetectSuggestions();
+    const suggestions = this._autoDetectSuggestions(normalizedScope);
+    const wizardMessage = this._wizardMessage(normalizedScope);
     const suggestionRows = suggestions.map((suggestion) => {
       const current = suggestion.current ? `
         <div class="wizard-current">
@@ -7061,28 +7227,28 @@ function createDashboardEditorClass({
           </div>
           <div class="wizard-suggestion-side">
             <span>${this._escape(this._t("editor.setupConfidence", { score: suggestion.score }, `${suggestion.score}% match`))}</span>
-            <button type="button" data-action="apply-suggestion" data-path="${this._escape(suggestion.path)}">${this._escape(this._t("editor.setupApplyOne", {}, "Use"))}</button>
+            <button type="button" data-action="apply-suggestion" data-scope="${this._escape(normalizedScope)}" data-path="${this._escape(suggestion.path)}">${this._escape(this._t("editor.setupApplyOne", {}, "Use"))}</button>
           </div>
         </div>
       `;
     }).join("");
 
     return `
-      <details class="setup-wizard" data-setup-wizard${this._setupWizardOpen ? " open" : ""}>
-        <summary>${this._escape(this._t("editor.setupWizard", {}, "Setup wizard"))}</summary>
+      <details class="setup-wizard" data-setup-wizard data-setup-scope="${this._escape(normalizedScope)}"${this._isSetupWizardOpen(normalizedScope) ? " open" : ""}>
+        <summary>${this._escape(scoped ? this._t("editor.setupWizardPage", {}, "Setup wizard for this page") : this._t("editor.setupWizard", {}, "Setup wizard"))}</summary>
         <div class="wizard-body">
-          <p>${this._escape(this._t("editor.setupIntro", {}, "Detect likely Home Assistant entities and fill the card configuration."))}</p>
-          <p>${this._escape(this._t("editor.setupHelp", {}, "Review the suggestions before applying them. Use Fill empty fields for a safe first pass or Replace detected fields when you want to overwrite existing detected assignments."))}</p>
+          <p>${this._escape(scoped ? this._t("editor.setupPageIntro", {}, "Detect likely Home Assistant entities for the current editor page.") : this._t("editor.setupIntro", {}, "Detect likely Home Assistant entities and fill the card configuration."))}</p>
+          <p>${this._escape(scoped ? this._t("editor.setupPageHelp", {}, "These actions only apply suggestions for this page.") : this._t("editor.setupHelp", {}, "Review the suggestions before applying them. Use Fill empty fields for a safe first pass or Replace detected fields when you want to overwrite existing detected assignments."))}</p>
           <div class="wizard-status">
             ${entityCount > 0
               ? this._escape(this._t("editor.setupEntityCount", { count: entityCount }, `${entityCount} entities available`))
               : this._escape(this._t("editor.setupNoEntities", {}, "Open this editor in Home Assistant so entities can be detected."))}
           </div>
           <div class="wizard-actions">
-            <button type="button" data-action="auto-detect" data-mode="fill" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupFillEmpty", {}, "Fill empty fields"))}</button>
-            <button type="button" data-action="auto-detect" data-mode="replace" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupReplaceAll", {}, "Replace detected fields"))}</button>
+            <button type="button" data-action="auto-detect" data-mode="fill" data-scope="${this._escape(normalizedScope)}" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupFillEmpty", {}, "Fill empty fields"))}</button>
+            <button type="button" data-action="auto-detect" data-mode="replace" data-scope="${this._escape(normalizedScope)}" ${entityCount === 0 || suggestions.length === 0 ? "disabled" : ""}>${this._escape(this._t("editor.setupReplaceAll", {}, "Replace detected fields"))}</button>
           </div>
-          ${this._wizardMessage ? `<div class="wizard-message">${this._escape(this._wizardMessage)}</div>` : ""}
+          ${wizardMessage ? `<div class="wizard-message">${this._escape(wizardMessage)}</div>` : ""}
           <div class="wizard-suggestions-title">${this._escape(this._t("editor.setupSuggestions", {}, "Detected suggestions"))}</div>
           <div class="wizard-suggestions">
             ${suggestionRows || `<div class="wizard-empty">${this._escape(this._t("editor.setupNoSuggestions", {}, "No strong entity matches found yet."))}</div>`}
@@ -7149,7 +7315,39 @@ function createDashboardEditorClass({
   }
 
   _electricVehicleHeroBadgePositionKey(key = "") {
+    if (typeof electricVehicleHeroBadgePositionKey === "function") return electricVehicleHeroBadgePositionKey(key);
     return ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS?.[key] || `electric_vehicle_${key}`;
+  }
+
+  _electricVehicleHeroBadgeFallbackPosition(key = "", index = 0) {
+    if (typeof electricVehicleHeroBadgeFallbackPosition === "function") return electricVehicleHeroBadgeFallbackPosition(key, index);
+    if (ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS?.[key]) return ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS[key];
+    const safeIndex = Math.max(0, Number(index) || 0);
+    return {
+      left: 14 + (safeIndex % 4) * 24,
+      top: 12 + (Math.floor(safeIndex / 4) % 4) * 20,
+    };
+  }
+
+  _electricVehicleDisplayModeOptions(selected = "both") {
+    const normalized = ["hidden", "mobile", "desktop", "both"].includes(selected) ? selected : "both";
+    return [
+      ["both", "editor.displayBoth", "Mobile + desktop"],
+      ["mobile", "editor.displayMobile", "Mobile only"],
+      ["desktop", "editor.displayDesktop", "Desktop only"],
+      ["hidden", "editor.displayHidden", "Hidden"],
+    ].map(([value, key, fallback]) => `<option value="${value}"${normalized === value ? " selected" : ""}>${this._escape(this._t(key, {}, fallback))}</option>`).join("");
+  }
+
+  _electricVehicleDisplayConfig(electricVehicle = this._config.electric_vehicle || {}, definition = {}, index = 0) {
+    const normalized = normalizeElectricVehicleConfig?.(electricVehicle || {}) || electricVehicle || {};
+    const display = normalized.display?.[definition.key] || {};
+    const groupIndex = Math.max(0, this._electricVehicleGroups().findIndex(([groupKey]) => groupKey === definition.group));
+    return {
+      image: display.image || (ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS?.[definition.key] ? "both" : "hidden"),
+      tile: display.tile || (definition.control === true ? "hidden" : "both"),
+      tile_position: Number.isFinite(Number(display.tile_position)) ? Number(display.tile_position) : groupIndex * 100 + index,
+    };
   }
 
   _electricVehicleWallboxKey() {
@@ -7260,15 +7458,18 @@ function createDashboardEditorClass({
         };
       })
       .filter(Boolean);
+    const electricVehicleConfig = normalizeElectricVehicleConfig?.(this._config.electric_vehicle || {}) || this._config.electric_vehicle || {};
     const electricVehicleItems = this._config.show_electric_vehicle === false
       ? []
-      : Object.entries(ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS || {})
-        .map(([key, fallback]) => {
-          const definition = this._electricVehicleDefinitions().find((item) => item.key === key);
-          if (!definition) return undefined;
+      : this._electricVehicleDefinitions()
+        .map((definition, index) => {
+          const key = definition.key;
+          const display = this._electricVehicleDisplayConfig(electricVehicleConfig, definition, index);
+          if (display.image === "hidden") return undefined;
           const positionKey = this._electricVehicleHeroBadgePositionKey(key);
           const entityId = this._electricVehicleLayoutEntityId(definition);
           if (key !== "status" && !entityId && !this._layoutPositionConfigured(positionKey)) return undefined;
+          const fallback = this._electricVehicleHeroBadgeFallbackPosition(key, index);
           const position = this._layoutPosition(positionKey, fallback);
           return {
             key: `electric_vehicle:${key}`,
@@ -7614,6 +7815,10 @@ function createDashboardEditorClass({
     const value = electricVehicle.entities?.[definition.key] || "";
     const aliases = definition.aliases?.slice(0, 3).join(", ") || `sensor.evcc_${definition.key}`;
     const detailsKey = `electric-vehicle-${definition.key}`;
+    const definitionIndex = this._electricVehicleDefinitions().findIndex((item) => item.key === definition.key);
+    const display = this._electricVehicleDisplayConfig(electricVehicle, definition, definitionIndex);
+    const positionKey = this._electricVehicleHeroBadgePositionKey(definition.key);
+    const position = this._layoutPosition(positionKey, this._electricVehicleHeroBadgeFallbackPosition(definition.key, definitionIndex));
     const status = this._statusText({
       configured: this._countConfigured([value]),
       missing: this._missingEntityCount([value]),
@@ -7630,9 +7835,26 @@ function createDashboardEditorClass({
           </span>
         </summary>
         <div class="box-body">
-          <label>${this._labelText(this._t("editor.electricVehicleEntity", {}, "EVCC entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}
-            <input data-path="electric_vehicle.entities.${this._escape(definition.key)}" list="ha-solar-dashboard-entities" placeholder="${this._escape(aliases.split(", ")[0] || `sensor.evcc_${definition.key}`)}" value="${this._escape(value)}" autocomplete="off" />
-          </label>
+          <div class="settings-grid">
+            <label>${this._labelText(this._t("editor.electricVehicleEntity", {}, "EVCC entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}
+              <input data-path="electric_vehicle.entities.${this._escape(definition.key)}" list="ha-solar-dashboard-entities" placeholder="${this._escape(aliases.split(", ")[0] || `sensor.evcc_${definition.key}`)}" value="${this._escape(value)}" autocomplete="off" />
+            </label>
+            <label>${this._labelText(this._t("editor.electricVehicleImageVisibility", {}, "Image badge"), this._t("editor.electricVehicleImageVisibilityHelp", {}, "Controls whether this EVCC value appears on the vehicle image."))}
+              <select data-path="electric_vehicle.display.${this._escape(definition.key)}.image">${this._electricVehicleDisplayModeOptions(display.image)}</select>
+            </label>
+            <label>${this._labelText(this._t("editor.electricVehicleTileVisibility", {}, "Tile below image"), this._t("editor.electricVehicleTileVisibilityHelp", {}, "Controls whether this EVCC value appears as a tile below the image."))}
+              <select data-path="electric_vehicle.display.${this._escape(definition.key)}.tile">${this._electricVehicleDisplayModeOptions(display.tile)}</select>
+            </label>
+            <label>${this._labelText(`${this._t("editor.electricVehicleTilePosition", {}, "Tile position")} (${display.tile_position})`, this._t("editor.helpFooterOrder", {}, "Controls the order of tiles below the image. Lower numbers appear earlier."))}
+              <input type="number" min="0" max="999" step="1" data-path="electric_vehicle.display.${this._escape(definition.key)}.tile_position" value="${this._escape(display.tile_position)}" />
+            </label>
+            <label>${this._labelText(`X (${Math.round(position.left)})`, this._t("editor.electricVehicleBadgePositionHelp", {}, "Controls the image badge position when this EVCC value is shown on the vehicle image."))}
+              <input type="range" min="0" max="100" step="1" data-path="positions.${this._escape(positionKey)}.left" value="${this._escape(position.left)}" />
+            </label>
+            <label>${this._labelText(`Y (${Math.round(position.top)})`, this._t("editor.electricVehicleBadgePositionHelp", {}, "Controls the image badge position when this EVCC value is shown on the vehicle image."))}
+              <input type="range" min="0" max="100" step="1" data-path="positions.${this._escape(positionKey)}.top" value="${this._escape(position.top)}" />
+            </label>
+          </div>
         </div>
       </details>
     `;
@@ -8124,19 +8346,20 @@ function createDashboardEditorClass({
         key: "setup",
         label: this._t("editor.tabSetup", {}, "Setup"),
         status: this._statusText({ configured: this._countConfigured([this._config.house, this._config.title, this._config.weather_entity]) }),
-        content: `${this._renderSetupWizard()}${dashboardAreasHtml}${generalSettingsHtml}`,
+        content: `${this._renderSetupWizard("all")}${dashboardAreasHtml}${generalSettingsHtml}`,
       },
       {
         key: "energy",
         label: this._t("editor.tabEnergy", {}, "Energy"),
         status: this._statusText({ configured: configuredTileEntities.length, total: TILE_METRICS.length, missing: this._missingEntityCount(configuredTileEntities) }),
-        content: boxSettingsHtml,
+        content: `${this._renderSetupWizard("energy")}${boxSettingsHtml}`,
       },
       {
         key: "devices",
         label: this._t("editor.tabDevices", {}, "Devices"),
         status: this._statusText({ configured: overlayCount + largeConsumerConfigured, total: IMAGE_OVERLAY_KEYS.length + largeConsumers.length }),
         content: [
+          this._renderSetupWizard("devices"),
           renderEditorCard(this._t("editor.sectionOverlays", {}, "Image overlays"), this._statusText({ configured: overlayCount, total: IMAGE_OVERLAY_KEYS.length }), `<div class="grid">${overlayFields}</div>`),
           renderEditorCard(this._t("editor.sectionLargeConsumers", {}, "Additional large consumers"), this._statusText({ configured: largeConsumerConfigured, total: largeConsumers.length, hidden: largeConsumers.filter((consumer) => consumer.visible === false).length }), largeConsumerSettingsHtml),
         ].join(""),
@@ -8145,13 +8368,13 @@ function createDashboardEditorClass({
         key: "electric_vehicle",
         label: this._t("editor.tabElectricVehicle", {}, "E-Auto"),
         status: this._statusText({ configured: electricVehicleConfigured, total: this._electricVehicleDefinitions().length, hidden: this._config.show_electric_vehicle === false ? 1 : 0, missing: electricVehicleMissing }),
-        content: this._renderElectricVehicleEditor(electricVehicle),
+        content: `${this._renderSetupWizard("electric_vehicle")}${this._renderElectricVehicleEditor(electricVehicle)}`,
       },
       {
         key: "garden",
         label: this._t("editor.tabGarden", {}, "Garten"),
         status: this._statusText({ configured: gardenConfigured, total: gardenTotal, hidden: this._config.show_garden === false ? 1 : 0, missing: gardenMissing }),
-        content: this._renderGardenEditor(garden),
+        content: `${this._renderSetupWizard("garden")}${this._renderGardenEditor(garden)}`,
       },
       {
         key: "environment",
@@ -8181,7 +8404,7 @@ function createDashboardEditorClass({
         key: "advisor",
         label: this._t("editor.tabAdvisor", {}, "Advisor"),
         status: this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]) }),
-        content: renderEditorCard(this._t("editor.sectionAdvisor", {}, "Advisor and prices"), this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]), advanced: true }), advisorSettingsHtml),
+        content: `${this._renderSetupWizard("advisor")}${renderEditorCard(this._t("editor.sectionAdvisor", {}, "Advisor and prices"), this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]), advanced: true }), advisorSettingsHtml)}`,
       },
       {
         key: "advanced",
@@ -8445,8 +8668,8 @@ function createDashboardEditorClass({
         if (target.dataset.action === "remove-inverter") this._removeInverter(Number(target.dataset.index));
         if (target.dataset.action === "add-large-consumer") this._addLargeConsumer();
         if (target.dataset.action === "remove-large-consumer") this._removeLargeConsumer(Number(target.dataset.index));
-        if (target.dataset.action === "auto-detect") this._applyAutoDetection(target.dataset.mode || "fill");
-        if (target.dataset.action === "apply-suggestion") this._applyAutoDetection("replace", target.dataset.path || "");
+        if (target.dataset.action === "auto-detect") this._applyAutoDetection(target.dataset.mode || "fill", "", target.dataset.scope || "all");
+        if (target.dataset.action === "apply-suggestion") this._applyAutoDetection("replace", target.dataset.path || "", target.dataset.scope || "all");
       });
     });
     this.shadowRoot.querySelectorAll("button[data-editor-tab]").forEach((button) => {
@@ -8556,12 +8779,11 @@ function createDashboardEditorClass({
         this._render();
       });
     }
-    const setupWizard = this.shadowRoot.querySelector("details[data-setup-wizard]");
-    if (setupWizard) {
+    this.shadowRoot.querySelectorAll("details[data-setup-wizard]").forEach((setupWizard) => {
       setupWizard.addEventListener("toggle", (event) => {
-        this._setupWizardOpen = event.currentTarget.open;
+        this._setSetupWizardOpen(event.currentTarget.dataset.setupScope || "all", event.currentTarget.open);
       });
-    }
+    });
     this.shadowRoot.querySelectorAll("details[data-editor-section]").forEach((details) => {
       details.addEventListener("toggle", (event) => {
         const key = event.currentTarget.dataset.editorSection;
@@ -11643,7 +11865,20 @@ const I18N = {
     "garden.gardenLights": "Garden lights",
     "garden.gardenOutlet": "Garden outlet",
     "garden.pondPump": "Pond pump",
-    "garden.poolPump": "Pool pump"
+    "garden.poolPump": "Pool pump",
+    "editor.displayBoth": "Mobile + desktop",
+    "editor.displayMobile": "Mobile only",
+    "editor.displayDesktop": "Desktop only",
+    "editor.displayHidden": "Hidden",
+    "editor.electricVehicleImageVisibility": "Image badge",
+    "editor.electricVehicleImageVisibilityHelp": "Controls whether this EVCC value appears on the vehicle image.",
+    "editor.electricVehicleTileVisibility": "Tile below image",
+    "editor.electricVehicleTileVisibilityHelp": "Controls whether this EVCC value appears as a tile below the image.",
+    "editor.electricVehicleTilePosition": "Tile position",
+    "editor.electricVehicleBadgePositionHelp": "Controls the image badge position when this EVCC value is shown on the vehicle image.",
+    "editor.setupWizardPage": "Setup wizard for this page",
+    "editor.setupPageIntro": "Detect likely Home Assistant entities for the current editor page.",
+    "editor.setupPageHelp": "These actions only apply suggestions for this page."
   },
   "de": {
     "aria.energyRangeSelector": "Wertebereich auswählen",
@@ -12266,7 +12501,20 @@ const I18N = {
     "garden.gardenLights": "Gartenlicht",
     "garden.gardenOutlet": "Gartensteckdose",
     "garden.pondPump": "Teichpumpe",
-    "garden.poolPump": "Poolpumpe"
+    "garden.poolPump": "Poolpumpe",
+    "editor.displayBoth": "Mobil + Desktop",
+    "editor.displayMobile": "Nur mobil",
+    "editor.displayDesktop": "Nur Desktop",
+    "editor.displayHidden": "Ausgeblendet",
+    "editor.electricVehicleImageVisibility": "Bild-Badge",
+    "editor.electricVehicleImageVisibilityHelp": "Steuert, ob dieser EVCC-Wert auf dem Fahrzeugbild erscheint.",
+    "editor.electricVehicleTileVisibility": "Kachel unter dem Bild",
+    "editor.electricVehicleTileVisibilityHelp": "Steuert, ob dieser EVCC-Wert als Kachel unter dem Bild erscheint.",
+    "editor.electricVehicleTilePosition": "Kachelposition",
+    "editor.electricVehicleBadgePositionHelp": "Steuert die Bild-Badge-Position, wenn dieser EVCC-Wert auf dem Fahrzeugbild angezeigt wird.",
+    "editor.setupWizardPage": "Einrichtungs-Assistent für diese Seite",
+    "editor.setupPageIntro": "Erkennt passende Home-Assistant-Entitäten für die aktuelle Editor-Seite.",
+    "editor.setupPageHelp": "Diese Aktionen übernehmen nur Vorschläge für diese Seite."
   },
   "es": {
     "aria.energyRangeSelector": "Seleccionar rango de valores",
@@ -12889,7 +13137,20 @@ const I18N = {
     "garden.gardenLights": "Luces del jardín",
     "garden.gardenOutlet": "Toma del jardín",
     "garden.pondPump": "Bomba del estanque",
-    "garden.poolPump": "Bomba de piscina"
+    "garden.poolPump": "Bomba de piscina",
+    "editor.displayBoth": "Móvil + escritorio",
+    "editor.displayMobile": "Solo móvil",
+    "editor.displayDesktop": "Solo escritorio",
+    "editor.displayHidden": "Oculto",
+    "editor.electricVehicleImageVisibility": "Insignia en imagen",
+    "editor.electricVehicleImageVisibilityHelp": "Controla si este valor EVCC aparece en la imagen del vehículo.",
+    "editor.electricVehicleTileVisibility": "Mosaico bajo la imagen",
+    "editor.electricVehicleTileVisibilityHelp": "Controla si este valor EVCC aparece como mosaico bajo la imagen.",
+    "editor.electricVehicleTilePosition": "Posición del mosaico",
+    "editor.electricVehicleBadgePositionHelp": "Controla la posición de la insignia cuando este valor EVCC se muestra en la imagen del vehículo.",
+    "editor.setupWizardPage": "Asistente de configuración para esta página",
+    "editor.setupPageIntro": "Detecta entidades probables de Home Assistant para la página actual del editor.",
+    "editor.setupPageHelp": "Estas acciones solo aplican sugerencias para esta página."
   },
   "fr": {
     "aria.energyRangeSelector": "Sélectionner la période de valeur",
@@ -13512,7 +13773,20 @@ const I18N = {
     "garden.gardenLights": "Éclairage jardin",
     "garden.gardenOutlet": "Prise jardin",
     "garden.pondPump": "Pompe bassin",
-    "garden.poolPump": "Pompe piscine"
+    "garden.poolPump": "Pompe piscine",
+    "editor.displayBoth": "Mobile + bureau",
+    "editor.displayMobile": "Mobile uniquement",
+    "editor.displayDesktop": "Bureau uniquement",
+    "editor.displayHidden": "Masqué",
+    "editor.electricVehicleImageVisibility": "Badge image",
+    "editor.electricVehicleImageVisibilityHelp": "Contrôle si cette valeur EVCC apparaît sur l'image du véhicule.",
+    "editor.electricVehicleTileVisibility": "Tuile sous l'image",
+    "editor.electricVehicleTileVisibilityHelp": "Contrôle si cette valeur EVCC apparaît comme une tuile sous l'image.",
+    "editor.electricVehicleTilePosition": "Position de la tuile",
+    "editor.electricVehicleBadgePositionHelp": "Contrôle la position du badge lorsque cette valeur EVCC est affichée sur l'image du véhicule.",
+    "editor.setupWizardPage": "Assistant de configuration pour cette page",
+    "editor.setupPageIntro": "Détecte les entités Home Assistant probables pour la page actuelle de l'éditeur.",
+    "editor.setupPageHelp": "Ces actions appliquent uniquement les suggestions de cette page."
   },
   "pl": {
     "aria.energyRangeSelector": "Wybierz zakres wartości",
@@ -14135,7 +14409,20 @@ const I18N = {
     "garden.gardenLights": "Oświetlenie ogrodu",
     "garden.gardenOutlet": "Gniazdo ogrodowe",
     "garden.pondPump": "Pompa stawu",
-    "garden.poolPump": "Pompa basenu"
+    "garden.poolPump": "Pompa basenu",
+    "editor.displayBoth": "Mobilny + desktop",
+    "editor.displayMobile": "Tylko mobilny",
+    "editor.displayDesktop": "Tylko desktop",
+    "editor.displayHidden": "Ukryte",
+    "editor.electricVehicleImageVisibility": "Odznaka obrazu",
+    "editor.electricVehicleImageVisibilityHelp": "Określa, czy ta wartość EVCC pojawia się na obrazie pojazdu.",
+    "editor.electricVehicleTileVisibility": "Kafelek pod obrazem",
+    "editor.electricVehicleTileVisibilityHelp": "Określa, czy ta wartość EVCC pojawia się jako kafelek pod obrazem.",
+    "editor.electricVehicleTilePosition": "Pozycja kafelka",
+    "editor.electricVehicleBadgePositionHelp": "Określa pozycję odznaki, gdy ta wartość EVCC jest pokazana na obrazie pojazdu.",
+    "editor.setupWizardPage": "Kreator konfiguracji dla tej strony",
+    "editor.setupPageIntro": "Wykrywa prawdopodobne encje Home Assistant dla bieżącej strony edytora.",
+    "editor.setupPageHelp": "Te akcje stosują tylko sugestie dla tej strony."
   }
 };
 const I18N_LOADS = new Map();
@@ -18166,6 +18453,8 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
   ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
   ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
+  electricVehicleHeroBadgeFallbackPosition,
+  electricVehicleHeroBadgePositionKey,
   GARDEN_ENTITY_DEFINITIONS,
   GARDEN_HERO_BADGE_POSITIONS,
   GARDEN_HERO_BADGE_POSITION_KEYS,

@@ -131,6 +131,8 @@ import {
   ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
   ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
   createElectricVehicleDashboardMethods,
+  electricVehicleHeroBadgeFallbackPosition,
+  electricVehicleHeroBadgePositionKey,
   normalizeElectricVehicleConfig,
 } from "../modules/electric-vehicle.js";
 import {
@@ -4025,6 +4027,8 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
   ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
   ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
+  electricVehicleHeroBadgeFallbackPosition,
+  electricVehicleHeroBadgePositionKey,
   GARDEN_ENTITY_DEFINITIONS,
   GARDEN_HERO_BADGE_POSITIONS,
   GARDEN_HERO_BADGE_POSITION_KEYS,

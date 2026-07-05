@@ -619,5 +619,18 @@
   "garden.gardenLights": "Oświetlenie ogrodu",
   "garden.gardenOutlet": "Gniazdo ogrodowe",
   "garden.pondPump": "Pompa stawu",
-  "garden.poolPump": "Pompa basenu"
+  "garden.poolPump": "Pompa basenu",
+  "editor.displayBoth": "Mobilny + desktop",
+  "editor.displayMobile": "Tylko mobilny",
+  "editor.displayDesktop": "Tylko desktop",
+  "editor.displayHidden": "Ukryte",
+  "editor.electricVehicleImageVisibility": "Odznaka obrazu",
+  "editor.electricVehicleImageVisibilityHelp": "Określa, czy ta wartość EVCC pojawia się na obrazie pojazdu.",
+  "editor.electricVehicleTileVisibility": "Kafelek pod obrazem",
+  "editor.electricVehicleTileVisibilityHelp": "Określa, czy ta wartość EVCC pojawia się jako kafelek pod obrazem.",
+  "editor.electricVehicleTilePosition": "Pozycja kafelka",
+  "editor.electricVehicleBadgePositionHelp": "Określa pozycję odznaki, gdy ta wartość EVCC jest pokazana na obrazie pojazdu.",
+  "editor.setupWizardPage": "Kreator konfiguracji dla tej strony",
+  "editor.setupPageIntro": "Wykrywa prawdopodobne encje Home Assistant dla bieżącej strony edytora.",
+  "editor.setupPageHelp": "Te akcje stosują tylko sugestie dla tej strony."
 }

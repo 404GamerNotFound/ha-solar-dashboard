@@ -34,10 +34,12 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Optionale Auto-Entitäten für Max-/Ziel-SoC, verbunden/eingesteckt und Laden aktiviert steuern die Advisor-Empfehlungen, damit kein Ladevorschlag erscheint, wenn das Auto schon am Ziel-SoC ist; länger hohe Auto-SoC-Werte über 80%/90% lösen priorisierte Batteriepflege-Hinweise aus
 - Optionaler EVCC-Lademodus-Schalter im E-Auto-Dashboard für Aus, PV, Min+PV und Schnell über `electric_vehicle.entities.mode_control`
 - Optionaler `electric_vehicle.evcc_loadpoint`-Slug für marq24/ha-evcc; typische Loadpoint- und Site-Entitäten wie Ladeleistung, PV-Regelgrund, Netzleistung, Hausakku-SoC und Einspeise-Puffer werden daraus automatisch erkannt
+- Jede EVCC-Entität kann über `electric_vehicle.display.<key>.image` und `.tile` getrennt für Bild-Badge und Kachel unter dem Bild ein-/ausgeblendet oder nur mobil/nur Desktop angezeigt werden; `.tile_position` steuert die Kachelreihenfolge
 - E-Auto- und Gartenansicht unterstützen eigene Tag-/Nachtbilder über `electric_vehicle.day_image`/`night_image` und `garden.day_image`/`night_image`
 - Garten-Dashboard mit konfigurierbaren Bewässerungszonen (`garden.zones[]`) inklusive Bildmarker, Zonen-Kacheln, Plantext/Plan-Entität und sicherem More-Info-Standard statt versehentlichem Direkt-Toggle
 - Manuelle Gartenaktionen (`garden.manual_actions[]`) können Script-/Button-Entitäten mit optionalem Bestätigungstext als Kacheln anzeigen
 - Die Bild-Badges im E-Auto- und Garten-Dashboard können über `positions.*.left` und `positions.*.top` im Layout-Editor frei positioniert werden
+- Der Einrichtungs-Assistent erscheint zusätzlich kontextbezogen auf Energie-, Geräte-, E-Auto-, Garten- und Advisor-Seite und übernimmt dort nur Vorschläge für die jeweilige Seite
 - Tooltips pro Wert mit Entität, Rohwert, formatiertem Wert und Aktualisierungszeit
 - Klick auf entity-basierte Boxen und Kacheln öffnet ein 24/48-Stunden-Verlaufsdiagramm aus Home-Assistant-History-Daten
 - Eigenes Advisor Dashboard mit Live-Status, PV-/Netz-/Last-/Batterie-Kennzahlen, eigenen KPI-Werten, Autarkie-/Eigenverbrauchsschätzung, Sensor-Diagnosen und mehreren priorisierten Empfehlungen bei Überschuss, Netzbezug, Batteriestand, Wallbox-Laden, Wärmepumpe, flexiblen Haushaltsverbrauchern und auffälliger PV-/Lastsituation

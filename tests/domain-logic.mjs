@@ -173,6 +173,7 @@ assert.equal(baseConfig.advisor_surplus_threshold, 111);
 assert.equal(baseConfig.history_request_concurrency, 4);
 assert.equal(baseConfig.show_electric_vehicle, true);
 assert.equal(baseConfig.electric_vehicle.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE);
+assert.deepEqual(baseConfig.electric_vehicle.display, {});
 assert.equal(baseConfig.show_garden, true);
 assert.equal(baseConfig.garden.image, DEFAULT_GARDEN_IMAGE);
 assert.deepEqual(baseConfig.garden.zones, []);
@@ -208,6 +209,24 @@ assert.equal(evccLoadpointConfig.evcc_loadpoint, "garage_delta_ac_max");
 assert.equal(evccLoadpointConfig.evcc_prefix, "evcc");
 assert.equal(evccLoadpointConfig.day_image, "/local/eauto/eauto_day.png");
 assert.equal(evccLoadpointConfig.night_image, "/local/eauto/eauto_night.png");
+assert.equal(evccLoadpointConfig.display.status.image, "both");
+assert.equal(evccLoadpointConfig.display.charge_power.image, "both");
+assert.equal(evccLoadpointConfig.display.home_power.image, "hidden");
+assert.equal(evccLoadpointConfig.display.mode_control.tile, "hidden");
+const evccDisplayConfig = normalizeElectricVehicleConfig({
+  display: {
+    grid_power: { image: "desktop", tile: "mobile", tile_position: 7 },
+    home_power: "mobile",
+    charge_power: { image: false, tile: false },
+  },
+});
+assert.equal(evccDisplayConfig.display.grid_power.image, "desktop");
+assert.equal(evccDisplayConfig.display.grid_power.tile, "mobile");
+assert.equal(evccDisplayConfig.display.grid_power.tile_position, 7);
+assert.equal(evccDisplayConfig.display.home_power.image, "mobile");
+assert.equal(evccDisplayConfig.display.home_power.tile, "mobile");
+assert.equal(evccDisplayConfig.display.charge_power.image, "hidden");
+assert.equal(evccDisplayConfig.display.charge_power.tile, "hidden");
 const gardenConfig = normalizeGardenConfig({
   image_path: "/local/garden.png",
   garden_entities: {

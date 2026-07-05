@@ -619,5 +619,18 @@
   "garden.gardenLights": "Garden lights",
   "garden.gardenOutlet": "Garden outlet",
   "garden.pondPump": "Pond pump",
-  "garden.poolPump": "Pool pump"
+  "garden.poolPump": "Pool pump",
+  "editor.displayBoth": "Mobile + desktop",
+  "editor.displayMobile": "Mobile only",
+  "editor.displayDesktop": "Desktop only",
+  "editor.displayHidden": "Hidden",
+  "editor.electricVehicleImageVisibility": "Image badge",
+  "editor.electricVehicleImageVisibilityHelp": "Controls whether this EVCC value appears on the vehicle image.",
+  "editor.electricVehicleTileVisibility": "Tile below image",
+  "editor.electricVehicleTileVisibilityHelp": "Controls whether this EVCC value appears as a tile below the image.",
+  "editor.electricVehicleTilePosition": "Tile position",
+  "editor.electricVehicleBadgePositionHelp": "Controls the image badge position when this EVCC value is shown on the vehicle image.",
+  "editor.setupWizardPage": "Setup wizard for this page",
+  "editor.setupPageIntro": "Detect likely Home Assistant entities for the current editor page.",
+  "editor.setupPageHelp": "These actions only apply suggestions for this page."
 }

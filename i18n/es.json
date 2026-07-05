@@ -619,5 +619,18 @@
   "garden.gardenLights": "Luces del jardín",
   "garden.gardenOutlet": "Toma del jardín",
   "garden.pondPump": "Bomba del estanque",
-  "garden.poolPump": "Bomba de piscina"
+  "garden.poolPump": "Bomba de piscina",
+  "editor.displayBoth": "Móvil + escritorio",
+  "editor.displayMobile": "Solo móvil",
+  "editor.displayDesktop": "Solo escritorio",
+  "editor.displayHidden": "Oculto",
+  "editor.electricVehicleImageVisibility": "Insignia en imagen",
+  "editor.electricVehicleImageVisibilityHelp": "Controla si este valor EVCC aparece en la imagen del vehículo.",
+  "editor.electricVehicleTileVisibility": "Mosaico bajo la imagen",
+  "editor.electricVehicleTileVisibilityHelp": "Controla si este valor EVCC aparece como mosaico bajo la imagen.",
+  "editor.electricVehicleTilePosition": "Posición del mosaico",
+  "editor.electricVehicleBadgePositionHelp": "Controla la posición de la insignia cuando este valor EVCC se muestra en la imagen del vehículo.",
+  "editor.setupWizardPage": "Asistente de configuración para esta página",
+  "editor.setupPageIntro": "Detecta entidades probables de Home Assistant para la página actual del editor.",
+  "editor.setupPageHelp": "Estas acciones solo aplican sugerencias para esta página."
 }

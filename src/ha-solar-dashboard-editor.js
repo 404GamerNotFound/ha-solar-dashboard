@@ -11,6 +11,10 @@ import {
 import {
   DEFAULT_ELECTRIC_VEHICLE_IMAGE,
   ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
+  electricVehicleHeroBadgeFallbackPosition,
+  electricVehicleHeroBadgePositionKey,
   normalizeElectricVehicleConfig,
 } from "../modules/electric-vehicle.js";
 import {
@@ -162,6 +166,10 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   DEFAULT_IMAGE_OVERLAYS,
   DEFAULT_TILE_COLOR_RULES,
   ELECTRIC_VEHICLE_ENTITY_DEFINITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS,
+  ELECTRIC_VEHICLE_HERO_BADGE_POSITION_KEYS,
+  electricVehicleHeroBadgeFallbackPosition,
+  electricVehicleHeroBadgePositionKey,
   GARDEN_ENTITY_DEFINITIONS,
   HOUSE_VARIANTS,
   IMAGE_OVERLAY_KEYS,

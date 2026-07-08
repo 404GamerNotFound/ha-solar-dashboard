@@ -284,13 +284,88 @@ function createConfigNormalizerMethods({
 const DEFAULT_CURRENCY = "€";
 const DEFAULT_EV_IMAGE_PATH = "images/car_image.png";
 const DEFAULT_GARDEN_IMAGE_PATH = "images/single_family_home_top_view_garden.png";
+const REGION_PROFILE_VALUES = Object.freeze(["auto", "eu", "us"]);
+const UNIT_SYSTEM_VALUES = Object.freeze(["auto", "metric", "us"]);
 
 const DEFAULT_GRID_FINANCE_CONFIG = Object.freeze({
   grid_import_price: "",
   grid_export_price: "",
   currency: DEFAULT_CURRENCY,
+  currency_position: "auto",
   show_grid_daily_finance: true,
 });
+
+function hasOwnValue(source, key) {
+  return Object.prototype.hasOwnProperty.call(source || {}, key)
+    && source[key] !== undefined
+    && source[key] !== null
+    && String(source[key]).trim() !== "";
+}
+
+function hasOwnUnit(source, key) {
+  return hasOwnValue(source?.units || {}, key);
+}
+
+function normalizeRegionProfile(value) {
+  const normalized = String(value || "auto").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  if (["usa", "america", "american", "north_america", "united_states", "united_states_of_america"].includes(normalized)) return "us";
+  if (["europe", "european", "de", "deutschland", "germany", "eu_metric"].includes(normalized)) return "eu";
+  return REGION_PROFILE_VALUES.includes(normalized) ? normalized : "auto";
+}
+
+function normalizeUnitSystem(value) {
+  const normalized = String(value || "auto").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  if (["imperial", "us_customary", "usa", "american"].includes(normalized)) return "us";
+  if (["eu", "europe", "metric_system"].includes(normalized)) return "metric";
+  return UNIT_SYSTEM_VALUES.includes(normalized) ? normalized : "auto";
+}
+
+function unitSystemForRegion(regionProfile, unitSystem) {
+  if (unitSystem !== "auto") return unitSystem;
+  if (regionProfile === "us") return "us";
+  if (regionProfile === "eu") return "metric";
+  return "auto";
+}
+
+function applyRegionalDefaults(config = {}, explicitConfig = config) {
+  const regionProfile = normalizeRegionProfile(explicitConfig.region_profile ?? explicitConfig.region ?? config.region_profile);
+  const configuredUnitSystem = normalizeUnitSystem(explicitConfig.unit_system ?? explicitConfig.measurement_system ?? config.unit_system);
+  const resolvedUnitSystem = unitSystemForRegion(regionProfile, configuredUnitSystem);
+  const next = {
+    ...config,
+    region_profile: regionProfile,
+    unit_system: configuredUnitSystem,
+    units: { ...(config.units || {}) },
+  };
+
+  if (regionProfile === "us") {
+    if (!hasOwnValue(explicitConfig, "currency") && !hasOwnValue(explicitConfig, "grid_currency")) next.currency = "$";
+    if (!hasOwnValue(explicitConfig, "currency_position") && !hasOwnValue(explicitConfig, "grid_currency_position")) next.currency_position = "prefix";
+  } else if (regionProfile === "eu") {
+    if (!hasOwnValue(explicitConfig, "currency") && !hasOwnValue(explicitConfig, "grid_currency")) next.currency = "€";
+    if (!hasOwnValue(explicitConfig, "currency_position") && !hasOwnValue(explicitConfig, "grid_currency_position")) next.currency_position = "suffix";
+  }
+
+  if (resolvedUnitSystem === "us") {
+    if (!hasOwnUnit(explicitConfig, "volume")) next.units.volume = "gal";
+    if (!hasOwnUnit(explicitConfig, "water_meter")) next.units.water_meter = "gal";
+    if (!hasOwnUnit(explicitConfig, "temperature")) next.units.temperature = "°F";
+    if (!hasOwnUnit(explicitConfig, "precipitation")) next.units.precipitation = "in";
+    if (!hasOwnUnit(explicitConfig, "pressure")) next.units.pressure = "psi";
+    if (!hasOwnUnit(explicitConfig, "flow")) next.units.flow = "gal/min";
+    if (!hasOwnUnit(explicitConfig, "distance")) next.units.distance = "mi";
+  } else if (resolvedUnitSystem === "metric") {
+    if (!hasOwnUnit(explicitConfig, "volume")) next.units.volume = "m³";
+    if (!hasOwnUnit(explicitConfig, "water_meter")) next.units.water_meter = "m³";
+    if (!hasOwnUnit(explicitConfig, "temperature")) next.units.temperature = "°C";
+    if (!hasOwnUnit(explicitConfig, "precipitation")) next.units.precipitation = "mm";
+    if (!hasOwnUnit(explicitConfig, "pressure")) next.units.pressure = "bar";
+    if (!hasOwnUnit(explicitConfig, "flow")) next.units.flow = "L/min";
+    if (!hasOwnUnit(explicitConfig, "distance")) next.units.distance = "km";
+  }
+
+  return next;
+}
 
 function createDefaultFloorplan(label = "Level 1") {
   return {
@@ -313,6 +388,11 @@ function createDefaultUnits() {
     power: "auto",
     battery: "%",
     volume: "m³",
+    temperature: "°C",
+    precipitation: "mm",
+    pressure: "bar",
+    flow: "L/min",
+    distance: "km",
   };
 }
 
@@ -462,6 +542,8 @@ function createBaseCardConfig({
     show_status_label: true,
     show_weather_status: false,
     show_grid_status_tile: true,
+    region_profile: "auto",
+    unit_system: "auto",
     hud_box_opacity: 0.65,
     hud_box_scale: 1,
     battery_low_threshold: 20,
@@ -549,6 +631,8 @@ function createEditorBaseConfig({ floorplanLabel = "Level 1" } = {}) {
     show_advisor: true,
     show_charts: true,
     show_records: true,
+    region_profile: "auto",
+    unit_system: "auto",
     large_consumers: [],
     pv_roof_strings: [],
     pv_roof_string_display: "sum",
@@ -897,6 +981,13 @@ function createElectricVehicleDashboardMethods({
       const evConfig = this._electricVehicleConfig();
       const evEntities = evConfig.entities || {};
       const direct = evEntities[key] || definition?.aliases?.map((alias) => evEntities[alias]).find(Boolean);
+      if (key === "mode") {
+        const controlDefinition = this._electricVehicleDefinition("mode_control");
+        const controlDirect = evEntities.mode_control || controlDefinition?.aliases?.map((alias) => evEntities[alias]).find(Boolean);
+        if (controlDirect && (this._electricVehicleCanSetModeEntity(controlDirect) || !direct)) return controlDirect;
+        const controlEvccEntityId = this._electricVehicleEvccEntityId(controlDefinition);
+        if (controlEvccEntityId) return controlEvccEntityId;
+      }
       if (direct) return direct;
 
       const evccEntityId = this._electricVehicleEvccEntityId(definition);
@@ -1123,7 +1214,9 @@ function createElectricVehicleDashboardMethods({
       }
       if (definition.kind === "distance") {
         const number = this._electricVehicleNumericState(rawValue);
-        return Number.isFinite(number) ? `${Number.isInteger(number) ? number.toFixed(0) : number.toFixed(1)} ${unit || "km"}` : `${String(rawValue).trim()}${unit && !String(rawValue).includes(unit) ? ` ${unit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatDistanceValue === "function"
+          ? this._formatDistanceValue(rawValue, unit || "km", this.config.units?.distance || unit || "km")
+          : Number.isFinite(number) ? `${Number.isInteger(number) ? number.toFixed(0) : number.toFixed(1)} ${unit || "km"}` : `${String(rawValue).trim()}${unit && !String(rawValue).includes(unit) ? ` ${unit}` : ""}`;
       }
       if (definition.kind === "phases") {
         const metric = this._electricVehicleWallboxMetric();
@@ -1242,6 +1335,29 @@ function createElectricVehicleDashboardMethods({
       return "transparent";
     },
 
+    _electricVehicleChartUnit(definition = {}) {
+      if (["power", "grid_power"].includes(definition.kind)) return "power";
+      if (definition.kind === "energy") return "energy";
+      if (definition.kind === "boolean") return "boolean";
+      if (definition.kind === "percent") return "%";
+      if (definition.kind === "current") return "A";
+      if (definition.kind === "distance") return this.config.units?.distance || "km";
+      return this._getEntityUnit?.(this._electricVehicleEntityId(definition.key)) || "auto";
+    },
+
+    _electricVehicleChartAttributes(definition = {}, state = {}) {
+      if (!state.entityId) return "";
+      const label = state.label || this._t(definition.labelKey, {}, definition.label || state.entityId);
+      return [
+        `data-chart-entity="${this._escape(state.entityId)}"`,
+        `data-chart-label="${this._escape(label)}"`,
+        `data-chart-unit="${this._escape(this._electricVehicleChartUnit(definition))}"`,
+        `data-chart-color="${this._escape(this._electricVehicleAccent(definition))}"`,
+        "tabindex=\"0\"",
+        "role=\"button\"",
+      ].join(" ");
+    },
+
     _renderElectricVehicleHeroBadge(definitionKey) {
       const definition = this._electricVehicleDefinition(definitionKey);
       if (!definition) return "";
@@ -1249,9 +1365,9 @@ function createElectricVehicleDashboardMethods({
       if (!this._electricVehicleHeroBadgeVisible(definitionKey, state)) return "";
       const position = this._electricVehicleHeroBadgePosition(definitionKey);
       const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definitionKey, "image"));
-      const entityAttr = state.entityId ? ` data-more-info="${this._escape(state.entityId)}"` : "";
+      const chartAttr = this._electricVehicleChartAttributes(definition, state);
       return `
-        <div class="electric-vehicle-badge${modeClass ? ` ${modeClass}` : ""}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${entityAttr}>
+        <div class="electric-vehicle-badge${modeClass ? ` ${modeClass}` : ""}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${chartAttr ? ` ${chartAttr}` : ""}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -1262,13 +1378,9 @@ function createElectricVehicleDashboardMethods({
       const { definition, state } = item;
       const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definition.key, "tile"));
       const entityTitle = state.entityId ? `${state.label}: ${state.entityId}` : state.label;
-      const toggleDomains = new Set(["switch", "input_boolean", "automation"]);
-      const domain = electricVehicleEntityDomain(state.entityId);
-      const actionAttr = toggleDomains.has(domain)
-        ? ` data-entity-toggle="${this._escape(state.entityId)}" tabindex="0" role="button"`
-        : state.entityId ? ` data-more-info="${this._escape(state.entityId)}" tabindex="0" role="button"` : "";
+      const chartAttr = this._electricVehicleChartAttributes(definition, state);
       return `
-        <div class="electric-vehicle-tile${modeClass ? ` ${modeClass}` : ""}" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${actionAttr}>
+        <div class="electric-vehicle-tile${modeClass ? ` ${modeClass}` : ""}" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${chartAttr ? ` ${chartAttr}` : ""}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -1286,6 +1398,12 @@ function createElectricVehicleDashboardMethods({
           ? String(rawValue).trim()
           : ELECTRIC_VEHICLE_EMPTY_VALUE;
       const label = this._t("ev.modeControl", {}, "Lademodus");
+      const chartAttr = this._electricVehicleChartAttributes(this._electricVehicleDefinition("mode_control"), {
+        key: "mode_control",
+        entityId,
+        label,
+        value: currentLabel,
+      });
       const buttons = ELECTRIC_VEHICLE_MODE_OPTIONS.map((option) => {
         const active = option.key === activeMode;
         const optionLabel = this._electricVehicleModeLabel(option.key);
@@ -1298,7 +1416,7 @@ function createElectricVehicleDashboardMethods({
 
       return `
         <section class="electric-vehicle-control-panel" title="${this._escape(`${label}: ${entityId}`)}">
-          <div class="electric-vehicle-control-head">
+          <div class="electric-vehicle-control-head"${chartAttr ? ` ${chartAttr}` : ""}>
             <span>${this._escape(label)}</span>
             <strong>${this._escape(currentLabel)}</strong>
           </div>
@@ -1343,13 +1461,44 @@ function createElectricVehicleDashboardMethods({
       const modeControl = this._renderElectricVehicleModeControl();
       const pvStatusText = this._electricVehiclePvStatusText();
       const pvStatusEntityId = this._electricVehicleEntityId("pv_status_text") || "";
-      const groups = ELECTRIC_VEHICLE_GROUPS.map((group) => {
+      const pvStatusDefinition = this._electricVehicleDefinition("pv_status_text") || this._electricVehicleDefinition("status");
+      const pvStatusAttr = pvStatusText && pvStatusEntityId
+        ? this._electricVehicleChartAttributes(pvStatusDefinition, {
+          key: pvStatusDefinition?.key || "pv_status_text",
+          entityId: pvStatusEntityId,
+          label: this._t(pvStatusDefinition?.labelKey, {}, pvStatusDefinition?.label || "Status"),
+          value: pvStatusText,
+        })
+        : "";
+      const groupedItems = ELECTRIC_VEHICLE_GROUPS.map((group) => {
         const items = configuredFields
           .filter((item) => item.definition.group === group.key && this._electricVehicleDisplayMode(item.definition.key, "tile") !== "hidden")
           .sort((a, b) => this._electricVehicleTilePosition(a.definition) - this._electricVehicleTilePosition(b.definition));
-        if (items.length === 0) return "";
+        return { group, items };
+      }).filter(({ group, items }) => group.key !== "controls" && items.length > 0);
+      const activeGroupKey = groupedItems.some(({ group }) => group.key === this._activeElectricVehicleDetailTab)
+        ? this._activeElectricVehicleDetailTab
+        : groupedItems[0]?.group.key || "";
+      if (activeGroupKey) this._activeElectricVehicleDetailTab = activeGroupKey;
+      const detailTabs = groupedItems.length > 1
+        ? `
+          <div class="electric-vehicle-detail-tabs" role="tablist" aria-label="${this._escape(this._t("ev.details", {}, "Details"))}">
+            ${groupedItems.map(({ group }) => {
+              const active = group.key === activeGroupKey;
+              const label = this._t(group.labelKey, {}, group.label);
+              return `
+                <button type="button" class="electric-vehicle-tab-button${active ? " active" : ""}" data-electric-vehicle-tab="${this._escape(group.key)}" role="tab" aria-selected="${active ? "true" : "false"}">
+                  ${this._escape(label)}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        `
+        : "";
+      const groups = groupedItems.map(({ group, items }) => {
+        if (group.key !== activeGroupKey) return "";
         return `
-          <section class="electric-vehicle-section">
+          <section class="electric-vehicle-section" role="tabpanel" data-electric-vehicle-tab-panel="${this._escape(group.key)}">
             <div class="electric-vehicle-section-title">${this._escape(this._t(group.labelKey, {}, group.label))}</div>
             <div class="electric-vehicle-grid">
               ${items.map((item) => this._renderElectricVehicleField(item)).join("")}
@@ -1375,9 +1524,9 @@ function createElectricVehicleDashboardMethods({
           <div class="electric-vehicle-hero">
             <img class="electric-vehicle-image" src="${this._escape(imageSrc)}" data-fallbacks="${this._escape(imageFallbacks.join("|"))}" alt="${this._escape(title)}" />
             <div class="electric-vehicle-badges">${heroBadges}</div>
-            ${pvStatusText ? `<div class="scene-status electric-vehicle-pv-status"${pvStatusEntityId ? ` data-more-info="${this._escape(pvStatusEntityId)}"` : ""}>${this._escape(pvStatusText)}</div>` : ""}
+            ${pvStatusText ? `<div class="scene-status electric-vehicle-pv-status"${pvStatusAttr ? ` ${pvStatusAttr}` : ""}>${this._escape(pvStatusText)}</div>` : ""}
           </div>
-          ${empty || groups}
+          ${empty || `${detailTabs}${groups}`}
         </section>
       `;
     },
@@ -1706,20 +1855,28 @@ function createGardenDashboardMethods({
       }
       if (definition.kind === "temperature") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "°C"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatTemperatureValue === "function"
+          ? this._formatTemperatureValue(rawValue, entityUnit || "°C", this.config.units?.temperature || entityUnit || "°C")
+          : Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "°C"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
       if (definition.kind === "precipitation") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "mm"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatPrecipitationValue === "function"
+          ? this._formatPrecipitationValue(rawValue, entityUnit || "mm", this.config.units?.precipitation || entityUnit || "mm")
+          : Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "mm"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
-      if (definition.kind === "volume") return this._formatVolumeValue(rawValue, entityUnit || "L", entityUnit || "L");
+      if (definition.kind === "volume") return this._formatVolumeValue(rawValue, entityUnit || "L", this.config.units?.volume || entityUnit || "L");
       if (definition.kind === "flow") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "L/min"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatFlowValue === "function"
+          ? this._formatFlowValue(rawValue, entityUnit || "L/min", this.config.units?.flow || entityUnit || "L/min")
+          : Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "L/min"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
       if (definition.kind === "pressure") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "bar"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatPressureValue === "function"
+          ? this._formatPressureValue(rawValue, entityUnit || "bar", this.config.units?.pressure || entityUnit || "bar")
+          : Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "bar"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
       return `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
     },
@@ -2039,6 +2196,7 @@ function createDashboardEditorClass({
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,
+  applyRegionalDefaults,
   assetUrl,
   clampConfigNumber,
   createEditorBaseConfig,
@@ -2101,7 +2259,7 @@ function createDashboardEditorClass({
       ?? (config || {}).show_record_dashboard
       ?? (config || {}).records?.enabled
       ?? (config || {}).records?.show;
-    this._config = {
+    const mergedConfig = {
       ...baseConfig,
       ...config,
       show_electric_vehicle: showElectricVehicle === undefined ? baseConfig.show_electric_vehicle !== false : showElectricVehicle !== false,
@@ -2136,6 +2294,9 @@ function createDashboardEditorClass({
       inverters: normalizeInverters((config || {}).inverters || (config || {}).inverter_strings || (config || {}).inverter_config || []),
       inverter_display: normalizeInverterDisplay((config || {}).inverter_display || (config || {}).inverter_string_display || "sum"),
     };
+    this._config = typeof applyRegionalDefaults === "function"
+      ? applyRegionalDefaults(mergedConfig, config || {})
+      : mergedConfig;
     delete this._config.show_energy_advisor;
     this._render();
     this._ensureTranslationsForRender();
@@ -2359,6 +2520,7 @@ function createDashboardEditorClass({
     const root = parts[0] || path;
     const lastPart = parts[parts.length - 1] || "";
     if (path === "house" || path === "image" || path === "day_image") return true;
+    if (path === "region_profile" || path === "unit_system") return true;
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
     if (root === "show_electric_vehicle") return true;
@@ -2375,6 +2537,55 @@ function createDashboardEditorClass({
       return ["visible", "show_image", "left", "top", "label", "color"].includes(lastPart);
     }
     return false;
+  }
+
+  _applyRegionalPresetChange(config = {}) {
+    const regionProfile = String(config.region_profile || "auto").toLowerCase();
+    const unitSystem = String(config.unit_system || "auto").toLowerCase();
+    const resolvedUnitSystem = unitSystem !== "auto"
+      ? unitSystem
+      : regionProfile === "us"
+        ? "us"
+        : regionProfile === "eu"
+          ? "metric"
+          : "auto";
+    const isPresetValue = (value, presets) => {
+      const normalized = String(value ?? "").trim().toLowerCase();
+      return !normalized || presets.map((item) => String(item).toLowerCase()).includes(normalized);
+    };
+    const setPreset = (target, key, value, presets) => {
+      if (isPresetValue(target[key], presets)) target[key] = value;
+    };
+    const setUnitPreset = (key, value, presets) => {
+      config.units = config.units && typeof config.units === "object" ? config.units : {};
+      if (isPresetValue(config.units[key], presets)) config.units[key] = value;
+    };
+
+    if (regionProfile === "us") {
+      setPreset(config, "currency", "$", ["€", "$"]);
+      setPreset(config, "currency_position", "prefix", ["auto", "prefix", "suffix"]);
+    } else if (regionProfile === "eu") {
+      setPreset(config, "currency", "€", ["€", "$"]);
+      setPreset(config, "currency_position", "suffix", ["auto", "prefix", "suffix"]);
+    }
+
+    if (resolvedUnitSystem === "us") {
+      setUnitPreset("volume", "gal", ["m³", "m3", "gal"]);
+      setUnitPreset("water_meter", "gal", ["m³", "m3", "gal"]);
+      setUnitPreset("temperature", "°F", ["°c", "c", "°f", "f"]);
+      setUnitPreset("precipitation", "in", ["mm", "in"]);
+      setUnitPreset("pressure", "psi", ["bar", "psi", "hpa"]);
+      setUnitPreset("flow", "gal/min", ["l/min", "gal/min"]);
+      setUnitPreset("distance", "mi", ["km", "mi"]);
+    } else if (resolvedUnitSystem === "metric") {
+      setUnitPreset("volume", "m³", ["m³", "m3", "gal"]);
+      setUnitPreset("water_meter", "m³", ["m³", "m3", "gal"]);
+      setUnitPreset("temperature", "°C", ["°c", "c", "°f", "f"]);
+      setUnitPreset("precipitation", "mm", ["mm", "in"]);
+      setUnitPreset("pressure", "bar", ["bar", "psi", "hpa"]);
+      setUnitPreset("flow", "L/min", ["l/min", "gal/min"]);
+      setUnitPreset("distance", "km", ["km", "mi"]);
+    }
   }
 
   _onInput(path, value, isCheckbox = false) {
@@ -2419,6 +2630,7 @@ function createDashboardEditorClass({
         sensor.color = this._floorplanSensorTypeColor(nextValue) || "#34d399";
       }
     }
+    if (path === "region_profile" || path === "unit_system") this._applyRegionalPresetChange(next);
     this._config = next;
     this._dispatchConfig(next);
     if (this._shouldRenderAfterInput(path, parts)) this._render();
@@ -3250,7 +3462,7 @@ function createDashboardEditorClass({
     const volumeTarget = {
       domains: ["sensor"],
       deviceClasses: ["water"],
-      units: ["m³", "m3", "l"],
+      units: ["m³", "m3", "l", "gal", "gallon", "gallons"],
       include: [{ terms: ["water", "wasser", "meter", "counter", "zaehler", "zahler"], weight: 24 }],
       exclude: ["power", "leistung", "energy", "kwh", "gas", "strom", "grid", "netz"],
     };
@@ -3647,6 +3859,13 @@ function createDashboardEditorClass({
           </label>
           <label>${this._escape(this._t("editor.currency", {}, "Currency"))}
             <input data-path="currency" placeholder="€" value="${this._escape(this._config.currency || "€")}" />
+          </label>
+          <label>${this._escape(this._t("editor.currencyPosition", {}, "Currency position"))}
+            <select data-path="currency_position">
+              <option value="auto"${(this._config.currency_position || "auto") === "auto" ? " selected" : ""}>${this._escape(this._t("editor.currencyPositionAuto", {}, "Auto"))}</option>
+              <option value="prefix"${this._config.currency_position === "prefix" ? " selected" : ""}>${this._escape(this._t("editor.currencyPositionPrefix", {}, "Before amount"))}</option>
+              <option value="suffix"${this._config.currency_position === "suffix" ? " selected" : ""}>${this._escape(this._t("editor.currencyPositionSuffix", {}, "After amount"))}</option>
+            </select>
           </label>
         </div>
         <div class="checkbox-grid">
@@ -4146,6 +4365,7 @@ function createDashboardEditorClass({
           ["m³", "m³"],
           ["auto", this._t("editor.auto")],
           ["L", "L"],
+          ["gal", "gal"],
         ]
         : [["%", "%"]];
     const hasSelected = baseOptions.some(([value]) => value.toLowerCase() === selected.toLowerCase());
@@ -5605,6 +5825,18 @@ function createDashboardEditorClass({
       })
       .map((option) => `<option value="${this._escape(option.key)}"${option.key === viewMode ? " selected" : ""}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`)
       .join("");
+    const regionProfile = this._config.region_profile || "auto";
+    const unitSystem = this._config.unit_system || "auto";
+    const regionProfileOptions = [
+      ["auto", this._t("editor.regionProfileAuto", {}, "Auto / custom")],
+      ["eu", this._t("editor.regionProfileEu", {}, "EU / metric")],
+      ["us", this._t("editor.regionProfileUs", {}, "US")],
+    ].map(([value, label]) => `<option value="${this._escape(value)}"${value === regionProfile ? " selected" : ""}>${this._escape(label)}</option>`).join("");
+    const unitSystemOptions = [
+      ["auto", this._t("editor.unitSystemAuto", {}, "From region / custom")],
+      ["metric", this._t("editor.unitSystemMetric", {}, "Metric")],
+      ["us", this._t("editor.unitSystemUs", {}, "US customary")],
+    ].map(([value, label]) => `<option value="${this._escape(value)}"${value === unitSystem ? " selected" : ""}>${this._escape(label)}</option>`).join("");
     const entityOptions = this._entityOptions()
       .map((entityId) => `<option value="${this._escape(entityId)}"></option>`)
       .join("");
@@ -5678,6 +5910,8 @@ function createDashboardEditorClass({
           <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
           <label>${this._escape(this._t("editor.viewMode", {}, "Default view"))} <select data-path="view_mode">${viewModeOptions}</select></label>
           <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
+          <label>${this._escape(this._t("editor.regionProfile", {}, "Regional profile"))} <select data-path="region_profile">${regionProfileOptions}</select></label>
+          <label>${this._escape(this._t("editor.unitSystem", {}, "Unit system"))} <select data-path="unit_system">${unitSystemOptions}</select></label>
           <label>${this._labelText(this._t("editor.customImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
           <label>${this._labelText(this._t("editor.customDayImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
           <label>${this._escape(this._t("editor.weatherEntity"))}
@@ -7758,6 +7992,14 @@ const I18N = {
     "editor.energyTotalEntity": "Total kWh entity",
     "editor.liveEntity": "Live sensor",
     "editor.houseType": "House Type",
+    "editor.regionProfile": "Regional profile",
+    "editor.regionProfileAuto": "Auto / custom",
+    "editor.regionProfileEu": "EU / metric",
+    "editor.regionProfileUs": "US",
+    "editor.unitSystem": "Unit system",
+    "editor.unitSystemAuto": "From region / custom",
+    "editor.unitSystemMetric": "Metric",
+    "editor.unitSystemUs": "US customary",
     "editor.hudBoxOpacity": "HUD box opacity",
     "editor.hudBoxScale": "HUD box scale",
     "editor.advisorEvSurplusThreshold": "EV surplus threshold (W)",
@@ -7776,6 +8018,10 @@ const I18N = {
     "editor.gridImportPrice": "Grid import price per kWh",
     "editor.gridExportPrice": "Feed-in tariff per kWh",
     "editor.currency": "Currency",
+    "editor.currencyPosition": "Currency position",
+    "editor.currencyPositionAuto": "Auto",
+    "editor.currencyPositionPrefix": "Before amount",
+    "editor.currencyPositionSuffix": "After amount",
     "editor.showGridDailyFinance": "Show today's costs and revenue labels",
     "editor.importLabel": "Import label",
     "editor.exportLabel": "Export label",
@@ -8139,6 +8385,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: longest plugged-in time",
     "records.wallboxThreePhase": "{name}: longest 3-phase time",
     "records.sectionCounters": "Meter records",
+    "ev.details": "Details",
     "ev.groupControls": "Controls",
     "ev.modeControl": "Charge mode",
     "ev.modeOff": "Off",
@@ -8394,6 +8641,14 @@ const I18N = {
     "editor.energyTotalEntity": "Gesamt-kWh-Entität",
     "editor.liveEntity": "Live-Sensor",
     "editor.houseType": "Haustyp",
+    "editor.regionProfile": "Regionalprofil",
+    "editor.regionProfileAuto": "Automatisch / individuell",
+    "editor.regionProfileEu": "EU / metrisch",
+    "editor.regionProfileUs": "USA",
+    "editor.unitSystem": "Einheitensystem",
+    "editor.unitSystemAuto": "Aus Regionalprofil / individuell",
+    "editor.unitSystemMetric": "Metrisch",
+    "editor.unitSystemUs": "US-Einheiten",
     "editor.hudBoxOpacity": "HUD-Box-Deckkraft",
     "editor.hudBoxScale": "HUD-Box-Skalierung",
     "editor.advisorEvSurplusThreshold": "Wallbox-Überschussschwelle (W)",
@@ -8412,6 +8667,10 @@ const I18N = {
     "editor.gridImportPrice": "Bezugskosten pro kWh",
     "editor.gridExportPrice": "Einspeisevergütung pro kWh",
     "editor.currency": "Währung",
+    "editor.currencyPosition": "Währungsposition",
+    "editor.currencyPositionAuto": "Automatisch",
+    "editor.currencyPositionPrefix": "Vor dem Betrag",
+    "editor.currencyPositionSuffix": "Nach dem Betrag",
     "editor.showGridDailyFinance": "Heutige Kosten und Einnahmen als Labels anzeigen",
     "editor.importLabel": "Bezugs-Label",
     "editor.exportLabel": "Einspeise-Label",
@@ -8775,6 +9034,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: längste eingesteckte Zeit",
     "records.wallboxThreePhase": "{name}: längste 3-phasige Zeit",
     "records.sectionCounters": "Zähler-Rekorde",
+    "ev.details": "Details",
     "ev.groupControls": "Steuerung",
     "ev.modeControl": "Lademodus",
     "ev.modeOff": "Aus",
@@ -9030,6 +9290,14 @@ const I18N = {
     "editor.energyTotalEntity": "Entidad kWh total",
     "editor.liveEntity": "Entidad en vivo",
     "editor.houseType": "Tipo de casa",
+    "editor.regionProfile": "Perfil regional",
+    "editor.regionProfileAuto": "Auto / personalizado",
+    "editor.regionProfileEu": "UE / métrico",
+    "editor.regionProfileUs": "EE. UU.",
+    "editor.unitSystem": "Sistema de unidades",
+    "editor.unitSystemAuto": "Según región / personalizado",
+    "editor.unitSystemMetric": "Métrico",
+    "editor.unitSystemUs": "Unidades de EE. UU.",
     "editor.hudBoxOpacity": "Opacidad de cajas HUD",
     "editor.hudBoxScale": "Escala de cajas HUD",
     "editor.advisorEvSurplusThreshold": "Umbral de excedente FV para VE (W)",
@@ -9048,6 +9316,10 @@ const I18N = {
     "editor.gridImportPrice": "Precio de importación por kWh",
     "editor.gridExportPrice": "Tarifa de inyección por kWh",
     "editor.currency": "Moneda",
+    "editor.currencyPosition": "Posición de la moneda",
+    "editor.currencyPositionAuto": "Auto",
+    "editor.currencyPositionPrefix": "Antes del importe",
+    "editor.currencyPositionSuffix": "Después del importe",
     "editor.showGridDailyFinance": "Mostrar etiquetas de costes e ingresos de hoy",
     "editor.importLabel": "Etiqueta de importación",
     "editor.exportLabel": "Etiqueta de exportación",
@@ -9411,6 +9683,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: más tiempo enchufado",
     "records.wallboxThreePhase": "{name}: más tiempo en 3 fases",
     "records.sectionCounters": "Récords de contadores",
+    "ev.details": "Detalles",
     "ev.groupControls": "Control",
     "ev.modeControl": "Modo de carga",
     "ev.modeOff": "Apagado",
@@ -9666,6 +9939,14 @@ const I18N = {
     "editor.energyTotalEntity": "Entité kWh total",
     "editor.liveEntity": "Entité directe",
     "editor.houseType": "Type de maison",
+    "editor.regionProfile": "Profil régional",
+    "editor.regionProfileAuto": "Auto / personnalisé",
+    "editor.regionProfileEu": "UE / métrique",
+    "editor.regionProfileUs": "États-Unis",
+    "editor.unitSystem": "Système d’unités",
+    "editor.unitSystemAuto": "Selon la région / personnalisé",
+    "editor.unitSystemMetric": "Métrique",
+    "editor.unitSystemUs": "Unités américaines",
     "editor.hudBoxOpacity": "Opacité des boîtes HUD",
     "editor.hudBoxScale": "Échelle des boîtes HUD",
     "editor.advisorEvSurplusThreshold": "Seuil de surplus VE (W)",
@@ -9684,6 +9965,10 @@ const I18N = {
     "editor.gridImportPrice": "Prix d'import par kWh",
     "editor.gridExportPrice": "Tarif d'injection par kWh",
     "editor.currency": "Devise",
+    "editor.currencyPosition": "Position de la devise",
+    "editor.currencyPositionAuto": "Auto",
+    "editor.currencyPositionPrefix": "Avant le montant",
+    "editor.currencyPositionSuffix": "Après le montant",
     "editor.showGridDailyFinance": "Afficher les libellés des coûts et revenus du jour",
     "editor.importLabel": "Libellé import",
     "editor.exportLabel": "Libellé export",
@@ -10047,6 +10332,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: plus longue durée branchée",
     "records.wallboxThreePhase": "{name}: plus longue durée en 3 phases",
     "records.sectionCounters": "Records de compteurs",
+    "ev.details": "Détails",
     "ev.groupControls": "Commande",
     "ev.modeControl": "Mode de charge",
     "ev.modeOff": "Arrêt",
@@ -10302,6 +10588,14 @@ const I18N = {
     "editor.energyTotalEntity": "Łączna encja kWh",
     "editor.liveEntity": "Encja na żywo",
     "editor.houseType": "Typ domu",
+    "editor.regionProfile": "Profil regionalny",
+    "editor.regionProfileAuto": "Auto / własne",
+    "editor.regionProfileEu": "UE / metryczny",
+    "editor.regionProfileUs": "USA",
+    "editor.unitSystem": "System jednostek",
+    "editor.unitSystemAuto": "Z regionu / własne",
+    "editor.unitSystemMetric": "Metryczny",
+    "editor.unitSystemUs": "Jednostki USA",
     "editor.hudBoxOpacity": "Przezroczystość pól HUD",
     "editor.hudBoxScale": "Skala pól HUD",
     "editor.advisorEvSurplusThreshold": "Próg nadwyżki PV dla EV (W)",
@@ -10320,6 +10614,10 @@ const I18N = {
     "editor.gridImportPrice": "Cena importu z sieci za kWh",
     "editor.gridExportPrice": "Taryfa oddawania do sieci za kWh",
     "editor.currency": "Waluta",
+    "editor.currencyPosition": "Pozycja waluty",
+    "editor.currencyPositionAuto": "Auto",
+    "editor.currencyPositionPrefix": "Przed kwotą",
+    "editor.currencyPositionSuffix": "Po kwocie",
     "editor.showGridDailyFinance": "Pokaż dzisiejsze koszty i przychody jako etykiety",
     "editor.importLabel": "Etykieta importu",
     "editor.exportLabel": "Etykieta eksportu",
@@ -10683,6 +10981,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: najdłuższy czas podłączenia",
     "records.wallboxThreePhase": "{name}: najdłuższy czas 3-fazowy",
     "records.sectionCounters": "Rekordy liczników",
+    "ev.details": "Szczegóły",
     "ev.groupControls": "Sterowanie",
     "ev.modeControl": "Tryb ładowania",
     "ev.modeOff": "Wył.",
@@ -10895,6 +11194,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,
+  applyRegionalDefaults,
   assetUrl,
   clampConfigNumber,
   createEditorBaseConfig,

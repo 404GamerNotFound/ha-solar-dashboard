@@ -6,6 +6,7 @@ import {
   clampConfigNumber,
 } from "../modules/config-normalizers.js";
 import {
+  applyRegionalDefaults,
   createEditorBaseConfig,
 } from "../modules/config-schema.js";
 import {
@@ -177,6 +178,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,
+  applyRegionalDefaults,
   assetUrl,
   clampConfigNumber,
   createEditorBaseConfig,

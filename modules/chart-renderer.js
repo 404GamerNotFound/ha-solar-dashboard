@@ -7,6 +7,8 @@ export function createChartRendererMethods({
   return {
     _formatChartValue(value, metric) {
       if (this._isMetricEnergyMode(metric)) return this._formatEnergyValue(value, "kWh", "kWh");
+      if (metric.unit === "energy") return this._formatEnergyValue(value, "kWh", "kWh");
+      if (metric.unit === "boolean") return value >= 0.5 ? this._t("ev.yes", {}, "Yes") : this._t("ev.no", {}, "No");
       if (metric.overlay === "heatpump") {
         const entityUnit = this._getEntityUnit(this._metricEntityId(metric));
         if (this._isPowerUnit(entityUnit)) return this._formatPowerValue(value, "auto", "W");

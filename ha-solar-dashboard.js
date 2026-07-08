@@ -1245,6 +1245,12 @@ function normalizeUnit(unit) {
   return String(unit || "").trim().toLowerCase();
 }
 
+const CUBIC_METERS_PER_US_GALLON = 0.003785411784;
+const MILLIMETERS_PER_INCH = 25.4;
+const LITERS_PER_US_GALLON = 3.785411784;
+const KILOMETERS_PER_MILE = 1.609344;
+const PSI_PER_BAR = 14.503773773;
+
 function isEnergyUnit(unit) {
   return ["wh", "kwh", "mwh"].includes(normalizeUnit(unit));
 }
@@ -1255,12 +1261,12 @@ function isPowerUnit(unit) {
 
 function normalizeVolumeUnit(unit) {
   return normalizeUnit(unit)
-    .replace(/\s+/g, "")
+    .replace(/[\s._-]+/g, "")
     .replace(/³/g, "3");
 }
 
 function isVolumeUnit(unit) {
-  return ["m3", "cbm", "l", "liter", "litre", "liters", "litres", "ml"].includes(normalizeVolumeUnit(unit));
+  return ["m3", "cbm", "l", "liter", "litre", "liters", "litres", "ml", "gal", "gallon", "gallons", "usgal", "usgallon", "usgallons"].includes(normalizeVolumeUnit(unit));
 }
 
 function valueAsWatts(value, unit) {
@@ -1281,6 +1287,14 @@ function valueAsVolts(value, unit) {
   return numericValue;
 }
 
+function valueAsCelsius(value, unit) {
+  const numericValue = numericState(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const normalizedUnit = normalizeUnit(unit).replace(/\s+/g, "");
+  if (["°f", "f", "fahrenheit"].includes(normalizedUnit)) return (numericValue - 32) * 5 / 9;
+  return numericValue;
+}
+
 function valueAsKwh(value, unit) {
   const numericValue = numericState(value);
   if (!Number.isFinite(numericValue)) return undefined;
@@ -1290,13 +1304,65 @@ function valueAsKwh(value, unit) {
   return numericValue;
 }
 
+function valueAsMillimeters(value, unit) {
+  const numericValue = numericState(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const normalizedUnit = normalizeUnit(unit).replace(/[\s._-]+/g, "");
+  if (["in", "inch", "inches"].includes(normalizedUnit)) return numericValue * MILLIMETERS_PER_INCH;
+  if (["cm", "centimeter", "centimeters", "centimetre", "centimetres"].includes(normalizedUnit)) return numericValue * 10;
+  if (["m", "meter", "meters", "metre", "metres"].includes(normalizedUnit)) return numericValue * 1000;
+  return numericValue;
+}
+
+function valueAsBar(value, unit) {
+  const numericValue = numericState(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const normalizedUnit = normalizeUnit(unit).replace(/[\s._-]+/g, "");
+  if (["psi", "lb/in2", "lbin2"].includes(normalizedUnit)) return numericValue / PSI_PER_BAR;
+  if (["pa", "pascal", "pascals"].includes(normalizedUnit)) return numericValue / 100000;
+  if (["kpa", "kilopascal", "kilopascals"].includes(normalizedUnit)) return numericValue / 100;
+  if (["hpa", "mbar", "millibar", "millibars"].includes(normalizedUnit)) return numericValue / 1000;
+  return numericValue;
+}
+
+function valueAsLitersPerMinute(value, unit) {
+  const numericValue = numericState(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const normalizedUnit = normalizeUnit(unit).replace(/[\s._-]+/g, "");
+  if (["gal/min", "gallon/min", "gallons/min", "gpm", "galmin", "gallonmin", "gallonsmin", "galpermin", "gallonpermin", "gallonspermin", "gal/minute"].includes(normalizedUnit)) return numericValue * LITERS_PER_US_GALLON;
+  if (["m3/h", "cbm/h", "m3perhour", "m3hour"].includes(normalizedUnit)) return numericValue * 1000 / 60;
+  return numericValue;
+}
+
+function valueAsKilometers(value, unit) {
+  const numericValue = numericState(value);
+  if (!Number.isFinite(numericValue)) return undefined;
+  const normalizedUnit = normalizeUnit(unit).replace(/[\s._-]+/g, "");
+  if (["mi", "mile", "miles"].includes(normalizedUnit)) return numericValue * KILOMETERS_PER_MILE;
+  if (["m", "meter", "meters", "metre", "metres"].includes(normalizedUnit)) return numericValue / 1000;
+  return numericValue;
+}
+
 function valueAsCubicMeters(value, unit) {
   const numericValue = numericState(value);
   if (!Number.isFinite(numericValue)) return undefined;
   const normalizedUnit = normalizeVolumeUnit(unit);
   if (["l", "liter", "litre", "liters", "litres"].includes(normalizedUnit)) return numericValue / 1000;
   if (normalizedUnit === "ml") return numericValue / 1000000;
+  if (["gal", "gallon", "gallons", "usgal", "usgallon", "usgallons"].includes(normalizedUnit)) return numericValue * CUBIC_METERS_PER_US_GALLON;
   return numericValue;
+}
+
+function valueAsVolumeUnit(value, entityUnit, targetUnit = "m³") {
+  const normalizedTargetUnit = normalizeVolumeUnit(targetUnit);
+  if (!targetUnit || normalizedTargetUnit === "auto") return numericState(value);
+  const cubicMeters = valueAsCubicMeters(value, entityUnit);
+  if (!Number.isFinite(cubicMeters)) return undefined;
+  if (["m3", "cbm"].includes(normalizedTargetUnit)) return cubicMeters;
+  if (["l", "liter", "litre", "liters", "litres"].includes(normalizedTargetUnit)) return cubicMeters * 1000;
+  if (normalizedTargetUnit === "ml") return cubicMeters * 1000000;
+  if (["gal", "gallon", "gallons", "usgal", "usgallon", "usgallons"].includes(normalizedTargetUnit)) return cubicMeters / CUBIC_METERS_PER_US_GALLON;
+  return numericState(value);
 }
 
 function formatTrimmedNumber(value, decimals) {
@@ -1323,6 +1389,16 @@ function formatVoltageValue(rawValue, entityUnit = "V", unavailable = "—") {
   return `${volts.toFixed(decimals)} V`;
 }
 
+function formatTemperatureValue(rawValue, entityUnit = "°C", targetUnit = "°C", unavailable = "—") {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+  const celsius = valueAsCelsius(rawValue, entityUnit);
+  if (!Number.isFinite(celsius)) return `${value} ${targetUnit || entityUnit || "°C"}`;
+  const normalizedTargetUnit = normalizeUnit(targetUnit).replace(/\s+/g, "");
+  if (["°f", "f", "fahrenheit"].includes(normalizedTargetUnit)) return `${(celsius * 9 / 5 + 32).toFixed(1)} °F`;
+  return `${celsius.toFixed(1)} °C`;
+}
+
 function formatEnergyValue(rawValue, entityUnit, targetUnit = "kWh", unavailable = "—") {
   const value = formatValue(rawValue, unavailable);
   if (value === unavailable) return value;
@@ -1334,14 +1410,65 @@ function formatEnergyValue(rawValue, entityUnit, targetUnit = "kWh", unavailable
   return `${value} ${targetUnit || entityUnit || "kWh"}`;
 }
 
+function formatPrecipitationValue(rawValue, entityUnit = "mm", targetUnit = "mm", unavailable = "—") {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+  const millimeters = valueAsMillimeters(rawValue, entityUnit);
+  if (!Number.isFinite(millimeters)) return `${value} ${targetUnit || entityUnit || "mm"}`;
+  const normalizedTargetUnit = normalizeUnit(targetUnit).replace(/[\s._-]+/g, "");
+  if (["in", "inch", "inches"].includes(normalizedTargetUnit)) {
+    const inches = millimeters / MILLIMETERS_PER_INCH;
+    return `${formatTrimmedNumber(inches, Math.abs(inches) >= 10 ? 1 : 2)} in`;
+  }
+  return `${formatTrimmedNumber(millimeters, Math.abs(millimeters) >= 10 ? 1 : 2)} mm`;
+}
+
+function formatPressureValue(rawValue, entityUnit = "bar", targetUnit = "bar", unavailable = "—") {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+  const bar = valueAsBar(rawValue, entityUnit);
+  if (!Number.isFinite(bar)) return `${value} ${targetUnit || entityUnit || "bar"}`;
+  const normalizedTargetUnit = normalizeUnit(targetUnit).replace(/[\s._-]+/g, "");
+  if (normalizedTargetUnit === "psi") return `${formatTrimmedNumber(bar * PSI_PER_BAR, 1)} psi`;
+  if (["hpa", "mbar", "millibar", "millibars"].includes(normalizedTargetUnit)) return `${formatTrimmedNumber(bar * 1000, 0)} hPa`;
+  return `${formatTrimmedNumber(bar, Math.abs(bar) >= 10 ? 1 : 2)} bar`;
+}
+
+function formatFlowValue(rawValue, entityUnit = "L/min", targetUnit = "L/min", unavailable = "—") {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+  const litersPerMinute = valueAsLitersPerMinute(rawValue, entityUnit);
+  if (!Number.isFinite(litersPerMinute)) return `${value} ${targetUnit || entityUnit || "L/min"}`;
+  const normalizedTargetUnit = normalizeUnit(targetUnit).replace(/[\s._-]+/g, "");
+  if (["gal/min", "gallon/min", "gallons/min", "gpm", "galmin", "gallonmin", "gallonsmin", "galpermin", "gallonpermin", "gallonspermin", "gal/minute"].includes(normalizedTargetUnit)) {
+    const gallonsPerMinute = litersPerMinute / LITERS_PER_US_GALLON;
+    return `${formatTrimmedNumber(gallonsPerMinute, Math.abs(gallonsPerMinute) >= 10 ? 1 : 2)} gal/min`;
+  }
+  return `${formatTrimmedNumber(litersPerMinute, Math.abs(litersPerMinute) >= 10 ? 1 : 2)} L/min`;
+}
+
+function formatDistanceValue(rawValue, entityUnit = "km", targetUnit = "km", unavailable = "—") {
+  const value = formatValue(rawValue, unavailable);
+  if (value === unavailable) return value;
+  const kilometers = valueAsKilometers(rawValue, entityUnit);
+  if (!Number.isFinite(kilometers)) return `${value} ${targetUnit || entityUnit || "km"}`;
+  const normalizedTargetUnit = normalizeUnit(targetUnit).replace(/[\s._-]+/g, "");
+  if (["mi", "mile", "miles"].includes(normalizedTargetUnit)) {
+    const miles = kilometers / KILOMETERS_PER_MILE;
+    return `${formatTrimmedNumber(miles, Math.abs(miles) >= 100 ? 0 : 1)} mi`;
+  }
+  return `${formatTrimmedNumber(kilometers, Math.abs(kilometers) >= 100 ? 0 : 1)} km`;
+}
+
 function formatVolumeValue(rawValue, entityUnit, targetUnit = "m³", unavailable = "—") {
   const value = formatValue(rawValue, unavailable);
   if (value === unavailable) return value;
   const normalizedTargetUnit = normalizeVolumeUnit(targetUnit);
   const cubicMeters = valueAsCubicMeters(rawValue, entityUnit);
 
-  if (normalizedTargetUnit === "l") {
-    if (cubicMeters !== undefined) return `${formatTrimmedNumber(cubicMeters * 1000, cubicMeters >= 1 ? 0 : 1)} L`;
+  if (["l", "liter", "litre", "liters", "litres"].includes(normalizedTargetUnit)) {
+    const liters = valueAsVolumeUnit(rawValue, entityUnit, "L");
+    if (liters !== undefined) return `${formatTrimmedNumber(liters, Math.abs(liters) >= 1000 ? 0 : 1)} L`;
     return `${value} L`;
   }
 
@@ -1356,6 +1483,16 @@ function formatVolumeValue(rawValue, entityUnit, targetUnit = "m³", unavailable
       return `${formatTrimmedNumber(cubicMeters, decimals)} m³`;
     }
     return `${value} m³`;
+  }
+
+  if (["gal", "gallon", "gallons", "usgal", "usgallon", "usgallons"].includes(normalizedTargetUnit)) {
+    const gallons = valueAsVolumeUnit(rawValue, entityUnit, "gal");
+    if (gallons !== undefined) {
+      const absGallons = Math.abs(gallons);
+      const decimals = absGallons >= 1000 ? 0 : absGallons >= 100 ? 1 : 2;
+      return `${formatTrimmedNumber(gallons, decimals)} gal`;
+    }
+    return `${value} gal`;
   }
 
   return `${value} ${targetUnit || entityUnit || "m³"}`;
@@ -1982,12 +2119,33 @@ function gridCurrency(config = {}) {
   return String(config.currency || config.grid_currency || "€").trim() || "€";
 }
 
+function normalizeCurrencyPosition(value) {
+  const normalized = String(value || "auto").trim().toLowerCase();
+  return ["auto", "prefix", "suffix"].includes(normalized) ? normalized : "auto";
+}
+
+function gridCurrencyPosition(config = {}) {
+  return normalizeCurrencyPosition(config.currency_position || config.grid_currency_position || "auto");
+}
+
+function autoCurrencyPosition(currency) {
+  const compactPrefixSymbols = ["$", "us$", "ca$", "a$", "nz$", "£", "¥", "₹", "₩", "₱", "₪", "₫", "฿"];
+  return compactPrefixSymbols.includes(String(currency || "").trim().toLowerCase()) ? "prefix" : "suffix";
+}
+
+function currencyPrefixSeparator(currency) {
+  const compact = String(currency || "").trim();
+  return compact.length <= 1 || /[$£¥₹₩₱₪₫฿]/.test(compact) ? "" : " ";
+}
+
 function formatMoneyValue(value, {
   currency = "€",
+  currencyPosition = "auto",
   language = "en",
 } = {}) {
   if (!Number.isFinite(value)) return "—";
-  if (/^[A-Z]{3}$/.test(currency)) {
+  const position = normalizeCurrencyPosition(currencyPosition);
+  if (/^[A-Z]{3}$/.test(currency) && position === "auto") {
     try {
       return new Intl.NumberFormat(language, { style: "currency", currency }).format(value);
     } catch (_err) {
@@ -1998,6 +2156,8 @@ function formatMoneyValue(value, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  const resolvedPosition = position === "auto" ? autoCurrencyPosition(currency) : position;
+  if (resolvedPosition === "prefix") return `${currency}${currencyPrefixSeparator(currency)}${formatted}`;
   return `${formatted} ${currency}`;
 }
 
@@ -2393,13 +2553,21 @@ function chartHistoryPoint(metric, entry, {
   if (formatValue?.(rawValue) === "—") return undefined;
   const entityId = metricEntityId?.(metric) || metric?.chartEntityId || "";
   const entityUnit = entry.attributes?.unit_of_measurement || getEntityUnit?.(entityId) || "";
-  const numericValue = isMetricEnergyMode?.(metric)
-    ? valueAsKwh?.(rawValue, entityUnit)
-    : metric?.unit === "volume"
-      ? valueAsCubicMeters?.(rawValue, entityUnit)
-      : metric?.unit === "power" || (metric?.overlay === "heatpump" && isPowerUnit?.(entityUnit))
-        ? valueAsWatts?.(rawValue, entityUnit)
-        : numericState?.(rawValue);
+  const normalizedBoolean = String(rawValue ?? "").trim().toLowerCase();
+  let numericValue;
+  if (isMetricEnergyMode?.(metric) || metric?.unit === "energy") {
+    numericValue = valueAsKwh?.(rawValue, entityUnit);
+  } else if (metric?.unit === "boolean") {
+    if (["on", "true", "1", "yes", "ja", "connected", "enabled", "active", "charging"].includes(normalizedBoolean)) numericValue = 1;
+    else if (["off", "false", "0", "no", "nein", "disconnected", "disabled", "inactive", "idle"].includes(normalizedBoolean)) numericValue = 0;
+    else numericValue = numericState?.(rawValue);
+  } else if (metric?.unit === "volume") {
+    numericValue = valueAsCubicMeters?.(rawValue, entityUnit);
+  } else if (metric?.unit === "power" || (metric?.overlay === "heatpump" && isPowerUnit?.(entityUnit))) {
+    numericValue = valueAsWatts?.(rawValue, entityUnit);
+  } else {
+    numericValue = numericState?.(rawValue);
+  }
   if (!Number.isFinite(numericValue)) return undefined;
   const rawTime = entry.last_changed || entry.last_updated || entry.lu;
   const time = Date.parse(rawTime || "");
@@ -2877,13 +3045,88 @@ function createConfigNormalizerMethods({
 const DEFAULT_CURRENCY = "€";
 const DEFAULT_EV_IMAGE_PATH = "images/car_image.png";
 const DEFAULT_GARDEN_IMAGE_PATH = "images/single_family_home_top_view_garden.png";
+const REGION_PROFILE_VALUES = Object.freeze(["auto", "eu", "us"]);
+const UNIT_SYSTEM_VALUES = Object.freeze(["auto", "metric", "us"]);
 
 const DEFAULT_GRID_FINANCE_CONFIG = Object.freeze({
   grid_import_price: "",
   grid_export_price: "",
   currency: DEFAULT_CURRENCY,
+  currency_position: "auto",
   show_grid_daily_finance: true,
 });
+
+function hasOwnValue(source, key) {
+  return Object.prototype.hasOwnProperty.call(source || {}, key)
+    && source[key] !== undefined
+    && source[key] !== null
+    && String(source[key]).trim() !== "";
+}
+
+function hasOwnUnit(source, key) {
+  return hasOwnValue(source?.units || {}, key);
+}
+
+function normalizeRegionProfile(value) {
+  const normalized = String(value || "auto").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  if (["usa", "america", "american", "north_america", "united_states", "united_states_of_america"].includes(normalized)) return "us";
+  if (["europe", "european", "de", "deutschland", "germany", "eu_metric"].includes(normalized)) return "eu";
+  return REGION_PROFILE_VALUES.includes(normalized) ? normalized : "auto";
+}
+
+function normalizeUnitSystem(value) {
+  const normalized = String(value || "auto").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  if (["imperial", "us_customary", "usa", "american"].includes(normalized)) return "us";
+  if (["eu", "europe", "metric_system"].includes(normalized)) return "metric";
+  return UNIT_SYSTEM_VALUES.includes(normalized) ? normalized : "auto";
+}
+
+function unitSystemForRegion(regionProfile, unitSystem) {
+  if (unitSystem !== "auto") return unitSystem;
+  if (regionProfile === "us") return "us";
+  if (regionProfile === "eu") return "metric";
+  return "auto";
+}
+
+function applyRegionalDefaults(config = {}, explicitConfig = config) {
+  const regionProfile = normalizeRegionProfile(explicitConfig.region_profile ?? explicitConfig.region ?? config.region_profile);
+  const configuredUnitSystem = normalizeUnitSystem(explicitConfig.unit_system ?? explicitConfig.measurement_system ?? config.unit_system);
+  const resolvedUnitSystem = unitSystemForRegion(regionProfile, configuredUnitSystem);
+  const next = {
+    ...config,
+    region_profile: regionProfile,
+    unit_system: configuredUnitSystem,
+    units: { ...(config.units || {}) },
+  };
+
+  if (regionProfile === "us") {
+    if (!hasOwnValue(explicitConfig, "currency") && !hasOwnValue(explicitConfig, "grid_currency")) next.currency = "$";
+    if (!hasOwnValue(explicitConfig, "currency_position") && !hasOwnValue(explicitConfig, "grid_currency_position")) next.currency_position = "prefix";
+  } else if (regionProfile === "eu") {
+    if (!hasOwnValue(explicitConfig, "currency") && !hasOwnValue(explicitConfig, "grid_currency")) next.currency = "€";
+    if (!hasOwnValue(explicitConfig, "currency_position") && !hasOwnValue(explicitConfig, "grid_currency_position")) next.currency_position = "suffix";
+  }
+
+  if (resolvedUnitSystem === "us") {
+    if (!hasOwnUnit(explicitConfig, "volume")) next.units.volume = "gal";
+    if (!hasOwnUnit(explicitConfig, "water_meter")) next.units.water_meter = "gal";
+    if (!hasOwnUnit(explicitConfig, "temperature")) next.units.temperature = "°F";
+    if (!hasOwnUnit(explicitConfig, "precipitation")) next.units.precipitation = "in";
+    if (!hasOwnUnit(explicitConfig, "pressure")) next.units.pressure = "psi";
+    if (!hasOwnUnit(explicitConfig, "flow")) next.units.flow = "gal/min";
+    if (!hasOwnUnit(explicitConfig, "distance")) next.units.distance = "mi";
+  } else if (resolvedUnitSystem === "metric") {
+    if (!hasOwnUnit(explicitConfig, "volume")) next.units.volume = "m³";
+    if (!hasOwnUnit(explicitConfig, "water_meter")) next.units.water_meter = "m³";
+    if (!hasOwnUnit(explicitConfig, "temperature")) next.units.temperature = "°C";
+    if (!hasOwnUnit(explicitConfig, "precipitation")) next.units.precipitation = "mm";
+    if (!hasOwnUnit(explicitConfig, "pressure")) next.units.pressure = "bar";
+    if (!hasOwnUnit(explicitConfig, "flow")) next.units.flow = "L/min";
+    if (!hasOwnUnit(explicitConfig, "distance")) next.units.distance = "km";
+  }
+
+  return next;
+}
 
 function createDefaultFloorplan(label = "Level 1") {
   return {
@@ -2906,6 +3149,11 @@ function createDefaultUnits() {
     power: "auto",
     battery: "%",
     volume: "m³",
+    temperature: "°C",
+    precipitation: "mm",
+    pressure: "bar",
+    flow: "L/min",
+    distance: "km",
   };
 }
 
@@ -3055,6 +3303,8 @@ function createBaseCardConfig({
     show_status_label: true,
     show_weather_status: false,
     show_grid_status_tile: true,
+    region_profile: "auto",
+    unit_system: "auto",
     hud_box_opacity: 0.65,
     hud_box_scale: 1,
     battery_low_threshold: 20,
@@ -3142,6 +3392,8 @@ function createEditorBaseConfig({ floorplanLabel = "Level 1" } = {}) {
     show_advisor: true,
     show_charts: true,
     show_records: true,
+    region_profile: "auto",
+    unit_system: "auto",
     large_consumers: [],
     pv_roof_strings: [],
     pv_roof_string_display: "sum",
@@ -3490,6 +3742,13 @@ function createElectricVehicleDashboardMethods({
       const evConfig = this._electricVehicleConfig();
       const evEntities = evConfig.entities || {};
       const direct = evEntities[key] || definition?.aliases?.map((alias) => evEntities[alias]).find(Boolean);
+      if (key === "mode") {
+        const controlDefinition = this._electricVehicleDefinition("mode_control");
+        const controlDirect = evEntities.mode_control || controlDefinition?.aliases?.map((alias) => evEntities[alias]).find(Boolean);
+        if (controlDirect && (this._electricVehicleCanSetModeEntity(controlDirect) || !direct)) return controlDirect;
+        const controlEvccEntityId = this._electricVehicleEvccEntityId(controlDefinition);
+        if (controlEvccEntityId) return controlEvccEntityId;
+      }
       if (direct) return direct;
 
       const evccEntityId = this._electricVehicleEvccEntityId(definition);
@@ -3716,7 +3975,9 @@ function createElectricVehicleDashboardMethods({
       }
       if (definition.kind === "distance") {
         const number = this._electricVehicleNumericState(rawValue);
-        return Number.isFinite(number) ? `${Number.isInteger(number) ? number.toFixed(0) : number.toFixed(1)} ${unit || "km"}` : `${String(rawValue).trim()}${unit && !String(rawValue).includes(unit) ? ` ${unit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatDistanceValue === "function"
+          ? this._formatDistanceValue(rawValue, unit || "km", this.config.units?.distance || unit || "km")
+          : Number.isFinite(number) ? `${Number.isInteger(number) ? number.toFixed(0) : number.toFixed(1)} ${unit || "km"}` : `${String(rawValue).trim()}${unit && !String(rawValue).includes(unit) ? ` ${unit}` : ""}`;
       }
       if (definition.kind === "phases") {
         const metric = this._electricVehicleWallboxMetric();
@@ -3835,6 +4096,29 @@ function createElectricVehicleDashboardMethods({
       return "transparent";
     },
 
+    _electricVehicleChartUnit(definition = {}) {
+      if (["power", "grid_power"].includes(definition.kind)) return "power";
+      if (definition.kind === "energy") return "energy";
+      if (definition.kind === "boolean") return "boolean";
+      if (definition.kind === "percent") return "%";
+      if (definition.kind === "current") return "A";
+      if (definition.kind === "distance") return this.config.units?.distance || "km";
+      return this._getEntityUnit?.(this._electricVehicleEntityId(definition.key)) || "auto";
+    },
+
+    _electricVehicleChartAttributes(definition = {}, state = {}) {
+      if (!state.entityId) return "";
+      const label = state.label || this._t(definition.labelKey, {}, definition.label || state.entityId);
+      return [
+        `data-chart-entity="${this._escape(state.entityId)}"`,
+        `data-chart-label="${this._escape(label)}"`,
+        `data-chart-unit="${this._escape(this._electricVehicleChartUnit(definition))}"`,
+        `data-chart-color="${this._escape(this._electricVehicleAccent(definition))}"`,
+        "tabindex=\"0\"",
+        "role=\"button\"",
+      ].join(" ");
+    },
+
     _renderElectricVehicleHeroBadge(definitionKey) {
       const definition = this._electricVehicleDefinition(definitionKey);
       if (!definition) return "";
@@ -3842,9 +4126,9 @@ function createElectricVehicleDashboardMethods({
       if (!this._electricVehicleHeroBadgeVisible(definitionKey, state)) return "";
       const position = this._electricVehicleHeroBadgePosition(definitionKey);
       const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definitionKey, "image"));
-      const entityAttr = state.entityId ? ` data-more-info="${this._escape(state.entityId)}"` : "";
+      const chartAttr = this._electricVehicleChartAttributes(definition, state);
       return `
-        <div class="electric-vehicle-badge${modeClass ? ` ${modeClass}` : ""}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${entityAttr}>
+        <div class="electric-vehicle-badge${modeClass ? ` ${modeClass}` : ""}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${chartAttr ? ` ${chartAttr}` : ""}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -3855,13 +4139,9 @@ function createElectricVehicleDashboardMethods({
       const { definition, state } = item;
       const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definition.key, "tile"));
       const entityTitle = state.entityId ? `${state.label}: ${state.entityId}` : state.label;
-      const toggleDomains = new Set(["switch", "input_boolean", "automation"]);
-      const domain = electricVehicleEntityDomain(state.entityId);
-      const actionAttr = toggleDomains.has(domain)
-        ? ` data-entity-toggle="${this._escape(state.entityId)}" tabindex="0" role="button"`
-        : state.entityId ? ` data-more-info="${this._escape(state.entityId)}" tabindex="0" role="button"` : "";
+      const chartAttr = this._electricVehicleChartAttributes(definition, state);
       return `
-        <div class="electric-vehicle-tile${modeClass ? ` ${modeClass}` : ""}" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${actionAttr}>
+        <div class="electric-vehicle-tile${modeClass ? ` ${modeClass}` : ""}" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${chartAttr ? ` ${chartAttr}` : ""}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -3879,6 +4159,12 @@ function createElectricVehicleDashboardMethods({
           ? String(rawValue).trim()
           : ELECTRIC_VEHICLE_EMPTY_VALUE;
       const label = this._t("ev.modeControl", {}, "Lademodus");
+      const chartAttr = this._electricVehicleChartAttributes(this._electricVehicleDefinition("mode_control"), {
+        key: "mode_control",
+        entityId,
+        label,
+        value: currentLabel,
+      });
       const buttons = ELECTRIC_VEHICLE_MODE_OPTIONS.map((option) => {
         const active = option.key === activeMode;
         const optionLabel = this._electricVehicleModeLabel(option.key);
@@ -3891,7 +4177,7 @@ function createElectricVehicleDashboardMethods({
 
       return `
         <section class="electric-vehicle-control-panel" title="${this._escape(`${label}: ${entityId}`)}">
-          <div class="electric-vehicle-control-head">
+          <div class="electric-vehicle-control-head"${chartAttr ? ` ${chartAttr}` : ""}>
             <span>${this._escape(label)}</span>
             <strong>${this._escape(currentLabel)}</strong>
           </div>
@@ -3936,13 +4222,44 @@ function createElectricVehicleDashboardMethods({
       const modeControl = this._renderElectricVehicleModeControl();
       const pvStatusText = this._electricVehiclePvStatusText();
       const pvStatusEntityId = this._electricVehicleEntityId("pv_status_text") || "";
-      const groups = ELECTRIC_VEHICLE_GROUPS.map((group) => {
+      const pvStatusDefinition = this._electricVehicleDefinition("pv_status_text") || this._electricVehicleDefinition("status");
+      const pvStatusAttr = pvStatusText && pvStatusEntityId
+        ? this._electricVehicleChartAttributes(pvStatusDefinition, {
+          key: pvStatusDefinition?.key || "pv_status_text",
+          entityId: pvStatusEntityId,
+          label: this._t(pvStatusDefinition?.labelKey, {}, pvStatusDefinition?.label || "Status"),
+          value: pvStatusText,
+        })
+        : "";
+      const groupedItems = ELECTRIC_VEHICLE_GROUPS.map((group) => {
         const items = configuredFields
           .filter((item) => item.definition.group === group.key && this._electricVehicleDisplayMode(item.definition.key, "tile") !== "hidden")
           .sort((a, b) => this._electricVehicleTilePosition(a.definition) - this._electricVehicleTilePosition(b.definition));
-        if (items.length === 0) return "";
+        return { group, items };
+      }).filter(({ group, items }) => group.key !== "controls" && items.length > 0);
+      const activeGroupKey = groupedItems.some(({ group }) => group.key === this._activeElectricVehicleDetailTab)
+        ? this._activeElectricVehicleDetailTab
+        : groupedItems[0]?.group.key || "";
+      if (activeGroupKey) this._activeElectricVehicleDetailTab = activeGroupKey;
+      const detailTabs = groupedItems.length > 1
+        ? `
+          <div class="electric-vehicle-detail-tabs" role="tablist" aria-label="${this._escape(this._t("ev.details", {}, "Details"))}">
+            ${groupedItems.map(({ group }) => {
+              const active = group.key === activeGroupKey;
+              const label = this._t(group.labelKey, {}, group.label);
+              return `
+                <button type="button" class="electric-vehicle-tab-button${active ? " active" : ""}" data-electric-vehicle-tab="${this._escape(group.key)}" role="tab" aria-selected="${active ? "true" : "false"}">
+                  ${this._escape(label)}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        `
+        : "";
+      const groups = groupedItems.map(({ group, items }) => {
+        if (group.key !== activeGroupKey) return "";
         return `
-          <section class="electric-vehicle-section">
+          <section class="electric-vehicle-section" role="tabpanel" data-electric-vehicle-tab-panel="${this._escape(group.key)}">
             <div class="electric-vehicle-section-title">${this._escape(this._t(group.labelKey, {}, group.label))}</div>
             <div class="electric-vehicle-grid">
               ${items.map((item) => this._renderElectricVehicleField(item)).join("")}
@@ -3968,9 +4285,9 @@ function createElectricVehicleDashboardMethods({
           <div class="electric-vehicle-hero">
             <img class="electric-vehicle-image" src="${this._escape(imageSrc)}" data-fallbacks="${this._escape(imageFallbacks.join("|"))}" alt="${this._escape(title)}" />
             <div class="electric-vehicle-badges">${heroBadges}</div>
-            ${pvStatusText ? `<div class="scene-status electric-vehicle-pv-status"${pvStatusEntityId ? ` data-more-info="${this._escape(pvStatusEntityId)}"` : ""}>${this._escape(pvStatusText)}</div>` : ""}
+            ${pvStatusText ? `<div class="scene-status electric-vehicle-pv-status"${pvStatusAttr ? ` ${pvStatusAttr}` : ""}>${this._escape(pvStatusText)}</div>` : ""}
           </div>
-          ${empty || groups}
+          ${empty || `${detailTabs}${groups}`}
         </section>
       `;
     },
@@ -4299,20 +4616,28 @@ function createGardenDashboardMethods({
       }
       if (definition.kind === "temperature") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "°C"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatTemperatureValue === "function"
+          ? this._formatTemperatureValue(rawValue, entityUnit || "°C", this.config.units?.temperature || entityUnit || "°C")
+          : Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "°C"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
       if (definition.kind === "precipitation") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "mm"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatPrecipitationValue === "function"
+          ? this._formatPrecipitationValue(rawValue, entityUnit || "mm", this.config.units?.precipitation || entityUnit || "mm")
+          : Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "mm"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
-      if (definition.kind === "volume") return this._formatVolumeValue(rawValue, entityUnit || "L", entityUnit || "L");
+      if (definition.kind === "volume") return this._formatVolumeValue(rawValue, entityUnit || "L", this.config.units?.volume || entityUnit || "L");
       if (definition.kind === "flow") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "L/min"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatFlowValue === "function"
+          ? this._formatFlowValue(rawValue, entityUnit || "L/min", this.config.units?.flow || entityUnit || "L/min")
+          : Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "L/min"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
       if (definition.kind === "pressure") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "bar"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatPressureValue === "function"
+          ? this._formatPressureValue(rawValue, entityUnit || "bar", this.config.units?.pressure || entityUnit || "bar")
+          : Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "bar"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
       return `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
     },
@@ -4632,6 +4957,7 @@ function createDashboardEditorClass({
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,
+  applyRegionalDefaults,
   assetUrl,
   clampConfigNumber,
   createEditorBaseConfig,
@@ -4694,7 +5020,7 @@ function createDashboardEditorClass({
       ?? (config || {}).show_record_dashboard
       ?? (config || {}).records?.enabled
       ?? (config || {}).records?.show;
-    this._config = {
+    const mergedConfig = {
       ...baseConfig,
       ...config,
       show_electric_vehicle: showElectricVehicle === undefined ? baseConfig.show_electric_vehicle !== false : showElectricVehicle !== false,
@@ -4729,6 +5055,9 @@ function createDashboardEditorClass({
       inverters: normalizeInverters((config || {}).inverters || (config || {}).inverter_strings || (config || {}).inverter_config || []),
       inverter_display: normalizeInverterDisplay((config || {}).inverter_display || (config || {}).inverter_string_display || "sum"),
     };
+    this._config = typeof applyRegionalDefaults === "function"
+      ? applyRegionalDefaults(mergedConfig, config || {})
+      : mergedConfig;
     delete this._config.show_energy_advisor;
     this._render();
     this._ensureTranslationsForRender();
@@ -4952,6 +5281,7 @@ function createDashboardEditorClass({
     const root = parts[0] || path;
     const lastPart = parts[parts.length - 1] || "";
     if (path === "house" || path === "image" || path === "day_image") return true;
+    if (path === "region_profile" || path === "unit_system") return true;
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
     if (root === "show_electric_vehicle") return true;
@@ -4968,6 +5298,55 @@ function createDashboardEditorClass({
       return ["visible", "show_image", "left", "top", "label", "color"].includes(lastPart);
     }
     return false;
+  }
+
+  _applyRegionalPresetChange(config = {}) {
+    const regionProfile = String(config.region_profile || "auto").toLowerCase();
+    const unitSystem = String(config.unit_system || "auto").toLowerCase();
+    const resolvedUnitSystem = unitSystem !== "auto"
+      ? unitSystem
+      : regionProfile === "us"
+        ? "us"
+        : regionProfile === "eu"
+          ? "metric"
+          : "auto";
+    const isPresetValue = (value, presets) => {
+      const normalized = String(value ?? "").trim().toLowerCase();
+      return !normalized || presets.map((item) => String(item).toLowerCase()).includes(normalized);
+    };
+    const setPreset = (target, key, value, presets) => {
+      if (isPresetValue(target[key], presets)) target[key] = value;
+    };
+    const setUnitPreset = (key, value, presets) => {
+      config.units = config.units && typeof config.units === "object" ? config.units : {};
+      if (isPresetValue(config.units[key], presets)) config.units[key] = value;
+    };
+
+    if (regionProfile === "us") {
+      setPreset(config, "currency", "$", ["€", "$"]);
+      setPreset(config, "currency_position", "prefix", ["auto", "prefix", "suffix"]);
+    } else if (regionProfile === "eu") {
+      setPreset(config, "currency", "€", ["€", "$"]);
+      setPreset(config, "currency_position", "suffix", ["auto", "prefix", "suffix"]);
+    }
+
+    if (resolvedUnitSystem === "us") {
+      setUnitPreset("volume", "gal", ["m³", "m3", "gal"]);
+      setUnitPreset("water_meter", "gal", ["m³", "m3", "gal"]);
+      setUnitPreset("temperature", "°F", ["°c", "c", "°f", "f"]);
+      setUnitPreset("precipitation", "in", ["mm", "in"]);
+      setUnitPreset("pressure", "psi", ["bar", "psi", "hpa"]);
+      setUnitPreset("flow", "gal/min", ["l/min", "gal/min"]);
+      setUnitPreset("distance", "mi", ["km", "mi"]);
+    } else if (resolvedUnitSystem === "metric") {
+      setUnitPreset("volume", "m³", ["m³", "m3", "gal"]);
+      setUnitPreset("water_meter", "m³", ["m³", "m3", "gal"]);
+      setUnitPreset("temperature", "°C", ["°c", "c", "°f", "f"]);
+      setUnitPreset("precipitation", "mm", ["mm", "in"]);
+      setUnitPreset("pressure", "bar", ["bar", "psi", "hpa"]);
+      setUnitPreset("flow", "L/min", ["l/min", "gal/min"]);
+      setUnitPreset("distance", "km", ["km", "mi"]);
+    }
   }
 
   _onInput(path, value, isCheckbox = false) {
@@ -5012,6 +5391,7 @@ function createDashboardEditorClass({
         sensor.color = this._floorplanSensorTypeColor(nextValue) || "#34d399";
       }
     }
+    if (path === "region_profile" || path === "unit_system") this._applyRegionalPresetChange(next);
     this._config = next;
     this._dispatchConfig(next);
     if (this._shouldRenderAfterInput(path, parts)) this._render();
@@ -5843,7 +6223,7 @@ function createDashboardEditorClass({
     const volumeTarget = {
       domains: ["sensor"],
       deviceClasses: ["water"],
-      units: ["m³", "m3", "l"],
+      units: ["m³", "m3", "l", "gal", "gallon", "gallons"],
       include: [{ terms: ["water", "wasser", "meter", "counter", "zaehler", "zahler"], weight: 24 }],
       exclude: ["power", "leistung", "energy", "kwh", "gas", "strom", "grid", "netz"],
     };
@@ -6240,6 +6620,13 @@ function createDashboardEditorClass({
           </label>
           <label>${this._escape(this._t("editor.currency", {}, "Currency"))}
             <input data-path="currency" placeholder="€" value="${this._escape(this._config.currency || "€")}" />
+          </label>
+          <label>${this._escape(this._t("editor.currencyPosition", {}, "Currency position"))}
+            <select data-path="currency_position">
+              <option value="auto"${(this._config.currency_position || "auto") === "auto" ? " selected" : ""}>${this._escape(this._t("editor.currencyPositionAuto", {}, "Auto"))}</option>
+              <option value="prefix"${this._config.currency_position === "prefix" ? " selected" : ""}>${this._escape(this._t("editor.currencyPositionPrefix", {}, "Before amount"))}</option>
+              <option value="suffix"${this._config.currency_position === "suffix" ? " selected" : ""}>${this._escape(this._t("editor.currencyPositionSuffix", {}, "After amount"))}</option>
+            </select>
           </label>
         </div>
         <div class="checkbox-grid">
@@ -6739,6 +7126,7 @@ function createDashboardEditorClass({
           ["m³", "m³"],
           ["auto", this._t("editor.auto")],
           ["L", "L"],
+          ["gal", "gal"],
         ]
         : [["%", "%"]];
     const hasSelected = baseOptions.some(([value]) => value.toLowerCase() === selected.toLowerCase());
@@ -8198,6 +8586,18 @@ function createDashboardEditorClass({
       })
       .map((option) => `<option value="${this._escape(option.key)}"${option.key === viewMode ? " selected" : ""}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`)
       .join("");
+    const regionProfile = this._config.region_profile || "auto";
+    const unitSystem = this._config.unit_system || "auto";
+    const regionProfileOptions = [
+      ["auto", this._t("editor.regionProfileAuto", {}, "Auto / custom")],
+      ["eu", this._t("editor.regionProfileEu", {}, "EU / metric")],
+      ["us", this._t("editor.regionProfileUs", {}, "US")],
+    ].map(([value, label]) => `<option value="${this._escape(value)}"${value === regionProfile ? " selected" : ""}>${this._escape(label)}</option>`).join("");
+    const unitSystemOptions = [
+      ["auto", this._t("editor.unitSystemAuto", {}, "From region / custom")],
+      ["metric", this._t("editor.unitSystemMetric", {}, "Metric")],
+      ["us", this._t("editor.unitSystemUs", {}, "US customary")],
+    ].map(([value, label]) => `<option value="${this._escape(value)}"${value === unitSystem ? " selected" : ""}>${this._escape(label)}</option>`).join("");
     const entityOptions = this._entityOptions()
       .map((entityId) => `<option value="${this._escape(entityId)}"></option>`)
       .join("");
@@ -8271,6 +8671,8 @@ function createDashboardEditorClass({
           <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
           <label>${this._escape(this._t("editor.viewMode", {}, "Default view"))} <select data-path="view_mode">${viewModeOptions}</select></label>
           <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
+          <label>${this._escape(this._t("editor.regionProfile", {}, "Regional profile"))} <select data-path="region_profile">${regionProfileOptions}</select></label>
+          <label>${this._escape(this._t("editor.unitSystem", {}, "Unit system"))} <select data-path="unit_system">${unitSystemOptions}</select></label>
           <label>${this._labelText(this._t("editor.customImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
           <label>${this._labelText(this._t("editor.customDayImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
           <label>${this._escape(this._t("editor.weatherEntity"))}
@@ -9318,6 +9720,8 @@ function createChartRendererMethods({
   return {
     _formatChartValue(value, metric) {
       if (this._isMetricEnergyMode(metric)) return this._formatEnergyValue(value, "kWh", "kWh");
+      if (metric.unit === "energy") return this._formatEnergyValue(value, "kWh", "kWh");
+      if (metric.unit === "boolean") return value >= 0.5 ? this._t("ev.yes", {}, "Yes") : this._t("ev.no", {}, "No");
       if (metric.overlay === "heatpump") {
         const entityUnit = this._getEntityUnit(this._metricEntityId(metric));
         if (this._isPowerUnit(entityUnit)) return this._formatPowerValue(value, "auto", "W");
@@ -9627,6 +10031,7 @@ function createRecordsDashboardMethods({
   peakPowerRecord: peakPowerRecordFn = peakPowerRecord,
   recordsHistoryCacheKey: recordsHistoryCacheKeyFn = recordsHistoryCacheKey,
   numericState,
+  valueAsVolumeUnit,
 } = {}) {
   return {
     _recordsDashboardRangeKey() {
@@ -9678,9 +10083,11 @@ function createRecordsDashboardMethods({
       const rawValue = entry?.state ?? entry?.s;
       if (this._formatValue(rawValue) === "—") return undefined;
       const entityUnit = entry?.attributes?.unit_of_measurement || this._getEntityUnit(entityId) || targetUnit;
-      const value = targetUnit === "m³" && typeof this._valueAsCubicMeters === "function"
-        ? this._valueAsCubicMeters(rawValue, entityUnit)
-        : numericState?.(rawValue);
+      const value = typeof valueAsVolumeUnit === "function"
+        ? valueAsVolumeUnit(rawValue, entityUnit, targetUnit)
+        : targetUnit === "m³" && typeof this._valueAsCubicMeters === "function"
+          ? this._valueAsCubicMeters(rawValue, entityUnit)
+          : numericState?.(rawValue);
       const time = Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || "");
       if (!Number.isFinite(value) || !Number.isFinite(time)) return undefined;
       return { time, value };
@@ -9818,6 +10225,16 @@ function createRecordsDashboardMethods({
           const isGasCounter = metric.overlay === "smoke";
           const isVolumeCounter = metric.unit === "volume";
           const isPvMetric = metricKey.startsWith("pv_") || metric.overlay === "solar";
+          const configuredVolumeUnit = isVolumeCounter && typeof this._volumeTargetUnit === "function"
+            ? this._volumeTargetUnit(metric)
+            : "";
+          const counterUnit = isGasCounter
+            ? "m³"
+            : isVolumeCounter
+              ? String(configuredVolumeUnit || "").toLowerCase() === "auto"
+                ? this._getEntityUnit(entityId) || "m³"
+                : configuredVolumeUnit || "m³"
+              : "";
           const group = metricKey.includes("wallbox")
             ? "wallbox"
             : metric.largeConsumer
@@ -9833,7 +10250,7 @@ function createRecordsDashboardMethods({
             entityId,
             type: isGasCounter || isVolumeCounter ? "counter" : "power",
             group,
-            unit: isGasCounter || isVolumeCounter ? "m³" : "",
+            unit: isGasCounter || isVolumeCounter ? counterUnit : "",
             metric,
           }];
           if (group === "wallbox") {
@@ -11396,6 +11813,14 @@ const I18N = {
     "editor.energyTotalEntity": "Total kWh entity",
     "editor.liveEntity": "Live sensor",
     "editor.houseType": "House Type",
+    "editor.regionProfile": "Regional profile",
+    "editor.regionProfileAuto": "Auto / custom",
+    "editor.regionProfileEu": "EU / metric",
+    "editor.regionProfileUs": "US",
+    "editor.unitSystem": "Unit system",
+    "editor.unitSystemAuto": "From region / custom",
+    "editor.unitSystemMetric": "Metric",
+    "editor.unitSystemUs": "US customary",
     "editor.hudBoxOpacity": "HUD box opacity",
     "editor.hudBoxScale": "HUD box scale",
     "editor.advisorEvSurplusThreshold": "EV surplus threshold (W)",
@@ -11414,6 +11839,10 @@ const I18N = {
     "editor.gridImportPrice": "Grid import price per kWh",
     "editor.gridExportPrice": "Feed-in tariff per kWh",
     "editor.currency": "Currency",
+    "editor.currencyPosition": "Currency position",
+    "editor.currencyPositionAuto": "Auto",
+    "editor.currencyPositionPrefix": "Before amount",
+    "editor.currencyPositionSuffix": "After amount",
     "editor.showGridDailyFinance": "Show today's costs and revenue labels",
     "editor.importLabel": "Import label",
     "editor.exportLabel": "Export label",
@@ -11777,6 +12206,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: longest plugged-in time",
     "records.wallboxThreePhase": "{name}: longest 3-phase time",
     "records.sectionCounters": "Meter records",
+    "ev.details": "Details",
     "ev.groupControls": "Controls",
     "ev.modeControl": "Charge mode",
     "ev.modeOff": "Off",
@@ -12032,6 +12462,14 @@ const I18N = {
     "editor.energyTotalEntity": "Gesamt-kWh-Entität",
     "editor.liveEntity": "Live-Sensor",
     "editor.houseType": "Haustyp",
+    "editor.regionProfile": "Regionalprofil",
+    "editor.regionProfileAuto": "Automatisch / individuell",
+    "editor.regionProfileEu": "EU / metrisch",
+    "editor.regionProfileUs": "USA",
+    "editor.unitSystem": "Einheitensystem",
+    "editor.unitSystemAuto": "Aus Regionalprofil / individuell",
+    "editor.unitSystemMetric": "Metrisch",
+    "editor.unitSystemUs": "US-Einheiten",
     "editor.hudBoxOpacity": "HUD-Box-Deckkraft",
     "editor.hudBoxScale": "HUD-Box-Skalierung",
     "editor.advisorEvSurplusThreshold": "Wallbox-Überschussschwelle (W)",
@@ -12050,6 +12488,10 @@ const I18N = {
     "editor.gridImportPrice": "Bezugskosten pro kWh",
     "editor.gridExportPrice": "Einspeisevergütung pro kWh",
     "editor.currency": "Währung",
+    "editor.currencyPosition": "Währungsposition",
+    "editor.currencyPositionAuto": "Automatisch",
+    "editor.currencyPositionPrefix": "Vor dem Betrag",
+    "editor.currencyPositionSuffix": "Nach dem Betrag",
     "editor.showGridDailyFinance": "Heutige Kosten und Einnahmen als Labels anzeigen",
     "editor.importLabel": "Bezugs-Label",
     "editor.exportLabel": "Einspeise-Label",
@@ -12413,6 +12855,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: längste eingesteckte Zeit",
     "records.wallboxThreePhase": "{name}: längste 3-phasige Zeit",
     "records.sectionCounters": "Zähler-Rekorde",
+    "ev.details": "Details",
     "ev.groupControls": "Steuerung",
     "ev.modeControl": "Lademodus",
     "ev.modeOff": "Aus",
@@ -12668,6 +13111,14 @@ const I18N = {
     "editor.energyTotalEntity": "Entidad kWh total",
     "editor.liveEntity": "Entidad en vivo",
     "editor.houseType": "Tipo de casa",
+    "editor.regionProfile": "Perfil regional",
+    "editor.regionProfileAuto": "Auto / personalizado",
+    "editor.regionProfileEu": "UE / métrico",
+    "editor.regionProfileUs": "EE. UU.",
+    "editor.unitSystem": "Sistema de unidades",
+    "editor.unitSystemAuto": "Según región / personalizado",
+    "editor.unitSystemMetric": "Métrico",
+    "editor.unitSystemUs": "Unidades de EE. UU.",
     "editor.hudBoxOpacity": "Opacidad de cajas HUD",
     "editor.hudBoxScale": "Escala de cajas HUD",
     "editor.advisorEvSurplusThreshold": "Umbral de excedente FV para VE (W)",
@@ -12686,6 +13137,10 @@ const I18N = {
     "editor.gridImportPrice": "Precio de importación por kWh",
     "editor.gridExportPrice": "Tarifa de inyección por kWh",
     "editor.currency": "Moneda",
+    "editor.currencyPosition": "Posición de la moneda",
+    "editor.currencyPositionAuto": "Auto",
+    "editor.currencyPositionPrefix": "Antes del importe",
+    "editor.currencyPositionSuffix": "Después del importe",
     "editor.showGridDailyFinance": "Mostrar etiquetas de costes e ingresos de hoy",
     "editor.importLabel": "Etiqueta de importación",
     "editor.exportLabel": "Etiqueta de exportación",
@@ -13049,6 +13504,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: más tiempo enchufado",
     "records.wallboxThreePhase": "{name}: más tiempo en 3 fases",
     "records.sectionCounters": "Récords de contadores",
+    "ev.details": "Detalles",
     "ev.groupControls": "Control",
     "ev.modeControl": "Modo de carga",
     "ev.modeOff": "Apagado",
@@ -13304,6 +13760,14 @@ const I18N = {
     "editor.energyTotalEntity": "Entité kWh total",
     "editor.liveEntity": "Entité directe",
     "editor.houseType": "Type de maison",
+    "editor.regionProfile": "Profil régional",
+    "editor.regionProfileAuto": "Auto / personnalisé",
+    "editor.regionProfileEu": "UE / métrique",
+    "editor.regionProfileUs": "États-Unis",
+    "editor.unitSystem": "Système d’unités",
+    "editor.unitSystemAuto": "Selon la région / personnalisé",
+    "editor.unitSystemMetric": "Métrique",
+    "editor.unitSystemUs": "Unités américaines",
     "editor.hudBoxOpacity": "Opacité des boîtes HUD",
     "editor.hudBoxScale": "Échelle des boîtes HUD",
     "editor.advisorEvSurplusThreshold": "Seuil de surplus VE (W)",
@@ -13322,6 +13786,10 @@ const I18N = {
     "editor.gridImportPrice": "Prix d'import par kWh",
     "editor.gridExportPrice": "Tarif d'injection par kWh",
     "editor.currency": "Devise",
+    "editor.currencyPosition": "Position de la devise",
+    "editor.currencyPositionAuto": "Auto",
+    "editor.currencyPositionPrefix": "Avant le montant",
+    "editor.currencyPositionSuffix": "Après le montant",
     "editor.showGridDailyFinance": "Afficher les libellés des coûts et revenus du jour",
     "editor.importLabel": "Libellé import",
     "editor.exportLabel": "Libellé export",
@@ -13685,6 +14153,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: plus longue durée branchée",
     "records.wallboxThreePhase": "{name}: plus longue durée en 3 phases",
     "records.sectionCounters": "Records de compteurs",
+    "ev.details": "Détails",
     "ev.groupControls": "Commande",
     "ev.modeControl": "Mode de charge",
     "ev.modeOff": "Arrêt",
@@ -13940,6 +14409,14 @@ const I18N = {
     "editor.energyTotalEntity": "Łączna encja kWh",
     "editor.liveEntity": "Encja na żywo",
     "editor.houseType": "Typ domu",
+    "editor.regionProfile": "Profil regionalny",
+    "editor.regionProfileAuto": "Auto / własne",
+    "editor.regionProfileEu": "UE / metryczny",
+    "editor.regionProfileUs": "USA",
+    "editor.unitSystem": "System jednostek",
+    "editor.unitSystemAuto": "Z regionu / własne",
+    "editor.unitSystemMetric": "Metryczny",
+    "editor.unitSystemUs": "Jednostki USA",
     "editor.hudBoxOpacity": "Przezroczystość pól HUD",
     "editor.hudBoxScale": "Skala pól HUD",
     "editor.advisorEvSurplusThreshold": "Próg nadwyżki PV dla EV (W)",
@@ -13958,6 +14435,10 @@ const I18N = {
     "editor.gridImportPrice": "Cena importu z sieci za kWh",
     "editor.gridExportPrice": "Taryfa oddawania do sieci za kWh",
     "editor.currency": "Waluta",
+    "editor.currencyPosition": "Pozycja waluty",
+    "editor.currencyPositionAuto": "Auto",
+    "editor.currencyPositionPrefix": "Przed kwotą",
+    "editor.currencyPositionSuffix": "Po kwocie",
     "editor.showGridDailyFinance": "Pokaż dzisiejsze koszty i przychody jako etykiety",
     "editor.importLabel": "Etykieta importu",
     "editor.exportLabel": "Etykieta eksportu",
@@ -14321,6 +14802,7 @@ const I18N = {
     "records.wallboxPluggedIn": "{name}: najdłuższy czas podłączenia",
     "records.wallboxThreePhase": "{name}: najdłuższy czas 3-fazowy",
     "records.sectionCounters": "Rekordy liczników",
+    "ev.details": "Szczegóły",
     "ev.groupControls": "Sterowanie",
     "ev.modeControl": "Tryb ładowania",
     "ev.modeOff": "Wył.",
@@ -14555,6 +15037,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     this._invalidateHistoryServiceState();
     this._advisorConditionSince = new Map();
+    this._entityChartMetrics = new Map();
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
     const energyRange = this._normalizeEnergyRange(config.energy_range) || "live";
@@ -14593,7 +15076,7 @@ class HaSolarDashboardCard extends HTMLElement {
       defaultHistoryRequestConcurrency: DEFAULT_HISTORY_REQUEST_CONCURRENCY,
       recordsDefaultDays: RECORDS_DEFAULT_DAYS,
     });
-    this.config = {
+    this.config = applyRegionalDefaults({
       ...baseConfig,
       ...config,
       house,
@@ -14656,7 +15139,7 @@ class HaSolarDashboardCard extends HTMLElement {
       pv_roof_string_display: normalizePvRoofStringDisplay(config.pv_roof_string_display || config.pv_roof_display || "sum"),
       inverters: normalizeInverters(config.inverters || config.inverter_strings || config.inverter_config || []),
       inverter_display: normalizeInverterDisplay(config.inverter_display || config.inverter_string_display || "sum"),
-    };
+    }, config);
     delete this.config.show_energy_advisor;
 
     this.config.hud_box_opacity = this._clampNumber(this.config.hud_box_opacity, 0.65, 0, 1);
@@ -15423,8 +15906,13 @@ class HaSolarDashboardCard extends HTMLElement {
     return entries;
   }
 
+  _gridVoltageEntries(variant = this._currentVariant || this._layoutState().variant) {
+    return this._metricVoltageEntries(GRID_STATUS_METRIC, variant)
+      .filter((entry) => Number.isFinite(entry.volts));
+  }
+
   _gridVoltageAlert() {
-    const entries = this._voltageSensorEntries();
+    const entries = this._gridVoltageEntries();
     const highest = entries.sort((a, b) => b.volts - a.volts)[0];
     if (!highest) return undefined;
     const warningThreshold = this._clampNumber(this.config.grid_voltage_warning_threshold, 245, 0, 1000);
@@ -15572,9 +16060,14 @@ class HaSolarDashboardCard extends HTMLElement {
     return gridCurrency(this.config);
   }
 
+  _gridCurrencyPosition() {
+    return gridCurrencyPosition(this.config);
+  }
+
   _formatMoney(value) {
     return formatMoneyValue(value, {
       currency: this._gridCurrency(),
+      currencyPosition: this._gridCurrencyPosition(),
       language: this._language(),
     });
   }
@@ -15798,12 +16291,32 @@ class HaSolarDashboardCard extends HTMLElement {
     return formatVoltageValue(rawValue, entityUnit);
   }
 
+  _formatTemperatureValue(rawValue, entityUnit, targetUnit) {
+    return formatTemperatureValue(rawValue, entityUnit, targetUnit);
+  }
+
   _valueAsKwh(value, unit) {
     return valueAsKwh(value, unit);
   }
 
   _formatEnergyValue(rawValue, entityUnit, targetUnit = "kWh") {
     return formatEnergyValue(rawValue, entityUnit, targetUnit);
+  }
+
+  _formatPrecipitationValue(rawValue, entityUnit, targetUnit) {
+    return formatPrecipitationValue(rawValue, entityUnit, targetUnit);
+  }
+
+  _formatPressureValue(rawValue, entityUnit, targetUnit) {
+    return formatPressureValue(rawValue, entityUnit, targetUnit);
+  }
+
+  _formatFlowValue(rawValue, entityUnit, targetUnit) {
+    return formatFlowValue(rawValue, entityUnit, targetUnit);
+  }
+
+  _formatDistanceValue(rawValue, entityUnit, targetUnit) {
+    return formatDistanceValue(rawValue, entityUnit, targetUnit);
   }
 
   _volumeTargetUnit(metric) {
@@ -16727,8 +17240,46 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _chartMetric(metricKey) {
-    return this._allChartMetrics().find((metric) => metric.key === metricKey)
+    return this._entityChartMetrics?.get(metricKey)
+      || this._allChartMetrics().find((metric) => metric.key === metricKey)
       || flattenChartSections(this._chartDashboardSections()).find((metric) => metric.key === metricKey || metric.chartKey === metricKey);
+  }
+
+  _entityChartKey(entityId = "") {
+    return `entity:${String(entityId || "").trim()}`;
+  }
+
+  _entityChartUnit(entityId = "", unit = "") {
+    const normalizedUnit = String(unit || "").trim();
+    if (["power", "energy", "volume", "boolean"].includes(normalizedUnit)) return normalizedUnit;
+    return normalizedUnit || this._getEntityUnit(entityId) || "auto";
+  }
+
+  _entityChartMetric(entityId = "", label = "", unit = "", color = "") {
+    const id = String(entityId || "").trim();
+    if (!id) return undefined;
+    const key = this._entityChartKey(id);
+    const chartUnit = this._entityChartUnit(id, unit);
+    const entity = this._getEntity(id);
+    const friendlyName = entity?.attributes?.friendly_name || id;
+    const metric = {
+      key,
+      chartKey: key,
+      chartEntityId: id,
+      chartLabel: String(label || friendlyName).trim() || id,
+      label: String(label || friendlyName).trim() || id,
+      unit: chartUnit,
+      chartUnit: chartUnit === "power" ? this.config.units?.power || "auto" : chartUnit,
+      accentColor: this._safeCssColor(color, "#1f8fff"),
+    };
+    this._entityChartMetrics.set(key, metric);
+    return metric;
+  }
+
+  _openEntityChart(entityId = "", label = "", unit = "", color = "") {
+    const metric = this._entityChartMetric(entityId, label, unit, color);
+    if (!metric) return;
+    this._openChart(metric.key);
   }
 
   _historyCacheKey(entityId, hours) {
@@ -17493,6 +18044,74 @@ class HaSolarDashboardCard extends HTMLElement {
     });
   }
 
+  _bindInteractiveElement(element, boundKey, callback) {
+    if (!element || !boundKey || element.dataset?.[boundKey] === "true") return;
+    element.dataset[boundKey] = "true";
+    ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
+      element.addEventListener(eventName, (event) => event.stopPropagation());
+    });
+    element.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      callback(event.currentTarget, event);
+    });
+    element.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      callback(event.currentTarget, event);
+    });
+  }
+
+  _attachEntityChartControls(root = this.shadowRoot) {
+    root?.querySelectorAll?.("[data-chart-entity]").forEach((element) => {
+      this._bindInteractiveElement(element, "entityChartBound", (target) => {
+        this._openEntityChart(target.dataset.chartEntity, target.dataset.chartLabel, target.dataset.chartUnit, target.dataset.chartColor);
+      });
+    });
+  }
+
+  _attachElectricVehicleDashboardControls(root = this.shadowRoot) {
+    const dashboard = root?.querySelector?.("[data-electric-vehicle-dashboard]");
+    if (!dashboard) return;
+    dashboard.querySelectorAll("[data-electric-vehicle-mode]").forEach((button) => {
+      this._bindInteractiveElement(button, "electricVehicleModeBound", (target) => {
+        this._electricVehicleSetMode(target.dataset.electricVehicleMode || "");
+      });
+    });
+
+    const tabButtons = Array.from(dashboard.querySelectorAll("[data-electric-vehicle-tab]"));
+    tabButtons.forEach((button, index) => {
+      if (button.dataset.electricVehicleTabBound === "true") return;
+      button.dataset.electricVehicleTabBound = "true";
+      const selectTab = (target, event) => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        const nextTab = target.dataset.electricVehicleTab || "";
+        if (!nextTab || nextTab === this._activeElectricVehicleDetailTab) return;
+        this._activeElectricVehicleDetailTab = nextTab;
+        this._renderCardShell(this._layoutState());
+      };
+      button.addEventListener("click", (event) => selectTab(event.currentTarget, event));
+      button.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const nextIndex = event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? tabButtons.length - 1
+            : event.key === "ArrowLeft"
+              ? (index - 1 + tabButtons.length) % tabButtons.length
+              : (index + 1) % tabButtons.length;
+        tabButtons[nextIndex]?.focus?.();
+        selectTab(tabButtons[nextIndex], event);
+      });
+    });
+
+    this._attachEntityChartControls(dashboard);
+  }
+
   _attachControls() {
     const viewModeButtons = Array.from(this.shadowRoot.querySelectorAll("[data-view-mode]"));
     if (viewModeButtons.length > 0) {
@@ -17551,44 +18170,20 @@ class HaSolarDashboardCard extends HTMLElement {
       });
     }
 
-    this.shadowRoot.querySelectorAll("[data-electric-vehicle-mode]").forEach((button) => {
-      ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
-        button.addEventListener(eventName, (event) => event.stopPropagation());
-      });
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this._electricVehicleSetMode(event.currentTarget.dataset.electricVehicleMode || "");
-      });
-    });
-
-    const activateEntityElement = (element, callback) => {
-      ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
-        element.addEventListener(eventName, (event) => event.stopPropagation());
-      });
-      element.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        callback(event.currentTarget);
-      });
-      element.addEventListener("keydown", (event) => {
-        if (!["Enter", " "].includes(event.key)) return;
-        event.preventDefault();
-        event.stopPropagation();
-        callback(event.currentTarget);
-      });
-    };
+    this._attachElectricVehicleDashboardControls();
+    this._attachEntityChartControls();
 
     this.shadowRoot.querySelectorAll("[data-more-info]").forEach((element) => {
-      activateEntityElement(element, (target) => this._showEntityMoreInfo(target.dataset.moreInfo));
+      if (element.dataset.chartEntity) return;
+      this._bindInteractiveElement(element, "moreInfoBound", (target) => this._showEntityMoreInfo(target.dataset.moreInfo));
     });
 
     this.shadowRoot.querySelectorAll("[data-entity-toggle]").forEach((element) => {
-      activateEntityElement(element, (target) => this._toggleEntity(target.dataset.entityToggle));
+      this._bindInteractiveElement(element, "entityToggleBound", (target) => this._toggleEntity(target.dataset.entityToggle));
     });
 
     this.shadowRoot.querySelectorAll("[data-call-service-entity]").forEach((element) => {
-      activateEntityElement(element, (target) => this._callEntityAction(target.dataset.callServiceEntity, target.dataset.confirm || ""));
+      this._bindInteractiveElement(element, "callServiceBound", (target) => this._callEntityAction(target.dataset.callServiceEntity, target.dataset.confirm || ""));
     });
 
     const image = this.shadowRoot.querySelector(".scene-image");
@@ -18044,12 +18639,17 @@ class HaSolarDashboardCard extends HTMLElement {
         .electric-vehicle-tile { --tile-accent:#1f8fff; display:grid; gap:3px; min-width:0; padding:10px; border-radius:8px; border:1px solid color-mix(in srgb,var(--tile-accent) 32%,rgba(255,255,255,.1)); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18); cursor:pointer; }
         .electric-vehicle-control-panel { display:grid; gap:8px; min-width:0; padding:10px; border-radius:8px; border:1px solid rgba(45,212,191,.28); background:linear-gradient(135deg,rgba(12,20,38,.82),rgba(12,20,38,.62)); box-shadow:inset 3px 0 0 #2dd4bf,0 8px 20px rgba(0,0,0,.16); }
         .electric-vehicle-control-head { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
+        .electric-vehicle-control-head[data-chart-entity] { cursor:pointer; border-radius:6px; padding:2px 3px; margin:-2px -3px; }
         .electric-vehicle-control-head span { min-width:0; color:var(--text-muted); font-size:.72rem; line-height:1.15; font-weight:900; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .electric-vehicle-control-head strong { min-width:0; color:#5eead4; font-size:.86rem; line-height:1.15; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .electric-vehicle-mode-toggle { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; min-width:0; padding:3px; border-radius:8px; background:rgba(255,255,255,.07); }
         .electric-vehicle-mode-button { min-width:0; min-height:30px; border:0; border-radius:6px; padding:0 8px; background:transparent; color:var(--text-muted); cursor:pointer; font:inherit; font-size:.72rem; line-height:1.1; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .electric-vehicle-mode-button.active { background:linear-gradient(135deg,rgba(45,212,191,.42),rgba(52,211,153,.22)); color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 4px 12px rgba(45,212,191,.18); }
         .electric-vehicle-mode-button:focus-visible { outline:2px solid rgba(94,234,212,.95); outline-offset:1px; }
+        .electric-vehicle-detail-tabs { display:flex; flex-wrap:wrap; gap:6px; min-width:0; }
+        .electric-vehicle-tab-button { width:auto; min-width:0; border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:7px 10px; background:rgba(255,255,255,.07); color:var(--text-main); font:800 .76rem/1.1 system-ui,sans-serif; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .electric-vehicle-tab-button.active { border-color:rgba(45,212,191,.62); background:rgba(45,212,191,.16); color:#ccfbf1; box-shadow:inset 3px 0 0 #2dd4bf; }
+        .electric-vehicle-tab-button:focus-visible,.electric-vehicle-tile:focus-visible,.electric-vehicle-badge:focus-visible,.electric-vehicle-pv-status:focus-visible,.electric-vehicle-control-head[data-chart-entity]:focus-visible { outline:2px solid rgba(94,234,212,.95); outline-offset:2px; }
         .electric-vehicle-empty { display:grid; place-items:center; min-height:120px; padding:18px; border-radius:8px; border:1px dashed rgba(255,255,255,.16); color:var(--text-muted); text-align:center; font-size:.86rem; }
         .garden-dashboard { display:grid; gap:12px; min-width:0; }
         .garden-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-width:0; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:linear-gradient(135deg,rgba(15,23,42,.76),rgba(8,13,28,.68)); }
@@ -18327,14 +18927,17 @@ class HaSolarDashboardCard extends HTMLElement {
     if (advisorChanged) this._attachAdvisorControls();
     const nextElectricVehicleDashboardHtml = activeView === ELECTRIC_VEHICLE_DASHBOARD_VIEW ? this._renderElectricVehicleDashboard() : "";
     const electricVehicleDashboardElement = this._domCache?.electricVehicleDashboard;
+    let electricVehicleDashboardChanged = false;
     if (electricVehicleDashboardElement && nextElectricVehicleDashboardHtml) {
       electricVehicleDashboardElement.outerHTML = nextElectricVehicleDashboardHtml.trim();
+      electricVehicleDashboardChanged = true;
       domCacheChanged = true;
     } else if (electricVehicleDashboardElement && !nextElectricVehicleDashboardHtml) {
       electricVehicleDashboardElement.remove();
       domCacheChanged = true;
     } else if (!electricVehicleDashboardElement && nextElectricVehicleDashboardHtml) {
       this._domCache?.card?.insertAdjacentHTML("beforeend", nextElectricVehicleDashboardHtml);
+      electricVehicleDashboardChanged = true;
       domCacheChanged = true;
     }
     const nextGardenDashboardHtml = activeView === GARDEN_DASHBOARD_VIEW ? this._renderGardenDashboard() : "";
@@ -18382,6 +18985,7 @@ class HaSolarDashboardCard extends HTMLElement {
     }
     if (recordsDashboardChanged) this._attachRecordsDashboardControls();
     if (domCacheChanged) this._refreshDomCache();
+    if (electricVehicleDashboardChanged) this._attachElectricVehicleDashboardControls();
     this._updateFloorplanReadings();
   }
 
@@ -18457,6 +19061,7 @@ Object.assign(
     numericState,
     peakPowerRecord,
     recordsHistoryCacheKey,
+    valueAsVolumeUnit,
   }),
 );
 
@@ -18480,6 +19085,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,
+  applyRegionalDefaults,
   assetUrl,
   clampConfigNumber,
   createEditorBaseConfig,

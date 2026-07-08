@@ -15,9 +15,14 @@ import {
 import {
   formatDurationMinutes,
   formatDurationSeconds,
+  formatDistanceValue,
   formatEnergyValue,
+  formatFlowValue,
+  formatPrecipitationValue,
+  formatPressureValue,
   formatPowerValue,
   formatRemainingChargeTimeValue,
+  formatTemperatureValue,
   formatValue,
   formatVolumeValue,
   formatVoltageValue,
@@ -29,6 +34,7 @@ import {
   numericState,
   valueAsCubicMeters,
   valueAsKwh,
+  valueAsVolumeUnit,
   valueAsVolts,
   valueAsWatts,
 } from "../modules/formatters.js";
@@ -72,6 +78,7 @@ import {
 import {
   formatMoneyValue,
   gridCurrency,
+  gridCurrencyPosition,
   gridExportPrice,
   gridFinanceItems,
   gridFinanceLabel,
@@ -122,7 +129,9 @@ import {
   createConfigNormalizerMethods,
 } from "../modules/config-normalizers.js";
 import {
+  applyRegionalDefaults,
   createBaseCardConfig,
+  createEditorBaseConfig,
   createStubCardConfig,
 } from "../modules/config-schema.js";
 import {
@@ -384,6 +393,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
     this._invalidateHistoryServiceState();
     this._advisorConditionSince = new Map();
+    this._entityChartMetrics = new Map();
 
     const house = this._normalizeHouse(config.house || config.variant || config.image_variant) || "single_family_home";
     const energyRange = this._normalizeEnergyRange(config.energy_range) || "live";
@@ -422,7 +432,7 @@ class HaSolarDashboardCard extends HTMLElement {
       defaultHistoryRequestConcurrency: DEFAULT_HISTORY_REQUEST_CONCURRENCY,
       recordsDefaultDays: RECORDS_DEFAULT_DAYS,
     });
-    this.config = {
+    this.config = applyRegionalDefaults({
       ...baseConfig,
       ...config,
       house,
@@ -485,7 +495,7 @@ class HaSolarDashboardCard extends HTMLElement {
       pv_roof_string_display: normalizePvRoofStringDisplay(config.pv_roof_string_display || config.pv_roof_display || "sum"),
       inverters: normalizeInverters(config.inverters || config.inverter_strings || config.inverter_config || []),
       inverter_display: normalizeInverterDisplay(config.inverter_display || config.inverter_string_display || "sum"),
-    };
+    }, config);
     delete this.config.show_energy_advisor;
 
     this.config.hud_box_opacity = this._clampNumber(this.config.hud_box_opacity, 0.65, 0, 1);
@@ -1252,8 +1262,13 @@ class HaSolarDashboardCard extends HTMLElement {
     return entries;
   }
 
+  _gridVoltageEntries(variant = this._currentVariant || this._layoutState().variant) {
+    return this._metricVoltageEntries(GRID_STATUS_METRIC, variant)
+      .filter((entry) => Number.isFinite(entry.volts));
+  }
+
   _gridVoltageAlert() {
-    const entries = this._voltageSensorEntries();
+    const entries = this._gridVoltageEntries();
     const highest = entries.sort((a, b) => b.volts - a.volts)[0];
     if (!highest) return undefined;
     const warningThreshold = this._clampNumber(this.config.grid_voltage_warning_threshold, 245, 0, 1000);
@@ -1401,9 +1416,14 @@ class HaSolarDashboardCard extends HTMLElement {
     return gridCurrency(this.config);
   }
 
+  _gridCurrencyPosition() {
+    return gridCurrencyPosition(this.config);
+  }
+
   _formatMoney(value) {
     return formatMoneyValue(value, {
       currency: this._gridCurrency(),
+      currencyPosition: this._gridCurrencyPosition(),
       language: this._language(),
     });
   }
@@ -1627,12 +1647,32 @@ class HaSolarDashboardCard extends HTMLElement {
     return formatVoltageValue(rawValue, entityUnit);
   }
 
+  _formatTemperatureValue(rawValue, entityUnit, targetUnit) {
+    return formatTemperatureValue(rawValue, entityUnit, targetUnit);
+  }
+
   _valueAsKwh(value, unit) {
     return valueAsKwh(value, unit);
   }
 
   _formatEnergyValue(rawValue, entityUnit, targetUnit = "kWh") {
     return formatEnergyValue(rawValue, entityUnit, targetUnit);
+  }
+
+  _formatPrecipitationValue(rawValue, entityUnit, targetUnit) {
+    return formatPrecipitationValue(rawValue, entityUnit, targetUnit);
+  }
+
+  _formatPressureValue(rawValue, entityUnit, targetUnit) {
+    return formatPressureValue(rawValue, entityUnit, targetUnit);
+  }
+
+  _formatFlowValue(rawValue, entityUnit, targetUnit) {
+    return formatFlowValue(rawValue, entityUnit, targetUnit);
+  }
+
+  _formatDistanceValue(rawValue, entityUnit, targetUnit) {
+    return formatDistanceValue(rawValue, entityUnit, targetUnit);
   }
 
   _volumeTargetUnit(metric) {
@@ -2556,8 +2596,46 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _chartMetric(metricKey) {
-    return this._allChartMetrics().find((metric) => metric.key === metricKey)
+    return this._entityChartMetrics?.get(metricKey)
+      || this._allChartMetrics().find((metric) => metric.key === metricKey)
       || flattenChartSections(this._chartDashboardSections()).find((metric) => metric.key === metricKey || metric.chartKey === metricKey);
+  }
+
+  _entityChartKey(entityId = "") {
+    return `entity:${String(entityId || "").trim()}`;
+  }
+
+  _entityChartUnit(entityId = "", unit = "") {
+    const normalizedUnit = String(unit || "").trim();
+    if (["power", "energy", "volume", "boolean"].includes(normalizedUnit)) return normalizedUnit;
+    return normalizedUnit || this._getEntityUnit(entityId) || "auto";
+  }
+
+  _entityChartMetric(entityId = "", label = "", unit = "", color = "") {
+    const id = String(entityId || "").trim();
+    if (!id) return undefined;
+    const key = this._entityChartKey(id);
+    const chartUnit = this._entityChartUnit(id, unit);
+    const entity = this._getEntity(id);
+    const friendlyName = entity?.attributes?.friendly_name || id;
+    const metric = {
+      key,
+      chartKey: key,
+      chartEntityId: id,
+      chartLabel: String(label || friendlyName).trim() || id,
+      label: String(label || friendlyName).trim() || id,
+      unit: chartUnit,
+      chartUnit: chartUnit === "power" ? this.config.units?.power || "auto" : chartUnit,
+      accentColor: this._safeCssColor(color, "#1f8fff"),
+    };
+    this._entityChartMetrics.set(key, metric);
+    return metric;
+  }
+
+  _openEntityChart(entityId = "", label = "", unit = "", color = "") {
+    const metric = this._entityChartMetric(entityId, label, unit, color);
+    if (!metric) return;
+    this._openChart(metric.key);
   }
 
   _historyCacheKey(entityId, hours) {
@@ -3322,6 +3400,74 @@ class HaSolarDashboardCard extends HTMLElement {
     });
   }
 
+  _bindInteractiveElement(element, boundKey, callback) {
+    if (!element || !boundKey || element.dataset?.[boundKey] === "true") return;
+    element.dataset[boundKey] = "true";
+    ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
+      element.addEventListener(eventName, (event) => event.stopPropagation());
+    });
+    element.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      callback(event.currentTarget, event);
+    });
+    element.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      callback(event.currentTarget, event);
+    });
+  }
+
+  _attachEntityChartControls(root = this.shadowRoot) {
+    root?.querySelectorAll?.("[data-chart-entity]").forEach((element) => {
+      this._bindInteractiveElement(element, "entityChartBound", (target) => {
+        this._openEntityChart(target.dataset.chartEntity, target.dataset.chartLabel, target.dataset.chartUnit, target.dataset.chartColor);
+      });
+    });
+  }
+
+  _attachElectricVehicleDashboardControls(root = this.shadowRoot) {
+    const dashboard = root?.querySelector?.("[data-electric-vehicle-dashboard]");
+    if (!dashboard) return;
+    dashboard.querySelectorAll("[data-electric-vehicle-mode]").forEach((button) => {
+      this._bindInteractiveElement(button, "electricVehicleModeBound", (target) => {
+        this._electricVehicleSetMode(target.dataset.electricVehicleMode || "");
+      });
+    });
+
+    const tabButtons = Array.from(dashboard.querySelectorAll("[data-electric-vehicle-tab]"));
+    tabButtons.forEach((button, index) => {
+      if (button.dataset.electricVehicleTabBound === "true") return;
+      button.dataset.electricVehicleTabBound = "true";
+      const selectTab = (target, event) => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        const nextTab = target.dataset.electricVehicleTab || "";
+        if (!nextTab || nextTab === this._activeElectricVehicleDetailTab) return;
+        this._activeElectricVehicleDetailTab = nextTab;
+        this._renderCardShell(this._layoutState());
+      };
+      button.addEventListener("click", (event) => selectTab(event.currentTarget, event));
+      button.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const nextIndex = event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? tabButtons.length - 1
+            : event.key === "ArrowLeft"
+              ? (index - 1 + tabButtons.length) % tabButtons.length
+              : (index + 1) % tabButtons.length;
+        tabButtons[nextIndex]?.focus?.();
+        selectTab(tabButtons[nextIndex], event);
+      });
+    });
+
+    this._attachEntityChartControls(dashboard);
+  }
+
   _attachControls() {
     const viewModeButtons = Array.from(this.shadowRoot.querySelectorAll("[data-view-mode]"));
     if (viewModeButtons.length > 0) {
@@ -3380,44 +3526,20 @@ class HaSolarDashboardCard extends HTMLElement {
       });
     }
 
-    this.shadowRoot.querySelectorAll("[data-electric-vehicle-mode]").forEach((button) => {
-      ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
-        button.addEventListener(eventName, (event) => event.stopPropagation());
-      });
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this._electricVehicleSetMode(event.currentTarget.dataset.electricVehicleMode || "");
-      });
-    });
-
-    const activateEntityElement = (element, callback) => {
-      ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
-        element.addEventListener(eventName, (event) => event.stopPropagation());
-      });
-      element.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        callback(event.currentTarget);
-      });
-      element.addEventListener("keydown", (event) => {
-        if (!["Enter", " "].includes(event.key)) return;
-        event.preventDefault();
-        event.stopPropagation();
-        callback(event.currentTarget);
-      });
-    };
+    this._attachElectricVehicleDashboardControls();
+    this._attachEntityChartControls();
 
     this.shadowRoot.querySelectorAll("[data-more-info]").forEach((element) => {
-      activateEntityElement(element, (target) => this._showEntityMoreInfo(target.dataset.moreInfo));
+      if (element.dataset.chartEntity) return;
+      this._bindInteractiveElement(element, "moreInfoBound", (target) => this._showEntityMoreInfo(target.dataset.moreInfo));
     });
 
     this.shadowRoot.querySelectorAll("[data-entity-toggle]").forEach((element) => {
-      activateEntityElement(element, (target) => this._toggleEntity(target.dataset.entityToggle));
+      this._bindInteractiveElement(element, "entityToggleBound", (target) => this._toggleEntity(target.dataset.entityToggle));
     });
 
     this.shadowRoot.querySelectorAll("[data-call-service-entity]").forEach((element) => {
-      activateEntityElement(element, (target) => this._callEntityAction(target.dataset.callServiceEntity, target.dataset.confirm || ""));
+      this._bindInteractiveElement(element, "callServiceBound", (target) => this._callEntityAction(target.dataset.callServiceEntity, target.dataset.confirm || ""));
     });
 
     const image = this.shadowRoot.querySelector(".scene-image");
@@ -3894,14 +4016,17 @@ class HaSolarDashboardCard extends HTMLElement {
     if (advisorChanged) this._attachAdvisorControls();
     const nextElectricVehicleDashboardHtml = activeView === ELECTRIC_VEHICLE_DASHBOARD_VIEW ? this._renderElectricVehicleDashboard() : "";
     const electricVehicleDashboardElement = this._domCache?.electricVehicleDashboard;
+    let electricVehicleDashboardChanged = false;
     if (electricVehicleDashboardElement && nextElectricVehicleDashboardHtml) {
       electricVehicleDashboardElement.outerHTML = nextElectricVehicleDashboardHtml.trim();
+      electricVehicleDashboardChanged = true;
       domCacheChanged = true;
     } else if (electricVehicleDashboardElement && !nextElectricVehicleDashboardHtml) {
       electricVehicleDashboardElement.remove();
       domCacheChanged = true;
     } else if (!electricVehicleDashboardElement && nextElectricVehicleDashboardHtml) {
       this._domCache?.card?.insertAdjacentHTML("beforeend", nextElectricVehicleDashboardHtml);
+      electricVehicleDashboardChanged = true;
       domCacheChanged = true;
     }
     const nextGardenDashboardHtml = activeView === GARDEN_DASHBOARD_VIEW ? this._renderGardenDashboard() : "";
@@ -3949,6 +4074,7 @@ class HaSolarDashboardCard extends HTMLElement {
     }
     if (recordsDashboardChanged) this._attachRecordsDashboardControls();
     if (domCacheChanged) this._refreshDomCache();
+    if (electricVehicleDashboardChanged) this._attachElectricVehicleDashboardControls();
     this._updateFloorplanReadings();
   }
 
@@ -4024,6 +4150,7 @@ Object.assign(
     numericState,
     peakPowerRecord,
     recordsHistoryCacheKey,
+    valueAsVolumeUnit,
   }),
 );
 
@@ -4047,6 +4174,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,
+  applyRegionalDefaults,
   assetUrl,
   clampConfigNumber,
   createEditorBaseConfig,

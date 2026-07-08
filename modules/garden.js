@@ -320,20 +320,28 @@ export function createGardenDashboardMethods({
       }
       if (definition.kind === "temperature") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "°C"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatTemperatureValue === "function"
+          ? this._formatTemperatureValue(rawValue, entityUnit || "°C", this.config.units?.temperature || entityUnit || "°C")
+          : Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "°C"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
       if (definition.kind === "precipitation") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "mm"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatPrecipitationValue === "function"
+          ? this._formatPrecipitationValue(rawValue, entityUnit || "mm", this.config.units?.precipitation || entityUnit || "mm")
+          : Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "mm"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
-      if (definition.kind === "volume") return this._formatVolumeValue(rawValue, entityUnit || "L", entityUnit || "L");
+      if (definition.kind === "volume") return this._formatVolumeValue(rawValue, entityUnit || "L", this.config.units?.volume || entityUnit || "L");
       if (definition.kind === "flow") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "L/min"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatFlowValue === "function"
+          ? this._formatFlowValue(rawValue, entityUnit || "L/min", this.config.units?.flow || entityUnit || "L/min")
+          : Number.isFinite(number) ? `${number.toFixed(number >= 10 ? 1 : 2)} ${entityUnit || "L/min"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
       if (definition.kind === "pressure") {
         const number = this._gardenNumericState(rawValue);
-        return Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "bar"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatPressureValue === "function"
+          ? this._formatPressureValue(rawValue, entityUnit || "bar", this.config.units?.pressure || entityUnit || "bar")
+          : Number.isFinite(number) ? `${number.toFixed(1)} ${entityUnit || "bar"}` : `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
       }
       return `${String(rawValue).trim()}${entityUnit && !String(rawValue).includes(entityUnit) ? ` ${entityUnit}` : ""}`;
     },

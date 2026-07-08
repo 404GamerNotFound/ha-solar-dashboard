@@ -1,13 +1,88 @@
 export const DEFAULT_CURRENCY = "€";
 const DEFAULT_EV_IMAGE_PATH = "images/car_image.png";
 const DEFAULT_GARDEN_IMAGE_PATH = "images/single_family_home_top_view_garden.png";
+const REGION_PROFILE_VALUES = Object.freeze(["auto", "eu", "us"]);
+const UNIT_SYSTEM_VALUES = Object.freeze(["auto", "metric", "us"]);
 
 export const DEFAULT_GRID_FINANCE_CONFIG = Object.freeze({
   grid_import_price: "",
   grid_export_price: "",
   currency: DEFAULT_CURRENCY,
+  currency_position: "auto",
   show_grid_daily_finance: true,
 });
+
+function hasOwnValue(source, key) {
+  return Object.prototype.hasOwnProperty.call(source || {}, key)
+    && source[key] !== undefined
+    && source[key] !== null
+    && String(source[key]).trim() !== "";
+}
+
+function hasOwnUnit(source, key) {
+  return hasOwnValue(source?.units || {}, key);
+}
+
+export function normalizeRegionProfile(value) {
+  const normalized = String(value || "auto").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  if (["usa", "america", "american", "north_america", "united_states", "united_states_of_america"].includes(normalized)) return "us";
+  if (["europe", "european", "de", "deutschland", "germany", "eu_metric"].includes(normalized)) return "eu";
+  return REGION_PROFILE_VALUES.includes(normalized) ? normalized : "auto";
+}
+
+export function normalizeUnitSystem(value) {
+  const normalized = String(value || "auto").trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  if (["imperial", "us_customary", "usa", "american"].includes(normalized)) return "us";
+  if (["eu", "europe", "metric_system"].includes(normalized)) return "metric";
+  return UNIT_SYSTEM_VALUES.includes(normalized) ? normalized : "auto";
+}
+
+function unitSystemForRegion(regionProfile, unitSystem) {
+  if (unitSystem !== "auto") return unitSystem;
+  if (regionProfile === "us") return "us";
+  if (regionProfile === "eu") return "metric";
+  return "auto";
+}
+
+export function applyRegionalDefaults(config = {}, explicitConfig = config) {
+  const regionProfile = normalizeRegionProfile(explicitConfig.region_profile ?? explicitConfig.region ?? config.region_profile);
+  const configuredUnitSystem = normalizeUnitSystem(explicitConfig.unit_system ?? explicitConfig.measurement_system ?? config.unit_system);
+  const resolvedUnitSystem = unitSystemForRegion(regionProfile, configuredUnitSystem);
+  const next = {
+    ...config,
+    region_profile: regionProfile,
+    unit_system: configuredUnitSystem,
+    units: { ...(config.units || {}) },
+  };
+
+  if (regionProfile === "us") {
+    if (!hasOwnValue(explicitConfig, "currency") && !hasOwnValue(explicitConfig, "grid_currency")) next.currency = "$";
+    if (!hasOwnValue(explicitConfig, "currency_position") && !hasOwnValue(explicitConfig, "grid_currency_position")) next.currency_position = "prefix";
+  } else if (regionProfile === "eu") {
+    if (!hasOwnValue(explicitConfig, "currency") && !hasOwnValue(explicitConfig, "grid_currency")) next.currency = "€";
+    if (!hasOwnValue(explicitConfig, "currency_position") && !hasOwnValue(explicitConfig, "grid_currency_position")) next.currency_position = "suffix";
+  }
+
+  if (resolvedUnitSystem === "us") {
+    if (!hasOwnUnit(explicitConfig, "volume")) next.units.volume = "gal";
+    if (!hasOwnUnit(explicitConfig, "water_meter")) next.units.water_meter = "gal";
+    if (!hasOwnUnit(explicitConfig, "temperature")) next.units.temperature = "°F";
+    if (!hasOwnUnit(explicitConfig, "precipitation")) next.units.precipitation = "in";
+    if (!hasOwnUnit(explicitConfig, "pressure")) next.units.pressure = "psi";
+    if (!hasOwnUnit(explicitConfig, "flow")) next.units.flow = "gal/min";
+    if (!hasOwnUnit(explicitConfig, "distance")) next.units.distance = "mi";
+  } else if (resolvedUnitSystem === "metric") {
+    if (!hasOwnUnit(explicitConfig, "volume")) next.units.volume = "m³";
+    if (!hasOwnUnit(explicitConfig, "water_meter")) next.units.water_meter = "m³";
+    if (!hasOwnUnit(explicitConfig, "temperature")) next.units.temperature = "°C";
+    if (!hasOwnUnit(explicitConfig, "precipitation")) next.units.precipitation = "mm";
+    if (!hasOwnUnit(explicitConfig, "pressure")) next.units.pressure = "bar";
+    if (!hasOwnUnit(explicitConfig, "flow")) next.units.flow = "L/min";
+    if (!hasOwnUnit(explicitConfig, "distance")) next.units.distance = "km";
+  }
+
+  return next;
+}
 
 export function createDefaultFloorplan(label = "Level 1") {
   return {
@@ -30,6 +105,11 @@ export function createDefaultUnits() {
     power: "auto",
     battery: "%",
     volume: "m³",
+    temperature: "°C",
+    precipitation: "mm",
+    pressure: "bar",
+    flow: "L/min",
+    distance: "km",
   };
 }
 
@@ -179,6 +259,8 @@ export function createBaseCardConfig({
     show_status_label: true,
     show_weather_status: false,
     show_grid_status_tile: true,
+    region_profile: "auto",
+    unit_system: "auto",
     hud_box_opacity: 0.65,
     hud_box_scale: 1,
     battery_low_threshold: 20,
@@ -266,6 +348,8 @@ export function createEditorBaseConfig({ floorplanLabel = "Level 1" } = {}) {
     show_advisor: true,
     show_charts: true,
     show_records: true,
+    region_profile: "auto",
+    unit_system: "auto",
     large_consumers: [],
     pv_roof_strings: [],
     pv_roof_string_display: "sum",

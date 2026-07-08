@@ -8,17 +8,31 @@ import {
   normalizeEnergyRange,
 } from "../modules/config-normalizers.js";
 import {
+  applyRegionalDefaults,
   createBaseCardConfig,
   createEditorBaseConfig,
   createStubCardConfig,
 } from "../modules/config-schema.js";
 import {
+  formatDistanceValue,
   formatEnergyValue,
+  formatFlowValue,
+  formatPrecipitationValue,
+  formatPressureValue,
   formatPowerValue,
+  formatTemperatureValue,
   formatValue,
+  formatVolumeValue,
   isEnergyUnit,
+  isVolumeUnit,
+  valueAsCubicMeters,
+  valueAsKwh,
+  valueAsVolumeUnit,
   valueAsWatts,
 } from "../modules/formatters.js";
+import {
+  chartHistoryPoint,
+} from "../modules/charts.js";
 import {
   DEFAULT_ELECTRIC_VEHICLE_IMAGE,
   normalizeElectricVehicleConfig,
@@ -168,6 +182,9 @@ const baseConfig = createBaseCardConfig({
 });
 assert.equal(baseConfig.grid_import_price, "");
 assert.equal(baseConfig.currency, "€");
+assert.equal(baseConfig.currency_position, "auto");
+assert.equal(baseConfig.region_profile, "auto");
+assert.equal(baseConfig.unit_system, "auto");
 assert.equal(baseConfig.records_range, "14d");
 assert.equal(baseConfig.advisor_surplus_threshold, 111);
 assert.equal(baseConfig.history_request_concurrency, 4);
@@ -176,6 +193,28 @@ assert.equal(baseConfig.electric_vehicle.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE);
 assert.deepEqual(baseConfig.electric_vehicle.display, {});
 assert.equal(baseConfig.show_garden, true);
 assert.equal(baseConfig.garden.image, DEFAULT_GARDEN_IMAGE);
+
+const usRegionalConfig = applyRegionalDefaults({
+  ...baseConfig,
+  region_profile: "us",
+}, { region_profile: "us" });
+assert.equal(usRegionalConfig.currency, "$");
+assert.equal(usRegionalConfig.currency_position, "prefix");
+assert.equal(usRegionalConfig.units.water_meter, "gal");
+assert.equal(usRegionalConfig.units.temperature, "°F");
+assert.equal(usRegionalConfig.units.precipitation, "in");
+assert.equal(usRegionalConfig.units.pressure, "psi");
+assert.equal(usRegionalConfig.units.flow, "gal/min");
+assert.equal(usRegionalConfig.units.distance, "mi");
+
+const explicitRegionalConfig = applyRegionalDefaults({
+  ...baseConfig,
+  region_profile: "us",
+  currency: "CAD",
+  units: { ...baseConfig.units, water_meter: "L" },
+}, { region_profile: "us", currency: "CAD", units: { water_meter: "L" } });
+assert.equal(explicitRegionalConfig.currency, "CAD");
+assert.equal(explicitRegionalConfig.units.water_meter, "L");
 assert.deepEqual(baseConfig.garden.zones, []);
 assert.deepEqual(baseConfig.garden.manual_actions, []);
 assert.equal(createEditorBaseConfig({ floorplanLabel: "Etage 1" }).floorplan.floors[0].label, "Etage 1");
@@ -254,6 +293,9 @@ assert.equal(normalizeGridPrice(""), "");
 assert.equal(gridImportPrice({ grid_import_price: "", import_price: "0.31" }), 0.31);
 assert.equal(gridExportPrice({ feed_in_tariff: "0.082" }), 0.082);
 assert.equal(formatMoneyValue(3.5, { currency: "€", language: "de" }), "3,50 €");
+assert.equal(formatMoneyValue(3.5, { currency: "$", language: "en" }), "$3.50");
+assert.equal(formatMoneyValue(3.5, { currency: "$", currencyPosition: "suffix", language: "en" }), "3.50 $");
+assert.equal(formatMoneyValue(3.5, { currency: "€", currencyPosition: "prefix", language: "de" }), "€3,50");
 assert.equal(localDateKey(new Date(2026, 4, 31, 12)), "2026-05-31");
 assert.equal(todayStartDate(new Date(2026, 4, 31, 12, 30)).getHours(), 0);
 const financeItems = gridFinanceItems({
@@ -265,6 +307,38 @@ const financeItems = gridFinanceItems({
 });
 assert.equal(financeItems.length, 1);
 assert.equal(gridFinanceLabel(financeItems[0], { formatMoney: (value) => `${value.toFixed(2)} EUR` }), "Today cost: 1.36 EUR");
+
+assert.equal(isVolumeUnit("gal"), true);
+assert.equal(valueAsCubicMeters(1, "gal")?.toFixed(6), "0.003785");
+assert.equal(valueAsVolumeUnit(0.003785411784, "m³", "gal"), 1);
+assert.equal(formatVolumeValue(1, "m³", "gal"), "264.2 gal");
+assert.equal(formatVolumeValue(10, "gal", "m³"), "0.038 m³");
+assert.equal(formatVolumeValue(2, "gal", "L"), "7.6 L");
+assert.equal(formatTemperatureValue(20, "°C", "°F"), "68.0 °F");
+assert.equal(formatTemperatureValue(68, "°F", "°C"), "20.0 °C");
+assert.equal(formatPrecipitationValue(25.4, "mm", "in"), "1 in");
+assert.equal(formatPressureValue(2, "bar", "psi"), "29 psi");
+assert.equal(formatFlowValue(3.785411784, "L/min", "gal/min"), "1 gal/min");
+assert.equal(formatDistanceValue(100, "km", "mi"), "62.1 mi");
+assert.deepEqual(chartHistoryPoint(
+  { key: "ev_session_energy", unit: "energy", chartEntityId: "sensor.ev_session_energy" },
+  { state: "4120", attributes: { unit_of_measurement: "Wh" }, last_changed: "2026-05-31T12:00:00.000Z" },
+  {
+    metricEntityId: (metric) => metric.chartEntityId,
+    formatValue,
+    valueAsKwh,
+    numericState: Number,
+  },
+), { time: Date.parse("2026-05-31T12:00:00.000Z"), value: 4.12 });
+assert.deepEqual(chartHistoryPoint(
+  { key: "ev_connected", unit: "boolean", chartEntityId: "binary_sensor.ev_connected" },
+  { state: "on", last_changed: "2026-05-31T12:05:00.000Z" },
+  {
+    metricEntityId: (metric) => metric.chartEntityId,
+    formatValue,
+    numericState: Number,
+  },
+), { time: Date.parse("2026-05-31T12:05:00.000Z"), value: 1 });
 
 const signedFlow = gridSignedFlowInfo({
   entityId: "sensor.grid_power",
@@ -395,5 +469,49 @@ priorityQueueHost._historyRequestActiveCount = 0;
 priorityQueueHost._drainHistoryRequestQueue();
 assert.deepEqual(await Promise.all([highPriority, lowPriority]), ["high", "low"]);
 assert.deepEqual(startedHistoryJobs, ["high", "low"]);
+
+globalThis.HTMLElement = globalThis.HTMLElement || class {};
+globalThis.window = globalThis.window || globalThis;
+globalThis.document = globalThis.document || {
+  currentScript: undefined,
+  documentElement: {},
+  querySelectorAll: () => [],
+};
+const definedCustomElements = new Map();
+globalThis.customElements = globalThis.customElements || {
+  get: (type) => definedCustomElements.get(type),
+  define: (type, elementClass) => definedCustomElements.set(type, elementClass),
+};
+await import("../src/ha-solar-dashboard.js");
+const DashboardCard = globalThis.customElements.get("ha-solar-dashboard-card");
+const voltageAlertCard = new DashboardCard();
+voltageAlertCard.config = {
+  house: "single_family_home",
+  entities: {
+    grid_voltage: "sensor.grid_voltage",
+    pv_roof_power_voltage: "sensor.pv_dc_voltage",
+  },
+  visible_boxes: { pv_roof_power: true },
+  labels: {},
+  label_visibility: {},
+  positions: {},
+  units: {},
+  inverters: [],
+  large_consumers: [],
+  grid_voltage_warning_threshold: 245,
+  grid_voltage_critical_threshold: 253,
+};
+voltageAlertCard._currentVariant = { labels: {}, labelKeys: {}, visible_boxes: {} };
+voltageAlertCard._hass = {
+  states: {
+    "sensor.grid_voltage": { state: "230", attributes: { unit_of_measurement: "V" } },
+    "sensor.pv_dc_voltage": { state: "620", attributes: { unit_of_measurement: "V" } },
+  },
+};
+assert.equal(voltageAlertCard._gridVoltageAlert(), undefined);
+voltageAlertCard._hass.states["sensor.grid_voltage"].state = "246";
+const gridVoltageWarning = voltageAlertCard._gridVoltageAlert();
+assert.equal(gridVoltageWarning.type, "warning");
+assert.equal(gridVoltageWarning.entityId, "sensor.grid_voltage");
 
 console.log("Domain logic tests passed");

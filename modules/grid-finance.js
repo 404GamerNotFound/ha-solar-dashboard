@@ -30,12 +30,33 @@ export function gridCurrency(config = {}) {
   return String(config.currency || config.grid_currency || "€").trim() || "€";
 }
 
+export function normalizeCurrencyPosition(value) {
+  const normalized = String(value || "auto").trim().toLowerCase();
+  return ["auto", "prefix", "suffix"].includes(normalized) ? normalized : "auto";
+}
+
+export function gridCurrencyPosition(config = {}) {
+  return normalizeCurrencyPosition(config.currency_position || config.grid_currency_position || "auto");
+}
+
+function autoCurrencyPosition(currency) {
+  const compactPrefixSymbols = ["$", "us$", "ca$", "a$", "nz$", "£", "¥", "₹", "₩", "₱", "₪", "₫", "฿"];
+  return compactPrefixSymbols.includes(String(currency || "").trim().toLowerCase()) ? "prefix" : "suffix";
+}
+
+function currencyPrefixSeparator(currency) {
+  const compact = String(currency || "").trim();
+  return compact.length <= 1 || /[$£¥₹₩₱₪₫฿]/.test(compact) ? "" : " ";
+}
+
 export function formatMoneyValue(value, {
   currency = "€",
+  currencyPosition = "auto",
   language = "en",
 } = {}) {
   if (!Number.isFinite(value)) return "—";
-  if (/^[A-Z]{3}$/.test(currency)) {
+  const position = normalizeCurrencyPosition(currencyPosition);
+  if (/^[A-Z]{3}$/.test(currency) && position === "auto") {
     try {
       return new Intl.NumberFormat(language, { style: "currency", currency }).format(value);
     } catch (_err) {
@@ -46,6 +67,8 @@ export function formatMoneyValue(value, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  const resolvedPosition = position === "auto" ? autoCurrencyPosition(currency) : position;
+  if (resolvedPosition === "prefix") return `${currency}${currencyPrefixSeparator(currency)}${formatted}`;
   return `${formatted} ${currency}`;
 }
 

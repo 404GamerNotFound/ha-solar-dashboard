@@ -2,65 +2,109 @@
 
 A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy overview with an image-based layout.
 
-## Example
+## Screenshots
 
-![HA Solar Dashboard Card example](https://raw.githubusercontent.com/404GamerNotFound/ha-solar-dashboard/main/example5.png)
+![House dashboard with PV, battery, grid, gas, EV charger, and environment tiles](images/readme/dashboard-house-view.webp)
+
+<table>
+  <tr>
+    <td><img src="images/readme/advisor-dashboard.webp" width="260" alt="Energy Advisor dashboard"></td>
+    <td><img src="images/readme/charts-dashboard.webp" width="260" alt="Charts dashboard"></td>
+    <td><img src="images/readme/records-dashboard.webp" width="260" alt="Records dashboard"></td>
+  </tr>
+  <tr>
+    <td align="center">Advisor</td>
+    <td align="center">Charts</td>
+    <td align="center">Records</td>
+  </tr>
+</table>
+
+## Highlights
+
+- Image-based Home Assistant Lovelace card for PV, battery, inverter, grid, EV charging, garden, records, charts, and energy advice.
+- Responsive tab navigation for House, E-Auto, Garden, Floorplan, Advisor, Charts, and Records views.
+- Built-in editor with setup wizard, entity suggestions, page-scoped setup helpers, layout controls, and regional presets.
+- EU and US friendly defaults via `region_profile` and `unit_system`, including `$` prefix, `gal`, `°F`, `in`, `psi`, `gal/min`, and `mi`.
+- Localized card and editor labels for `en`, `de`, `es`, `fr`, and `pl`.
 
 ## Features
 
-- Hero background image (your house/pv design)
-- Automatic day image variants via `sun.sun`: day uses `*_day.png`, night uses the standard image
-- Overlay widgets placed on matching points in the image
-- Selectable house layouts from the `images` folder:
-  - `single_family_home`
-  - `duplex_house`
-  - `terraced_middle_house`
-  - `apartment_building`
-  - `apartment_building_balcony_solar`
-  - `bungalow`
-  - `city_villa`
-  - `city_villa_pitched_roof`
-- Configurable entities for:
-  - Roof PV
-  - Shed PV
-  - Battery
-  - Battery charge/discharge flow (signed or split entities)
-  - Inverter power
-  - EV charger power
-  - Optional second EV charger power
-  - PV Total (summary tile below the image)
-  - Optional house consumption power
-  - Optional water meter in `m³`
-  - Optional import/export power
-- Individual HUD and summary boxes can be hidden when a device is not present, for example no Wallbox
-- Dynamic tile colors and glow states based on configurable thresholds, for example green for high PV production or orange while importing from the grid
-- Battery state of charge is visualized with a compact fill meter in the battery HUD and tile
-- Optional battery flow badge on the image and battery summary tile: green down arrow for charging/incoming, red up arrow for discharging/outgoing; the badge follows the entity unit, so power sensors show `W`/`kW` and energy sensors show `kWh`
-- Optional battery min/max SoC entities feed the Advisor Dashboard so reserve and target limits are respected; long high-SoC states are highlighted when the house battery stays between 90 and 100%
-- Optional battery temperature badge on the battery HUD and tile
-- Advisor diagnostics for stale sensors, high grid import despite a full battery, battery temperature limits, very deep SoC, frequent daily battery cycles, and simultaneous split import/export readings
-- Animated power flow overlay between the existing image elements, using the configured HUD positions without changing the image files
-- Optional smoke and heat pump image overlays with per-element enable, position, size, and heat pump orientation controls
-- PV, inverter, and EV charger values can show utilization bars based on configurable kW/kWp maxima
-- Optional second EV charger entity, disabled by default and positioned automatically next to the first EV charger
-- Optional EV charger phase badges from separate phase entities (`Auto`, `1`, `2`, or `3`)
-- Optional EV vehicle SoC badges shown next to the EV charger phase badges
-- Optional EV max/target SoC, connected, and charging-enabled entities feed the Advisor Dashboard so surplus charging recommendations respect the vehicle's real charge state; long EV SoC states above 80%/90% trigger prioritized battery-care warnings
-- Optional remaining EV charge time badge, shown only while the EV charger is actively charging
-- Optional import/export HUD box, positioned near the lower-right power cable by default, plus a grid status tile showing import, export, or self-sufficient operation
-- Hover tooltips on values show the linked entity, raw state, formatted value, and update time
-- Clickable entity boxes and tiles open a 24/48 hour history chart using Home Assistant history data
-- Dedicated Advisor Dashboard with live status, PV/grid/load/battery KPIs, custom KPI values, autarky/self-consumption estimates, sensor diagnostics, and multiple prioritized recommendations for surplus, grid import, battery state, EV charging, heat pump use, flexible appliances, and unusual PV/load situations
-- Warning states highlight unavailable/offline sensors and low battery levels
-- Configurable KPI tiles below the image, including custom labels, entities or static values, units, color, sort position, and tile width
-- Separate environment sensor tiles for values like indoor temperature, hot water temperature, outdoor temperature, pressure, or air quality, using the entity unit by default
-- Optional "Additional Large Consumers" tiles for washing machine, dishwasher, fan heater, dryer, domestic hot water heat pump, and one custom device; their power and kWh counter entities feed extra Advisor recommendations
-- Custom standard and daylight images
-- Free X/Y positioning for every overlay box
-- Localized card and editor labels based on the Home Assistant language (`en`, `de`, `es`, `fr`, `pl`)
-- Registered for Home Assistant's card picker with a live preview
-- Built-in setup wizard in the card editor that detects likely Home Assistant entities for PV, battery, inverter, wallbox, grid import/export, house consumption, water, weather, and kWh counters
-- Dark glass style matching the provided design
+### House Dashboard
+
+- Selectable house layouts from the `images` folder: `single_family_home`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, and `city_villa_pitched_roof`.
+- Automatic day/night image switching via `sun.sun`, plus optional weather-specific image suffixes from `weather_entity`.
+- Custom standard/night and daylight images via `/local/...` or full `https://...` image URLs.
+- Image HUD boxes and footer tiles for roof PV, shed PV, PV total, house consumption, battery, inverter, EV chargers, water meter, grid import/export, and additional consumers.
+- Free X/Y positioning for all image HUD boxes, image overlays, EV badges, garden badges, and floorplan elements.
+- Optional animated power flow overlay between configured image elements.
+- Dynamic tile colors and glow states with configurable threshold rules.
+- Utilization bars for PV, inverter, and EV charger values based on configured `max_power_kw` values.
+- Hover tooltips with linked entity, raw state, formatted value, and update time.
+- Clickable entity boxes and tiles open a 24/48 hour Home Assistant history chart.
+
+### Energy, Grid, And Finance
+
+- Signed or split grid sensors for import/export power.
+- Grid status tile for import, export, or self-sufficient operation.
+- Configurable neutral threshold for near-zero grid flow.
+- Optional daily import cost and export revenue labels from cumulative kWh counters.
+- Currency symbol/code support with `currency_position: auto | prefix | suffix`; common symbols like `$` are placed before the amount in `auto`.
+- Configurable high-voltage and critical-voltage alert thresholds for grid voltage sensors.
+- Time range selector for `Live`, `1h`, `24h`, `1 month`, `1 year`, and `Total` values when cumulative counters are configured.
+
+### Regional Units
+
+- `region_profile: eu | us | auto` applies region defaults without overwriting explicit single-option overrides.
+- `unit_system: metric | us | auto` controls regional target units.
+- US profile defaults include `$`, `gal`, `°F`, `in`, `psi`, `gal/min`, and `mi`.
+- Metric profile defaults include `€`, `m³`, `°C`, `mm`, `bar`, `L/min`, and `km`.
+- Water meter and garden water values convert between `m³`, `L`, and US gallons.
+- Garden temperature, rain, pressure, and water flow values convert to the configured target units.
+- EV vehicle range can be shown as `km` or `mi`.
+- Voltage thresholds remain manually configurable because US installations may expose 120 V, 240 V, or split-phase values.
+
+### Battery And EV Charging
+
+- Battery SoC fill meter in both image HUD and footer tile.
+- Signed or split battery charge/discharge flow entities.
+- Battery min/max SoC entities for reserve and target-limit-aware Advisor recommendations.
+- Battery temperature badge and battery cycle diagnostics.
+- Optional first and second EV charger entities, including power, phase, vehicle SoC, target SoC, connected state, charging-enabled state, and remaining charge time.
+- EVCC/marq24 loadpoint support through `electric_vehicle.evcc_loadpoint` and `electric_vehicle.evcc_prefix`.
+- EVCC charge mode control for Off, PV, Min+PV, and Fast when `electric_vehicle.entities.mode_control` is configured.
+- EVCC badges and tiles can be shown or hidden independently per value for mobile, desktop, both, or neither.
+- EV-specific day/night images and freely positioned vehicle image badges.
+
+### Advisor Dashboard
+
+- Dedicated Advisor view with live PV, grid, load, battery, autarky, self-consumption, and custom KPI context.
+- Prioritized recommendations for PV surplus, grid import, battery state, EV charging, heat pump use, flexible appliances, and unusual PV/load situations.
+- Sensor diagnostics for stale values, unavailable sensors, battery temperature limits, low SoC, frequent cycles, and simultaneous split import/export readings.
+- Advisor actions can be marked as "now" or hidden for the day from the UI.
+- Maximum number of suggestions and stale-sensor thresholds are configurable.
+
+### Charts And Records
+
+- Charts dashboard groups Home Assistant history by PV strings, inverters, wallboxes, grid, battery, consumers, and system values.
+- 24/48 hour chart range selection for quick inspection.
+- Records dashboard calculates best values over `7d`, `14d`, `30d`, current month, current year, or `356d`.
+- Records cover PV daily yield, solar production duration, wallbox charging duration and peaks, grid finance, large consumers, counters, and more when the required entities are configured.
+
+### Garden And Floorplan
+
+- Garden dashboard with mower status, irrigation state, zones, manual actions, weather, soil, water flow, water pressure, cistern, lights, outlets, pumps, and pools.
+- Irrigation zones support image markers, zone tiles, plan text/entity, color, visibility, and safe More Info behavior by default.
+- Manual garden actions can use script, button, or switch entities with optional confirmation text.
+- Garden day/night images and separately positioned garden badges.
+- Floorplan dashboard with multiple levels, rooms, walls, sensors, reusable environment sensors, optional image-backed floorplans, and per-element layout controls.
+
+### Extensibility
+
+- Custom KPI tiles with entity or static values, units, color, sort position, and desktop column width.
+- Environment sensor tiles for temperature, hot water, outdoor values, pressure, humidity, air quality, CO2, PM2.5, AQI, and custom sensors.
+- Additional large consumer tiles for washing machine, dishwasher, fan heater, dryer, domestic hot water heat pump, and custom devices.
+- Multiple PV roof strings and additional inverters with sum, values, or dominant display modes.
+- Optional smoke/gas and heat pump image overlays with labels, entities, period selection, position, size, and orientation controls.
 
 ## Installation (HACS)
 
@@ -84,12 +128,45 @@ The wizard uses entity ids, friendly names, units, `device_class`, and `state_cl
 
 The global wizard remains available on the Setup tab. The Energy, Devices, E-Auto, Garden, and Advisor tabs also show a page-scoped wizard that only applies suggestions for the entities on that editor page.
 
+## Regional presets
+
+Use `region_profile` when you want a quick regional default set, and use `unit_system` when you only want to control units. Explicit single options always win over the preset.
+
+```yaml
+# European/metric defaults
+region_profile: eu
+unit_system: auto
+```
+
+```yaml
+# United States defaults
+region_profile: us
+unit_system: auto
+```
+
+With the US profile, the card uses `$` before money values and defaults regional display units to gallons, Fahrenheit, inches, PSI, gallons per minute, and miles where the card has a domain-specific formatter. You can still override any single unit:
+
+```yaml
+region_profile: us
+units:
+  water_meter: gal
+  temperature: °F
+  precipitation: in
+  pressure: psi
+  flow: gal/min
+  distance: mi
+```
+
+Voltage warning thresholds are intentionally not part of the regional preset. US systems can report 120 V, 240 V, or split-phase values, so configure `grid_voltage_warning_threshold` and `grid_voltage_critical_threshold` explicitly for your installation.
+
 ## Example configuration
 
 ```yaml
 type: custom:ha-solar-dashboard-card
 title: Solar Dashboard
 house: single_family_home
+region_profile: eu
+unit_system: metric
 view_mode: house
 show_view_selector: true
 show_house_selector: true
@@ -157,6 +234,7 @@ energy_entities:
 grid_import_price: 0.32
 grid_export_price: 0.082
 currency: €
+currency_position: auto
 show_grid_daily_finance: true
 show_grid_status_tile: true
 show_power_flows: false
@@ -192,9 +270,16 @@ units:
   power: auto
   battery: "%"
   water_meter: m³
+  temperature: °C
+  precipitation: mm
+  pressure: bar
+  flow: L/min
+  distance: km
 power_display_mode: auto_kw
 power_decimals: 2
 grid_neutral_threshold: 25
+grid_voltage_warning_threshold: 245
+grid_voltage_critical_threshold: 253
 advisor_surplus_threshold: 250
 advisor_import_threshold: 250
 advisor_high_load_threshold: 3000
@@ -281,6 +366,8 @@ large_consumers:
 
 - `title` (string, default: `Energy Flow`)
 - `house` (string, default: `single_family_home`; options: `single_family_home`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, `city_villa_pitched_roof`; legacy German values are still accepted as aliases)
+- `region_profile` (string, default: `auto`; options: `auto`, `eu`, `us`; applies regional defaults while keeping explicit single-option overrides)
+- `unit_system` (string, default: `auto`; options: `auto`, `metric`, `us`; `auto` follows `region_profile`; `us` defaults water to `gal`, temperature to `°F`, rain to `in`, pressure to `psi`, water flow to `gal/min`, and EV range to `mi`)
 - `view_mode` (string, default: `house`; options: `house`, `electric_vehicle`, `garden`, `floorplan`, `advisor`, `charts`, `records`; controls which dashboard view the card opens with)
 - `show_title` (boolean, default: `true`; shows/hides the title)
 - `show_view_selector` (boolean, default: `true`; shows/hides the dashboard view selector in the card header)
@@ -318,6 +405,7 @@ large_consumers:
 - `energy_entities.import_power.entity` / `energy_entities.export_power.entity` (entity ids, optional; cumulative grid import/export kWh counters used to calculate today's grid cost and feed-in revenue from local midnight)
 - `grid_import_price` / `grid_export_price` (numbers, optional; price or feed-in tariff per kWh, multiplied with today's import/export kWh counters)
 - `currency` (string, default: `€`; use a symbol such as `€` or an ISO code such as `EUR`)
+- `currency_position` (string, default: `auto`; options: `auto`, `prefix`, `suffix`; `auto` keeps `€` after the amount and places common prefix symbols such as `$` before the amount)
 - `show_grid_daily_finance` (boolean, default: `true`; shows today's grid costs and feed-in revenue as compact labels on the import/export HUD and tile when counters and prices are configured)
 - `positions.<entity_key>.left` / `positions.<entity_key>.top` (number, optional percentage overrides from `4` to `96`)
 - `positions.electric_vehicle_*` (optional `left`/`top` percentages for E-Auto image badges; every EVCC definition can be positioned when its image badge is enabled via `electric_vehicle.display.<key>.image`)
@@ -326,7 +414,7 @@ large_consumers:
 - `entities.pv_shed_power` (entity id)
 - `entities.pv_total_power` (entity id; shown as `PV Total` in the summary boxes below the image)
 - `entities.house_consumption_power` (entity id, optional; shown as `Consumption` in the summary boxes below the image)
-- `entities.water_meter` (entity id, optional; cumulative water meter shown as a HUD box and summary tile in `m³`; when the value-range selector is enabled, `1h`, `24h`, `1 month`, and `1 year` show consumption from Home Assistant history, while `Total` shows the current meter value)
+- `entities.water_meter` (entity id, optional; cumulative water meter shown as a HUD box and summary tile using `units.water_meter` / `units.volume`; when the value-range selector is enabled, `1h`, `24h`, `1 month`, and `1 year` show consumption from Home Assistant history, while `Total` shows the current meter value)
 - `entities.battery_level` (entity id)
 - `entities.battery_flow_power` (entity id, optional; signed battery power or energy shown on the battery HUD, positive values mean charging/incoming and negative values mean discharging/outgoing; the badge follows the entity unit)
 - `entities.battery_charge_power` / `entities.battery_discharge_power` (entity ids, optional; separate incoming/outgoing battery power or energy values, used when `battery_flow_power` is not configured; the badge follows the entity unit)
@@ -368,7 +456,8 @@ large_consumers:
 - `entities.import_power` / `entities.export_power` (entity ids, optional; separate positive import and export sensors, used when `entities.import_export_power` is empty; aliases `grid_import_power`, `grid_export_power`, `import_export_import_power`, and `import_export_export_power` are also accepted)
 - `units.power` (string, default: `auto`; power values are shown in `W` below `1000 W` and in `kW` with two decimals from `1000 W`)
 - `units.battery` (string, default: `%`)
-- `units.volume` / `units.water_meter` (string, default: `m³`; water values are displayed in cubic meters by default, even when the entity reports liters)
+- `units.volume` / `units.water_meter` (string, default: `m³`; water values are displayed in cubic meters by default, even when the entity reports liters or gallons; use `gal` for US gallons)
+- `units.temperature`, `units.precipitation`, `units.pressure`, `units.flow`, `units.distance` (strings, optional; regional target units used by Garden and EV displays, for example `°F`, `in`, `psi`, `gal/min`, and `mi`)
 - `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`; `auto` respects Home Assistant units such as `W`, `kW`, and `kWh`)
 - `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)

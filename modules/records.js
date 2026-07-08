@@ -141,6 +141,7 @@ export function createRecordsDashboardMethods({
   peakPowerRecord: peakPowerRecordFn = peakPowerRecord,
   recordsHistoryCacheKey: recordsHistoryCacheKeyFn = recordsHistoryCacheKey,
   numericState,
+  valueAsVolumeUnit,
 } = {}) {
   return {
     _recordsDashboardRangeKey() {
@@ -192,9 +193,11 @@ export function createRecordsDashboardMethods({
       const rawValue = entry?.state ?? entry?.s;
       if (this._formatValue(rawValue) === "—") return undefined;
       const entityUnit = entry?.attributes?.unit_of_measurement || this._getEntityUnit(entityId) || targetUnit;
-      const value = targetUnit === "m³" && typeof this._valueAsCubicMeters === "function"
-        ? this._valueAsCubicMeters(rawValue, entityUnit)
-        : numericState?.(rawValue);
+      const value = typeof valueAsVolumeUnit === "function"
+        ? valueAsVolumeUnit(rawValue, entityUnit, targetUnit)
+        : targetUnit === "m³" && typeof this._valueAsCubicMeters === "function"
+          ? this._valueAsCubicMeters(rawValue, entityUnit)
+          : numericState?.(rawValue);
       const time = Date.parse(entry?.last_changed || entry?.last_updated || entry?.lu || "");
       if (!Number.isFinite(value) || !Number.isFinite(time)) return undefined;
       return { time, value };
@@ -332,6 +335,16 @@ export function createRecordsDashboardMethods({
           const isGasCounter = metric.overlay === "smoke";
           const isVolumeCounter = metric.unit === "volume";
           const isPvMetric = metricKey.startsWith("pv_") || metric.overlay === "solar";
+          const configuredVolumeUnit = isVolumeCounter && typeof this._volumeTargetUnit === "function"
+            ? this._volumeTargetUnit(metric)
+            : "";
+          const counterUnit = isGasCounter
+            ? "m³"
+            : isVolumeCounter
+              ? String(configuredVolumeUnit || "").toLowerCase() === "auto"
+                ? this._getEntityUnit(entityId) || "m³"
+                : configuredVolumeUnit || "m³"
+              : "";
           const group = metricKey.includes("wallbox")
             ? "wallbox"
             : metric.largeConsumer
@@ -347,7 +360,7 @@ export function createRecordsDashboardMethods({
             entityId,
             type: isGasCounter || isVolumeCounter ? "counter" : "power",
             group,
-            unit: isGasCounter || isVolumeCounter ? "m³" : "",
+            unit: isGasCounter || isVolumeCounter ? counterUnit : "",
             metric,
           }];
           if (group === "wallbox") {

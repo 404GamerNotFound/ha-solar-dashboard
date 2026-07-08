@@ -29,13 +29,21 @@ export function chartHistoryPoint(metric, entry, {
   if (formatValue?.(rawValue) === "—") return undefined;
   const entityId = metricEntityId?.(metric) || metric?.chartEntityId || "";
   const entityUnit = entry.attributes?.unit_of_measurement || getEntityUnit?.(entityId) || "";
-  const numericValue = isMetricEnergyMode?.(metric)
-    ? valueAsKwh?.(rawValue, entityUnit)
-    : metric?.unit === "volume"
-      ? valueAsCubicMeters?.(rawValue, entityUnit)
-      : metric?.unit === "power" || (metric?.overlay === "heatpump" && isPowerUnit?.(entityUnit))
-        ? valueAsWatts?.(rawValue, entityUnit)
-        : numericState?.(rawValue);
+  const normalizedBoolean = String(rawValue ?? "").trim().toLowerCase();
+  let numericValue;
+  if (isMetricEnergyMode?.(metric) || metric?.unit === "energy") {
+    numericValue = valueAsKwh?.(rawValue, entityUnit);
+  } else if (metric?.unit === "boolean") {
+    if (["on", "true", "1", "yes", "ja", "connected", "enabled", "active", "charging"].includes(normalizedBoolean)) numericValue = 1;
+    else if (["off", "false", "0", "no", "nein", "disconnected", "disabled", "inactive", "idle"].includes(normalizedBoolean)) numericValue = 0;
+    else numericValue = numericState?.(rawValue);
+  } else if (metric?.unit === "volume") {
+    numericValue = valueAsCubicMeters?.(rawValue, entityUnit);
+  } else if (metric?.unit === "power" || (metric?.overlay === "heatpump" && isPowerUnit?.(entityUnit))) {
+    numericValue = valueAsWatts?.(rawValue, entityUnit);
+  } else {
+    numericValue = numericState?.(rawValue);
+  }
   if (!Number.isFinite(numericValue)) return undefined;
   const rawTime = entry.last_changed || entry.last_updated || entry.lu;
   const time = Date.parse(rawTime || "");

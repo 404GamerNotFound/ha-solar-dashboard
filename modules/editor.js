@@ -18,6 +18,7 @@ export function createDashboardEditorClass({
   TILE_METRICS,
   VIEW_MODE_OPTIONS,
   adjacentWallboxPosition,
+  applyRegionalDefaults,
   assetUrl,
   clampConfigNumber,
   createEditorBaseConfig,
@@ -80,7 +81,7 @@ export function createDashboardEditorClass({
       ?? (config || {}).show_record_dashboard
       ?? (config || {}).records?.enabled
       ?? (config || {}).records?.show;
-    this._config = {
+    const mergedConfig = {
       ...baseConfig,
       ...config,
       show_electric_vehicle: showElectricVehicle === undefined ? baseConfig.show_electric_vehicle !== false : showElectricVehicle !== false,
@@ -115,6 +116,9 @@ export function createDashboardEditorClass({
       inverters: normalizeInverters((config || {}).inverters || (config || {}).inverter_strings || (config || {}).inverter_config || []),
       inverter_display: normalizeInverterDisplay((config || {}).inverter_display || (config || {}).inverter_string_display || "sum"),
     };
+    this._config = typeof applyRegionalDefaults === "function"
+      ? applyRegionalDefaults(mergedConfig, config || {})
+      : mergedConfig;
     delete this._config.show_energy_advisor;
     this._render();
     this._ensureTranslationsForRender();
@@ -338,6 +342,7 @@ export function createDashboardEditorClass({
     const root = parts[0] || path;
     const lastPart = parts[parts.length - 1] || "";
     if (path === "house" || path === "image" || path === "day_image") return true;
+    if (path === "region_profile" || path === "unit_system") return true;
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
     if (root === "show_electric_vehicle") return true;
@@ -354,6 +359,55 @@ export function createDashboardEditorClass({
       return ["visible", "show_image", "left", "top", "label", "color"].includes(lastPart);
     }
     return false;
+  }
+
+  _applyRegionalPresetChange(config = {}) {
+    const regionProfile = String(config.region_profile || "auto").toLowerCase();
+    const unitSystem = String(config.unit_system || "auto").toLowerCase();
+    const resolvedUnitSystem = unitSystem !== "auto"
+      ? unitSystem
+      : regionProfile === "us"
+        ? "us"
+        : regionProfile === "eu"
+          ? "metric"
+          : "auto";
+    const isPresetValue = (value, presets) => {
+      const normalized = String(value ?? "").trim().toLowerCase();
+      return !normalized || presets.map((item) => String(item).toLowerCase()).includes(normalized);
+    };
+    const setPreset = (target, key, value, presets) => {
+      if (isPresetValue(target[key], presets)) target[key] = value;
+    };
+    const setUnitPreset = (key, value, presets) => {
+      config.units = config.units && typeof config.units === "object" ? config.units : {};
+      if (isPresetValue(config.units[key], presets)) config.units[key] = value;
+    };
+
+    if (regionProfile === "us") {
+      setPreset(config, "currency", "$", ["€", "$"]);
+      setPreset(config, "currency_position", "prefix", ["auto", "prefix", "suffix"]);
+    } else if (regionProfile === "eu") {
+      setPreset(config, "currency", "€", ["€", "$"]);
+      setPreset(config, "currency_position", "suffix", ["auto", "prefix", "suffix"]);
+    }
+
+    if (resolvedUnitSystem === "us") {
+      setUnitPreset("volume", "gal", ["m³", "m3", "gal"]);
+      setUnitPreset("water_meter", "gal", ["m³", "m3", "gal"]);
+      setUnitPreset("temperature", "°F", ["°c", "c", "°f", "f"]);
+      setUnitPreset("precipitation", "in", ["mm", "in"]);
+      setUnitPreset("pressure", "psi", ["bar", "psi", "hpa"]);
+      setUnitPreset("flow", "gal/min", ["l/min", "gal/min"]);
+      setUnitPreset("distance", "mi", ["km", "mi"]);
+    } else if (resolvedUnitSystem === "metric") {
+      setUnitPreset("volume", "m³", ["m³", "m3", "gal"]);
+      setUnitPreset("water_meter", "m³", ["m³", "m3", "gal"]);
+      setUnitPreset("temperature", "°C", ["°c", "c", "°f", "f"]);
+      setUnitPreset("precipitation", "mm", ["mm", "in"]);
+      setUnitPreset("pressure", "bar", ["bar", "psi", "hpa"]);
+      setUnitPreset("flow", "L/min", ["l/min", "gal/min"]);
+      setUnitPreset("distance", "km", ["km", "mi"]);
+    }
   }
 
   _onInput(path, value, isCheckbox = false) {
@@ -398,6 +452,7 @@ export function createDashboardEditorClass({
         sensor.color = this._floorplanSensorTypeColor(nextValue) || "#34d399";
       }
     }
+    if (path === "region_profile" || path === "unit_system") this._applyRegionalPresetChange(next);
     this._config = next;
     this._dispatchConfig(next);
     if (this._shouldRenderAfterInput(path, parts)) this._render();
@@ -1229,7 +1284,7 @@ export function createDashboardEditorClass({
     const volumeTarget = {
       domains: ["sensor"],
       deviceClasses: ["water"],
-      units: ["m³", "m3", "l"],
+      units: ["m³", "m3", "l", "gal", "gallon", "gallons"],
       include: [{ terms: ["water", "wasser", "meter", "counter", "zaehler", "zahler"], weight: 24 }],
       exclude: ["power", "leistung", "energy", "kwh", "gas", "strom", "grid", "netz"],
     };
@@ -1626,6 +1681,13 @@ export function createDashboardEditorClass({
           </label>
           <label>${this._escape(this._t("editor.currency", {}, "Currency"))}
             <input data-path="currency" placeholder="€" value="${this._escape(this._config.currency || "€")}" />
+          </label>
+          <label>${this._escape(this._t("editor.currencyPosition", {}, "Currency position"))}
+            <select data-path="currency_position">
+              <option value="auto"${(this._config.currency_position || "auto") === "auto" ? " selected" : ""}>${this._escape(this._t("editor.currencyPositionAuto", {}, "Auto"))}</option>
+              <option value="prefix"${this._config.currency_position === "prefix" ? " selected" : ""}>${this._escape(this._t("editor.currencyPositionPrefix", {}, "Before amount"))}</option>
+              <option value="suffix"${this._config.currency_position === "suffix" ? " selected" : ""}>${this._escape(this._t("editor.currencyPositionSuffix", {}, "After amount"))}</option>
+            </select>
           </label>
         </div>
         <div class="checkbox-grid">
@@ -2125,6 +2187,7 @@ export function createDashboardEditorClass({
           ["m³", "m³"],
           ["auto", this._t("editor.auto")],
           ["L", "L"],
+          ["gal", "gal"],
         ]
         : [["%", "%"]];
     const hasSelected = baseOptions.some(([value]) => value.toLowerCase() === selected.toLowerCase());
@@ -3584,6 +3647,18 @@ export function createDashboardEditorClass({
       })
       .map((option) => `<option value="${this._escape(option.key)}"${option.key === viewMode ? " selected" : ""}>${this._escape(this._t(option.labelKey, {}, option.label))}</option>`)
       .join("");
+    const regionProfile = this._config.region_profile || "auto";
+    const unitSystem = this._config.unit_system || "auto";
+    const regionProfileOptions = [
+      ["auto", this._t("editor.regionProfileAuto", {}, "Auto / custom")],
+      ["eu", this._t("editor.regionProfileEu", {}, "EU / metric")],
+      ["us", this._t("editor.regionProfileUs", {}, "US")],
+    ].map(([value, label]) => `<option value="${this._escape(value)}"${value === regionProfile ? " selected" : ""}>${this._escape(label)}</option>`).join("");
+    const unitSystemOptions = [
+      ["auto", this._t("editor.unitSystemAuto", {}, "From region / custom")],
+      ["metric", this._t("editor.unitSystemMetric", {}, "Metric")],
+      ["us", this._t("editor.unitSystemUs", {}, "US customary")],
+    ].map(([value, label]) => `<option value="${this._escape(value)}"${value === unitSystem ? " selected" : ""}>${this._escape(label)}</option>`).join("");
     const entityOptions = this._entityOptions()
       .map((entityId) => `<option value="${this._escape(entityId)}"></option>`)
       .join("");
@@ -3657,6 +3732,8 @@ export function createDashboardEditorClass({
           <label>${this._escape(this._t("editor.title"))} <input data-path="title" value="${this._escape(this._config.title || "")}" /></label>
           <label>${this._escape(this._t("editor.viewMode", {}, "Default view"))} <select data-path="view_mode">${viewModeOptions}</select></label>
           <label>${this._escape(this._t("editor.houseType"))} <select data-path="house">${houseOptions}</select></label>
+          <label>${this._escape(this._t("editor.regionProfile", {}, "Regional profile"))} <select data-path="region_profile">${regionProfileOptions}</select></label>
+          <label>${this._escape(this._t("editor.unitSystem", {}, "Unit system"))} <select data-path="unit_system">${unitSystemOptions}</select></label>
           <label>${this._labelText(this._t("editor.customImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
           <label>${this._labelText(this._t("editor.customDayImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
           <label>${this._escape(this._t("editor.weatherEntity"))}

@@ -337,6 +337,13 @@ export function createElectricVehicleDashboardMethods({
       const evConfig = this._electricVehicleConfig();
       const evEntities = evConfig.entities || {};
       const direct = evEntities[key] || definition?.aliases?.map((alias) => evEntities[alias]).find(Boolean);
+      if (key === "mode") {
+        const controlDefinition = this._electricVehicleDefinition("mode_control");
+        const controlDirect = evEntities.mode_control || controlDefinition?.aliases?.map((alias) => evEntities[alias]).find(Boolean);
+        if (controlDirect && (this._electricVehicleCanSetModeEntity(controlDirect) || !direct)) return controlDirect;
+        const controlEvccEntityId = this._electricVehicleEvccEntityId(controlDefinition);
+        if (controlEvccEntityId) return controlEvccEntityId;
+      }
       if (direct) return direct;
 
       const evccEntityId = this._electricVehicleEvccEntityId(definition);
@@ -563,7 +570,9 @@ export function createElectricVehicleDashboardMethods({
       }
       if (definition.kind === "distance") {
         const number = this._electricVehicleNumericState(rawValue);
-        return Number.isFinite(number) ? `${Number.isInteger(number) ? number.toFixed(0) : number.toFixed(1)} ${unit || "km"}` : `${String(rawValue).trim()}${unit && !String(rawValue).includes(unit) ? ` ${unit}` : ""}`;
+        return Number.isFinite(number) && typeof this._formatDistanceValue === "function"
+          ? this._formatDistanceValue(rawValue, unit || "km", this.config.units?.distance || unit || "km")
+          : Number.isFinite(number) ? `${Number.isInteger(number) ? number.toFixed(0) : number.toFixed(1)} ${unit || "km"}` : `${String(rawValue).trim()}${unit && !String(rawValue).includes(unit) ? ` ${unit}` : ""}`;
       }
       if (definition.kind === "phases") {
         const metric = this._electricVehicleWallboxMetric();
@@ -682,6 +691,29 @@ export function createElectricVehicleDashboardMethods({
       return "transparent";
     },
 
+    _electricVehicleChartUnit(definition = {}) {
+      if (["power", "grid_power"].includes(definition.kind)) return "power";
+      if (definition.kind === "energy") return "energy";
+      if (definition.kind === "boolean") return "boolean";
+      if (definition.kind === "percent") return "%";
+      if (definition.kind === "current") return "A";
+      if (definition.kind === "distance") return this.config.units?.distance || "km";
+      return this._getEntityUnit?.(this._electricVehicleEntityId(definition.key)) || "auto";
+    },
+
+    _electricVehicleChartAttributes(definition = {}, state = {}) {
+      if (!state.entityId) return "";
+      const label = state.label || this._t(definition.labelKey, {}, definition.label || state.entityId);
+      return [
+        `data-chart-entity="${this._escape(state.entityId)}"`,
+        `data-chart-label="${this._escape(label)}"`,
+        `data-chart-unit="${this._escape(this._electricVehicleChartUnit(definition))}"`,
+        `data-chart-color="${this._escape(this._electricVehicleAccent(definition))}"`,
+        "tabindex=\"0\"",
+        "role=\"button\"",
+      ].join(" ");
+    },
+
     _renderElectricVehicleHeroBadge(definitionKey) {
       const definition = this._electricVehicleDefinition(definitionKey);
       if (!definition) return "";
@@ -689,9 +721,9 @@ export function createElectricVehicleDashboardMethods({
       if (!this._electricVehicleHeroBadgeVisible(definitionKey, state)) return "";
       const position = this._electricVehicleHeroBadgePosition(definitionKey);
       const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definitionKey, "image"));
-      const entityAttr = state.entityId ? ` data-more-info="${this._escape(state.entityId)}"` : "";
+      const chartAttr = this._electricVehicleChartAttributes(definition, state);
       return `
-        <div class="electric-vehicle-badge${modeClass ? ` ${modeClass}` : ""}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${entityAttr}>
+        <div class="electric-vehicle-badge${modeClass ? ` ${modeClass}` : ""}" style="left:${this._escape(position.left)}%;top:${this._escape(position.top)}%;--tile-accent:${this._escape(this._electricVehicleBadgeAccent(definition, definitionKey))};--tile-glow:${this._escape(this._electricVehicleBadgeGlow(definitionKey))}"${chartAttr ? ` ${chartAttr}` : ""}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -702,13 +734,9 @@ export function createElectricVehicleDashboardMethods({
       const { definition, state } = item;
       const modeClass = this._electricVehicleDisplayClass(this._electricVehicleDisplayMode(definition.key, "tile"));
       const entityTitle = state.entityId ? `${state.label}: ${state.entityId}` : state.label;
-      const toggleDomains = new Set(["switch", "input_boolean", "automation"]);
-      const domain = electricVehicleEntityDomain(state.entityId);
-      const actionAttr = toggleDomains.has(domain)
-        ? ` data-entity-toggle="${this._escape(state.entityId)}" tabindex="0" role="button"`
-        : state.entityId ? ` data-more-info="${this._escape(state.entityId)}" tabindex="0" role="button"` : "";
+      const chartAttr = this._electricVehicleChartAttributes(definition, state);
       return `
-        <div class="electric-vehicle-tile${modeClass ? ` ${modeClass}` : ""}" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${actionAttr}>
+        <div class="electric-vehicle-tile${modeClass ? ` ${modeClass}` : ""}" title="${this._escape(entityTitle)}" style="--tile-accent:${this._escape(this._electricVehicleAccent(definition))}"${chartAttr ? ` ${chartAttr}` : ""}>
           <span>${this._escape(state.label)}</span>
           <strong data-electric-vehicle-value="${this._escape(state.key)}">${this._escape(state.value)}</strong>
         </div>
@@ -726,6 +754,12 @@ export function createElectricVehicleDashboardMethods({
           ? String(rawValue).trim()
           : ELECTRIC_VEHICLE_EMPTY_VALUE;
       const label = this._t("ev.modeControl", {}, "Lademodus");
+      const chartAttr = this._electricVehicleChartAttributes(this._electricVehicleDefinition("mode_control"), {
+        key: "mode_control",
+        entityId,
+        label,
+        value: currentLabel,
+      });
       const buttons = ELECTRIC_VEHICLE_MODE_OPTIONS.map((option) => {
         const active = option.key === activeMode;
         const optionLabel = this._electricVehicleModeLabel(option.key);
@@ -738,7 +772,7 @@ export function createElectricVehicleDashboardMethods({
 
       return `
         <section class="electric-vehicle-control-panel" title="${this._escape(`${label}: ${entityId}`)}">
-          <div class="electric-vehicle-control-head">
+          <div class="electric-vehicle-control-head"${chartAttr ? ` ${chartAttr}` : ""}>
             <span>${this._escape(label)}</span>
             <strong>${this._escape(currentLabel)}</strong>
           </div>
@@ -783,13 +817,44 @@ export function createElectricVehicleDashboardMethods({
       const modeControl = this._renderElectricVehicleModeControl();
       const pvStatusText = this._electricVehiclePvStatusText();
       const pvStatusEntityId = this._electricVehicleEntityId("pv_status_text") || "";
-      const groups = ELECTRIC_VEHICLE_GROUPS.map((group) => {
+      const pvStatusDefinition = this._electricVehicleDefinition("pv_status_text") || this._electricVehicleDefinition("status");
+      const pvStatusAttr = pvStatusText && pvStatusEntityId
+        ? this._electricVehicleChartAttributes(pvStatusDefinition, {
+          key: pvStatusDefinition?.key || "pv_status_text",
+          entityId: pvStatusEntityId,
+          label: this._t(pvStatusDefinition?.labelKey, {}, pvStatusDefinition?.label || "Status"),
+          value: pvStatusText,
+        })
+        : "";
+      const groupedItems = ELECTRIC_VEHICLE_GROUPS.map((group) => {
         const items = configuredFields
           .filter((item) => item.definition.group === group.key && this._electricVehicleDisplayMode(item.definition.key, "tile") !== "hidden")
           .sort((a, b) => this._electricVehicleTilePosition(a.definition) - this._electricVehicleTilePosition(b.definition));
-        if (items.length === 0) return "";
+        return { group, items };
+      }).filter(({ group, items }) => group.key !== "controls" && items.length > 0);
+      const activeGroupKey = groupedItems.some(({ group }) => group.key === this._activeElectricVehicleDetailTab)
+        ? this._activeElectricVehicleDetailTab
+        : groupedItems[0]?.group.key || "";
+      if (activeGroupKey) this._activeElectricVehicleDetailTab = activeGroupKey;
+      const detailTabs = groupedItems.length > 1
+        ? `
+          <div class="electric-vehicle-detail-tabs" role="tablist" aria-label="${this._escape(this._t("ev.details", {}, "Details"))}">
+            ${groupedItems.map(({ group }) => {
+              const active = group.key === activeGroupKey;
+              const label = this._t(group.labelKey, {}, group.label);
+              return `
+                <button type="button" class="electric-vehicle-tab-button${active ? " active" : ""}" data-electric-vehicle-tab="${this._escape(group.key)}" role="tab" aria-selected="${active ? "true" : "false"}">
+                  ${this._escape(label)}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        `
+        : "";
+      const groups = groupedItems.map(({ group, items }) => {
+        if (group.key !== activeGroupKey) return "";
         return `
-          <section class="electric-vehicle-section">
+          <section class="electric-vehicle-section" role="tabpanel" data-electric-vehicle-tab-panel="${this._escape(group.key)}">
             <div class="electric-vehicle-section-title">${this._escape(this._t(group.labelKey, {}, group.label))}</div>
             <div class="electric-vehicle-grid">
               ${items.map((item) => this._renderElectricVehicleField(item)).join("")}
@@ -815,9 +880,9 @@ export function createElectricVehicleDashboardMethods({
           <div class="electric-vehicle-hero">
             <img class="electric-vehicle-image" src="${this._escape(imageSrc)}" data-fallbacks="${this._escape(imageFallbacks.join("|"))}" alt="${this._escape(title)}" />
             <div class="electric-vehicle-badges">${heroBadges}</div>
-            ${pvStatusText ? `<div class="scene-status electric-vehicle-pv-status"${pvStatusEntityId ? ` data-more-info="${this._escape(pvStatusEntityId)}"` : ""}>${this._escape(pvStatusText)}</div>` : ""}
+            ${pvStatusText ? `<div class="scene-status electric-vehicle-pv-status"${pvStatusAttr ? ` ${pvStatusAttr}` : ""}>${this._escape(pvStatusText)}</div>` : ""}
           </div>
-          ${empty || groups}
+          ${empty || `${detailTabs}${groups}`}
         </section>
       `;
     },

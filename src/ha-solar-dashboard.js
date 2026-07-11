@@ -1059,9 +1059,10 @@ class HaSolarDashboardCard extends HTMLElement {
       }));
   }
 
-  _additionalBatteryMetrics() {
+  _additionalBatteryMetrics({ placement = "" } = {}) {
     return normalizeBatteries(this.config.batteries || [])
       .filter((battery) => battery.visible !== false && battery.level_entity)
+      .filter((battery) => placement === "image" ? battery.show_image !== false : placement === "footer" ? battery.show_footer !== false : battery.show_image !== false || battery.show_footer !== false)
       .map((battery, index) => ({
         key: `batteries.${battery.id || index}`,
         label: battery.label || `${this._t("editor.battery", {}, "Battery")} ${index + 2}`,
@@ -2784,7 +2785,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...TILE_METRICS,
       ...this._visibleOverlayMetrics(),
       ...this._customKpiMetrics(),
-      ...this._additionalBatteryMetrics(),
+      ...this._additionalBatteryMetrics({ placement: "footer" }),
       ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
@@ -2983,7 +2984,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
-      ...this._additionalBatteryMetrics(),
+      ...this._additionalBatteryMetrics({ placement: "footer" }),
     ].sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
   }
 
@@ -3001,7 +3002,7 @@ class HaSolarDashboardCard extends HTMLElement {
     });
     return [
       ...baseMetrics,
-      ...this._additionalBatteryMetrics(),
+      ...this._additionalBatteryMetrics({ placement: "image" }),
       ...this._environmentSensorMetrics({ placement: "image" }),
     ];
   }
@@ -3029,7 +3030,8 @@ class HaSolarDashboardCard extends HTMLElement {
     if (String(key || "").startsWith("batteries.")) {
       const index = this._additionalBatteryMetrics().findIndex((metric) => metric.key === key);
       const base = { ...(variant.positions.battery_level || {}), ...(this.config.positions.battery_level || {}) };
-      return { left: (base.left ?? 49) + (index + 1) * 10, top: base.top ?? 66, ...(this.config.positions[key] || {}) };
+      const battery = this._additionalBatteryMetrics().find((metric) => metric.key === key)?.battery;
+      return { left: battery?.left === "" ? (base.left ?? 49) + (index + 1) * 10 : battery?.left, top: battery?.top === "" ? base.top ?? 66 : battery?.top };
     }
     if (String(key || "").startsWith("environment_sensors.")) {
       const metric = this._environmentSensorMetrics({ placement: "image" }).find((item) => item.key === key)

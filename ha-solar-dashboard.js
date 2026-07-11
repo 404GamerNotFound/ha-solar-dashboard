@@ -111,6 +111,10 @@ function normalizeBatteries(batteries) {
       max_soc_entity: clean(item.max_soc_entity || item.battery_max_soc),
       temperature_entity: clean(item.temperature_entity || item.battery_temperature),
       cycles_today_entity: clean(item.cycles_today_entity || item.battery_cycles_today),
+      left: Number.isFinite(Number(item.left ?? item.x)) ? Math.min(96, Math.max(4, Number(item.left ?? item.x))) : "",
+      top: Number.isFinite(Number(item.top ?? item.y)) ? Math.min(96, Math.max(4, Number(item.top ?? item.y))) : "",
+      show_image: item.show_image !== false && item.image !== false,
+      show_footer: item.show_footer !== false && item.footer !== false && item.tile !== false,
       visible: item.enabled === false ? false : item.visible !== false,
     };
   }).filter((item) => item.visible !== false || Object.entries(item).some(([key, value]) => key.endsWith("_entity") && value));
@@ -5329,6 +5333,7 @@ function createDashboardEditorClass({
     if (root === "environment_sensors") {
       return ["visible", "show_image", "left", "top", "label", "color"].includes(lastPart);
     }
+    if (root === "batteries") return ["visible", "show_image", "show_footer", "left", "top", "label", "level_entity"].includes(lastPart);
     return false;
   }
 
@@ -6013,7 +6018,7 @@ function createDashboardEditorClass({
     const next = this._cloneConfig(this._config || {});
     next.batteries = normalizeBatteries(next.batteries || []);
     const number = next.batteries.length + 2;
-    next.batteries.push({ id: `battery_${Date.now()}`, label: `${this._t("editor.battery", {}, "Battery")} ${number}`, level_entity: "", flow_power_entity: "", voltage_entity: "", charge_power_entity: "", discharge_power_entity: "", min_soc_entity: "", max_soc_entity: "", temperature_entity: "", cycles_today_entity: "", visible: true });
+    next.batteries.push({ id: `battery_${Date.now()}`, label: `${this._t("editor.battery", {}, "Battery")} ${number}`, level_entity: "", flow_power_entity: "", voltage_entity: "", charge_power_entity: "", discharge_power_entity: "", min_soc_entity: "", max_soc_entity: "", temperature_entity: "", cycles_today_entity: "", left: Math.min(96, 49 + (number - 1) * 10), top: 66, show_image: true, show_footer: true, visible: true });
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -7225,6 +7230,12 @@ function createDashboardEditorClass({
         <div class="kpi-head"><strong>${this._escape(battery.label || `Battery ${index + 2}`)}</strong><button type="button" data-action="remove-battery" data-index="${index}">${this._escape(this._t("editor.kpiRemove"))}</button></div>
         <label>${this._escape(this._t("editor.batteryLabel", {}, "Battery name"))}<input data-path="batteries.${index}.label" value="${this._escape(battery.label)}" /></label>
         ${this._renderBatteryEntityFields(`batteries.${index}`, battery)}
+        <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_image" ${battery.show_image !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show on image"))}</label>
+          <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_footer" ${battery.show_footer !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowFooter", {}, "Show below image"))}</label>
+        </div>
+        <label>${this._labelText(`${this._t("editor.xPosition")} (${battery.left === "" ? 59 + index * 10 : battery.left})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}<input type="range" min="4" max="96" step="1" data-path="batteries.${index}.left" value="${this._escape(battery.left === "" ? 59 + index * 10 : battery.left)}" /></label>
+        <label>${this._labelText(`${this._t("editor.yPosition")} (${battery.top === "" ? 66 : battery.top})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}<input type="range" min="4" max="96" step="1" data-path="batteries.${index}.top" value="${this._escape(battery.top === "" ? 66 : battery.top)}" /></label>
       </div>`).join("");
     return `
       <div class="box-field pv-string-field"><div class="kpi-head"><strong>${this._escape(this._t("editor.battery", {}, "Battery"))} 1</strong></div>
@@ -7891,15 +7902,14 @@ function createDashboardEditorClass({
     const batteryItems = normalizeBatteries(this._config.batteries || []).map((battery, index) => {
       const metricKey = `batteries.${battery.id || index}`;
       const base = this._metricPosition({ key: "battery_level" });
-      const position = this._config.positions?.[metricKey] || {};
       return {
         key: `metric:${metricKey}`,
         label: battery.label || `${this._t("editor.battery", {}, "Battery")} ${index + 2}`,
         scope: "house",
-        left: Number(position.left ?? (Number(base.left) || 49) + (index + 1) * 10),
-        top: Number(position.top ?? (Number(base.top) || 66)),
-        leftPath: `positions.${metricKey}.left`,
-        topPath: `positions.${metricKey}.top`,
+        left: Number(battery.left === "" ? (Number(base.left) || 49) + (index + 1) * 10 : battery.left),
+        top: Number(battery.top === "" ? (Number(base.top) || 66) : battery.top),
+        leftPath: `batteries.${index}.left`,
+        topPath: `batteries.${index}.top`,
         color: "#34d399",
         type: this._t("editor.layoutTypeBox", {}, "Box"),
       };
@@ -15818,9 +15828,10 @@ class HaSolarDashboardCard extends HTMLElement {
       }));
   }
 
-  _additionalBatteryMetrics() {
+  _additionalBatteryMetrics({ placement = "" } = {}) {
     return normalizeBatteries(this.config.batteries || [])
       .filter((battery) => battery.visible !== false && battery.level_entity)
+      .filter((battery) => placement === "image" ? battery.show_image !== false : placement === "footer" ? battery.show_footer !== false : battery.show_image !== false || battery.show_footer !== false)
       .map((battery, index) => ({
         key: `batteries.${battery.id || index}`,
         label: battery.label || `${this._t("editor.battery", {}, "Battery")} ${index + 2}`,
@@ -17543,7 +17554,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...TILE_METRICS,
       ...this._visibleOverlayMetrics(),
       ...this._customKpiMetrics(),
-      ...this._additionalBatteryMetrics(),
+      ...this._additionalBatteryMetrics({ placement: "footer" }),
       ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
@@ -17742,7 +17753,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
-      ...this._additionalBatteryMetrics(),
+      ...this._additionalBatteryMetrics({ placement: "footer" }),
     ].sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
   }
 
@@ -17760,7 +17771,7 @@ class HaSolarDashboardCard extends HTMLElement {
     });
     return [
       ...baseMetrics,
-      ...this._additionalBatteryMetrics(),
+      ...this._additionalBatteryMetrics({ placement: "image" }),
       ...this._environmentSensorMetrics({ placement: "image" }),
     ];
   }
@@ -17788,7 +17799,8 @@ class HaSolarDashboardCard extends HTMLElement {
     if (String(key || "").startsWith("batteries.")) {
       const index = this._additionalBatteryMetrics().findIndex((metric) => metric.key === key);
       const base = { ...(variant.positions.battery_level || {}), ...(this.config.positions.battery_level || {}) };
-      return { left: (base.left ?? 49) + (index + 1) * 10, top: base.top ?? 66, ...(this.config.positions[key] || {}) };
+      const battery = this._additionalBatteryMetrics().find((metric) => metric.key === key)?.battery;
+      return { left: battery?.left === "" ? (base.left ?? 49) + (index + 1) * 10 : battery?.left, top: battery?.top === "" ? base.top ?? 66 : battery?.top };
     }
     if (String(key || "").startsWith("environment_sensors.")) {
       const metric = this._environmentSensorMetrics({ placement: "image" }).find((item) => item.key === key)

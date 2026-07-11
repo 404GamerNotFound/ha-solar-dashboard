@@ -18,6 +18,10 @@ export function normalizeBatteries(batteries) {
       max_soc_entity: clean(item.max_soc_entity || item.battery_max_soc),
       temperature_entity: clean(item.temperature_entity || item.battery_temperature),
       cycles_today_entity: clean(item.cycles_today_entity || item.battery_cycles_today),
+      left: Number.isFinite(Number(item.left ?? item.x)) ? Math.min(96, Math.max(4, Number(item.left ?? item.x))) : "",
+      top: Number.isFinite(Number(item.top ?? item.y)) ? Math.min(96, Math.max(4, Number(item.top ?? item.y))) : "",
+      show_image: item.show_image !== false && item.image !== false,
+      show_footer: item.show_footer !== false && item.footer !== false && item.tile !== false,
       visible: item.enabled === false ? false : item.visible !== false,
     };
   }).filter((item) => item.visible !== false || Object.entries(item).some(([key, value]) => key.endsWith("_entity") && value));

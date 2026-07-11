@@ -101,6 +101,10 @@ assert.deepEqual(normalizeBatteries([{ entity: "sensor.battery_2_soc", battery_f
   max_soc_entity: "",
   temperature_entity: "",
   cycles_today_entity: "",
+  left: "",
+  top: "",
+  show_image: true,
+  show_footer: true,
   visible: true,
 });
 
@@ -553,6 +557,8 @@ multiBatteryCard._hass = { states: {
 const additionalBatteryMetric = multiBatteryCard._additionalBatteryMetrics()[0];
 assert.equal(additionalBatteryMetric.key, "batteries.garage");
 assert.equal(multiBatteryCard._formatReading(additionalBatteryMetric), "45 %");
+assert.equal(multiBatteryCard._visibleHudMetrics(multiBatteryCard._currentVariant).filter((metric) => metric.battery).length, 1);
+assert.equal(multiBatteryCard._visibleTileMetrics(multiBatteryCard._currentVariant).filter((metric) => metric.battery).length, 1);
 assert.match(multiBatteryCard._renderMetric(additionalBatteryMetric, multiBatteryCard._currentVariant), /Garage battery/);
 assert.match(multiBatteryCard._renderMetric(additionalBatteryMetric, multiBatteryCard._currentVariant), /Temp 24 °C/);
 

@@ -6,6 +6,7 @@ import {
   normalizeAdvisorConfig,
   sortAdvisorItems,
 } from "../modules/advisor.js";
+import { normalizeBatteries } from "../modules/batteries.js";
 import {
   createAdvisorEngineMethods,
 } from "../modules/advisor-engine.js";
@@ -491,6 +492,7 @@ class HaSolarDashboardCard extends HTMLElement {
       electric_vehicle: normalizeElectricVehicleConfig(electricVehicleSource),
       garden: normalizeGardenConfig(gardenSource),
       large_consumers: normalizeLargeConsumers(config.large_consumers || config.large_consumers_config || []),
+      batteries: normalizeBatteries(config.batteries || config.battery_config || []),
       pv_roof_strings: normalizePvRoofStrings(config.pv_roof_strings || config.pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay(config.pv_roof_string_display || config.pv_roof_display || "sum"),
       inverters: normalizeInverters(config.inverters || config.inverter_strings || config.inverter_config || []),
@@ -510,6 +512,7 @@ class HaSolarDashboardCard extends HTMLElement {
     Object.assign(this.config, normalizeAdvisorConfig(this.config));
     this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
     this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
+    this.config.batteries = normalizeBatteries(this.config.batteries || []);
     this.config.inverter_display = normalizeInverterDisplay(this.config.inverter_display);
     this.config.inverters = normalizeInverters(this.config.inverters || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
@@ -1852,9 +1855,10 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _batteryPercent(metric) {
     if (metric.key !== "battery_level") return undefined;
-    const value = this._metricNumericValue(metric);
-    if (!Number.isFinite(value)) return undefined;
-    return Math.min(100, Math.max(0, value));
+    const entityIds = [this.config.entities?.battery_level, ...normalizeBatteries(this.config.batteries || []).map((battery) => battery.level_entity)].filter(Boolean);
+    const values = entityIds.map((entityId) => numericState(this._getEntityValue(entityId, undefined))).filter(Number.isFinite).map((value) => Math.min(100, Math.max(0, value)));
+    if (!values.length) return undefined;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
 
   _batterySocEntityId() {
@@ -1972,7 +1976,17 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _batteryFlowInfo() {
-    const signedEntityId = this.config.entities?.battery_flow_power;
+    const base = this._batteryFlowInfoForEntities(this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power);
+    const additional = normalizeBatteries(this.config.batteries || []).map((battery) => this._batteryFlowInfoForEntities(battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity)).filter(Boolean);
+    const flows = [base, ...additional].filter(Boolean);
+    if (!flows.length) return undefined;
+    const selected = flows.some((flow) => flow.kind !== "energy") ? flows.filter((flow) => flow.kind !== "energy") : flows;
+    const net = selected.reduce((sum, flow) => sum + (flow.direction === "charge" ? flow.amount : -flow.amount), 0);
+    if (net === 0) return undefined;
+    return { direction: net > 0 ? "charge" : "discharge", entityId: selected.map((flow) => flow.entityId).filter(Boolean).join(","), amount: Math.abs(net), kind: selected[0].kind, unit: selected[0].unit };
+  }
+
+  _batteryFlowInfoForEntities(signedEntityId, chargeEntityId, dischargeEntityId) {
     const signedValue = this._entityFlowValue(signedEntityId);
     if (signedValue && signedValue.amount !== 0) {
       return {
@@ -1984,8 +1998,6 @@ class HaSolarDashboardCard extends HTMLElement {
       };
     }
 
-    const chargeEntityId = this.config.entities?.battery_charge_power;
-    const dischargeEntityId = this.config.entities?.battery_discharge_power;
     const chargeValue = this._entityFlowValue(chargeEntityId);
     const dischargeValue = this._entityFlowValue(dischargeEntityId);
     const chargeAmount = Math.max(0, chargeValue?.amount || 0);

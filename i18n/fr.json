@@ -645,5 +645,10 @@
   "editor.electricVehicleBadgePositionHelp": "Contrôle la position du badge lorsque cette valeur EVCC est affichée sur l'image du véhicule.",
   "editor.setupWizardPage": "Assistant de configuration pour cette page",
   "editor.setupPageIntro": "Détecte les entités Home Assistant probables pour la page actuelle de l'éditeur.",
-  "editor.setupPageHelp": "Ces actions appliquent uniquement les suggestions de cette page."
+  "editor.setupPageHelp": "Ces actions appliquent uniquement les suggestions de cette page.",
+  "editor.batteries": "Batteries",
+  "editor.battery": "Batterie",
+  "editor.batteryAdd": "Ajouter une batterie",
+  "editor.batteryLabel": "Nom de la batterie",
+  "editor.batteryLevelEntity": "Entité SoC de la batterie"
 }

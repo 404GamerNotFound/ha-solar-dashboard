@@ -5,6 +5,7 @@ import {
 import {
   clampConfigNumber,
 } from "../modules/config-normalizers.js";
+import { normalizeBatteries } from "../modules/batteries.js";
 import {
   applyRegionalDefaults,
   createEditorBaseConfig,
@@ -196,6 +197,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   normalizeHouse,
   normalizeInverterDisplay,
   normalizeInverters,
+  normalizeBatteries,
   normalizeLargeConsumers,
   normalizePvRoofStringDisplay,
   normalizePvRoofStrings,

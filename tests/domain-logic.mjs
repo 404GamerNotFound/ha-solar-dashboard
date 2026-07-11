@@ -3,6 +3,7 @@ import {
   normalizeAdvisorConfig,
   sortAdvisorItems,
 } from "../modules/advisor.js";
+import { normalizeBatteries } from "../modules/batteries.js";
 import {
   clampConfigNumber,
   normalizeEnergyRange,
@@ -87,6 +88,21 @@ function gridLabel(kind) {
     neutral: "Neutral",
   }[kind] || kind;
 }
+
+assert.deepEqual(normalizeBatteries([{ entity: "sensor.battery_2_soc", battery_flow_power: "sensor.battery_2_power" }])[0], {
+  id: "battery_2",
+  label: "Battery 2",
+  level_entity: "sensor.battery_2_soc",
+  flow_power_entity: "sensor.battery_2_power",
+  voltage_entity: "",
+  charge_power_entity: "",
+  discharge_power_entity: "",
+  min_soc_entity: "",
+  max_soc_entity: "",
+  temperature_entity: "",
+  cycles_today_entity: "",
+  visible: true,
+});
 
 assert.deepEqual(imageFormatFiles("house.png"), ["house.webp", "house.png"]);
 assert.deepEqual(imageFormatFiles("house.jpg"), ["house.jpg"]);

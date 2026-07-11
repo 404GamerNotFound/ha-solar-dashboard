@@ -91,6 +91,31 @@ function sortAdvisorItems(items = []) {
   ) || ((b.priority ?? 0) - (a.priority ?? 0)));
 }
 
+function clean(value) { return String(value || "").trim(); }
+
+function normalizeBatteries(batteries) {
+  const source = Array.isArray(batteries) ? batteries : batteries && typeof batteries === "object"
+    ? Object.entries(batteries).map(([id, value]) => value && typeof value === "object" ? { id, ...value } : { id, level_entity: value }) : [];
+  return source.map((raw, index) => {
+    const item = raw && typeof raw === "object" ? raw : { level_entity: raw };
+    const number = index + 2;
+    return {
+      id: clean(item.id || item.key || item.name || item.label || `battery_${number}`).replace(/[^\w-]+/g, "_"),
+      label: clean(item.label || item.name || `Battery ${number}`),
+      level_entity: clean(item.level_entity || item.soc_entity || item.entity || item.entity_id),
+      flow_power_entity: clean(item.flow_power_entity || item.battery_flow_power || item.power_entity),
+      voltage_entity: clean(item.voltage_entity || item.battery_voltage),
+      charge_power_entity: clean(item.charge_power_entity || item.battery_charge_power),
+      discharge_power_entity: clean(item.discharge_power_entity || item.battery_discharge_power),
+      min_soc_entity: clean(item.min_soc_entity || item.battery_min_soc),
+      max_soc_entity: clean(item.max_soc_entity || item.battery_max_soc),
+      temperature_entity: clean(item.temperature_entity || item.battery_temperature),
+      cycles_today_entity: clean(item.cycles_today_entity || item.battery_cycles_today),
+      visible: item.enabled === false ? false : item.visible !== false,
+    };
+  }).filter((item) => item.visible !== false || Object.entries(item).some(([key, value]) => key.endsWith("_entity") && value));
+}
+
 function createAdvisorEngineMethods({
   CARD_TYPE,
   GRID_STATUS_METRIC,
@@ -4975,6 +5000,7 @@ function createDashboardEditorClass({
   normalizeHouse,
   normalizeInverterDisplay,
   normalizeInverters,
+  normalizeBatteries,
   normalizeLargeConsumers,
   normalizePvRoofStringDisplay,
   normalizePvRoofStrings,
@@ -5051,6 +5077,7 @@ function createDashboardEditorClass({
       garden: normalizeGardenConfig?.(gardenSource) || gardenSource,
       large_consumers: normalizeLargeConsumers((config || {}).large_consumers || (config || {}).large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings((config || {}).pv_roof_strings || (config || {}).pv_roof_string_config || []),
+      batteries: normalizeBatteries((config || {}).batteries || (config || {}).battery_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay((config || {}).pv_roof_string_display || (config || {}).pv_roof_display || "sum"),
       inverters: normalizeInverters((config || {}).inverters || (config || {}).inverter_strings || (config || {}).inverter_config || []),
       inverter_display: normalizeInverterDisplay((config || {}).inverter_display || (config || {}).inverter_string_display || "sum"),
@@ -5221,6 +5248,11 @@ function createDashboardEditorClass({
         "battery_temperature",
         "battery_cycles_today",
       ].forEach(addEntity);
+      normalizeBatteries(this._config.batteries || []).forEach((battery) => {
+        Object.entries(battery).forEach(([field, value]) => {
+          if (field.endsWith("_entity")) add(value);
+        });
+      });
     }
 
     if (key === "import_export_power") {
@@ -5972,6 +6004,25 @@ function createDashboardEditorClass({
     next.garden = normalizeGardenConfig?.(next.garden || {}) || next.garden || {};
     next.garden.manual_actions = Array.isArray(next.garden.manual_actions) ? next.garden.manual_actions : [];
     next.garden.manual_actions.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _addBattery() {
+    const next = this._cloneConfig(this._config || {});
+    next.batteries = normalizeBatteries(next.batteries || []);
+    const number = next.batteries.length + 2;
+    next.batteries.push({ id: `battery_${Date.now()}`, label: `${this._t("editor.battery", {}, "Battery")} ${number}`, level_entity: "", flow_power_entity: "", voltage_entity: "", charge_power_entity: "", discharge_power_entity: "", min_soc_entity: "", max_soc_entity: "", temperature_entity: "", cycles_today_entity: "", visible: true });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeBattery(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.batteries = normalizeBatteries(next.batteries || []);
+    next.batteries.splice(index, 1);
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -7167,7 +7218,16 @@ function createDashboardEditorClass({
 
   _renderBatteryFlowInputs(metric) {
     if (metric.key !== "battery_level") return "";
+    const batteries = normalizeBatteries(this._config.batteries || []);
+    this._config.batteries = batteries;
+    const additional = batteries.map((battery, index) => `
+      <div class="box-field pv-string-field">
+        <div class="kpi-head"><strong>${this._escape(battery.label || `Battery ${index + 2}`)}</strong><button type="button" data-action="remove-battery" data-index="${index}">${this._escape(this._t("editor.kpiRemove"))}</button></div>
+        <label>${this._escape(this._t("editor.batteryLabel", {}, "Battery name"))}<input data-path="batteries.${index}.label" value="${this._escape(battery.label)}" /></label>
+        ${this._renderBatteryEntityFields(`batteries.${index}`, battery)}
+      </div>`).join("");
     return `
+      <div class="box-field pv-string-field"><div class="kpi-head"><strong>${this._escape(this._t("editor.battery", {}, "Battery"))} 1</strong></div>
       <label>${this._labelText(this._t("editor.batteryFlowEntity"), this._t("editor.helpSignedBattery", {}, "Use one signed sensor when possible: positive means charging, negative means discharging."))}
         <input data-path="entities.battery_flow_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_power" value="${this._escape(this._config.entities?.battery_flow_power || "")}" autocomplete="off" />
       </label>
@@ -7195,7 +7255,19 @@ function createDashboardEditorClass({
       <label>${this._escape(this._t("editor.batteryCyclesTodayEntity", {}, "Battery cycles today entity"))}
         <input data-path="entities.battery_cycles_today" list="ha-solar-dashboard-entities" placeholder="sensor.battery_cycles_today" value="${this._escape(this._config.entities?.battery_cycles_today || "")}" autocomplete="off" />
       </label>
+      </div>${additional}<button type="button" data-action="add-battery">${this._escape(this._t("editor.batteryAdd", {}, "Add battery"))}</button>
     `;
+  }
+
+  _renderBatteryEntityFields(path, battery) {
+    const fields = [
+      ["level_entity", "editor.batteryLevelEntity", "Battery SoC entity"], ["flow_power_entity", "editor.batteryFlowEntity", "Battery flow entity (+/-)"],
+      ["voltage_entity", "editor.voltageEntity", "Voltage entity"], ["charge_power_entity", "editor.batteryChargeEntity", "Battery charge entity"],
+      ["discharge_power_entity", "editor.batteryDischargeEntity", "Battery discharge entity"], ["min_soc_entity", "editor.batteryMinSocEntity", "Battery min SoC entity"],
+      ["max_soc_entity", "editor.batteryMaxSocEntity", "Battery max SoC entity"], ["temperature_entity", "editor.batteryTemperatureEntity", "Battery temperature entity"],
+      ["cycles_today_entity", "editor.batteryCyclesTodayEntity", "Battery cycles today entity"],
+    ];
+    return fields.map(([key, translation, fallback]) => `<label>${this._escape(this._t(translation, {}, fallback))}<input data-path="${path}.${key}" list="ha-solar-dashboard-entities" value="${this._escape(battery[key] || "")}" autocomplete="off" /></label>`).join("");
   }
 
   _houseVariant() {
@@ -8614,6 +8686,7 @@ function createDashboardEditorClass({
     this._config.garden = garden;
     this._config.pv_roof_string_display = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
     this._config.pv_roof_strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
+    this._config.batteries = normalizeBatteries(this._config.batteries || []);
     this._config.inverter_display = normalizeInverterDisplay(this._config.inverter_display);
     this._config.inverters = normalizeInverters(this._config.inverters || []);
     const largeConsumers = normalizeLargeConsumers(this._config.large_consumers || []);
@@ -9070,6 +9143,8 @@ function createDashboardEditorClass({
         if (target.dataset.action === "remove-floorplan-item") this._removeSelectedFloorplanItem();
         if (target.dataset.action === "add-pv-roof-string") this._addPvRoofString();
         if (target.dataset.action === "remove-pv-roof-string") this._removePvRoofString(Number(target.dataset.index));
+        if (target.dataset.action === "add-battery") this._addBattery();
+        if (target.dataset.action === "remove-battery") this._removeBattery(Number(target.dataset.index));
         if (target.dataset.action === "add-inverter") this._addInverter();
         if (target.dataset.action === "remove-inverter") this._removeInverter(Number(target.dataset.index));
         if (target.dataset.action === "add-large-consumer") this._addLargeConsumer();
@@ -12312,7 +12387,12 @@ const I18N = {
     "editor.electricVehicleBadgePositionHelp": "Controls the image badge position when this EVCC value is shown on the vehicle image.",
     "editor.setupWizardPage": "Setup wizard for this page",
     "editor.setupPageIntro": "Detect likely Home Assistant entities for the current editor page.",
-    "editor.setupPageHelp": "These actions only apply suggestions for this page."
+    "editor.setupPageHelp": "These actions only apply suggestions for this page.",
+    "editor.batteries": "Batteries",
+    "editor.battery": "Battery",
+    "editor.batteryAdd": "Add battery",
+    "editor.batteryLabel": "Battery name",
+    "editor.batteryLevelEntity": "Battery SoC entity"
   },
   "de": {
     "aria.energyRangeSelector": "Wertebereich auswählen",
@@ -12961,7 +13041,12 @@ const I18N = {
     "editor.electricVehicleBadgePositionHelp": "Steuert die Bild-Badge-Position, wenn dieser EVCC-Wert auf dem Fahrzeugbild angezeigt wird.",
     "editor.setupWizardPage": "Einrichtungs-Assistent für diese Seite",
     "editor.setupPageIntro": "Erkennt passende Home-Assistant-Entitäten für die aktuelle Editor-Seite.",
-    "editor.setupPageHelp": "Diese Aktionen übernehmen nur Vorschläge für diese Seite."
+    "editor.setupPageHelp": "Diese Aktionen übernehmen nur Vorschläge für diese Seite.",
+    "editor.batteries": "Batterien",
+    "editor.battery": "Batterie",
+    "editor.batteryAdd": "Batterie hinzufügen",
+    "editor.batteryLabel": "Batteriename",
+    "editor.batteryLevelEntity": "Batterie-SoC-Entität"
   },
   "es": {
     "aria.energyRangeSelector": "Seleccionar rango de valores",
@@ -13610,7 +13695,12 @@ const I18N = {
     "editor.electricVehicleBadgePositionHelp": "Controla la posición de la insignia cuando este valor EVCC se muestra en la imagen del vehículo.",
     "editor.setupWizardPage": "Asistente de configuración para esta página",
     "editor.setupPageIntro": "Detecta entidades probables de Home Assistant para la página actual del editor.",
-    "editor.setupPageHelp": "Estas acciones solo aplican sugerencias para esta página."
+    "editor.setupPageHelp": "Estas acciones solo aplican sugerencias para esta página.",
+    "editor.batteries": "Baterías",
+    "editor.battery": "Batería",
+    "editor.batteryAdd": "Añadir batería",
+    "editor.batteryLabel": "Nombre de la batería",
+    "editor.batteryLevelEntity": "Entidad SoC de la batería"
   },
   "fr": {
     "aria.energyRangeSelector": "Sélectionner la période de valeur",
@@ -14259,7 +14349,12 @@ const I18N = {
     "editor.electricVehicleBadgePositionHelp": "Contrôle la position du badge lorsque cette valeur EVCC est affichée sur l'image du véhicule.",
     "editor.setupWizardPage": "Assistant de configuration pour cette page",
     "editor.setupPageIntro": "Détecte les entités Home Assistant probables pour la page actuelle de l'éditeur.",
-    "editor.setupPageHelp": "Ces actions appliquent uniquement les suggestions de cette page."
+    "editor.setupPageHelp": "Ces actions appliquent uniquement les suggestions de cette page.",
+    "editor.batteries": "Batteries",
+    "editor.battery": "Batterie",
+    "editor.batteryAdd": "Ajouter une batterie",
+    "editor.batteryLabel": "Nom de la batterie",
+    "editor.batteryLevelEntity": "Entité SoC de la batterie"
   },
   "pl": {
     "aria.energyRangeSelector": "Wybierz zakres wartości",
@@ -14908,7 +15003,12 @@ const I18N = {
     "editor.electricVehicleBadgePositionHelp": "Określa pozycję odznaki, gdy ta wartość EVCC jest pokazana na obrazie pojazdu.",
     "editor.setupWizardPage": "Kreator konfiguracji dla tej strony",
     "editor.setupPageIntro": "Wykrywa prawdopodobne encje Home Assistant dla bieżącej strony edytora.",
-    "editor.setupPageHelp": "Te akcje stosują tylko sugestie dla tej strony."
+    "editor.setupPageHelp": "Te akcje stosują tylko sugestie dla tej strony.",
+    "editor.batteries": "Baterie",
+    "editor.battery": "Bateria",
+    "editor.batteryAdd": "Dodaj baterię",
+    "editor.batteryLabel": "Nazwa baterii",
+    "editor.batteryLevelEntity": "Encja SoC baterii"
   }
 };
 const I18N_LOADS = new Map();
@@ -15135,6 +15235,7 @@ class HaSolarDashboardCard extends HTMLElement {
       electric_vehicle: normalizeElectricVehicleConfig(electricVehicleSource),
       garden: normalizeGardenConfig(gardenSource),
       large_consumers: normalizeLargeConsumers(config.large_consumers || config.large_consumers_config || []),
+      batteries: normalizeBatteries(config.batteries || config.battery_config || []),
       pv_roof_strings: normalizePvRoofStrings(config.pv_roof_strings || config.pv_roof_string_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay(config.pv_roof_string_display || config.pv_roof_display || "sum"),
       inverters: normalizeInverters(config.inverters || config.inverter_strings || config.inverter_config || []),
@@ -15154,6 +15255,7 @@ class HaSolarDashboardCard extends HTMLElement {
     Object.assign(this.config, normalizeAdvisorConfig(this.config));
     this.config.pv_roof_string_display = normalizePvRoofStringDisplay(this.config.pv_roof_string_display);
     this.config.pv_roof_strings = normalizePvRoofStrings(this.config.pv_roof_strings || []);
+    this.config.batteries = normalizeBatteries(this.config.batteries || []);
     this.config.inverter_display = normalizeInverterDisplay(this.config.inverter_display);
     this.config.inverters = normalizeInverters(this.config.inverters || []);
     this.config.chart_hours = [24, 48].includes(Number(this.config.chart_hours)) ? Number(this.config.chart_hours) : 24;
@@ -16496,9 +16598,10 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _batteryPercent(metric) {
     if (metric.key !== "battery_level") return undefined;
-    const value = this._metricNumericValue(metric);
-    if (!Number.isFinite(value)) return undefined;
-    return Math.min(100, Math.max(0, value));
+    const entityIds = [this.config.entities?.battery_level, ...normalizeBatteries(this.config.batteries || []).map((battery) => battery.level_entity)].filter(Boolean);
+    const values = entityIds.map((entityId) => numericState(this._getEntityValue(entityId, undefined))).filter(Number.isFinite).map((value) => Math.min(100, Math.max(0, value)));
+    if (!values.length) return undefined;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
 
   _batterySocEntityId() {
@@ -16616,7 +16719,17 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _batteryFlowInfo() {
-    const signedEntityId = this.config.entities?.battery_flow_power;
+    const base = this._batteryFlowInfoForEntities(this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power);
+    const additional = normalizeBatteries(this.config.batteries || []).map((battery) => this._batteryFlowInfoForEntities(battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity)).filter(Boolean);
+    const flows = [base, ...additional].filter(Boolean);
+    if (!flows.length) return undefined;
+    const selected = flows.some((flow) => flow.kind !== "energy") ? flows.filter((flow) => flow.kind !== "energy") : flows;
+    const net = selected.reduce((sum, flow) => sum + (flow.direction === "charge" ? flow.amount : -flow.amount), 0);
+    if (net === 0) return undefined;
+    return { direction: net > 0 ? "charge" : "discharge", entityId: selected.map((flow) => flow.entityId).filter(Boolean).join(","), amount: Math.abs(net), kind: selected[0].kind, unit: selected[0].unit };
+  }
+
+  _batteryFlowInfoForEntities(signedEntityId, chargeEntityId, dischargeEntityId) {
     const signedValue = this._entityFlowValue(signedEntityId);
     if (signedValue && signedValue.amount !== 0) {
       return {
@@ -16628,8 +16741,6 @@ class HaSolarDashboardCard extends HTMLElement {
       };
     }
 
-    const chargeEntityId = this.config.entities?.battery_charge_power;
-    const dischargeEntityId = this.config.entities?.battery_discharge_power;
     const chargeValue = this._entityFlowValue(chargeEntityId);
     const dischargeValue = this._entityFlowValue(dischargeEntityId);
     const chargeAmount = Math.max(0, chargeValue?.amount || 0);

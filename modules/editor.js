@@ -36,6 +36,7 @@ export function createDashboardEditorClass({
   normalizeHouse,
   normalizeInverterDisplay,
   normalizeInverters,
+  normalizeBatteries,
   normalizeLargeConsumers,
   normalizePvRoofStringDisplay,
   normalizePvRoofStrings,
@@ -112,6 +113,7 @@ export function createDashboardEditorClass({
       garden: normalizeGardenConfig?.(gardenSource) || gardenSource,
       large_consumers: normalizeLargeConsumers((config || {}).large_consumers || (config || {}).large_consumers_config || []),
       pv_roof_strings: normalizePvRoofStrings((config || {}).pv_roof_strings || (config || {}).pv_roof_string_config || []),
+      batteries: normalizeBatteries((config || {}).batteries || (config || {}).battery_config || []),
       pv_roof_string_display: normalizePvRoofStringDisplay((config || {}).pv_roof_string_display || (config || {}).pv_roof_display || "sum"),
       inverters: normalizeInverters((config || {}).inverters || (config || {}).inverter_strings || (config || {}).inverter_config || []),
       inverter_display: normalizeInverterDisplay((config || {}).inverter_display || (config || {}).inverter_string_display || "sum"),
@@ -282,6 +284,11 @@ export function createDashboardEditorClass({
         "battery_temperature",
         "battery_cycles_today",
       ].forEach(addEntity);
+      normalizeBatteries(this._config.batteries || []).forEach((battery) => {
+        Object.entries(battery).forEach(([field, value]) => {
+          if (field.endsWith("_entity")) add(value);
+        });
+      });
     }
 
     if (key === "import_export_power") {
@@ -1033,6 +1040,25 @@ export function createDashboardEditorClass({
     next.garden = normalizeGardenConfig?.(next.garden || {}) || next.garden || {};
     next.garden.manual_actions = Array.isArray(next.garden.manual_actions) ? next.garden.manual_actions : [];
     next.garden.manual_actions.splice(index, 1);
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _addBattery() {
+    const next = this._cloneConfig(this._config || {});
+    next.batteries = normalizeBatteries(next.batteries || []);
+    const number = next.batteries.length + 2;
+    next.batteries.push({ id: `battery_${Date.now()}`, label: `${this._t("editor.battery", {}, "Battery")} ${number}`, level_entity: "", flow_power_entity: "", voltage_entity: "", charge_power_entity: "", discharge_power_entity: "", min_soc_entity: "", max_soc_entity: "", temperature_entity: "", cycles_today_entity: "", visible: true });
+    this._config = next;
+    this._dispatchConfig(next);
+    this._render();
+  }
+
+  _removeBattery(index) {
+    const next = this._cloneConfig(this._config || {});
+    next.batteries = normalizeBatteries(next.batteries || []);
+    next.batteries.splice(index, 1);
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -2228,7 +2254,16 @@ export function createDashboardEditorClass({
 
   _renderBatteryFlowInputs(metric) {
     if (metric.key !== "battery_level") return "";
+    const batteries = normalizeBatteries(this._config.batteries || []);
+    this._config.batteries = batteries;
+    const additional = batteries.map((battery, index) => `
+      <div class="box-field pv-string-field">
+        <div class="kpi-head"><strong>${this._escape(battery.label || `Battery ${index + 2}`)}</strong><button type="button" data-action="remove-battery" data-index="${index}">${this._escape(this._t("editor.kpiRemove"))}</button></div>
+        <label>${this._escape(this._t("editor.batteryLabel", {}, "Battery name"))}<input data-path="batteries.${index}.label" value="${this._escape(battery.label)}" /></label>
+        ${this._renderBatteryEntityFields(`batteries.${index}`, battery)}
+      </div>`).join("");
     return `
+      <div class="box-field pv-string-field"><div class="kpi-head"><strong>${this._escape(this._t("editor.battery", {}, "Battery"))} 1</strong></div>
       <label>${this._labelText(this._t("editor.batteryFlowEntity"), this._t("editor.helpSignedBattery", {}, "Use one signed sensor when possible: positive means charging, negative means discharging."))}
         <input data-path="entities.battery_flow_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_power" value="${this._escape(this._config.entities?.battery_flow_power || "")}" autocomplete="off" />
       </label>
@@ -2256,7 +2291,19 @@ export function createDashboardEditorClass({
       <label>${this._escape(this._t("editor.batteryCyclesTodayEntity", {}, "Battery cycles today entity"))}
         <input data-path="entities.battery_cycles_today" list="ha-solar-dashboard-entities" placeholder="sensor.battery_cycles_today" value="${this._escape(this._config.entities?.battery_cycles_today || "")}" autocomplete="off" />
       </label>
+      </div>${additional}<button type="button" data-action="add-battery">${this._escape(this._t("editor.batteryAdd", {}, "Add battery"))}</button>
     `;
+  }
+
+  _renderBatteryEntityFields(path, battery) {
+    const fields = [
+      ["level_entity", "editor.batteryLevelEntity", "Battery SoC entity"], ["flow_power_entity", "editor.batteryFlowEntity", "Battery flow entity (+/-)"],
+      ["voltage_entity", "editor.voltageEntity", "Voltage entity"], ["charge_power_entity", "editor.batteryChargeEntity", "Battery charge entity"],
+      ["discharge_power_entity", "editor.batteryDischargeEntity", "Battery discharge entity"], ["min_soc_entity", "editor.batteryMinSocEntity", "Battery min SoC entity"],
+      ["max_soc_entity", "editor.batteryMaxSocEntity", "Battery max SoC entity"], ["temperature_entity", "editor.batteryTemperatureEntity", "Battery temperature entity"],
+      ["cycles_today_entity", "editor.batteryCyclesTodayEntity", "Battery cycles today entity"],
+    ];
+    return fields.map(([key, translation, fallback]) => `<label>${this._escape(this._t(translation, {}, fallback))}<input data-path="${path}.${key}" list="ha-solar-dashboard-entities" value="${this._escape(battery[key] || "")}" autocomplete="off" /></label>`).join("");
   }
 
   _houseVariant() {
@@ -3675,6 +3722,7 @@ export function createDashboardEditorClass({
     this._config.garden = garden;
     this._config.pv_roof_string_display = normalizePvRoofStringDisplay(this._config.pv_roof_string_display);
     this._config.pv_roof_strings = normalizePvRoofStrings(this._config.pv_roof_strings || []);
+    this._config.batteries = normalizeBatteries(this._config.batteries || []);
     this._config.inverter_display = normalizeInverterDisplay(this._config.inverter_display);
     this._config.inverters = normalizeInverters(this._config.inverters || []);
     const largeConsumers = normalizeLargeConsumers(this._config.large_consumers || []);
@@ -3975,6 +4023,8 @@ export function createDashboardEditorClass({
         if (target.dataset.action === "remove-floorplan-item") this._removeSelectedFloorplanItem();
         if (target.dataset.action === "add-pv-roof-string") this._addPvRoofString();
         if (target.dataset.action === "remove-pv-roof-string") this._removePvRoofString(Number(target.dataset.index));
+        if (target.dataset.action === "add-battery") this._addBattery();
+        if (target.dataset.action === "remove-battery") this._removeBattery(Number(target.dataset.index));
         if (target.dataset.action === "add-inverter") this._addInverter();
         if (target.dataset.action === "remove-inverter") this._removeInverter(Number(target.dataset.index));
         if (target.dataset.action === "add-large-consumer") this._addLargeConsumer();

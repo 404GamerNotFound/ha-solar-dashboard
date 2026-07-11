@@ -4204,6 +4204,7 @@ const HaSolarDashboardCardEditorPanel = createDashboardEditorClass({
   normalizeHouse,
   normalizeInverterDisplay,
   normalizeInverters,
+  normalizeBatteries,
   normalizeLargeConsumers,
   normalizePvRoofStringDisplay,
   normalizePvRoofStrings,

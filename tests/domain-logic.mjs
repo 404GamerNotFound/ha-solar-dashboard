@@ -500,6 +500,14 @@ globalThis.customElements = globalThis.customElements || {
 };
 await import("../src/ha-solar-dashboard.js");
 const DashboardCard = globalThis.customElements.get("ha-solar-dashboard-card");
+const DashboardEditorPanel = globalThis.customElements.get("ha-solar-dashboard-card-editor-panel");
+const editorPanel = new DashboardEditorPanel();
+editorPanel._floorplanFloorLabel = () => "Level 1";
+editorPanel._normalizeEnvironmentSensors = () => [];
+editorPanel._normalizeFloorplan = () => ({ floors: [] });
+editorPanel._render = () => {};
+assert.doesNotThrow(() => editorPanel.setConfig({ entities: { battery_level: "sensor.battery_1_soc" }, batteries: [{ entity: "sensor.battery_2_soc" }] }));
+assert.equal(editorPanel._config.batteries[0].level_entity, "sensor.battery_2_soc");
 const voltageAlertCard = new DashboardCard();
 voltageAlertCard.config = {
   house: "single_family_home",

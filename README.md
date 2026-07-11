@@ -1,5 +1,7 @@
 # HA Solar Dashboard Card
 
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/default)
+
 A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy overview with an image-based layout.
 
 ## Screenshots

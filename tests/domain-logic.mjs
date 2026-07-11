@@ -538,4 +538,22 @@ const gridVoltageWarning = voltageAlertCard._gridVoltageAlert();
 assert.equal(gridVoltageWarning.type, "warning");
 assert.equal(gridVoltageWarning.entityId, "sensor.grid_voltage");
 
+const multiBatteryCard = new DashboardCard();
+multiBatteryCard.config = {
+  entities: { battery_level: "sensor.battery_1_soc" },
+  batteries: normalizeBatteries([{ id: "garage", label: "Garage battery", entity: "sensor.battery_2_soc", battery_temperature: "sensor.battery_2_temperature" }]),
+  positions: {}, visible_boxes: {}, labels: {}, label_visibility: {}, units: { battery: "%" },
+};
+multiBatteryCard._currentVariant = { positions: { battery_level: { left: 49, top: 66 } }, labels: {}, labelKeys: {}, visible_boxes: {} };
+multiBatteryCard._hass = { states: {
+  "sensor.battery_1_soc": { state: "80", attributes: { unit_of_measurement: "%" } },
+  "sensor.battery_2_soc": { state: "45", attributes: { unit_of_measurement: "%" } },
+  "sensor.battery_2_temperature": { state: "24", attributes: { unit_of_measurement: "°C" } },
+} };
+const additionalBatteryMetric = multiBatteryCard._additionalBatteryMetrics()[0];
+assert.equal(additionalBatteryMetric.key, "batteries.garage");
+assert.equal(multiBatteryCard._formatReading(additionalBatteryMetric), "45 %");
+assert.match(multiBatteryCard._renderMetric(additionalBatteryMetric, multiBatteryCard._currentVariant), /Garage battery/);
+assert.match(multiBatteryCard._renderMetric(additionalBatteryMetric, multiBatteryCard._currentVariant), /Temp 24 °C/);
+
 console.log("Domain logic tests passed");

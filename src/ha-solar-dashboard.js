@@ -758,6 +758,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.entity || "";
     if (metric.customKpi) return metric.customKpi.entity || "";
     if (metric.environmentSensor) return metric.environmentSensor.entity || "";
+    if (metric.battery) return metric.battery.level_entity || "";
     if (metric.largeConsumer) {
       if (this._currentEnergyRange() !== "live" && metric.unit === "power") return this._metricEnergyEntityId(metric);
       return this._largeConsumerPowerEntityId(metric);
@@ -1055,6 +1056,20 @@ class HaSolarDashboardCard extends HTMLElement {
         customKpi: kpi,
         tileOrder: kpi.position ?? 100 + index,
         tileColumns: kpi.columns ?? 1,
+      }));
+  }
+
+  _additionalBatteryMetrics() {
+    return normalizeBatteries(this.config.batteries || [])
+      .filter((battery) => battery.visible !== false && battery.level_entity)
+      .map((battery, index) => ({
+        key: `batteries.${battery.id || index}`,
+        label: battery.label || `${this._t("editor.battery", {}, "Battery")} ${index + 2}`,
+        unit: "battery",
+        color: "green",
+        battery,
+        tileOrder: 3 + index,
+        tileColumns: 1,
       }));
   }
 
@@ -1800,6 +1815,10 @@ class HaSolarDashboardCard extends HTMLElement {
       const number = numericState(rawValue);
       return Number.isFinite(number) ? number : undefined;
     }
+    if (metric.battery) {
+      const value = numericState(this._getEntityValue(metric.battery.level_entity, undefined));
+      return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : undefined;
+    }
     if (metric.largeConsumer) {
       if (this._currentEnergyRange() !== "live") {
         const info = this._energyRangeConsumptionInfo(metric);
@@ -1855,10 +1874,8 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _batteryPercent(metric) {
     if (metric.key !== "battery_level") return undefined;
-    const entityIds = [this.config.entities?.battery_level, ...normalizeBatteries(this.config.batteries || []).map((battery) => battery.level_entity)].filter(Boolean);
-    const values = entityIds.map((entityId) => numericState(this._getEntityValue(entityId, undefined))).filter(Number.isFinite).map((value) => Math.min(100, Math.max(0, value)));
-    if (!values.length) return undefined;
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
+    const value = numericState(this._getEntityValue(this.config.entities?.battery_level, undefined));
+    return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : undefined;
   }
 
   _batterySocEntityId() {
@@ -1928,6 +1945,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _meterPercent(metric) {
+    if (metric?.battery) return this._metricNumericValue(metric);
     if (this._currentEnergyRange() !== "live" && metric.unit === "power") return undefined;
     const batteryPercent = this._batteryPercent(metric);
     if (batteryPercent !== undefined) return batteryPercent;
@@ -2212,6 +2230,23 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderBatteryMetaRow(metric, { showFlowLabel = true, placement = showFlowLabel ? "footer" : "image" } = {}) {
+    if (metric.battery) {
+      const battery = metric.battery;
+      const flow = this._batteryFlowInfoForEntities(battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity);
+      const flowValue = this._formatBatteryFlowValue(flow);
+      const temperature = battery.temperature_entity
+        ? this._formatTemperatureLabel(this._getEntityValue(battery.temperature_entity, undefined), this._getEntityUnit(battery.temperature_entity) || "°C")
+        : "";
+      const voltage = battery.voltage_entity
+        ? this._formatVoltageValue(this._getEntityValue(battery.voltage_entity, undefined), this._getEntityUnit(battery.voltage_entity) || "V")
+        : "";
+      const values = [
+        flowValue ? `<span class="battery-flow ${flow.direction}">${flow.direction === "charge" ? "↓" : "↑"} ${this._escape(flowValue)}</span>` : "",
+        temperature ? `<span class="temp-badge">${this._escape(temperature)}</span>` : "",
+        voltage && voltage !== "—" ? `<span class="voltage-badge">${this._escape(voltage)}</span>` : "",
+      ].filter(Boolean).join("");
+      return values ? `<div class="meta-row">${values}</div>` : "";
+    }
     const metaHtml = [
       this._renderBatteryFlow(metric, { showLabel: showFlowLabel, placement }),
       this._renderBatteryTemperature(metric, { placement }),
@@ -2749,6 +2784,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...TILE_METRICS,
       ...this._visibleOverlayMetrics(),
       ...this._customKpiMetrics(),
+      ...this._additionalBatteryMetrics(),
       ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
@@ -2911,6 +2947,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.overlay) return this.config.image_overlays?.[metric.overlay]?.enabled === true;
     if (metric.customKpi) return metric.customKpi.visible !== false;
     if (metric.environmentSensor) return metric.environmentSensor.visible !== false && Boolean(metric.environmentSensor.entity);
+    if (metric.battery) return metric.battery.visible !== false && Boolean(metric.battery.level_entity);
     const configured = this.config.visible_boxes?.[metric.key];
     if (configured !== undefined) return configured !== false;
     if (metric.key === "import_export_power") return this._hasGridPowerSource();
@@ -2946,6 +2983,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
+      ...this._additionalBatteryMetrics(),
     ].sort((a, b) => (a.tileOrder ?? 0) - (b.tileOrder ?? 0));
   }
 
@@ -2963,6 +3001,7 @@ class HaSolarDashboardCard extends HTMLElement {
     });
     return [
       ...baseMetrics,
+      ...this._additionalBatteryMetrics(),
       ...this._environmentSensorMetrics({ placement: "image" }),
     ];
   }
@@ -2972,6 +3011,7 @@ class HaSolarDashboardCard extends HTMLElement {
     if (metric.overlay) return this._overlayLabel(metric.overlay);
     if (metric.customKpi) return metric.customKpi.label || metric.label;
     if (metric.environmentSensor) return metric.label || this._environmentSensorLabel(metric.environmentSensor);
+    if (metric.battery) return metric.battery.label || metric.label;
     if (metric.largeConsumer) return metric.label || this._largeConsumerLabel(metric.largeConsumer);
     if (metric.key === "import_export_power") {
       const status = this._gridStatusInfo();
@@ -2986,6 +3026,11 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _metricPosition(variant, key) {
+    if (String(key || "").startsWith("batteries.")) {
+      const index = this._additionalBatteryMetrics().findIndex((metric) => metric.key === key);
+      const base = { ...(variant.positions.battery_level || {}), ...(this.config.positions.battery_level || {}) };
+      return { left: (base.left ?? 49) + (index + 1) * 10, top: base.top ?? 66, ...(this.config.positions[key] || {}) };
+    }
     if (String(key || "").startsWith("environment_sensors.")) {
       const metric = this._environmentSensorMetrics({ placement: "image" }).find((item) => item.key === key)
         || this._environmentSensorMetrics().find((item) => item.key === key);
@@ -3822,6 +3867,7 @@ class HaSolarDashboardCard extends HTMLElement {
       ...this._visibleOverlayMetrics(),
       ...(this._showGridStatusTile() ? [GRID_STATUS_METRIC] : []),
       ...this._customKpiMetrics(),
+      ...this._additionalBatteryMetrics(),
       ...this._environmentSensorMetrics(),
       ...this._largeConsumerMetrics(),
     ];

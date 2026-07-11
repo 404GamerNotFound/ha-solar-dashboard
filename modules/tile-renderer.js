@@ -10,7 +10,7 @@ export function createTileRendererMethods() {
       const tooltip = this._metricTooltip(metric, variant);
       const warning = this._metricWarning(metric);
       const visibilityClass = metric.overlay ? this._labelVisibilityClass(metric.key, "footer") : "";
-      const valueHtml = metric.key === "battery_level"
+      const valueHtml = metric.key === "battery_level" || metric.battery
         ? `
           <div class="tile-value-row">
             <div class="num" data-value="${metric.key}">${this._renderMetricValueHtml(metric)}</div>

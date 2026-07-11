@@ -5127,6 +5127,22 @@ function createDashboardEditorClass({
           type: this._t("editor.layoutTypeBox", {}, "Box"),
         };
       });
+    const batteryItems = normalizeBatteries(this._config.batteries || []).map((battery, index) => {
+      const metricKey = `batteries.${battery.id || index}`;
+      const base = this._metricPosition({ key: "battery_level" });
+      const position = this._config.positions?.[metricKey] || {};
+      return {
+        key: `metric:${metricKey}`,
+        label: battery.label || `${this._t("editor.battery", {}, "Battery")} ${index + 2}`,
+        scope: "house",
+        left: Number(position.left ?? (Number(base.left) || 49) + (index + 1) * 10),
+        top: Number(position.top ?? (Number(base.top) || 66)),
+        leftPath: `positions.${metricKey}.left`,
+        topPath: `positions.${metricKey}.top`,
+        color: "#34d399",
+        type: this._t("editor.layoutTypeBox", {}, "Box"),
+      };
+    });
     const overlayItems = IMAGE_OVERLAY_KEYS
       .map((key) => {
         const config = this._overlayConfig(key);
@@ -5228,7 +5244,7 @@ function createDashboardEditorClass({
           };
         })
         .filter(Boolean);
-    return [...metricItems, ...overlayItems, ...environmentItems, ...electricVehicleItems, ...gardenItems, ...gardenZoneItems];
+    return [...metricItems, ...batteryItems, ...overlayItems, ...environmentItems, ...electricVehicleItems, ...gardenItems, ...gardenZoneItems];
   }
 
   _selectedLayoutItem(items) {

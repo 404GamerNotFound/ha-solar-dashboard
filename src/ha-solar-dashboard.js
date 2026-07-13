@@ -1876,13 +1876,23 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _batteryPercent(metric) {
-    if (metric.key !== "battery_level") return undefined;
-    const value = numericState(this._getEntityValue(this.config.entities?.battery_level, undefined));
+    const entityId = this._batterySocEntityIdForMetric(metric);
+    if (!entityId) return undefined;
+    const value = numericState(this._getEntityValue(entityId, undefined));
     return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : undefined;
   }
 
   _batterySocEntityId() {
     return this.config.entities?.battery_level || "";
+  }
+
+  _isBatteryMetric(metric) {
+    return metric?.key === "battery_level" || Boolean(metric?.battery);
+  }
+
+  _batterySocEntityIdForMetric(metric) {
+    if (metric?.battery) return metric.battery.level_entity || "";
+    return metric?.key === "battery_level" ? this._batterySocEntityId() : "";
   }
 
   _batteryMinSocEntityId() {
@@ -1895,6 +1905,16 @@ class HaSolarDashboardCard extends HTMLElement {
     return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
   }
 
+  _batteryMinSocEntityIdForMetric(metric) {
+    if (metric?.battery) return metric.battery.min_soc_entity || "";
+    return metric?.key === "battery_level" ? this._batteryMinSocEntityId() : "";
+  }
+
+  _batteryMaxSocEntityIdForMetric(metric) {
+    if (metric?.battery) return metric.battery.max_soc_entity || "";
+    return metric?.key === "battery_level" ? this._batteryMaxSocEntityId() : "";
+  }
+
   _batteryMinSocPercent() {
     return this._numericPercentFromEntity(this._batteryMinSocEntityId());
   }
@@ -1903,24 +1923,41 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._numericPercentFromEntity(this._batteryMaxSocEntityId());
   }
 
+  _batteryMinSocPercentForMetric(metric) {
+    return this._numericPercentFromEntity(this._batteryMinSocEntityIdForMetric(metric));
+  }
+
+  _batteryMaxSocPercentForMetric(metric) {
+    return this._numericPercentFromEntity(this._batteryMaxSocEntityIdForMetric(metric));
+  }
+
   _batteryCyclesTodayEntityId() {
     const aliases = ["battery_cycles_today", "battery_full_cycles_today", "battery_daily_cycles", "battery_cycles_day"];
     return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
   }
 
+  _batteryCyclesTodayEntityIdForMetric(metric) {
+    if (metric?.battery) return metric.battery.cycles_today_entity || "";
+    return metric?.key === "battery_level" ? this._batteryCyclesTodayEntityId() : "";
+  }
+
   _batteryCyclesToday() {
-    const entityId = this._batteryCyclesTodayEntityId();
+    return this._batteryCyclesTodayForMetric({ key: "battery_level" });
+  }
+
+  _batteryCyclesTodayForMetric(metric) {
+    const entityId = this._batteryCyclesTodayEntityIdForMetric(metric);
     if (!entityId) return undefined;
     const value = numericState(this._getEntityValue(entityId, undefined));
     return Number.isFinite(value) ? Math.max(0, value) : undefined;
   }
 
-  _batteryReserveThreshold() {
-    return this._batteryMinSocPercent() ?? this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
+  _batteryReserveThreshold(metric = { key: "battery_level" }) {
+    return this._batteryMinSocPercentForMetric(metric) ?? this._clampNumber(this.config.battery_low_threshold, 20, 0, 100);
   }
 
-  _batteryFullThreshold() {
-    return this._batteryMaxSocPercent() ?? 92;
+  _batteryFullThreshold(metric = { key: "battery_level" }) {
+    return this._batteryMaxSocPercentForMetric(metric) ?? 92;
   }
 
   _parsePowerLimitWatts(rawValue, defaultUnit = "kw") {
@@ -2030,15 +2067,33 @@ class HaSolarDashboardCard extends HTMLElement {
       : { direction: "discharge", entityId: dischargeEntityId, amount: dischargeAmount, kind: dischargeValue?.kind || "power", unit: dischargeValue?.unit || "W" };
   }
 
-  _formatBatteryFlowValue(info = this._batteryFlowInfo()) {
-    if (!info || !Number.isFinite(info.amount) || info.amount <= 0) return "";
-    if (info.kind === "energy") {
+  _batteryFlowEntityIdsForMetric(metric) {
+    if (metric?.battery) {
+      return [metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity].filter(Boolean);
+    }
+    if (metric?.key !== "battery_level") return [];
+    const primary = [this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power];
+    const additional = normalizeBatteries(this.config.batteries || []).flatMap((battery) => [battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity]);
+    return [...primary, ...additional].filter(Boolean);
+  }
+
+  _batteryFlowInfoForMetric(metric) {
+    if (metric?.battery) {
+      return this._batteryFlowInfoForEntities(metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity);
+    }
+    return metric?.key === "battery_level" ? this._batteryFlowInfo() : undefined;
+  }
+
+  _formatBatteryFlowValue(info) {
+    const selectedInfo = arguments.length === 0 ? this._batteryFlowInfo() : info;
+    if (!selectedInfo || !Number.isFinite(selectedInfo.amount) || selectedInfo.amount <= 0) return "";
+    if (selectedInfo.kind === "energy") {
       const unit = this.config.units?.battery_flow_power;
       const targetUnit = unit && this._isEnergyUnit(unit) ? unit : "kWh";
-      return this._formatEnergyValue(info.amount, "kWh", targetUnit);
+      return this._formatEnergyValue(selectedInfo.amount, "kWh", targetUnit);
     }
     const unit = this.config.units?.battery_flow_power || this.config.units?.power || "auto";
-    return this._formatPowerValue(info.amount, unit, "W");
+    return this._formatPowerValue(selectedInfo.amount, unit, "W");
   }
 
   _overlayPeriodMinutes(key = "smoke") {
@@ -2149,18 +2204,18 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderBatteryFlow(metric, { showLabel = false, placement = showLabel ? "footer" : "image" } = {}) {
-    if (metric.key !== "battery_level") return "";
+    if (!this._isBatteryMetric(metric) || this._batteryFlowEntityIdsForMetric(metric).length === 0) return "";
     if (this._currentEnergyRange() !== "live") return "";
-    if (!this._showLabelIn("battery_flow_power", placement)) return "";
-    const info = this._batteryFlowInfo();
+    if (!metric.battery && !this._showLabelIn("battery_flow_power", placement)) return "";
+    const info = this._batteryFlowInfoForMetric(metric);
     const value = this._formatBatteryFlowValue(info);
-    if (!info || !value) return "";
-    const arrow = info.direction === "charge" ? "↓" : "↑";
-    const directionLabel = this._batteryFlowDirectionLabel(info.direction);
-    const label = `${directionLabel}: ${value}`;
+    const arrow = info?.direction === "charge" ? "↓" : info?.direction === "discharge" ? "↑" : "";
+    const directionLabel = info ? this._batteryFlowDirectionLabel(info.direction) : "";
+    const label = info && value ? `${directionLabel}: ${value}` : "";
+    const withLabel = showLabel && !metric.battery;
     return `
-      <div class="battery-flow ${info.direction}${showLabel ? " with-label" : ""}${this._labelVisibilityClass("battery_flow_power", placement)}" data-battery-flow title="${this._escape(label)}" aria-label="${this._escape(label)}">
-        ${showLabel ? `<span class="battery-flow-label" data-battery-flow-label>${this._escape(directionLabel)}</span>` : ""}
+      <div class="battery-flow${info?.direction ? ` ${info.direction}` : ""}${withLabel ? " with-label" : ""}${metric.battery ? "" : this._labelVisibilityClass("battery_flow_power", placement)}" data-battery-flow="${this._escape(metric.key)}" title="${this._escape(label)}" aria-label="${this._escape(label)}" style="${value ? "" : "display:none"}">
+        ${withLabel ? `<span class="battery-flow-label" data-battery-flow-label>${this._escape(directionLabel)}</span>` : ""}
         <span class="battery-flow-arrow">${this._escape(arrow)}</span>
         <span data-battery-flow-value>${this._escape(value)}</span>
       </div>
@@ -2206,20 +2261,29 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _batteryVoltageLabel() {
-    const entityId = this._batteryVoltageEntityId();
+    return this._batteryVoltageLabelForMetric({ key: "battery_level" });
+  }
+
+  _batteryVoltageEntityIdForMetric(metric) {
+    if (metric?.battery) return metric.battery.voltage_entity || "";
+    return metric?.key === "battery_level" ? this._batteryVoltageEntityId() : "";
+  }
+
+  _batteryVoltageLabelForMetric(metric) {
+    const entityId = this._batteryVoltageEntityIdForMetric(metric);
     if (!entityId) return "";
     const label = this._formatVoltageValue(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "V");
     return label === "—" ? "" : label;
   }
 
   _renderBatteryVoltage(metric, { placement = "footer" } = {}) {
-    if (metric.key !== "battery_level" || !this._batteryVoltageEntityId()) return "";
+    if (!this._batteryVoltageEntityIdForMetric(metric)) return "";
     const key = "battery_flow_power_voltage";
-    if (!this._showLabelIn(key, placement)) return "";
-    const label = this._batteryVoltageLabel();
-    const tooltip = `${this._t("tooltip.voltage", {}, "Voltage")}: ${label}`;
+    if (!metric.battery && !this._showLabelIn(key, placement)) return "";
+    const label = this._batteryVoltageLabelForMetric(metric);
+    const tooltip = label ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${label}` : "";
     return `
-      <span class="voltage-badge${this._labelVisibilityClass(key, placement)}" data-battery-voltage title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="voltage-badge${metric.battery ? "" : this._labelVisibilityClass(key, placement)}" data-battery-voltage="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
@@ -2237,31 +2301,73 @@ class HaSolarDashboardCard extends HTMLElement {
     if (!this._batteryTemperatureEntityIdForMetric(metric)) return "";
     if (!metric.battery && !this._showLabelIn("battery_temperature", placement)) return "";
     const label = this._batteryTemperatureLabelForMetric(metric);
-    const tooltip = `${this._t("tooltip.temperature", {}, "Temperature")}: ${label}`;
+    const tooltip = label ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${label}` : "";
     return `
       <span class="temp-badge${metric.battery ? "" : this._labelVisibilityClass("battery_temperature", placement)}" data-battery-temperature="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
+  _formatBatteryPercent(percent) {
+    if (!Number.isFinite(percent)) return "";
+    return `${percent.toFixed(Number.isInteger(percent) ? 0 : 1)} %`;
+  }
+
+  _batteryMinSocLabelForMetric(metric) {
+    const value = this._formatBatteryPercent(this._batteryMinSocPercentForMetric(metric));
+    return value ? this._t("value.batteryMinSoc", { value }, `Min ${value}`) : "";
+  }
+
+  _batteryMaxSocLabelForMetric(metric) {
+    const value = this._formatBatteryPercent(this._batteryMaxSocPercentForMetric(metric));
+    return value ? this._t("value.batteryMaxSoc", { value }, `Max ${value}`) : "";
+  }
+
+  _batteryCyclesTodayLabelForMetric(metric) {
+    const cycles = this._batteryCyclesTodayForMetric(metric);
+    if (!Number.isFinite(cycles)) return "";
+    const value = cycles.toFixed(Number.isInteger(cycles) ? 0 : 1);
+    return this._t("value.batteryCyclesToday", { value }, `Cycles ${value}`);
+  }
+
+  _renderBatteryStatusBadge(metric, kind) {
+    const definitions = {
+      minSoc: {
+        entityId: this._batteryMinSocEntityIdForMetric(metric),
+        label: this._batteryMinSocLabelForMetric(metric),
+        tooltip: this._t("editor.batteryMinSocEntity", {}, "Battery min SoC entity"),
+        attribute: "data-battery-min-soc",
+        className: "soc-badge battery-limit-badge",
+      },
+      maxSoc: {
+        entityId: this._batteryMaxSocEntityIdForMetric(metric),
+        label: this._batteryMaxSocLabelForMetric(metric),
+        tooltip: this._t("editor.batteryMaxSocEntity", {}, "Battery max SoC entity"),
+        attribute: "data-battery-max-soc",
+        className: "soc-badge battery-limit-badge",
+      },
+      cycles: {
+        entityId: this._batteryCyclesTodayEntityIdForMetric(metric),
+        label: this._batteryCyclesTodayLabelForMetric(metric),
+        tooltip: this._t("editor.batteryCyclesTodayEntity", {}, "Battery cycles today entity"),
+        attribute: "data-battery-cycles",
+        className: "battery-cycle-badge",
+      },
+    };
+    const definition = definitions[kind];
+    if (!definition?.entityId) return "";
+    const title = definition.label ? `${definition.tooltip}: ${definition.label}` : "";
+    return `<span class="${definition.className}" ${definition.attribute}="${this._escape(metric.key)}" title="${this._escape(title)}" aria-label="${this._escape(title)}" style="${definition.label ? "" : "display:none"}">${this._escape(definition.label)}</span>`;
+  }
+
   _renderBatteryMetaRow(metric, { showFlowLabel = true, placement = showFlowLabel ? "footer" : "image" } = {}) {
-    if (metric.battery) {
-      const battery = metric.battery;
-      const flow = this._batteryFlowInfoForEntities(battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity);
-      const flowValue = this._formatBatteryFlowValue(flow);
-      const voltage = battery.voltage_entity
-        ? this._formatVoltageValue(this._getEntityValue(battery.voltage_entity, undefined), this._getEntityUnit(battery.voltage_entity) || "V")
-        : "";
-      const values = [
-        flowValue ? `<span class="battery-flow ${flow.direction}">${flow.direction === "charge" ? "↓" : "↑"} ${this._escape(flowValue)}</span>` : "",
-        this._renderBatteryTemperature(metric, { placement }),
-        voltage && voltage !== "—" ? `<span class="voltage-badge">${this._escape(voltage)}</span>` : "",
-      ].filter(Boolean).join("");
-      return values ? `<div class="meta-row">${values}</div>` : "";
-    }
+    if (!this._isBatteryMetric(metric)) return "";
     const metaHtml = [
       this._renderBatteryFlow(metric, { showLabel: showFlowLabel, placement }),
       this._renderBatteryTemperature(metric, { placement }),
       this._renderBatteryVoltage(metric, { placement }),
+      this._renderBatteryStatusBadge(metric, "minSoc"),
+      this._renderBatteryStatusBadge(metric, "maxSoc"),
+      this._renderBatteryStatusBadge(metric, "cycles"),
     ].filter(Boolean).join("");
     return metaHtml ? `<div class="meta-row">${metaHtml}</div>` : "";
   }
@@ -2586,9 +2692,9 @@ class HaSolarDashboardCard extends HTMLElement {
       return { type: "offline", label: this._t("warning.sensorOffline") };
     }
 
-    if (metric.key === "battery_level") {
-      const value = this._metricNumericValue(metric);
-      if (Number.isFinite(value) && value <= this._batteryReserveThreshold()) {
+    if (this._isBatteryMetric(metric)) {
+      const value = this._batteryPercent(metric);
+      if (Number.isFinite(value) && value <= this._batteryReserveThreshold(metric)) {
         return { type: "battery-low", label: this._t("warning.batteryLow") };
       }
     }
@@ -2614,6 +2720,13 @@ class HaSolarDashboardCard extends HTMLElement {
     const rawLabel = rawValue !== undefined && rawValue !== ""
       ? `${this._t("tooltip.raw")}: ${rawValue}${entityUnit ? ` ${entityUnit}` : ""}`
       : "";
+    const batteryFlow = this._batteryFlowInfoForMetric(metric);
+    const batteryFlowLabel = this._formatBatteryFlowValue(batteryFlow);
+    const batteryTemperatureLabel = this._batteryTemperatureLabelForMetric(metric);
+    const batteryVoltageLabel = this._batteryVoltageLabelForMetric(metric);
+    const batteryMinSocLabel = this._batteryMinSocLabelForMetric(metric);
+    const batteryMaxSocLabel = this._batteryMaxSocLabelForMetric(metric);
+    const batteryCyclesLabel = this._batteryCyclesTodayLabelForMetric(metric);
 
     return [
       this._metricLabel(metric, variant),
@@ -2621,15 +2734,18 @@ class HaSolarDashboardCard extends HTMLElement {
       `${this._t("tooltip.value")}: ${this._formatReading(metric)}`,
       rawLabel,
       this._meterTooltip(metric),
-      metric.key === "battery_level" && this._formatBatteryFlowValue()
-        ? `${this._t("tooltip.flow")}: ${this._formatBatteryFlowValue()}`
+      this._isBatteryMetric(metric) && batteryFlowLabel
+        ? `${this._t("tooltip.flow")}: ${batteryFlowLabel}`
         : "",
-      metric.key === "battery_level" && this._batteryTemperatureLabel()
-        ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${this._batteryTemperatureLabel()}`
+      this._isBatteryMetric(metric) && batteryTemperatureLabel
+        ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${batteryTemperatureLabel}`
         : "",
-      metric.key === "battery_level" && this._batteryVoltageLabel()
-        ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${this._batteryVoltageLabel()}`
+      this._isBatteryMetric(metric) && batteryVoltageLabel
+        ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${batteryVoltageLabel}`
         : "",
+      this._isBatteryMetric(metric) && batteryMinSocLabel ? batteryMinSocLabel : "",
+      this._isBatteryMetric(metric) && batteryMaxSocLabel ? batteryMaxSocLabel : "",
+      this._isBatteryMetric(metric) && batteryCyclesLabel ? batteryCyclesLabel : "",
       this._wallboxPhaseLabel(metric) ? `${this._t("tooltip.phases", {}, "Phases")}: ${this._wallboxPhaseLabel(metric)}` : "",
       this._wallboxSocLabel(metric) ? `${this._t("tooltip.vehicleSoc", {}, "Vehicle SoC")}: ${this._wallboxSocLabel(metric)}` : "",
       this._wallboxRemainingTimeLabel(metric) ? `${this._t("tooltip.remainingChargeTime", {}, "Remaining charge time")}: ${this._wallboxRemainingTimeLabel(metric)}` : "",
@@ -3394,7 +3510,6 @@ class HaSolarDashboardCard extends HTMLElement {
       this._domCache = undefined;
       return;
     }
-    const all = (selector) => Array.from(this.shadowRoot.querySelectorAll(selector));
     this._domCache = {
       labels: this._cacheElementsByAttribute("data-label"),
       values: this._cacheElementsByAttribute("data-value"),
@@ -3415,11 +3530,11 @@ class HaSolarDashboardCard extends HTMLElement {
       floorplanSensorValues: this._cacheElementsByAttribute("data-floorplan-sensor-value"),
       floorplanSensors: this._cacheElementsByAttribute("data-floorplan-sensor"),
       batteryTemperatures: this._cacheElementsByAttribute("data-battery-temperature"),
-      batteryVoltages: all("[data-battery-voltage]"),
-      batteryFlows: all("[data-battery-flow]"),
-      batteryFlowLabels: all("[data-battery-flow-label]"),
-      batteryFlowArrows: all(".battery-flow-arrow"),
-      batteryFlowValues: all("[data-battery-flow-value]"),
+      batteryVoltages: this._cacheElementsByAttribute("data-battery-voltage"),
+      batteryFlows: this._cacheElementsByAttribute("data-battery-flow"),
+      batteryMinSocs: this._cacheElementsByAttribute("data-battery-min-soc"),
+      batteryMaxSocs: this._cacheElementsByAttribute("data-battery-max-soc"),
+      batteryCycles: this._cacheElementsByAttribute("data-battery-cycles"),
       sceneImage: this.shadowRoot.querySelector(".scene-image"),
       flowOverlay: this.shadowRoot.querySelector("[data-flow-overlay]"),
       statusLabel: this.shadowRoot.querySelector("[data-status-label]"),
@@ -3448,6 +3563,57 @@ class HaSolarDashboardCard extends HTMLElement {
       element.setAttribute("title", temperatureTitle);
       element.setAttribute("aria-label", temperatureTitle);
     });
+  }
+
+  _updateBatteryVoltage(metric) {
+    const voltageLabel = this._batteryVoltageLabelForMetric(metric);
+    const voltageTitle = voltageLabel ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${voltageLabel}` : "";
+    this._cachedDomElements("batteryVoltages", metric.key).forEach((element) => {
+      if (element.textContent !== voltageLabel) element.textContent = voltageLabel;
+      element.style.display = voltageLabel ? "inline-flex" : "none";
+      element.setAttribute("title", voltageTitle);
+      element.setAttribute("aria-label", voltageTitle);
+    });
+  }
+
+  _updateBatteryFlow(metric) {
+    const flowInfo = this._batteryFlowInfoForMetric(metric);
+    const flowValue = this._formatBatteryFlowValue(flowInfo);
+    const directionLabel = flowInfo ? this._batteryFlowDirectionLabel(flowInfo.direction) : "";
+    const title = flowInfo && flowValue ? `${directionLabel}: ${flowValue}` : "";
+    this._cachedDomElements("batteryFlows", metric.key).forEach((element) => {
+      element.classList.toggle("charge", flowInfo?.direction === "charge");
+      element.classList.toggle("discharge", flowInfo?.direction === "discharge");
+      element.style.display = flowValue ? "inline-flex" : "none";
+      element.setAttribute("title", title);
+      element.setAttribute("aria-label", title);
+      const labelElement = element.querySelector("[data-battery-flow-label]");
+      const arrowElement = element.querySelector(".battery-flow-arrow");
+      const valueElement = element.querySelector("[data-battery-flow-value]");
+      if (labelElement && labelElement.textContent !== directionLabel) labelElement.textContent = directionLabel;
+      if (arrowElement) arrowElement.textContent = flowInfo?.direction === "charge" ? "↓" : flowInfo?.direction === "discharge" ? "↑" : "";
+      if (valueElement && valueElement.textContent !== flowValue) valueElement.textContent = flowValue;
+    });
+  }
+
+  _updateBatteryStatusBadge(metric, cacheKey, label, tooltip) {
+    const title = label ? `${tooltip}: ${label}` : "";
+    this._cachedDomElements(cacheKey, metric.key).forEach((element) => {
+      if (element.textContent !== label) element.textContent = label;
+      element.style.display = label ? "inline-flex" : "none";
+      element.setAttribute("title", title);
+      element.setAttribute("aria-label", title);
+    });
+  }
+
+  _updateBatteryMeta(metric) {
+    if (!this._isBatteryMetric(metric)) return;
+    this._updateBatteryTemperature(metric);
+    this._updateBatteryVoltage(metric);
+    this._updateBatteryFlow(metric);
+    this._updateBatteryStatusBadge(metric, "batteryMinSocs", this._batteryMinSocLabelForMetric(metric), this._t("editor.batteryMinSocEntity", {}, "Battery min SoC entity"));
+    this._updateBatteryStatusBadge(metric, "batteryMaxSocs", this._batteryMaxSocLabelForMetric(metric), this._t("editor.batteryMaxSocEntity", {}, "Battery max SoC entity"));
+    this._updateBatteryStatusBadge(metric, "batteryCycles", this._batteryCyclesTodayLabelForMetric(metric), this._t("editor.batteryCyclesTodayEntity", {}, "Battery cycles today entity"));
   }
 
   _showEntityMoreInfo(entityId = "") {
@@ -3904,7 +4070,7 @@ class HaSolarDashboardCard extends HTMLElement {
       this._cachedDomElements("values", metric.key).forEach((element) => {
         if (element.innerHTML !== readingHtml) element.innerHTML = readingHtml;
       });
-      this._updateBatteryTemperature(metric);
+      this._updateBatteryMeta(metric);
       const accent = this._metricAccent(metric);
       this._cachedDomElements("accents", metric.key).forEach((element) => {
         element.style.setProperty("--tile-accent", accent.color);
@@ -3990,35 +4156,6 @@ class HaSolarDashboardCard extends HTMLElement {
             element.setAttribute("title", text);
             element.setAttribute("aria-label", text);
           });
-        });
-      }
-      if (metric.key === "battery_level") {
-        const batteryVoltageLabel = this._batteryVoltageLabel();
-        const batteryVoltageTitle = batteryVoltageLabel ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${batteryVoltageLabel}` : "";
-        (this._domCache?.batteryVoltages || []).forEach((element) => {
-          if (element.textContent !== batteryVoltageLabel) element.textContent = batteryVoltageLabel;
-          element.style.display = batteryVoltageLabel ? "inline-flex" : "none";
-          element.setAttribute("title", batteryVoltageTitle);
-          element.setAttribute("aria-label", batteryVoltageTitle);
-        });
-        const flowInfo = this._batteryFlowInfo();
-        const flowValue = this._formatBatteryFlowValue(flowInfo);
-        (this._domCache?.batteryFlows || []).forEach((element) => {
-          element.classList.toggle("charge", flowInfo?.direction === "charge");
-          element.classList.toggle("discharge", flowInfo?.direction === "discharge");
-          element.style.display = flowValue ? "inline-flex" : "none";
-          const directionLabel = flowInfo ? this._batteryFlowDirectionLabel(flowInfo.direction) : "";
-          element.setAttribute("title", flowValue ? `${directionLabel}: ${flowValue}` : "");
-          element.setAttribute("aria-label", flowValue ? `${directionLabel}: ${flowValue}` : "");
-        });
-        (this._domCache?.batteryFlowLabels || []).forEach((element) => {
-          element.textContent = flowInfo ? this._batteryFlowDirectionLabel(flowInfo.direction) : "";
-        });
-        (this._domCache?.batteryFlowArrows || []).forEach((element) => {
-          element.textContent = flowInfo?.direction === "charge" ? "↓" : "↑";
-        });
-        (this._domCache?.batteryFlowValues || []).forEach((element) => {
-          element.textContent = flowValue;
         });
       }
     });
@@ -4321,6 +4458,7 @@ if (!window.customCards.some((card) => card.type === CARD_TYPE)) {
     type: CARD_TYPE,
     name: "HA Solar Dashboard Card",
     description: "PV energy overview dashboard card",
+    version: globalThis.__HA_SOLAR_DASHBOARD_VERSION__ || "development",
     preview: true,
     documentationURL: "https://github.com/404GamerNotFound/ha-solar-dashboard",
   });

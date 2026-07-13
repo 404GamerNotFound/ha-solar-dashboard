@@ -15,6 +15,11 @@ function writeText(path, content) {
   writeFileSync(target, content);
 }
 
+const packageVersion = JSON.parse(readText("package.json")).version;
+if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(packageVersion)) {
+  throw new Error(`package.json contains an invalid release version: ${packageVersion}`);
+}
+
 function stripModuleExports(source) {
   return source
     .replace(/\bexport\s+const\s+/g, "const ")
@@ -59,7 +64,9 @@ function inlineLocalModuleImports(source) {
 }
 
 function bootstrapPrelude() {
-  return `const HA_SOLAR_DASHBOARD_BUILD = "2026-05-22-bootstrap";
+  return `const HA_SOLAR_DASHBOARD_VERSION = ${JSON.stringify(packageVersion)};
+const HA_SOLAR_DASHBOARD_BUILD = ${JSON.stringify(`v${packageVersion}`)};
+globalThis.__HA_SOLAR_DASHBOARD_VERSION__ = HA_SOLAR_DASHBOARD_VERSION;
 globalThis.__HA_SOLAR_DASHBOARD_BUILD__ = HA_SOLAR_DASHBOARD_BUILD;
 (function registerHaSolarDashboardBootstrap() {
   const type = "ha-solar-dashboard-card";

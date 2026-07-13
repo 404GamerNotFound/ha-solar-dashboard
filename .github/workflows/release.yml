@@ -43,6 +43,17 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Verify release version
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          expected_tag="v$(node -p "require('./package.json').version")"
+          if [ "$RELEASE_TAG" != "$expected_tag" ]; then
+            echo "Release tag $RELEASE_TAG does not match package version $expected_tag" >&2
+            exit 1
+          fi
+
       - name: Verify HACS plugin package
         run: npm test
 
@@ -50,6 +61,7 @@ jobs:
         run: |
           mkdir -p release-assets
           cp ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
+          find images -type f -name '*.png' -exec cp {} release-assets/ \;
 
       - name: Ensure release exists
         env:
@@ -59,17 +71,6 @@ jobs:
             gh release create "${{ steps.release.outputs.tag }}" \
               --title "${{ steps.release.outputs.tag }}" \
               --notes "Automated release for ${{ steps.release.outputs.tag }}"
-
-      - name: Remove stale image assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release view "${{ steps.release.outputs.tag }}" --json assets --jq '.assets[].name' | \
-            while IFS= read -r asset; do
-              if [ "$asset" != "ha-solar-dashboard.js" ]; then
-                gh release delete-asset "${{ steps.release.outputs.tag }}" "$asset" --yes
-              fi
-            done
 
       - name: Publish release assets
         env:

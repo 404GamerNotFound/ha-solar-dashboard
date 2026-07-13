@@ -54,6 +54,9 @@ ha-card { border-radius:18px; overflow:hidden; background:radial-gradient(110% 8
 .phase-badge:empty { display:none; }
 .soc-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:82px; border-radius:999px; padding:2px 5px; background:rgba(52,211,153,.14); color:#86efac; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(134,239,172,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .soc-badge:empty { display:none; }
+.battery-limit-badge { color:#a7f3d0; }
+.battery-cycle-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:92px; border-radius:999px; padding:2px 5px; background:rgba(168,85,247,.14); color:#d8b4fe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(216,180,254,.2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.battery-cycle-badge:empty { display:none; }
 .temp-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:86px; border-radius:999px; padding:2px 5px; background:rgba(251,146,60,.14); color:#fdba74; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(253,186,116,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .temp-badge:empty { display:none; }
 .time-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:96px; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }

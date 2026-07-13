@@ -545,18 +545,40 @@ assert.equal(gridVoltageWarning.entityId, "sensor.grid_voltage");
 const multiBatteryCard = new DashboardCard();
 multiBatteryCard.config = {
   entities: { battery_level: "sensor.battery_1_soc" },
-  batteries: normalizeBatteries([{ id: "garage", label: "Garage battery", entity: "sensor.battery_2_soc", battery_temperature: "sensor.battery_2_temperature" }]),
+  batteries: normalizeBatteries([{
+    id: "garage",
+    label: "Garage battery",
+    entity: "sensor.battery_2_soc",
+    battery_flow_power: "sensor.battery_2_power",
+    battery_voltage: "sensor.battery_2_voltage",
+    battery_min_soc: "number.battery_2_min_soc",
+    battery_max_soc: "number.battery_2_max_soc",
+    battery_temperature: "sensor.battery_2_temperature",
+    battery_cycles_today: "sensor.battery_2_cycles_today",
+  }]),
   positions: {}, visible_boxes: {}, labels: {}, label_visibility: {}, units: { battery: "%" },
 };
 multiBatteryCard._currentVariant = { positions: { battery_level: { left: 49, top: 66 } }, labels: {}, labelKeys: {}, visible_boxes: {} };
 multiBatteryCard._hass = { states: {
   "sensor.battery_1_soc": { state: "80", attributes: { unit_of_measurement: "%" } },
   "sensor.battery_2_soc": { state: "45", attributes: { unit_of_measurement: "%" } },
+  "sensor.battery_2_power": { state: "-1200", attributes: { unit_of_measurement: "W" } },
+  "sensor.battery_2_voltage": { state: "51.2", attributes: { unit_of_measurement: "V" } },
+  "number.battery_2_min_soc": { state: "20", attributes: { unit_of_measurement: "%" } },
+  "number.battery_2_max_soc": { state: "95", attributes: { unit_of_measurement: "%" } },
   "sensor.battery_2_temperature": { state: "24", attributes: { unit_of_measurement: "°C" } },
+  "sensor.battery_2_cycles_today": { state: "1.5", attributes: {} },
 } };
 const additionalBatteryMetric = multiBatteryCard._additionalBatteryMetrics()[0];
 assert.equal(additionalBatteryMetric.key, "batteries.garage");
 assert.equal(multiBatteryCard._formatReading(additionalBatteryMetric), "45 %");
+assert.equal(multiBatteryCard._batteryPercent(additionalBatteryMetric), 45);
+assert.equal(multiBatteryCard._batteryReserveThreshold(additionalBatteryMetric), 20);
+assert.equal(multiBatteryCard._batteryFullThreshold(additionalBatteryMetric), 95);
+assert.equal(multiBatteryCard._batteryCyclesTodayForMetric(additionalBatteryMetric), 1.5);
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(additionalBatteryMetric).direction, "discharge");
+assert.equal(multiBatteryCard._formatBatteryFlowValue(undefined), "");
+assert.match(multiBatteryCard._formatBatteryFlowValue(), /1\.20? kW/);
 assert.equal(multiBatteryCard._visibleHudMetrics(multiBatteryCard._currentVariant).filter((metric) => metric.battery).length, 1);
 assert.equal(multiBatteryCard._visibleTileMetrics(multiBatteryCard._currentVariant).filter((metric) => metric.battery).length, 1);
 const orderedBatteryTiles = multiBatteryCard._visibleTileMetrics(multiBatteryCard._currentVariant);
@@ -567,11 +589,29 @@ assert.deepEqual(
 );
 assert.match(multiBatteryCard._renderMetric(additionalBatteryMetric, multiBatteryCard._currentVariant), /Garage battery/);
 assert.match(multiBatteryCard._renderMetric(additionalBatteryMetric, multiBatteryCard._currentVariant), /Temp 24 °C/);
+const additionalBatteryMeta = multiBatteryCard._renderBatteryMetaRow(additionalBatteryMetric);
+assert.match(additionalBatteryMeta, /data-battery-flow="batteries\.garage"/);
+assert.match(additionalBatteryMeta, /data-battery-voltage="batteries\.garage"/);
+assert.match(additionalBatteryMeta, /data-battery-min-soc="batteries\.garage"/);
+assert.match(additionalBatteryMeta, /data-battery-max-soc="batteries\.garage"/);
+assert.match(additionalBatteryMeta, /data-battery-cycles="batteries\.garage"/);
+multiBatteryCard._hass.states["sensor.battery_2_soc"].state = "15";
+assert.equal(multiBatteryCard._metricWarning(additionalBatteryMetric).type, "battery-low");
+multiBatteryCard._hass.states["sensor.battery_2_soc"].state = "45";
 
 const lateBatteryStateCard = new DashboardCard();
 lateBatteryStateCard.config = {
   entities: {},
-  batteries: normalizeBatteries([{ id: "garage", entity: "sensor.battery_2_soc", temperature_entity: "sensor.battery_2_temperature" }]),
+  batteries: normalizeBatteries([{
+    id: "garage",
+    entity: "sensor.battery_2_soc",
+    flow_power_entity: "sensor.battery_2_power",
+    voltage_entity: "sensor.battery_2_voltage",
+    min_soc_entity: "number.battery_2_min_soc",
+    max_soc_entity: "number.battery_2_max_soc",
+    temperature_entity: "sensor.battery_2_temperature",
+    cycles_today_entity: "sensor.battery_2_cycles_today",
+  }]),
   units: { battery: "%" },
 };
 const lateBatteryMetric = lateBatteryStateCard._additionalBatteryMetrics()[0];
@@ -580,6 +620,11 @@ assert.equal(lateBatteryStateCard._getEntityValue("sensor.missing", undefined), 
 assert.equal(lateBatteryStateCard._getEntityValue("sensor.missing"), "0");
 assert.doesNotMatch(initialBatteryMeta, /Temp 0 °C/);
 assert.match(initialBatteryMeta, /data-battery-temperature="batteries\.garage"/);
+assert.match(initialBatteryMeta, /data-battery-flow="batteries\.garage"/);
+assert.match(initialBatteryMeta, /data-battery-voltage="batteries\.garage"/);
+assert.match(initialBatteryMeta, /data-battery-min-soc="batteries\.garage"/);
+assert.match(initialBatteryMeta, /data-battery-max-soc="batteries\.garage"/);
+assert.match(initialBatteryMeta, /data-battery-cycles="batteries\.garage"/);
 assert.match(initialBatteryMeta, /display:none/);
 
 const temperatureAttributes = new Map();
@@ -588,15 +633,59 @@ const temperatureElement = {
   style: { display: "none" },
   setAttribute: (name, value) => temperatureAttributes.set(name, value),
 };
+const textElement = () => ({ textContent: "" });
+const flowClasses = new Map();
+const flowAttributes = new Map();
+const flowLabelElement = textElement();
+const flowArrowElement = textElement();
+const flowValueElement = textElement();
+const flowElement = {
+  style: { display: "none" },
+  classList: { toggle: (name, enabled) => flowClasses.set(name, enabled) },
+  setAttribute: (name, value) => flowAttributes.set(name, value),
+  querySelector: (selector) => ({
+    "[data-battery-flow-label]": flowLabelElement,
+    ".battery-flow-arrow": flowArrowElement,
+    "[data-battery-flow-value]": flowValueElement,
+  })[selector] || null,
+};
+const statusElement = () => ({
+  textContent: "",
+  style: { display: "none" },
+  attributes: new Map(),
+  setAttribute(name, value) { this.attributes.set(name, value); },
+});
+const voltageElement = statusElement();
+const minSocElement = statusElement();
+const maxSocElement = statusElement();
+const cyclesElement = statusElement();
 lateBatteryStateCard._domCache = {
   batteryTemperatures: new Map([[lateBatteryMetric.key, [temperatureElement]]]),
+  batteryFlows: new Map([[lateBatteryMetric.key, [flowElement]]]),
+  batteryVoltages: new Map([[lateBatteryMetric.key, [voltageElement]]]),
+  batteryMinSocs: new Map([[lateBatteryMetric.key, [minSocElement]]]),
+  batteryMaxSocs: new Map([[lateBatteryMetric.key, [maxSocElement]]]),
+  batteryCycles: new Map([[lateBatteryMetric.key, [cyclesElement]]]),
 };
 lateBatteryStateCard._hass = { states: {
+  "sensor.battery_2_power": { state: "-950", attributes: { unit_of_measurement: "W" } },
+  "sensor.battery_2_voltage": { state: "52.4", attributes: { unit_of_measurement: "V" } },
+  "number.battery_2_min_soc": { state: "15", attributes: { unit_of_measurement: "%" } },
+  "number.battery_2_max_soc": { state: "90", attributes: { unit_of_measurement: "%" } },
   "sensor.battery_2_temperature": { state: "27.6", attributes: { unit_of_measurement: "°C" } },
+  "sensor.battery_2_cycles_today": { state: "1.5", attributes: {} },
 } };
-lateBatteryStateCard._updateBatteryTemperature(lateBatteryMetric);
+lateBatteryStateCard._updateBatteryMeta(lateBatteryMetric);
 assert.equal(temperatureElement.textContent, "Temp 27.6 °C");
 assert.equal(temperatureElement.style.display, "inline-flex");
 assert.equal(temperatureAttributes.get("title"), "Temperature: Temp 27.6 °C");
+assert.equal(flowElement.style.display, "inline-flex");
+assert.equal(flowClasses.get("discharge"), true);
+assert.equal(flowArrowElement.textContent, "↑");
+assert.match(flowValueElement.textContent, /950 W/);
+assert.equal(voltageElement.textContent, "52.4 V");
+assert.equal(minSocElement.textContent, "Min 15 %");
+assert.equal(maxSocElement.textContent, "Max 90 %");
+assert.equal(cyclesElement.textContent, "Cycles 1.5");
 
 console.log("Domain logic tests passed");

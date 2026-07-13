@@ -148,6 +148,18 @@ function validatePackage() {
   const editorEntrySource = readText("src/ha-solar-dashboard-editor.js");
   const rootSource = readText("ha-solar-dashboard.js");
   const editorBundleSource = readText("ha-solar-dashboard-editor.js");
+  let packageVersion = "";
+  try {
+    packageVersion = JSON.parse(readText("package.json")).version || "";
+  } catch (error) {
+    fail(`package.json is not valid JSON: ${error.message}`);
+  }
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(packageVersion) || packageVersion === "0.0.0") {
+    fail("package.json must contain the actual semantic release version, not 0.0.0");
+  }
+  if (packageVersion && !rootSource.includes(`const HA_SOLAR_DASHBOARD_VERSION = "${packageVersion}";`)) {
+    fail("ha-solar-dashboard.js build metadata must match package.json version");
+  }
   const packageSource = [
     source,
     editorEntrySource,
@@ -162,6 +174,7 @@ function validatePackage() {
   }
   if (!source.includes(`const CARD_TYPE = "${repoName}-card"`)) fail(`CARD_TYPE must be ${repoName}-card`);
   if (!source.includes(`type: CARD_TYPE`)) fail("customCards metadata must register the card type");
+  if (!source.includes("version: globalThis.__HA_SOLAR_DASHBOARD_VERSION__")) fail("customCards metadata must expose the generated package version");
   if (/^\s*import\s+/m.test(rootSource)) fail("ha-solar-dashboard.js must be a bundled entry without static module imports");
   if (/^\s*import\s+/m.test(editorBundleSource)) fail("ha-solar-dashboard-editor.js must be a bundled entry without static module imports");
   if (rootSource.includes("import.meta")) fail("ha-solar-dashboard.js must not rely on import.meta so it can survive legacy resource loading");
@@ -223,6 +236,28 @@ function validatePackage() {
   if (oversizedWebpFiles.length > 0) fail(`large PNG images must have WebP companions <= 512 KiB: ${oversizedWebpFiles.join(", ")}`);
 }
 
+function validateReleaseWorkflows() {
+  const workflowPaths = [".github/workflows/release.yml", ".github/workflows/hacs-hotfix-release.yml"];
+  for (const workflowPath of workflowPaths) {
+    assertExists(workflowPath);
+    if (!existsSync(join(root, workflowPath))) continue;
+    const workflow = readText(workflowPath);
+    if (!workflow.includes("find images -type f -name '*.png' -exec cp {} release-assets/ \\;")) {
+      fail(`${workflowPath} must collect every PNG image as a flattened release asset`);
+    }
+    if (workflow.includes("release delete-asset")) {
+      fail(`${workflowPath} must not delete unrelated release assets`);
+    }
+    if (!workflow.includes("release-assets/* --clobber")) {
+      fail(`${workflowPath} must upload and replace all collected release assets`);
+    }
+  }
+  const releaseWorkflow = readText(".github/workflows/release.yml");
+  if (!releaseWorkflow.includes("require('./package.json').version")) {
+    fail("release workflow must verify that the Git tag matches package.json version");
+  }
+}
+
 function validateJavaScript() {
   const moduleFiles = [
     ...listFiles("modules").filter((file) => file.endsWith(".js")).map((file) => `modules/${file}`),
@@ -240,6 +275,7 @@ function validateJavaScript() {
 validateJson();
 validateReadme();
 validatePackage();
+validateReleaseWorkflows();
 validateJavaScript();
 
 if (failures.length > 0) {

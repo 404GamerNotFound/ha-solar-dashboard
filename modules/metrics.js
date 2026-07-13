@@ -3,10 +3,12 @@ export const OVERLAY_TILE_METRICS = Object.freeze([
   Object.freeze({ key: "overlay_heatpump", label: "Heat pump", labelKey: "overlay.heatpump", color: "blue", unit: "overlay", overlay: "heatpump", tileOrder: 8 }),
 ]);
 
+export const BATTERY_TILE_ORDER = 2;
+
 export const METRICS = Object.freeze([
   Object.freeze({ key: "pv_roof_power", label: "Roof PV", unit: "power", color: "yellow" }),
   Object.freeze({ key: "pv_shed_power", label: "Shed PV", unit: "power", color: "yellow" }),
-  Object.freeze({ key: "battery_level", label: "Battery", unit: "battery", color: "green" }),
+  Object.freeze({ key: "battery_level", label: "Battery", unit: "battery", color: "green", tileOrder: BATTERY_TILE_ORDER }),
   Object.freeze({ key: "inverter_power", label: "Inverter", unit: "power", color: "blue" }),
   Object.freeze({ key: "wallbox_power", label: "EV Charger", unit: "power", color: "blue" }),
   Object.freeze({ key: "wallbox2_power", label: "EV Charger 2", unit: "power", color: "blue", optional: true }),

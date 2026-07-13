@@ -559,7 +559,44 @@ assert.equal(additionalBatteryMetric.key, "batteries.garage");
 assert.equal(multiBatteryCard._formatReading(additionalBatteryMetric), "45 %");
 assert.equal(multiBatteryCard._visibleHudMetrics(multiBatteryCard._currentVariant).filter((metric) => metric.battery).length, 1);
 assert.equal(multiBatteryCard._visibleTileMetrics(multiBatteryCard._currentVariant).filter((metric) => metric.battery).length, 1);
+const orderedBatteryTiles = multiBatteryCard._visibleTileMetrics(multiBatteryCard._currentVariant);
+const primaryBatteryTileIndex = orderedBatteryTiles.findIndex((metric) => metric.key === "battery_level");
+assert.deepEqual(
+  orderedBatteryTiles.slice(primaryBatteryTileIndex, primaryBatteryTileIndex + 2).map((metric) => metric.key),
+  ["battery_level", "batteries.garage"],
+);
 assert.match(multiBatteryCard._renderMetric(additionalBatteryMetric, multiBatteryCard._currentVariant), /Garage battery/);
 assert.match(multiBatteryCard._renderMetric(additionalBatteryMetric, multiBatteryCard._currentVariant), /Temp 24 °C/);
+
+const lateBatteryStateCard = new DashboardCard();
+lateBatteryStateCard.config = {
+  entities: {},
+  batteries: normalizeBatteries([{ id: "garage", entity: "sensor.battery_2_soc", temperature_entity: "sensor.battery_2_temperature" }]),
+  units: { battery: "%" },
+};
+const lateBatteryMetric = lateBatteryStateCard._additionalBatteryMetrics()[0];
+const initialBatteryMeta = lateBatteryStateCard._renderBatteryMetaRow(lateBatteryMetric);
+assert.equal(lateBatteryStateCard._getEntityValue("sensor.missing", undefined), undefined);
+assert.equal(lateBatteryStateCard._getEntityValue("sensor.missing"), "0");
+assert.doesNotMatch(initialBatteryMeta, /Temp 0 °C/);
+assert.match(initialBatteryMeta, /data-battery-temperature="batteries\.garage"/);
+assert.match(initialBatteryMeta, /display:none/);
+
+const temperatureAttributes = new Map();
+const temperatureElement = {
+  textContent: "",
+  style: { display: "none" },
+  setAttribute: (name, value) => temperatureAttributes.set(name, value),
+};
+lateBatteryStateCard._domCache = {
+  batteryTemperatures: new Map([[lateBatteryMetric.key, [temperatureElement]]]),
+};
+lateBatteryStateCard._hass = { states: {
+  "sensor.battery_2_temperature": { state: "27.6", attributes: { unit_of_measurement: "°C" } },
+} };
+lateBatteryStateCard._updateBatteryTemperature(lateBatteryMetric);
+assert.equal(temperatureElement.textContent, "Temp 27.6 °C");
+assert.equal(temperatureElement.style.display, "inline-flex");
+assert.equal(temperatureAttributes.get("title"), "Temperature: Temp 27.6 °C");
 
 console.log("Domain logic tests passed");

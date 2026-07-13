@@ -10819,10 +10819,12 @@ const OVERLAY_TILE_METRICS = Object.freeze([
   Object.freeze({ key: "overlay_heatpump", label: "Heat pump", labelKey: "overlay.heatpump", color: "blue", unit: "overlay", overlay: "heatpump", tileOrder: 8 }),
 ]);
 
+const BATTERY_TILE_ORDER = 2;
+
 const METRICS = Object.freeze([
   Object.freeze({ key: "pv_roof_power", label: "Roof PV", unit: "power", color: "yellow" }),
   Object.freeze({ key: "pv_shed_power", label: "Shed PV", unit: "power", color: "yellow" }),
-  Object.freeze({ key: "battery_level", label: "Battery", unit: "battery", color: "green" }),
+  Object.freeze({ key: "battery_level", label: "Battery", unit: "battery", color: "green", tileOrder: BATTERY_TILE_ORDER }),
   Object.freeze({ key: "inverter_power", label: "Inverter", unit: "power", color: "blue" }),
   Object.freeze({ key: "wallbox_power", label: "EV Charger", unit: "power", color: "blue" }),
   Object.freeze({ key: "wallbox2_power", label: "EV Charger 2", unit: "power", color: "blue", optional: true }),
@@ -15419,9 +15421,10 @@ class HaSolarDashboardCard extends HTMLElement {
     return metric?.unit === "power" && this._currentEnergyRange() !== "live" && Boolean(this._metricEnergyEntityId(metric));
   }
 
-  _getEntityValue(entityId, fallback = "0") {
+  _getEntityValue(entityId, fallback) {
+    const missingValue = arguments.length >= 2 ? fallback : "0";
     const entity = this._getEntity(entityId);
-    if (!entity) return fallback;
+    if (!entity) return missingValue;
     return entity.state;
   }
 
@@ -15838,7 +15841,7 @@ class HaSolarDashboardCard extends HTMLElement {
         unit: "battery",
         color: "green",
         battery,
-        tileOrder: 3 + index,
+        tileOrder: BATTERY_TILE_ORDER,
         tileColumns: 1,
       }));
   }
@@ -16956,6 +16959,17 @@ class HaSolarDashboardCard extends HTMLElement {
     return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "°C");
   }
 
+  _batteryTemperatureEntityIdForMetric(metric) {
+    if (metric?.battery) return metric.battery.temperature_entity || "";
+    return metric?.key === "battery_level" ? this._batteryTemperatureEntityId() : "";
+  }
+
+  _batteryTemperatureLabelForMetric(metric) {
+    const entityId = this._batteryTemperatureEntityIdForMetric(metric);
+    if (!entityId) return "";
+    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "°C");
+  }
+
   _batteryVoltageEntityId() {
     const aliases = ["battery_flow_power_voltage", "battery_voltage", "battery_level_voltage"];
     return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
@@ -16990,12 +17004,12 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderBatteryTemperature(metric, { placement = "footer" } = {}) {
-    if (metric.key !== "battery_level" || !this._batteryTemperatureEntityId()) return "";
-    if (!this._showLabelIn("battery_temperature", placement)) return "";
-    const label = this._batteryTemperatureLabel();
+    if (!this._batteryTemperatureEntityIdForMetric(metric)) return "";
+    if (!metric.battery && !this._showLabelIn("battery_temperature", placement)) return "";
+    const label = this._batteryTemperatureLabelForMetric(metric);
     const tooltip = `${this._t("tooltip.temperature", {}, "Temperature")}: ${label}`;
     return `
-      <span class="temp-badge${this._labelVisibilityClass("battery_temperature", placement)}" data-battery-temperature title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
+      <span class="temp-badge${metric.battery ? "" : this._labelVisibilityClass("battery_temperature", placement)}" data-battery-temperature="${this._escape(metric.key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${label ? "" : "display:none"}">${this._escape(label)}</span>
     `;
   }
 
@@ -17004,15 +17018,12 @@ class HaSolarDashboardCard extends HTMLElement {
       const battery = metric.battery;
       const flow = this._batteryFlowInfoForEntities(battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity);
       const flowValue = this._formatBatteryFlowValue(flow);
-      const temperature = battery.temperature_entity
-        ? this._formatTemperatureLabel(this._getEntityValue(battery.temperature_entity, undefined), this._getEntityUnit(battery.temperature_entity) || "°C")
-        : "";
       const voltage = battery.voltage_entity
         ? this._formatVoltageValue(this._getEntityValue(battery.voltage_entity, undefined), this._getEntityUnit(battery.voltage_entity) || "V")
         : "";
       const values = [
         flowValue ? `<span class="battery-flow ${flow.direction}">${flow.direction === "charge" ? "↓" : "↑"} ${this._escape(flowValue)}</span>` : "",
-        temperature ? `<span class="temp-badge">${this._escape(temperature)}</span>` : "",
+        this._renderBatteryTemperature(metric, { placement }),
         voltage && voltage !== "—" ? `<span class="voltage-badge">${this._escape(voltage)}</span>` : "",
       ].filter(Boolean).join("");
       return values ? `<div class="meta-row">${values}</div>` : "";
@@ -18173,7 +18184,7 @@ class HaSolarDashboardCard extends HTMLElement {
       floorplanSensorLabels: this._cacheElementsByAttribute("data-floorplan-sensor-label"),
       floorplanSensorValues: this._cacheElementsByAttribute("data-floorplan-sensor-value"),
       floorplanSensors: this._cacheElementsByAttribute("data-floorplan-sensor"),
-      batteryTemperatures: all("[data-battery-temperature]"),
+      batteryTemperatures: this._cacheElementsByAttribute("data-battery-temperature"),
       batteryVoltages: all("[data-battery-voltage]"),
       batteryFlows: all("[data-battery-flow]"),
       batteryFlowLabels: all("[data-battery-flow-label]"),
@@ -18196,6 +18207,17 @@ class HaSolarDashboardCard extends HTMLElement {
   _cachedDomElements(cacheKey, value) {
     if (!this._domCache) this._refreshDomCache();
     return this._domCache?.[cacheKey]?.get(String(value)) || [];
+  }
+
+  _updateBatteryTemperature(metric) {
+    const temperatureLabel = this._batteryTemperatureLabelForMetric(metric);
+    const temperatureTitle = temperatureLabel ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${temperatureLabel}` : "";
+    this._cachedDomElements("batteryTemperatures", metric.key).forEach((element) => {
+      if (element.textContent !== temperatureLabel) element.textContent = temperatureLabel;
+      element.style.display = temperatureLabel ? "inline-flex" : "none";
+      element.setAttribute("title", temperatureTitle);
+      element.setAttribute("aria-label", temperatureTitle);
+    });
   }
 
   _showEntityMoreInfo(entityId = "") {
@@ -18919,6 +18941,7 @@ class HaSolarDashboardCard extends HTMLElement {
       this._cachedDomElements("values", metric.key).forEach((element) => {
         if (element.innerHTML !== readingHtml) element.innerHTML = readingHtml;
       });
+      this._updateBatteryTemperature(metric);
       const accent = this._metricAccent(metric);
       this._cachedDomElements("accents", metric.key).forEach((element) => {
         element.style.setProperty("--tile-accent", accent.color);
@@ -19007,14 +19030,6 @@ class HaSolarDashboardCard extends HTMLElement {
         });
       }
       if (metric.key === "battery_level") {
-        const temperatureLabel = this._batteryTemperatureLabel();
-        const temperatureTitle = temperatureLabel ? `${this._t("tooltip.temperature", {}, "Temperature")}: ${temperatureLabel}` : "";
-        (this._domCache?.batteryTemperatures || []).forEach((element) => {
-          if (element.textContent !== temperatureLabel) element.textContent = temperatureLabel;
-          element.style.display = temperatureLabel ? "inline-flex" : "none";
-          element.setAttribute("title", temperatureTitle);
-          element.setAttribute("aria-label", temperatureTitle);
-        });
         const batteryVoltageLabel = this._batteryVoltageLabel();
         const batteryVoltageTitle = batteryVoltageLabel ? `${this._t("tooltip.voltage", {}, "Voltage")}: ${batteryVoltageLabel}` : "";
         (this._domCache?.batteryVoltages || []).forEach((element) => {

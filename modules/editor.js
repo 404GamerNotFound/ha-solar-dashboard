@@ -3023,7 +3023,7 @@ export function createDashboardEditorClass({
       : Object.entries(GARDEN_HERO_BADGE_POSITIONS || {})
         .map(([key, fallback]) => {
           const definition = this._gardenDefinitions().find((item) => item.key === key);
-          if (!definition) return undefined;
+          if (!definition || key === "irrigation_status_text" || !this._gardenDisplayVisibility(key).image) return undefined;
           const positionKey = this._gardenHeroBadgePositionKey(key);
           const entityId = this._gardenLayoutEntityId(definition);
           if (!entityId && !this._layoutPositionConfigured(positionKey)) return undefined;
@@ -3473,6 +3473,42 @@ export function createDashboardEditorClass({
     return [...entityValues, ...zoneValues, ...actionValues];
   }
 
+  _gardenDisplayVisibility(key, garden = this._config.garden || {}) {
+    const normalized = normalizeGardenConfig?.(garden) || garden || {};
+    const configured = normalized.display?.[key] || {};
+    const irrigationEnabled = Boolean(normalized.entities?.irrigation_enabled);
+    const defaultImage = key === "garden_water"
+      ? !irrigationEnabled
+      : key === "irrigation_enabled"
+        ? irrigationEnabled
+        : ["mower_status", "rain_24h", "outdoor_temperature", "soil_moisture", "irrigation_status_text"].includes(key);
+    return {
+      image: configured.image !== undefined ? configured.image !== false : defaultImage,
+      footer: configured.footer !== undefined ? configured.footer !== false : key !== "irrigation_status_text",
+    };
+  }
+
+  _renderGardenDisplayOptions(definition, garden = this._config.garden || {}) {
+    const key = definition.key;
+    const display = this._gardenDisplayVisibility(key, garden);
+    const isOpen = this._openGardenDisplayOptions?.has(key);
+    const checkbox = (path, checked, label) => htmlTag("label", { class: "inline" }, [
+      rawHtml(htmlTag("input", { type: "checkbox", "data-path": path, checked })),
+      ` ${label}`,
+    ]);
+    return htmlTag("details", {
+      class: "label-options",
+      "data-garden-display-options": key,
+      open: isOpen,
+    }, [
+      rawHtml(htmlTag("summary", {}, this._t("editor.gardenDisplay", {}, "Display location"))),
+      rawHtml(htmlTag("div", { class: "checkbox-grid" }, rawHtml([
+        checkbox(`garden.display.${key}.image`, display.image, this._t("editor.gardenShowImage", {}, "Show in garden image")),
+        checkbox(`garden.display.${key}.footer`, display.footer, this._t("editor.gardenShowFooter", {}, "Show in garden footer")),
+      ].join("")))),
+    ]);
+  }
+
   _gardenGroups() {
     return [
       ["mower", "garden.groupMower", "Mäher"],
@@ -3505,6 +3541,7 @@ export function createDashboardEditorClass({
           <label>${this._labelText(this._t("editor.gardenEntity", {}, "Garten entity"), this._t("editor.helpHomeAssistantSensor", {}, "Choose the Home Assistant entity that provides this value."))}
             <input data-path="garden.entities.${this._escape(definition.key)}" list="ha-solar-dashboard-entities" placeholder="${this._escape(aliases.split(", ")[0] || `sensor.garden_${definition.key}`)}" value="${this._escape(value)}" autocomplete="off" />
           </label>
+          ${this._renderGardenDisplayOptions(definition, garden)}
         </div>
       </details>
     `;
@@ -4194,6 +4231,15 @@ export function createDashboardEditorClass({
         this._openLabelOptions = this._openLabelOptions || new Set();
         if (event.currentTarget.open) this._openLabelOptions.add(key);
         else this._openLabelOptions.delete(key);
+      });
+    });
+    this.shadowRoot.querySelectorAll("details[data-garden-display-options]").forEach((details) => {
+      details.addEventListener("toggle", (event) => {
+        const key = event.currentTarget.dataset.gardenDisplayOptions;
+        if (!key) return;
+        this._openGardenDisplayOptions = this._openGardenDisplayOptions || new Set();
+        if (event.currentTarget.open) this._openGardenDisplayOptions.add(key);
+        else this._openGardenDisplayOptions.delete(key);
       });
     });
 

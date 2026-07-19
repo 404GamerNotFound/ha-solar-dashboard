@@ -2,21 +2,69 @@ export const DEFAULT_GARDEN_IMAGE = "images/single_family_home_top_view_garden.p
 
 export const GARDEN_HERO_BADGE_POSITION_KEYS = Object.freeze({
   mower_status: "garden_mower_status",
+  mower_battery: "garden_mower_battery",
+  mower_next_start: "garden_mower_next_start",
+  mower_error: "garden_mower_error",
   garden_water: "garden_water",
+  irrigation_status_text: "garden_irrigation_status_text",
   irrigation_enabled: "garden_irrigation_enabled",
+  irrigation_next_start: "garden_irrigation_next_start",
+  irrigation_remaining: "garden_irrigation_remaining",
+  water_flow: "garden_water_flow",
+  water_consumption_today: "garden_water_consumption_today",
+  water_pressure: "garden_water_pressure",
+  cistern_level: "garden_cistern_level",
   rain_24h: "garden_rain_24h",
+  rain_today: "garden_rain_today",
   outdoor_temperature: "garden_outdoor_temperature",
+  humidity: "garden_humidity",
   soil_moisture: "garden_soil_moisture",
+  soil_temperature: "garden_soil_temperature",
+  garden_lights: "garden_lights",
+  garden_outlet: "garden_outlet",
+  pond_pump: "garden_pond_pump",
+  pool_pump: "garden_pool_pump",
 });
 
 export const GARDEN_HERO_BADGE_POSITIONS = Object.freeze({
   mower_status: Object.freeze({ left: 10, top: 9 }),
+  mower_battery: Object.freeze({ left: 29, top: 9 }),
+  mower_next_start: Object.freeze({ left: 50, top: 9 }),
+  mower_error: Object.freeze({ left: 70, top: 9 }),
   garden_water: Object.freeze({ left: 84, top: 11 }),
+  irrigation_status_text: Object.freeze({ left: 50, top: 12 }),
   irrigation_enabled: Object.freeze({ left: 84, top: 10 }),
+  irrigation_next_start: Object.freeze({ left: 82, top: 27 }),
+  irrigation_remaining: Object.freeze({ left: 82, top: 43 }),
+  water_flow: Object.freeze({ left: 82, top: 59 }),
+  water_consumption_today: Object.freeze({ left: 72, top: 75 }),
+  water_pressure: Object.freeze({ left: 54, top: 75 }),
+  cistern_level: Object.freeze({ left: 36, top: 75 }),
   rain_24h: Object.freeze({ left: 28, top: 86 }),
+  rain_today: Object.freeze({ left: 12, top: 86 }),
   outdoor_temperature: Object.freeze({ left: 47, top: 86 }),
+  humidity: Object.freeze({ left: 66, top: 86 }),
   soil_moisture: Object.freeze({ left: 43, top: 86 }),
+  soil_temperature: Object.freeze({ left: 27, top: 66 }),
+  garden_lights: Object.freeze({ left: 17, top: 45 }),
+  garden_outlet: Object.freeze({ left: 82, top: 45 }),
+  pond_pump: Object.freeze({ left: 26, top: 29 }),
+  pool_pump: Object.freeze({ left: 74, top: 29 }),
 });
+
+const DEFAULT_GARDEN_IMAGE_BADGES = Object.freeze(new Set([
+  "mower_status",
+  "garden_water",
+  "irrigation_enabled",
+  "rain_24h",
+  "outdoor_temperature",
+  "soil_moisture",
+  "irrigation_status_text",
+]));
+
+const DEFAULT_GARDEN_FOOTER_HIDDEN_FIELDS = Object.freeze(new Set([
+  "irrigation_status_text",
+]));
 
 export const GARDEN_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "mower_status", labelKey: "garden.mowerStatus", label: "Mäher", group: "mower", kind: "status", aliases: ["mower", "mower_status", "maeher_status", "mower_activity", "lawn_mower_status", "robot_mower_status"] }),
@@ -89,6 +137,23 @@ function normalizeGardenEntities(entities = {}) {
         ...(definition.aliases || []).map((alias) => source[alias]),
       ]),
     ]),
+  );
+}
+
+function normalizeGardenDisplay(display = {}) {
+  const source = display && typeof display === "object" ? display : {};
+  return Object.fromEntries(
+    Object.entries(source)
+      .filter(([key]) => GARDEN_ENTITY_DEFINITIONS.some((definition) => definition.key === key))
+      .map(([key, value]) => {
+        if (typeof value === "boolean") return [key, { image: value }];
+        if (!value || typeof value !== "object") return [key, {}];
+        const normalized = {};
+        if (Object.prototype.hasOwnProperty.call(value, "image")) normalized.image = value.image !== false;
+        if (Object.prototype.hasOwnProperty.call(value, "footer")) normalized.footer = value.footer !== false;
+        else if (Object.prototype.hasOwnProperty.call(value, "kpi")) normalized.footer = value.kpi !== false;
+        return [key, normalized];
+      }),
   );
 }
 
@@ -181,6 +246,7 @@ export function normalizeGardenConfig(config = {}) {
     day_image: String(source.day_image || source.image_day || source.garden_day_image || "").trim(),
     night_image: String(source.night_image || source.image_night || source.garden_night_image || "").trim(),
     entities: normalizeGardenEntities(entities),
+    display: normalizeGardenDisplay(source.display || source.label_display || source.label_visibility || {}),
     zones: normalizeGardenZones(source.zones || source.irrigation_zones || source.valves || []),
     manual_actions: normalizeGardenManualActions(source.manual_actions || source.actions || []),
     activity_log: normalizeGardenActivityLog(source.activity_log || {}),
@@ -359,10 +425,29 @@ export function createGardenDashboardMethods({
       };
     },
 
-    _gardenConfiguredFields() {
+    _gardenConfiguredFields({ placement } = {}) {
       return GARDEN_ENTITY_DEFINITIONS
         .map((definition) => ({ definition, state: this._gardenFieldState(definition) }))
-        .filter((item) => item.state.configured && item.state.value !== GARDEN_EMPTY_VALUE);
+        .filter((item) => item.state.configured && item.state.value !== GARDEN_EMPTY_VALUE)
+        .filter((item) => !placement || this._gardenDisplayVisibility(item.definition.key)[placement] !== false);
+    },
+
+    _gardenDefaultImageVisibility(key) {
+      if (key === "garden_water") {
+        return !this._gardenFieldState(this._gardenDefinition("irrigation_enabled")).configured;
+      }
+      if (key === "irrigation_enabled") {
+        return this._gardenFieldState(this._gardenDefinition("irrigation_enabled")).configured;
+      }
+      return DEFAULT_GARDEN_IMAGE_BADGES.has(key);
+    },
+
+    _gardenDisplayVisibility(key) {
+      const configured = this._gardenConfig().display?.[key] || {};
+      return {
+        image: configured.image !== undefined ? configured.image !== false : this._gardenDefaultImageVisibility(key),
+        footer: configured.footer !== undefined ? configured.footer !== false : !DEFAULT_GARDEN_FOOTER_HIDDEN_FIELDS.has(key),
+      };
     },
 
     _gardenImagePath() {
@@ -548,13 +633,21 @@ export function createGardenDashboardMethods({
       return this._gardenZones().find((zone) => this._gardenZoneIsOn(zone));
     },
 
-    _gardenStatusText() {
+    _gardenStatusText({ imageOnly = false } = {}) {
       const activeZone = this._gardenActiveZone();
       if (activeZone) return this._t("garden.zoneWatering", { zone: activeZone.short || activeZone.label }, `${activeZone.short || activeZone.label} watering`);
       const statusText = this._gardenFieldState(this._gardenDefinition("irrigation_status_text"));
-      if (statusText.configured && statusText.value !== GARDEN_EMPTY_VALUE) return statusText.value;
+      if (
+        statusText.configured
+        && statusText.value !== GARDEN_EMPTY_VALUE
+        && (!imageOnly || this._gardenDisplayVisibility("irrigation_status_text").image)
+      ) return statusText.value;
       const gardenWater = this._gardenFieldState(this._gardenDefinition("garden_water"));
-      if (gardenWater.configured && gardenWater.value !== GARDEN_EMPTY_VALUE) return gardenWater.value;
+      if (
+        gardenWater.configured
+        && gardenWater.value !== GARDEN_EMPTY_VALUE
+        && (!imageOnly || this._gardenDisplayVisibility("garden_water").image)
+      ) return gardenWater.value;
       return "";
     },
 
@@ -567,24 +660,20 @@ export function createGardenDashboardMethods({
       const gardenWater = this._gardenFieldState(this._gardenDefinition("garden_water"));
       const irrigationEnabled = this._gardenFieldState(this._gardenDefinition("irrigation_enabled"));
       const statusText = this._gardenStatusText();
+      const imageStatusText = this._gardenStatusText({ imageOnly: true });
       const stateLabel = statusText
         || (irrigationEnabled.configured && irrigationEnabled.value !== GARDEN_EMPTY_VALUE
           ? irrigationEnabled.value
           : mower.configured && mower.value !== GARDEN_EMPTY_VALUE
             ? mower.value
             : this._t("garden.ready", {}, "Bereit"));
-      const waterBadge = irrigationEnabled.configured
-        ? this._renderGardenHeroBadge("irrigation_enabled", "garden-badge-water")
-        : this._renderGardenHeroBadge("garden_water", "garden-badge-water");
       const heroBadges = [
-        this._renderGardenHeroBadge("mower_status", "garden-badge-mower"),
-        waterBadge,
-        this._renderGardenHeroBadge("rain_24h", "garden-badge-rain"),
-        this._renderGardenHeroBadge("outdoor_temperature", "garden-badge-temp"),
-        this._renderGardenHeroBadge("soil_moisture", "garden-badge-soil"),
+        ...this._gardenConfiguredFields({ placement: "image" })
+          .filter((item) => item.definition.key !== "irrigation_status_text")
+          .map((item) => this._renderGardenHeroBadge(item.definition.key, `garden-badge-${item.definition.key}`)),
         ...this._gardenZones().map((zone) => this._renderGardenZoneBadge(zone)),
       ].join("");
-      const configuredFieldItems = configuredFields.filter((item) => item.definition.key !== "irrigation_status_text");
+      const configuredFieldItems = this._gardenConfiguredFields({ placement: "footer" });
       const groups = GARDEN_GROUPS.map((group) => {
         const items = configuredFieldItems.filter((item) => item.definition.group === group.key);
         if (items.length === 0) return "";
@@ -632,7 +721,7 @@ export function createGardenDashboardMethods({
             <div class="garden-overlay">
               ${heroBadges}
             </div>
-            ${statusText ? `<div class="scene-status garden-scene-status">${this._escape(statusText)}</div>` : ""}
+            ${imageStatusText ? `<div class="scene-status garden-scene-status">${this._escape(imageStatusText)}</div>` : ""}
           </div>
           ${empty || `${zoneTiles}${actionTiles}${groups}`}
         </section>

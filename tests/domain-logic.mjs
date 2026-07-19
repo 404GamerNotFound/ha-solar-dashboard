@@ -40,6 +40,8 @@ import {
 } from "../modules/electric-vehicle.js";
 import {
   DEFAULT_GARDEN_IMAGE,
+  GARDEN_ENTITY_DEFINITIONS,
+  GARDEN_HERO_BADGE_POSITIONS,
   normalizeGardenConfig,
 } from "../modules/garden.js";
 import {
@@ -319,6 +321,11 @@ const gardenConfig = normalizeGardenConfig({
     gartenwasser: "switch.garden_water",
     automation_enabled: "input_boolean.irrigation_auto",
   },
+  display: {
+    mower_status: { image: false, footer: true },
+    rain_24h: false,
+    soil_moisture: { kpi: false },
+  },
   zones: [{ id: "z1", label: "Rasen links", left: 12, top: 34 }],
   manual_actions: [{ label: "Rasen starten", script: "script.bewaesserung_rasen_lauf", confirm: "Start?" }],
 });
@@ -327,6 +334,11 @@ assert.equal(gardenConfig.entities.mower_status, "sensor.mower_status");
 assert.equal(gardenConfig.entities.rain_24h, "sensor.rain_24h");
 assert.equal(gardenConfig.entities.garden_water, "switch.garden_water");
 assert.equal(gardenConfig.entities.irrigation_enabled, "input_boolean.irrigation_auto");
+assert.equal(gardenConfig.display.mower_status.image, false);
+assert.equal(gardenConfig.display.mower_status.footer, true);
+assert.equal(gardenConfig.display.rain_24h.image, false);
+assert.equal(gardenConfig.display.soil_moisture.footer, false);
+assert.ok(GARDEN_ENTITY_DEFINITIONS.every((definition) => GARDEN_HERO_BADGE_POSITIONS[definition.key]));
 assert.equal(gardenConfig.zones.length, 1);
 assert.equal(gardenConfig.zones[0].label, "Rasen links");
 assert.equal(gardenConfig.zones[0].left, 12);

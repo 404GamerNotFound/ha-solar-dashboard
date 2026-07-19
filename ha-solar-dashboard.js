@@ -15883,8 +15883,10 @@ class HaSolarDashboardCard extends HTMLElement {
           : "";
         return htmlTag("div", { class: "inverter-detail", title: part.label || "" }, [
           rawHtml(htmlTag("span", { class: "inverter-detail-name" }, part.label || "")),
-          rawHtml(htmlTag("span", { class: "inverter-detail-power" }, part.power)),
-          rawHtml(htmlTag("span", { class: "inverter-detail-temperature" }, part.temperature)),
+          rawHtml(htmlTag("span", { class: "inverter-detail-readings" }, [
+            rawHtml(htmlTag("span", { class: "inverter-detail-power" }, part.power)),
+            rawHtml(htmlTag("span", { class: "inverter-detail-temperature" }, part.temperature)),
+          ])),
           rawHtml(meter),
         ]);
       }).join("");
@@ -18202,7 +18204,7 @@ class HaSolarDashboardCard extends HTMLElement {
     ].join("");
 
     return htmlTag("div", {
-      class: `metric${this._metricStateClass(metric)}`,
+      class: `metric${this._isInverterDetailsMode(metric) ? " inverter-metric-details" : ""}${this._metricStateClass(metric)}`,
       "data-accent-key": metric.key,
       "data-metric": metric.key,
       "data-tooltip-key": metric.key,
@@ -18936,6 +18938,7 @@ class HaSolarDashboardCard extends HTMLElement {
         @keyframes flow-move { from { stroke-dashoffset:0; } to { stroke-dashoffset:-100; } }
         @media (prefers-reduced-motion:reduce){ .flow-line-pulse{animation:none;stroke-dashoffset:0;opacity:var(--flow-reduced-opacity);} }
         .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; z-index:3; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:pointer; box-sizing:border-box; }
+        .metric.inverter-metric-details { width:clamp(9.75rem,24%,14rem); container-type:inline-size; }
         .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
         .metric .value-row { display:flex; align-items:center; gap:5px; min-width:0; max-width:100%; }
         .tile .tile-value-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; max-width:100%; margin-top:2px; }
@@ -18945,13 +18948,15 @@ class HaSolarDashboardCard extends HTMLElement {
         .value-combo .value-secondary { font-size:.72em; opacity:.74; font-weight:700; }
         .value-combo .value-separator { color:rgba(243,246,255,.55); font-size:.72em; }
         .inverter-details { display:grid; gap:7px; min-width:0; width:100%; }
-        .inverter-detail { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:baseline; gap:3px 7px; min-width:0; padding-bottom:7px; border-bottom:1px solid color-mix(in srgb,var(--tile-accent) 24%,rgba(255,255,255,.12)); }
+        .inverter-detail { display:grid; grid-template-columns:minmax(0,1fr) max-content; grid-template-areas:"name readings" "meter meter"; align-items:baseline; column-gap:clamp(.35rem,4cqi,.85rem); row-gap:3px; min-width:0; padding-bottom:7px; border-bottom:1px solid color-mix(in srgb,var(--tile-accent) 24%,rgba(255,255,255,.12)); }
         .inverter-detail:last-child { padding-bottom:0; border-bottom:0; }
-        .inverter-detail-name { min-width:0; color:var(--text-muted); font-size:.76em; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .inverter-detail-name { grid-area:name; min-width:0; color:var(--text-muted); font-size:.76em; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .inverter-detail-readings { grid-area:readings; display:flex; align-items:baseline; justify-content:flex-end; gap:clamp(.35rem,4cqi,.85rem); min-width:0; white-space:nowrap; }
         .inverter-detail-power { min-width:0; color:var(--tile-accent); font-weight:800; white-space:nowrap; }
         .inverter-detail-temperature { min-width:0; color:#fdba74; font-size:.82em; font-weight:800; white-space:nowrap; }
-        .inverter-meter { grid-column:1 / -1; width:100%; height:5px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
+        .inverter-meter { grid-area:meter; width:100%; height:5px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
         .inverter-meter span { display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,color-mix(in srgb,var(--tile-accent) 64%,#fff),var(--tile-accent)); box-shadow:0 0 10px color-mix(in srgb,var(--tile-accent) 62%,transparent); transition:width .28s ease; }
+        @container (max-width:12rem){ .inverter-detail { grid-template-columns:minmax(0,1fr); grid-template-areas:"name" "readings" "meter"; } .inverter-detail-readings { justify-content:flex-start; } }
         .metric-meter { width:100%; height:5px; margin-top:6px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); }
         .metric-meter span { display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,color-mix(in srgb,var(--tile-accent) 64%,#fff),var(--tile-accent)); box-shadow:0 0 10px color-mix(in srgb,var(--tile-accent) 62%,transparent); transition:width .28s ease; }
         .battery-flow { display:inline-flex; align-items:center; gap:3px; flex:0 1 auto; min-width:0; max-width:62px; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08); overflow:hidden; white-space:nowrap; }

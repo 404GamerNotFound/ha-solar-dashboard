@@ -558,6 +558,7 @@ inverterDetailsCard._hass = {
 };
 const inverterDetailsHtml = inverterDetailsCard._renderMetricValueHtml({ key: "inverter_power", unit: "power" });
 assert.match(inverterDetailsHtml, /Garage inverter/);
+assert.match(inverterDetailsHtml, /inverter-detail-readings/);
 assert.match(inverterDetailsHtml, /Temp 35 °C/);
 assert.equal((inverterDetailsHtml.match(/class="inverter-meter"/g) || []).length, 2);
 const voltageAlertCard = new DashboardCard();

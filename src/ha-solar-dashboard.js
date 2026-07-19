@@ -1053,8 +1053,10 @@ class HaSolarDashboardCard extends HTMLElement {
           : "";
         return htmlTag("div", { class: "inverter-detail", title: part.label || "" }, [
           rawHtml(htmlTag("span", { class: "inverter-detail-name" }, part.label || "")),
-          rawHtml(htmlTag("span", { class: "inverter-detail-power" }, part.power)),
-          rawHtml(htmlTag("span", { class: "inverter-detail-temperature" }, part.temperature)),
+          rawHtml(htmlTag("span", { class: "inverter-detail-readings" }, [
+            rawHtml(htmlTag("span", { class: "inverter-detail-power" }, part.power)),
+            rawHtml(htmlTag("span", { class: "inverter-detail-temperature" }, part.temperature)),
+          ])),
           rawHtml(meter),
         ]);
       }).join("");
@@ -3372,7 +3374,7 @@ class HaSolarDashboardCard extends HTMLElement {
     ].join("");
 
     return htmlTag("div", {
-      class: `metric${this._metricStateClass(metric)}`,
+      class: `metric${this._isInverterDetailsMode(metric) ? " inverter-metric-details" : ""}${this._metricStateClass(metric)}`,
       "data-accent-key": metric.key,
       "data-metric": metric.key,
       "data-tooltip-key": metric.key,

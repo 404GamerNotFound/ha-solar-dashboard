@@ -81,6 +81,10 @@ import {
   weatherImageFiles,
 } from "../modules/weather-images.js";
 import {
+  HOUSE_VARIANTS,
+  normalizeHouse,
+} from "../modules/house-variants.js";
+import {
   buildInverterEntries,
   normalizeInverterDisplay,
   normalizeInverters,
@@ -95,6 +99,8 @@ function gridLabel(kind) {
 }
 
 assert.equal(normalizeInverterDisplay("name power temperature"), "details");
+assert.equal(normalizeHouse("single-family-home-landscape"), "single_family_home_landscape");
+assert.equal(HOUSE_VARIANTS.single_family_home_landscape.aspectRatio, "16 / 9");
 const detailedInverter = normalizeInverters([{
   label: "Garage",
   power_entity: "sensor.garage_inverter_power",

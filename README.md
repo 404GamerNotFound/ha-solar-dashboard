@@ -33,7 +33,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 
 ### House Dashboard
 
-- Selectable house layouts from the `images` folder: `single_family_home`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, and `city_villa_pitched_roof`.
+- Selectable house layouts from the `images` folder: `single_family_home`, `single_family_home_landscape`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, and `city_villa_pitched_roof`. The landscape single-family home provides more horizontal space for HUD boxes and moves the solar shed to the right.
 - Automatic day/night image switching via `sun.sun`, plus optional weather-specific image suffixes from `weather_entity`.
 - Custom standard/night and daylight images via `/local/...` or full `https://...` image URLs.
 - Image HUD boxes and footer tiles for roof PV, shed PV, PV total, house consumption, battery, inverter, EV chargers, water meter, grid import/export, and additional consumers.
@@ -367,7 +367,7 @@ large_consumers:
 ## Card options
 
 - `title` (string, default: `Energy Flow`)
-- `house` (string, default: `single_family_home`; options: `single_family_home`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, `city_villa_pitched_roof`; legacy German values are still accepted as aliases)
+- `house` (string, default: `single_family_home`; options: `single_family_home`, `single_family_home_landscape`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, `city_villa_pitched_roof`; legacy German values are still accepted as aliases)
 - `region_profile` (string, default: `auto`; options: `auto`, `eu`, `us`; applies regional defaults while keeping explicit single-option overrides)
 - `unit_system` (string, default: `auto`; options: `auto`, `metric`, `us`; `auto` follows `region_profile`; `us` defaults water to `gal`, temperature to `°F`, rain to `in`, pressure to `psi`, water flow to `gal/min`, and EV range to `mi`)
 - `view_mode` (string, default: `house`; options: `house`, `electric_vehicle`, `garden`, `floorplan`, `advisor`, `charts`, `records`; controls which dashboard view the card opens with)

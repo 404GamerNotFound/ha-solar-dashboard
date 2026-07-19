@@ -11578,6 +11578,22 @@ const HOUSE_VARIANTS = {
       import_export_power: { left: 82, top: 83 },
     },
   },
+  single_family_home_landscape: {
+    label: "Single Family Home Landscape",
+    folder: "single_family_home_landscape",
+    file: "single_family_home_landscape.png",
+    dayFile: "single_family_home_landscape_day.png",
+    aspectRatio: "16 / 9",
+    positions: {
+      pv_roof_power: { left: 57, top: 26 },
+      pv_shed_power: { left: 87, top: 66 },
+      battery_level: { left: 49, top: 66 },
+      inverter_power: { left: 44, top: 68 },
+      wallbox_power: { left: 21, top: 61 },
+      water_meter: { left: 76, top: 73 },
+      import_export_power: { left: 80, top: 84 },
+    },
+  },
   duplex_house: {
     label: "Duplex House",
     folder: "duplex_house",
@@ -11704,6 +11720,10 @@ const DEFAULT_IMAGE_OVERLAYS = {
     smoke: { left: 58, top: 18, width: 9 },
     heatpump: { left: 82, top: 63, width: 11, orientation: "right" },
   },
+  single_family_home_landscape: {
+    smoke: { left: 51, top: 20, width: 8 },
+    heatpump: { left: 76, top: 64, width: 10, orientation: "right" },
+  },
   duplex_house: {
     smoke: { left: 52, top: 18, width: 9 },
     heatpump: { left: 78, top: 66, width: 11, orientation: "right" },
@@ -11744,6 +11764,10 @@ function normalizeHouse(value) {
     modern: "single_family_home",
     einfamilienhaus: "single_family_home",
     "single-family-home": "single_family_home",
+    "single-family-home-landscape": "single_family_home_landscape",
+    "single-family-landscape": "single_family_home_landscape",
+    "einfamilienhaus-landscape": "single_family_home_landscape",
+    "einfamilienhaus-breitformat": "single_family_home_landscape",
     doppelhaus: "duplex_house",
     "doppel-haus": "duplex_house",
     duplex: "duplex_house",
@@ -12211,6 +12235,7 @@ const I18N = {
     "house.city_villa_pitched_roof": "City Villa with Pitched Roof",
     "house.duplex_house": "Duplex House",
     "house.single_family_home": "Single Family Home",
+    "house.single_family_home_landscape": "Single Family Home Landscape",
     "house.terraced_middle_house": "Terraced Middle House",
     "metrics.battery_level": "Battery",
     "metrics.grid_status": "Grid",
@@ -12870,6 +12895,7 @@ const I18N = {
     "house.city_villa_pitched_roof": "Stadtvilla mit Satteldach",
     "house.duplex_house": "Doppelhaus",
     "house.single_family_home": "Einfamilienhaus",
+    "house.single_family_home_landscape": "Einfamilienhaus – Breitformat",
     "house.terraced_middle_house": "Reihenmittelhaus",
     "metrics.battery_level": "Batterie",
     "metrics.grid_status": "Netz",
@@ -13529,6 +13555,7 @@ const I18N = {
     "house.city_villa_pitched_roof": "Villa urbana con tejado inclinado",
     "house.duplex_house": "Casa dúplex",
     "house.single_family_home": "Casa unifamiliar",
+    "house.single_family_home_landscape": "Casa unifamiliar apaisada",
     "house.terraced_middle_house": "Casa adosada central",
     "metrics.battery_level": "Batería",
     "metrics.grid_status": "Red",
@@ -14188,6 +14215,7 @@ const I18N = {
     "house.city_villa_pitched_roof": "Villa urbaine avec toit incliné",
     "house.duplex_house": "Maison duplex",
     "house.single_family_home": "Maison individuelle",
+    "house.single_family_home_landscape": "Maison individuelle panoramique",
     "house.terraced_middle_house": "Maison mitoyenne centrale",
     "metrics.battery_level": "Batterie",
     "metrics.grid_status": "Réseau",
@@ -14847,6 +14875,7 @@ const I18N = {
     "house.city_villa_pitched_roof": "Willa miejska z dachem spadzistym",
     "house.duplex_house": "Dom bliźniaczy",
     "house.single_family_home": "Dom jednorodzinny",
+    "house.single_family_home_landscape": "Dom jednorodzinny – poziomy",
     "house.terraced_middle_house": "Środkowy dom szeregowy",
     "metrics.battery_level": "Bateria",
     "metrics.grid_status": "Sieć",
@@ -18856,6 +18885,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
+    const sceneStyle = this._escape(styleMap({ "--scene-aspect-ratio": state.variant?.aspectRatio || "91 / 64" }));
     const advisorHtml = activeView === "advisor" ? this._renderEnergyAdvisor({ dashboard: true }) : "";
     const electricVehicleDashboardHtml = activeView === ELECTRIC_VEHICLE_DASHBOARD_VIEW ? this._renderElectricVehicleDashboard() : "";
     const gardenDashboardHtml = activeView === GARDEN_DASHBOARD_VIEW ? this._renderGardenDashboard() : "";
@@ -18921,7 +18951,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .view-mode-button.active { background:linear-gradient(135deg,rgba(31,143,255,.5),rgba(52,211,153,.22)); color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 4px 12px rgba(31,143,255,.22); }
         .view-mode-button:focus-visible { outline:2px solid rgba(147,197,253,.95); outline-offset:1px; }
         @container (max-width:560px){ .view-mode-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; } .view-mode-button { padding:0 6px; } }
-        .scene { position:relative; aspect-ratio:91/64; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
+        .scene { position:relative; aspect-ratio:var(--scene-aspect-ratio,91 / 64); border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.1); margin-bottom:12px; background:#101626; }
         .scene-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.03); }
         .image-overlay-wrap { position:absolute; z-index:1; width:10%; transform:translate(-50%,var(--overlay-translate-y,-50%)); transform-origin:center bottom; pointer-events:none; user-select:none; }
         .image-overlay { display:block; width:100%; height:auto; transform:scaleX(var(--overlay-scale-x,1)); transform-origin:center bottom; filter:drop-shadow(0 8px 12px rgba(0,0,0,.24)); }
@@ -19207,7 +19237,7 @@ class HaSolarDashboardCard extends HTMLElement {
                   : activeView === RECORDS_DASHBOARD_VIEW
                     ? recordsDashboardHtml
                     : `
-            <div class="scene"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
+            <div class="scene" style="${sceneStyle}"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
             ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${environmentSectionHtml}${largeConsumerSectionHtml}` : ""}
           `}
       </ha-card>

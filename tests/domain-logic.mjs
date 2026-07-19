@@ -80,6 +80,11 @@ import {
   variantImage,
   weatherImageFiles,
 } from "../modules/weather-images.js";
+import {
+  buildInverterEntries,
+  normalizeInverterDisplay,
+  normalizeInverters,
+} from "../modules/pv-strings.js";
 
 function gridLabel(kind) {
   return {
@@ -88,6 +93,20 @@ function gridLabel(kind) {
     neutral: "Neutral",
   }[kind] || kind;
 }
+
+assert.equal(normalizeInverterDisplay("name power temperature"), "details");
+const detailedInverter = normalizeInverters([{
+  label: "Garage",
+  power_entity: "sensor.garage_inverter_power",
+  temperature: "sensor.garage_inverter_temperature",
+  max_power_kw: 8,
+}])[0];
+assert.equal(detailedInverter.temperature_entity, "sensor.garage_inverter_temperature");
+assert.deepEqual(buildInverterEntries({
+  powerEntityId: "sensor.home_inverter_power",
+  temperatureEntityId: "sensor.home_inverter_temperature",
+  inverters: [detailedInverter],
+})[0].temperatureEntityId, "sensor.home_inverter_temperature");
 
 assert.deepEqual(normalizeBatteries([{ entity: "sensor.battery_2_soc", battery_flow_power: "sensor.battery_2_power" }])[0], {
   id: "battery_2",
@@ -512,6 +531,35 @@ editorPanel._normalizeFloorplan = () => ({ floors: [] });
 editorPanel._render = () => {};
 assert.doesNotThrow(() => editorPanel.setConfig({ entities: { battery_level: "sensor.battery_1_soc" }, batteries: [{ entity: "sensor.battery_2_soc" }] }));
 assert.equal(editorPanel._config.batteries[0].level_entity, "sensor.battery_2_soc");
+const inverterDetailsCard = new DashboardCard();
+inverterDetailsCard.config = {
+  entities: {
+    inverter_power: "sensor.home_inverter_power",
+    inverter_temperature: "sensor.home_inverter_temperature",
+  },
+  inverters: normalizeInverters([{
+    label: "Garage inverter",
+    power_entity: "sensor.garage_inverter_power",
+    temperature_entity: "sensor.garage_inverter_temperature",
+    max_power_kw: 8,
+  }]),
+  inverter_display: "details",
+  max_power_kw: { inverter_power: 10 },
+  energy_range: "live",
+  units: {},
+};
+inverterDetailsCard._hass = {
+  states: {
+    "sensor.home_inverter_power": { state: "2500", attributes: { unit_of_measurement: "W" } },
+    "sensor.home_inverter_temperature": { state: "32.5", attributes: { unit_of_measurement: "°C" } },
+    "sensor.garage_inverter_power": { state: "4", attributes: { unit_of_measurement: "kW" } },
+    "sensor.garage_inverter_temperature": { state: "35", attributes: { unit_of_measurement: "°C" } },
+  },
+};
+const inverterDetailsHtml = inverterDetailsCard._renderMetricValueHtml({ key: "inverter_power", unit: "power" });
+assert.match(inverterDetailsHtml, /Garage inverter/);
+assert.match(inverterDetailsHtml, /Temp 35 °C/);
+assert.equal((inverterDetailsHtml.match(/class="inverter-meter"/g) || []).length, 2);
 const voltageAlertCard = new DashboardCard();
 voltageAlertCard.config = {
   house: "single_family_home",

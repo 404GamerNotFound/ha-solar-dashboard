@@ -105,7 +105,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Custom KPI tiles with entity or static values, units, color, sort position, and desktop column width.
 - Environment sensor tiles for temperature, hot water, outdoor values, pressure, humidity, air quality, CO2, PM2.5, AQI, and custom sensors.
 - Additional large consumer tiles for washing machine, dishwasher, fan heater, dryer, domestic hot water heat pump, and custom devices.
-- Multiple PV roof strings and additional inverters with sum, values, or dominant display modes.
+- Multiple PV roof strings and additional inverters with sum, values, dominant, or detailed per-inverter display modes.
 - Optional smoke/gas and heat pump image overlays with labels, entities, period selection, position, size, and orientation controls.
 
 ## Installation (HACS)
@@ -425,8 +425,9 @@ large_consumers:
 - `entities.battery_temperature` (entity id, optional; battery temperature badge shown on the battery HUD and tile)
 - `entities.battery_cycles_today` (entity id, optional; daily/full cycles used by the Advisor Dashboard to warn about frequent battery cycling)
 - `entities.inverter_power` (entity id)
-- `inverter_display` (`sum`, `values`, or `dominant`, default: `sum`; controls how multiple inverters are shown on the inverter HUD/tile)
-- `inverters` (array, optional; additional inverters after the existing `entities.inverter_power` / `energy_entities.inverter_power.entity` / `max_power_kw.inverter_power` base inverter; each item supports `label`, `power_entity`, `energy_entity`, `voltage_entity`, `voltage_entity_l1`, `voltage_entity_l2`, `voltage_entity_l3`, `max_power_kw`, and `visible`)
+- `entities.inverter_temperature` (entity id, optional; temperature for the base inverter in detailed display)
+- `inverter_display` (`sum`, `values`, `dominant`, or `details`, default: `sum`; `details` shows name, live power, and temperature for every configured inverter, plus an individual utilization bar when `max_power_kw` is set)
+- `inverters` (array, optional; additional inverters after the existing `entities.inverter_power` / `energy_entities.inverter_power.entity` / `max_power_kw.inverter_power` base inverter; each item supports `label`, `power_entity`, `energy_entity`, `temperature_entity`, `voltage_entity`, `voltage_entity_l1`, `voltage_entity_l2`, `voltage_entity_l3`, `max_power_kw`, and `visible`)
 - `entities.wallbox_power` (entity id)
 - `entities.wallbox_phase` (entity id, optional; state can be `Auto`, `1`, `2`, or `3` and is shown as a compact phase badge on the Wallbox HUD and tile)
 - `entities.wallbox_soc` (entity id, optional; vehicle battery SoC shown as a compact `Auto 78%` badge next to the Wallbox phase badge)

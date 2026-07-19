@@ -54,6 +54,7 @@ export function normalizePvRoofStringDisplay(value) {
 function normalizePowerSourceConfig(raw, index, {
   fallbackIdPrefix = "item",
   fallbackLabel = "Item",
+  includeTemperature = false,
 } = {}) {
   const source = raw && typeof raw === "object" ? raw : { power_entity: raw };
   const sequence = index + 2;
@@ -67,6 +68,9 @@ function normalizePowerSourceConfig(raw, index, {
     label: String(source.label || source.name || `${fallbackLabel} ${sequence}`).trim(),
     power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
     energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.kwh || source.energy || source.counter || source.meter || "").trim(),
+    ...(includeTemperature ? {
+      temperature_entity: String(source.temperature_entity || source.temperatureEntity || source.temperature || source.temp_entity || source.tempEntity || "").trim(),
+    } : {}),
     voltage_entity: String(source.voltage_entity || source.voltageEntity || source.voltage || source.voltage_meter || "").trim(),
     voltage_entity_l1: String(source.voltage_entity_l1 || source.voltageEntityL1 || source.voltage_l1 || source.voltageL1 || "").trim(),
     voltage_entity_l2: String(source.voltage_entity_l2 || source.voltageEntityL2 || source.voltage_l2 || source.voltageL2 || "").trim(),
@@ -86,7 +90,7 @@ function normalizePowerSourceConfigs(configs, normalizeItem) {
       : [];
   return rawList
     .map((item, index) => normalizeItem(item, index))
-    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.voltage_entity || item.voltage_entity_l1 || item.voltage_entity_l2 || item.voltage_entity_l3 || item.label);
+    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.temperature_entity || item.voltage_entity || item.voltage_entity_l1 || item.voltage_entity_l2 || item.voltage_entity_l3 || item.label);
 }
 
 function normalizePvRoofStringConfig(raw, index) {
@@ -100,6 +104,7 @@ function normalizeInverterConfig(raw, index) {
   return normalizePowerSourceConfig(raw, index, {
     fallbackIdPrefix: "inverter",
     fallbackLabel: "Inverter",
+    includeTemperature: true,
   });
 }
 
@@ -108,7 +113,16 @@ export function normalizePvRoofStrings(strings) {
 }
 
 export function normalizeInverterDisplay(value) {
-  return normalizePvRoofStringDisplay(value);
+  const normalized = String(value || "sum").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const aliases = {
+    detail: "details",
+    detailed: "details",
+    list: "details",
+    name_power_temperature: "details",
+    name_power_temp: "details",
+  };
+  const mode = aliases[normalized] || normalized;
+  return mode === "details" ? mode : normalizePvRoofStringDisplay(mode);
 }
 
 export function normalizeInverters(inverters) {
@@ -123,6 +137,7 @@ function buildPowerSourceEntries({
   configs = [],
   powerEntityId = "",
   energyEntityId = "",
+  temperatureEntityId = "",
   maxPowerKw,
   maxPowerW,
   maxPower,
@@ -144,6 +159,7 @@ function buildPowerSourceEntries({
     label: baseLabel,
     powerEntityId: powerEntityId || "",
     energyEntityId: energyEntityId || "",
+    temperatureEntityId: temperatureEntityId || "",
     voltageEntityId: voltageEntityId || "",
     voltageEntityIdL1: voltageEntityIdL1 || "",
     voltageEntityIdL2: voltageEntityIdL2 || "",
@@ -159,6 +175,7 @@ function buildPowerSourceEntries({
       label: config.label || `${fallbackLabel} ${index + 2}`,
       powerEntityId: config.power_entity || "",
       energyEntityId: config.energy_entity || "",
+      temperatureEntityId: config.temperature_entity || "",
       voltageEntityId: config.voltage_entity || "",
       voltageEntityIdL1: config.voltage_entity_l1 || "",
       voltageEntityIdL2: config.voltage_entity_l2 || "",
@@ -167,7 +184,7 @@ function buildPowerSourceEntries({
       base: false,
       visible: true,
     }))
-    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.voltageEntityId || entry.voltageEntityIdL1 || entry.voltageEntityIdL2 || entry.voltageEntityIdL3 || entry.maxPowerWatts);
+    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.temperatureEntityId || entry.voltageEntityId || entry.voltageEntityIdL1 || entry.voltageEntityIdL2 || entry.voltageEntityIdL3 || entry.maxPowerWatts);
   return [baseEntry, ...extraEntries];
 }
 
@@ -198,6 +215,7 @@ export function buildInverterEntries({
   inverters = [],
   powerEntityId = "",
   energyEntityId = "",
+  temperatureEntityId = "",
   maxPowerKw,
   maxPowerW,
   maxPower,
@@ -210,6 +228,7 @@ export function buildInverterEntries({
     configs: inverters,
     powerEntityId,
     energyEntityId,
+    temperatureEntityId,
     maxPowerKw,
     maxPowerW,
     maxPower,

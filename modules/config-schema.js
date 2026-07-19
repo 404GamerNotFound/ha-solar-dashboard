@@ -192,6 +192,7 @@ export function createStubEntities() {
     battery_temperature: "",
     battery_cycles_today: "",
     inverter_power: "sensor.wechselrichter_power",
+    inverter_temperature: "",
     inverter_power_voltage: "",
     inverter_power_voltage_l1: "",
     inverter_power_voltage_l2: "",

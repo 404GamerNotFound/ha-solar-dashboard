@@ -897,12 +897,18 @@ class HaSolarDashboardCard extends HTMLElement {
     ].map((key) => this.config.entities?.[key]).find(Boolean) || "";
   }
 
+  _inverterBaseTemperatureEntityId() {
+    const aliases = ["inverter_temperature", "inverter_power_temperature", "inverter_temp"];
+    return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
+  }
+
   _inverterEntries() {
     const labelPrefix = this._t("metrics.inverter_power", {}, "Inverter");
     return buildInverterEntries({
       inverters: this.config.inverters || [],
       powerEntityId: this.config.entities?.inverter_power || "",
       energyEntityId: this._inverterBaseEnergyEntityId(),
+      temperatureEntityId: this._inverterBaseTemperatureEntityId(),
       maxPowerKw: this.config.max_power_kw?.inverter_power,
       maxPowerW: this.config.max_power_w?.inverter_power,
       maxPower: this.config.max_power?.inverter_power,
@@ -979,6 +985,38 @@ class HaSolarDashboardCard extends HTMLElement {
       : this._inverterEnergyParts();
   }
 
+  _isInverterDetailsMode(metric) {
+    return this._isInverterMetric(metric)
+      && this._inverterDisplayMode() === "details"
+      && this._currentEnergyRange() === "live";
+  }
+
+  _inverterDetailParts(metric) {
+    if (!this._isInverterDetailsMode(metric)) return [];
+    const unit = this._inverterPowerUnit(metric);
+    return this._inverterEntries()
+      .filter((entry) => entry.powerEntityId || entry.temperatureEntityId)
+      .map((entry) => {
+        const watts = this._inverterEntryPowerWatts(entry);
+        const temperatureEntityId = entry.temperatureEntityId || "";
+        const temperature = temperatureEntityId
+          ? this._formatTemperatureLabel(
+            this._getEntityValue(temperatureEntityId, undefined),
+            this._getEntityUnit(temperatureEntityId) || "°C",
+          ) || "—"
+          : "—";
+        const percent = Number.isFinite(watts) && Number.isFinite(entry.maxPowerWatts) && entry.maxPowerWatts > 0
+          ? Math.min(100, Math.max(0, (watts / entry.maxPowerWatts) * 100))
+          : undefined;
+        return {
+          ...entry,
+          power: Number.isFinite(watts) ? this._formatPowerValue(watts, unit, "W") : "—",
+          temperature,
+          percent,
+        };
+      });
+  }
+
   _formatInverterReading(metric) {
     const parts = this._inverterReadingParts(metric);
     return formatInverterReading({
@@ -1003,6 +1041,25 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderMetricValueHtml(metric) {
+    const inverterDetails = this._inverterDetailParts(metric);
+    if (inverterDetails.length > 0) {
+      const rows = inverterDetails.map((part) => {
+        const meter = Number.isFinite(part.percent)
+          ? htmlTag("div", {
+            class: "inverter-meter",
+            title: `${this._t("tooltip.load")}: ${part.percent.toFixed(0)}%`,
+            "aria-hidden": "true",
+          }, rawHtml(htmlTag("span", { style: { width: `${part.percent.toFixed(0)}%` } })))
+          : "";
+        return htmlTag("div", { class: "inverter-detail", title: part.label || "" }, [
+          rawHtml(htmlTag("span", { class: "inverter-detail-name" }, part.label || "")),
+          rawHtml(htmlTag("span", { class: "inverter-detail-power" }, part.power)),
+          rawHtml(htmlTag("span", { class: "inverter-detail-temperature" }, part.temperature)),
+          rawHtml(meter),
+        ]);
+      }).join("");
+      return htmlTag("div", { class: "inverter-details" }, rawHtml(rows));
+    }
     const parts = this._multiSourceReadingParts(metric);
     const mode = this._multiSourceDisplayMode(metric);
     if (parts.length === 0 || mode === "sum") return this._escape(this._formatReading(metric));
@@ -1403,6 +1460,7 @@ class HaSolarDashboardCard extends HTMLElement {
       .flatMap((inverter) => [
         inverter.power_entity,
         inverter.energy_entity,
+        inverter.temperature_entity,
         inverter.voltage_entity,
         inverter.voltage_entity_l1,
         inverter.voltage_entity_l2,
@@ -2007,6 +2065,7 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _renderMetricMeter(metric) {
+    if (this._isInverterDetailsMode(metric)) return "";
     const percent = this._meterPercent(metric);
     if (percent === undefined) return "";
     return htmlTag("div", {

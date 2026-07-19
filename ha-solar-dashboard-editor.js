@@ -504,6 +504,7 @@ function createStubEntities() {
     battery_temperature: "",
     battery_cycles_today: "",
     inverter_power: "sensor.wechselrichter_power",
+    inverter_temperature: "",
     inverter_power_voltage: "",
     inverter_power_voltage_l1: "",
     inverter_power_voltage_l2: "",
@@ -2473,6 +2474,7 @@ function createDashboardEditorClass({
       normalizeInverters(this._config.inverters || []).forEach((inverter) => {
         add(inverter.power_entity);
         add(inverter.energy_entity);
+        add(inverter.temperature_entity);
         add(inverter.voltage_entity);
         add(inverter.voltage_entity_l1);
         add(inverter.voltage_entity_l2);
@@ -3308,6 +3310,7 @@ function createDashboardEditorClass({
       label,
       power_entity: "",
       energy_entity: "",
+      temperature_entity: "",
       voltage_entity: "",
       voltage_entity_l1: "",
       voltage_entity_l2: "",
@@ -3601,6 +3604,7 @@ function createDashboardEditorClass({
       { path: "entities.battery_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c"], required: [["battery", "batterie", "speicher", "akku"], ["temperature", "temperatur", "temp"]], include: [batteryTerms, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["power", "leistung", "soc"], threshold: 58 },
       { path: "entities.battery_cycles_today", domains: ["sensor"], required: [["battery", "batterie", "speicher", "akku"], ["cycle", "cycles", "zyklen", "vollzyklen"], ["today", "heute", "daily", "tag"]], include: [batteryTerms, { terms: ["cycle", "cycles", "zyklen", "vollzyklen", "today", "heute", "daily", "tag"], weight: 34 }], exclude: ["power", "leistung", "soc", "temperature", "temperatur"], threshold: 58 },
       { path: "entities.inverter_power", ...powerTarget, required: [["inverter", "wechselrichter", "wr"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, ...powerTarget.include], exclude: ["battery", "batterie", "soc", "temperature"], threshold: 56 },
+      { path: "entities.inverter_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c", "°f", "f"], required: [["inverter", "wechselrichter", "wr"], ["temperature", "temperatur", "temp"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["battery", "batterie", "power", "leistung"], threshold: 58 },
       { path: "entities.inverter_power_voltage_l1", ...voltageTarget, required: [["inverter", "wechselrichter", "wr"], ["l1", "phase 1", "phase l1", "spannung l1", "u1"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, { terms: ["l1", "phase 1", "phase l1", "spannung l1", "u1"], weight: 34 }, ...voltageTarget.include], exclude: ["battery", "batterie", "l2", "l3", ...voltageTarget.exclude], threshold: 62 },
       { path: "entities.inverter_power_voltage_l2", ...voltageTarget, required: [["inverter", "wechselrichter", "wr"], ["l2", "phase 2", "phase l2", "spannung l2", "u2"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, { terms: ["l2", "phase 2", "phase l2", "spannung l2", "u2"], weight: 34 }, ...voltageTarget.include], exclude: ["battery", "batterie", "l1", "l3", ...voltageTarget.exclude], threshold: 62 },
       { path: "entities.inverter_power_voltage_l3", ...voltageTarget, required: [["inverter", "wechselrichter", "wr"], ["l3", "phase 3", "phase l3", "spannung l3", "u3"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, { terms: ["l3", "phase 3", "phase l3", "spannung l3", "u3"], weight: 34 }, ...voltageTarget.include], exclude: ["battery", "batterie", "l1", "l2", ...voltageTarget.exclude], threshold: 62 },
@@ -4137,6 +4141,7 @@ function createDashboardEditorClass({
     const baseEnergyEntity = baseEnergyConfig.entity || baseEnergyConfig.counter || baseEnergyConfig.kwh_entity || baseEnergyConfig.kwh || baseEnergyConfig.meter || "";
     const baseMaxPowerKw = this._maxPowerKwValue(metric);
     const basePowerEntity = this._config?.entities?.inverter_power || "";
+    const baseTemperatureEntity = this._config?.entities?.inverter_temperature || "";
     const baseVoltageEntity = this._config?.entities?.inverter_power_voltage || "";
     const baseVoltageEntityL1 = this._config?.entities?.inverter_power_voltage_l1 || "";
     const baseVoltageEntityL2 = this._config?.entities?.inverter_power_voltage_l2 || "";
@@ -4147,6 +4152,7 @@ function createDashboardEditorClass({
       ["sum", this._t("editor.inverterDisplaySum", {}, "Sum inverters")],
       ["values", this._t("editor.inverterDisplayValues", {}, "Show inverter values")],
       ["dominant", this._t("editor.inverterDisplayDominant", {}, "Highest inverter large, others small")],
+      ["details", this._t("editor.inverterDisplayDetails", {}, "Show name, power, temperature, and utilization per inverter")],
     ].map(([value, label]) => (
       `<option value="${this._escape(value)}"${value === selectedDisplay ? " selected" : ""}>${this._escape(label)}</option>`
     )).join("");
@@ -4157,6 +4163,9 @@ function createDashboardEditorClass({
         </div>
         <label>${this._escape(this._t("editor.inverterPowerEntity", {}, "Inverter power entity"))}
           <input data-path="entities.inverter_power" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_power" value="${this._escape(basePowerEntity)}" autocomplete="off" />
+        </label>
+        <label>${this._escape(this._t("editor.inverterTemperatureEntity", {}, "Inverter temperature entity"))}
+          <input data-path="entities.inverter_temperature" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_temperature" value="${this._escape(baseTemperatureEntity)}" autocomplete="off" />
         </label>
         <label>${this._escape(this._t("editor.inverterEnergyEntity", {}, "Inverter kWh counter entity"))}
           <input data-path="energy_entities.inverter_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_energy_total" value="${this._escape(baseEnergyEntity)}" autocomplete="off" />
@@ -4182,6 +4191,7 @@ function createDashboardEditorClass({
         : inverter.label;
       const powerEntity = inverter.power_entity || "";
       const energyEntity = inverter.energy_entity || "";
+      const temperatureEntity = inverter.temperature_entity || "";
       const voltageEntity = inverter.voltage_entity || "";
       const voltageEntityL1 = inverter.voltage_entity_l1 || "";
       const voltageEntityL2 = inverter.voltage_entity_l2 || "";
@@ -4202,6 +4212,9 @@ function createDashboardEditorClass({
           </label>
           <label>${this._escape(this._t("editor.inverterEnergyEntity", {}, "Inverter kWh counter entity"))}
             <input data-path="inverters.${index}.energy_entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_${this._escape(index + 2)}_energy_total" value="${this._escape(energyEntity)}" autocomplete="off" />
+          </label>
+          <label>${this._escape(this._t("editor.inverterTemperatureEntity", {}, "Inverter temperature entity"))}
+            <input data-path="inverters.${index}.temperature_entity" list="ha-solar-dashboard-entities" placeholder="sensor.inverter_${this._escape(index + 2)}_temperature" value="${this._escape(temperatureEntity)}" autocomplete="off" />
           </label>
           ${this._renderInverterVoltageInputs({
             pathPrefix: `inverters.${index}`,
@@ -7172,6 +7185,7 @@ function normalizePvRoofStringDisplay(value) {
 function normalizePowerSourceConfig(raw, index, {
   fallbackIdPrefix = "item",
   fallbackLabel = "Item",
+  includeTemperature = false,
 } = {}) {
   const source = raw && typeof raw === "object" ? raw : { power_entity: raw };
   const sequence = index + 2;
@@ -7185,6 +7199,9 @@ function normalizePowerSourceConfig(raw, index, {
     label: String(source.label || source.name || `${fallbackLabel} ${sequence}`).trim(),
     power_entity: String(source.power_entity || source.powerEntity || source.entity || source.entity_id || source.power || "").trim(),
     energy_entity: String(source.energy_entity || source.energyEntity || source.kwh_entity || source.kwh || source.energy || source.counter || source.meter || "").trim(),
+    ...(includeTemperature ? {
+      temperature_entity: String(source.temperature_entity || source.temperatureEntity || source.temperature || source.temp_entity || source.tempEntity || "").trim(),
+    } : {}),
     voltage_entity: String(source.voltage_entity || source.voltageEntity || source.voltage || source.voltage_meter || "").trim(),
     voltage_entity_l1: String(source.voltage_entity_l1 || source.voltageEntityL1 || source.voltage_l1 || source.voltageL1 || "").trim(),
     voltage_entity_l2: String(source.voltage_entity_l2 || source.voltageEntityL2 || source.voltage_l2 || source.voltageL2 || "").trim(),
@@ -7204,7 +7221,7 @@ function normalizePowerSourceConfigs(configs, normalizeItem) {
       : [];
   return rawList
     .map((item, index) => normalizeItem(item, index))
-    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.voltage_entity || item.voltage_entity_l1 || item.voltage_entity_l2 || item.voltage_entity_l3 || item.label);
+    .filter((item) => item.visible !== false || item.power_entity || item.energy_entity || item.temperature_entity || item.voltage_entity || item.voltage_entity_l1 || item.voltage_entity_l2 || item.voltage_entity_l3 || item.label);
 }
 
 function normalizePvRoofStringConfig(raw, index) {
@@ -7218,6 +7235,7 @@ function normalizeInverterConfig(raw, index) {
   return normalizePowerSourceConfig(raw, index, {
     fallbackIdPrefix: "inverter",
     fallbackLabel: "Inverter",
+    includeTemperature: true,
   });
 }
 
@@ -7226,7 +7244,16 @@ function normalizePvRoofStrings(strings) {
 }
 
 function normalizeInverterDisplay(value) {
-  return normalizePvRoofStringDisplay(value);
+  const normalized = String(value || "sum").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const aliases = {
+    detail: "details",
+    detailed: "details",
+    list: "details",
+    name_power_temperature: "details",
+    name_power_temp: "details",
+  };
+  const mode = aliases[normalized] || normalized;
+  return mode === "details" ? mode : normalizePvRoofStringDisplay(mode);
 }
 
 function normalizeInverters(inverters) {
@@ -7241,6 +7268,7 @@ function buildPowerSourceEntries({
   configs = [],
   powerEntityId = "",
   energyEntityId = "",
+  temperatureEntityId = "",
   maxPowerKw,
   maxPowerW,
   maxPower,
@@ -7262,6 +7290,7 @@ function buildPowerSourceEntries({
     label: baseLabel,
     powerEntityId: powerEntityId || "",
     energyEntityId: energyEntityId || "",
+    temperatureEntityId: temperatureEntityId || "",
     voltageEntityId: voltageEntityId || "",
     voltageEntityIdL1: voltageEntityIdL1 || "",
     voltageEntityIdL2: voltageEntityIdL2 || "",
@@ -7277,6 +7306,7 @@ function buildPowerSourceEntries({
       label: config.label || `${fallbackLabel} ${index + 2}`,
       powerEntityId: config.power_entity || "",
       energyEntityId: config.energy_entity || "",
+      temperatureEntityId: config.temperature_entity || "",
       voltageEntityId: config.voltage_entity || "",
       voltageEntityIdL1: config.voltage_entity_l1 || "",
       voltageEntityIdL2: config.voltage_entity_l2 || "",
@@ -7285,7 +7315,7 @@ function buildPowerSourceEntries({
       base: false,
       visible: true,
     }))
-    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.voltageEntityId || entry.voltageEntityIdL1 || entry.voltageEntityIdL2 || entry.voltageEntityIdL3 || entry.maxPowerWatts);
+    .filter((entry) => entry.powerEntityId || entry.energyEntityId || entry.temperatureEntityId || entry.voltageEntityId || entry.voltageEntityIdL1 || entry.voltageEntityIdL2 || entry.voltageEntityIdL3 || entry.maxPowerWatts);
   return [baseEntry, ...extraEntries];
 }
 
@@ -7316,6 +7346,7 @@ function buildInverterEntries({
   inverters = [],
   powerEntityId = "",
   energyEntityId = "",
+  temperatureEntityId = "",
   maxPowerKw,
   maxPowerW,
   maxPower,
@@ -7328,6 +7359,7 @@ function buildInverterEntries({
     configs: inverters,
     powerEntityId,
     energyEntityId,
+    temperatureEntityId,
     maxPowerKw,
     maxPowerW,
     maxPower,
@@ -8193,11 +8225,13 @@ const I18N = {
     "editor.inverterAdd": "Add inverter",
     "editor.inverterDisplay": "Inverter display",
     "editor.inverterDisplayDominant": "Highest inverter large, others small",
+    "editor.inverterDisplayDetails": "Show name, power, temperature, and utilization per inverter",
     "editor.inverterDisplaySum": "Sum inverters",
     "editor.inverterDisplayValues": "Show inverter values",
     "editor.inverterEnergyEntity": "Inverter kWh counter entity",
     "editor.inverterLabel": "Inverter name",
     "editor.inverterPowerEntity": "Inverter power entity",
+    "editor.inverterTemperatureEntity": "Inverter temperature entity",
     "editor.inverters": "Inverters",
     "editor.pvTodayEnergyEntity": "Generated today entity",
     "editor.remainingChargeTimeEntity": "Remaining charge time entity",
@@ -8850,11 +8884,13 @@ const I18N = {
     "editor.inverterAdd": "Wechselrichter hinzufügen",
     "editor.inverterDisplay": "Anzeige Wechselrichter",
     "editor.inverterDisplayDominant": "Stärksten Wechselrichter groß, andere klein",
+    "editor.inverterDisplayDetails": "Name, Leistung, Temperatur und Auslastung je Wechselrichter",
     "editor.inverterDisplaySum": "Wechselrichter aufaddiert",
     "editor.inverterDisplayValues": "Wechselrichter-Werte anzeigen",
     "editor.inverterEnergyEntity": "Wechselrichter-kWh-Zähler-Entität",
     "editor.inverterLabel": "Wechselrichter-Name",
     "editor.inverterPowerEntity": "Wechselrichter-Leistungs-Entität",
+    "editor.inverterTemperatureEntity": "Wechselrichter-Temperatur-Entität",
     "editor.inverters": "Wechselrichter",
     "editor.pvTodayEnergyEntity": "Heute-erzeugt-Entität",
     "editor.remainingChargeTimeEntity": "Verbleibende Ladezeit-Entität",
@@ -9507,11 +9543,13 @@ const I18N = {
     "editor.inverterAdd": "Añadir inversor",
     "editor.inverterDisplay": "Visualización de inversores",
     "editor.inverterDisplayDominant": "Inversor mayor grande, otros pequeños",
+    "editor.inverterDisplayDetails": "Mostrar nombre, potencia, temperatura y utilización por inversor",
     "editor.inverterDisplaySum": "Sumar inversores",
     "editor.inverterDisplayValues": "Mostrar valores de inversores",
     "editor.inverterEnergyEntity": "Entidad contador kWh del inversor",
     "editor.inverterLabel": "Nombre del inversor",
     "editor.inverterPowerEntity": "Entidad de potencia del inversor",
+    "editor.inverterTemperatureEntity": "Entidad de temperatura del inversor",
     "editor.inverters": "Inversores",
     "editor.pvTodayEnergyEntity": "Entidad generado hoy",
     "editor.remainingChargeTimeEntity": "Entidad de tiempo de carga restante",
@@ -10164,11 +10202,13 @@ const I18N = {
     "editor.inverterAdd": "Ajouter un onduleur",
     "editor.inverterDisplay": "Affichage des onduleurs",
     "editor.inverterDisplayDominant": "Onduleur le plus fort grand, autres petits",
+    "editor.inverterDisplayDetails": "Afficher le nom, la puissance, la température et l'utilisation par onduleur",
     "editor.inverterDisplaySum": "Additionner les onduleurs",
     "editor.inverterDisplayValues": "Afficher les valeurs des onduleurs",
     "editor.inverterEnergyEntity": "Entité compteur kWh de l'onduleur",
     "editor.inverterLabel": "Nom de l'onduleur",
     "editor.inverterPowerEntity": "Entité puissance de l'onduleur",
+    "editor.inverterTemperatureEntity": "Entité température de l'onduleur",
     "editor.inverters": "Onduleurs",
     "editor.pvTodayEnergyEntity": "Entité production du jour",
     "editor.remainingChargeTimeEntity": "Entité temps de charge restant",
@@ -10821,11 +10861,13 @@ const I18N = {
     "editor.inverterAdd": "Dodaj falownik",
     "editor.inverterDisplay": "Wyświetlanie falowników",
     "editor.inverterDisplayDominant": "Najmocniejszy falownik duży, inne małe",
+    "editor.inverterDisplayDetails": "Pokaż nazwę, moc, temperaturę i wykorzystanie dla każdego falownika",
     "editor.inverterDisplaySum": "Sumuj falowniki",
     "editor.inverterDisplayValues": "Pokaż wartości falowników",
     "editor.inverterEnergyEntity": "Encja licznika kWh falownika",
     "editor.inverterLabel": "Nazwa falownika",
     "editor.inverterPowerEntity": "Encja mocy falownika",
+    "editor.inverterTemperatureEntity": "Encja temperatury falownika",
     "editor.inverters": "Falowniki",
     "editor.pvTodayEnergyEntity": "Encja produkcji dziś",
     "editor.remainingChargeTimeEntity": "Encja pozostałego czasu ładowania",

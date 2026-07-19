@@ -1,7 +1,8 @@
 export function createTileRendererMethods() {
   return {
     _tileStyle(metric) {
-      const columns = Math.round(this._clampNumber(metric.tileColumns ?? 1, 1, 1, 6));
+      const detailInverter = metric.key === "inverter_power" && this._inverterDisplayMode?.() === "details";
+      const columns = Math.max(detailInverter ? 2 : 1, Math.round(this._clampNumber(metric.tileColumns ?? 1, 1, 1, 6)));
       const mobileColumns = Math.min(columns, 2);
       return `${this._accentStyle(metric)} order:${Number(metric.tileOrder ?? 0)}; --tile-columns:${columns}; --tile-mobile-columns:${mobileColumns};`;
     },

@@ -1,0 +1,48 @@
+name: Add support links to release notes
+
+# Appends a small "support this project" footer (GitHub Sponsors, PayPal,
+# Revolut) to every published GitHub Release's notes, regardless of how the
+# release itself was created (manually via the UI, or by another workflow).
+# Idempotent - re-runs (e.g. on "edited") skip if the footer is already there,
+# so it never duplicates.
+
+on:
+  release:
+    types: [published, edited]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-support-links-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  append-footer:
+    name: Append support links
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Append support links if missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          body="$(gh release view "$TAG" --json body -q .body)"
+          if printf '%s' "$body" | grep -qF "paypal.com/paypalme/TonyBrueser"; then
+            echo "Support links already present, skipping."
+            exit 0
+          fi
+          cat > footer.md <<'EOF'
+
+          ---
+
+          If this project is useful to you, consider supporting its development:
+
+          [![Sponsors](https://img.shields.io/badge/GitHub-Sponsors-blue?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sponsors/404GamerNotFound)
+          [![PayPal](https://img.shields.io/badge/PayPal-ME-blue?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/TonyBrueser)
+          [![Revolut](https://img.shields.io/badge/Revolut-ME-blue?style=for-the-badge&logo=revolut&logoColor=white)](https://revolut.me/tony1995)
+          EOF
+          printf '%s\n' "$body" > body.md
+          cat body.md footer.md > new_body.md
+          gh release edit "$TAG" --notes-file new_body.md

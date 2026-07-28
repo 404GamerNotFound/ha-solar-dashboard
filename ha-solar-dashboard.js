@@ -8484,6 +8484,7 @@ function createDashboardEditorClass({
     const evccLoadpoint = normalized.evcc_loadpoint || "";
     const evccPrefix = normalized.evcc_prefix || "evcc";
     const title = normalized.title || "";
+    const rangeUnit = String(this._config.units?.distance || "km").trim().toLowerCase();
     const groupHtml = this._electricVehicleGroups().map(([groupKey, labelKey, fallback]) => {
       const definitions = this._electricVehicleDefinitions().filter((definition) => definition.group === groupKey);
       if (!definitions.length) return "";
@@ -8527,6 +8528,12 @@ function createDashboardEditorClass({
             <select data-path="electric_vehicle.wallbox">
               <option value="wallbox_power"${wallbox !== "wallbox2_power" ? " selected" : ""}>${this._escape(this._t("metrics.wallbox_power", {}, "EV Charger"))}</option>
               <option value="wallbox2_power"${wallbox === "wallbox2_power" ? " selected" : ""}>${this._escape(this._t("metrics.wallbox2_power", {}, "EV Charger 2"))}</option>
+            </select>
+          </label>
+          <label>${this._labelText(this._t("editor.electricVehicleRangeUnit", {}, "Range unit"), this._t("editor.electricVehicleRangeUnitHelp", {}, "Unit used to display the vehicle range. Overrides the regional profile/unit system for this value only."))}
+            <select data-path="units.distance">
+              <option value="km"${rangeUnit !== "mi" ? " selected" : ""}>${this._escape(this._t("editor.electricVehicleRangeUnitKm", {}, "Kilometers (km)"))}</option>
+              <option value="mi"${rangeUnit === "mi" ? " selected" : ""}>${this._escape(this._t("editor.electricVehicleRangeUnitMi", {}, "Miles (mi)"))}</option>
             </select>
           </label>
         </div>
@@ -12537,6 +12544,10 @@ const I18N = {
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
     "editor.electricVehicleEvccPrefixHelp": "Usually evcc. Used for generated marq24/ha-evcc entity ids.",
+    "editor.electricVehicleRangeUnit": "Range unit",
+    "editor.electricVehicleRangeUnitHelp": "Unit used to display the vehicle range. Overrides the regional profile/unit system for this value only.",
+    "editor.electricVehicleRangeUnitKm": "Kilometers (km)",
+    "editor.electricVehicleRangeUnitMi": "Miles (mi)",
     "view.garden": "Garden",
     "editor.tabGarden": "Garden",
     "editor.showGarden": "Show garden area",
@@ -13200,6 +13211,10 @@ const I18N = {
     "editor.electricVehicleEvccLoadpointHelp": "Optionaler marq24/ha-evcc-Slug. Beispiel: garage_delta_ac_max ordnet sensor.evcc_garage_delta_ac_max_charge_power und verwandte Entitäten automatisch zu.",
     "editor.electricVehicleEvccPrefix": "evcc-Entitätspräfix",
     "editor.electricVehicleEvccPrefixHelp": "Normalerweise evcc. Wird für generierte marq24/ha-evcc-Entitäts-IDs genutzt.",
+    "editor.electricVehicleRangeUnit": "Reichweiteneinheit",
+    "editor.electricVehicleRangeUnitHelp": "Einheit zur Anzeige der Fahrzeugreichweite. Überschreibt für diesen Wert das regionale Profil/Einheitensystem.",
+    "editor.electricVehicleRangeUnitKm": "Kilometer (km)",
+    "editor.electricVehicleRangeUnitMi": "Meilen (mi)",
     "view.garden": "Garten",
     "editor.tabGarden": "Garten",
     "editor.showGarden": "Gartenbereich anzeigen",
@@ -13863,6 +13878,10 @@ const I18N = {
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
     "editor.electricVehicleEvccPrefixHelp": "Usually evcc. Used for generated marq24/ha-evcc entity ids.",
+    "editor.electricVehicleRangeUnit": "Range unit",
+    "editor.electricVehicleRangeUnitHelp": "Unit used to display the vehicle range. Overrides the regional profile/unit system for this value only.",
+    "editor.electricVehicleRangeUnitKm": "Kilometers (km)",
+    "editor.electricVehicleRangeUnitMi": "Miles (mi)",
     "view.garden": "Jardín",
     "editor.tabGarden": "Jardín",
     "editor.showGarden": "Mostrar área de jardín",
@@ -14526,6 +14545,10 @@ const I18N = {
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
     "editor.electricVehicleEvccPrefixHelp": "Usually evcc. Used for generated marq24/ha-evcc entity ids.",
+    "editor.electricVehicleRangeUnit": "Range unit",
+    "editor.electricVehicleRangeUnitHelp": "Unit used to display the vehicle range. Overrides the regional profile/unit system for this value only.",
+    "editor.electricVehicleRangeUnitKm": "Kilometers (km)",
+    "editor.electricVehicleRangeUnitMi": "Miles (mi)",
     "view.garden": "Jardin",
     "editor.tabGarden": "Jardin",
     "editor.showGarden": "Afficher la zone jardin",
@@ -15189,6 +15212,10 @@ const I18N = {
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
     "editor.electricVehicleEvccPrefixHelp": "Usually evcc. Used for generated marq24/ha-evcc entity ids.",
+    "editor.electricVehicleRangeUnit": "Range unit",
+    "editor.electricVehicleRangeUnitHelp": "Unit used to display the vehicle range. Overrides the regional profile/unit system for this value only.",
+    "editor.electricVehicleRangeUnitKm": "Kilometers (km)",
+    "editor.electricVehicleRangeUnitMi": "Miles (mi)",
     "view.garden": "Ogród",
     "editor.tabGarden": "Ogród",
     "editor.showGarden": "Pokaż obszar ogrodu",

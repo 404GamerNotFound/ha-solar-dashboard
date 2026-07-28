@@ -3405,6 +3405,7 @@ export function createDashboardEditorClass({
     const evccLoadpoint = normalized.evcc_loadpoint || "";
     const evccPrefix = normalized.evcc_prefix || "evcc";
     const title = normalized.title || "";
+    const rangeUnit = String(this._config.units?.distance || "km").trim().toLowerCase();
     const groupHtml = this._electricVehicleGroups().map(([groupKey, labelKey, fallback]) => {
       const definitions = this._electricVehicleDefinitions().filter((definition) => definition.group === groupKey);
       if (!definitions.length) return "";
@@ -3448,6 +3449,12 @@ export function createDashboardEditorClass({
             <select data-path="electric_vehicle.wallbox">
               <option value="wallbox_power"${wallbox !== "wallbox2_power" ? " selected" : ""}>${this._escape(this._t("metrics.wallbox_power", {}, "EV Charger"))}</option>
               <option value="wallbox2_power"${wallbox === "wallbox2_power" ? " selected" : ""}>${this._escape(this._t("metrics.wallbox2_power", {}, "EV Charger 2"))}</option>
+            </select>
+          </label>
+          <label>${this._labelText(this._t("editor.electricVehicleRangeUnit", {}, "Range unit"), this._t("editor.electricVehicleRangeUnitHelp", {}, "Unit used to display the vehicle range. Overrides the regional profile/unit system for this value only."))}
+            <select data-path="units.distance">
+              <option value="km"${rangeUnit !== "mi" ? " selected" : ""}>${this._escape(this._t("editor.electricVehicleRangeUnitKm", {}, "Kilometers (km)"))}</option>
+              <option value="mi"${rangeUnit === "mi" ? " selected" : ""}>${this._escape(this._t("editor.electricVehicleRangeUnitMi", {}, "Miles (mi)"))}</option>
             </select>
           </label>
         </div>

@@ -5,7 +5,7 @@ export function garageSolarArraySvg({ activeHouse, hasCustomImage } = {}) {
 
   return `
     <svg class="garage-solar-array" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      <g class="garage-solar-array-panels">
+      <g class="garage-solar-array-panels" transform="translate(0 -1.1)">
         <polygon class="garage-solar-panel" points="6.8,43.9 10.8,43.15 12.05,45.05 8.05,45.9" />
         <polygon class="garage-solar-panel" points="11.1,43.1 15.15,42.35 16.4,44.25 12.35,45.0" />
         <polygon class="garage-solar-panel" points="15.45,42.3 19.65,41.52 20.95,43.42 16.75,44.2" />

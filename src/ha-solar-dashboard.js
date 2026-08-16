@@ -160,6 +160,7 @@ import {
   createWeatherImageMethods,
   imageFormatFiles,
 } from "../modules/weather-images.js";
+import { garageSolarArraySvg } from "../modules/garage-solar-array.js";
 import {
   createTileRendererMethods,
 } from "../modules/tile-renderer.js";
@@ -3294,7 +3295,13 @@ class HaSolarDashboardCard extends HTMLElement {
       ? [...(customImage.fallbacks || []), variantImage.src, ...(variantImage.fallbacks || [])]
       : variantImage.fallbacks;
 
-    return { activeHouse, variant, imageSrc, imageFallbacks };
+    return {
+      activeHouse,
+      variant,
+      imageSrc,
+      imageFallbacks,
+      hasCustomImage: Boolean(customImage.src),
+    };
   }
 
   _escape(value) {
@@ -4024,6 +4031,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const environmentMetrics = this._environmentSensorMetrics({ placement: "footer" });
     const largeConsumerMetrics = this._largeConsumerMetrics();
     const metricHtml = visibleHudMetrics.map((metric) => this._renderMetric(metric, state.variant)).join("");
+    const garageSolarArrayHtml = garageSolarArraySvg(state);
     const imageOverlayHtml = this._renderImageOverlays(state.activeHouse);
     const flowHtml = this._renderEnergyFlows(state.variant);
     const sceneStyle = this._escape(styleMap({ "--scene-aspect-ratio": state.variant?.aspectRatio || "91 / 64" }));
@@ -4097,7 +4105,7 @@ class HaSolarDashboardCard extends HTMLElement {
                   : activeView === RECORDS_DASHBOARD_VIEW
                     ? recordsDashboardHtml
                     : `
-            <div class="scene" style="${sceneStyle}"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
+            <div class="scene" style="${sceneStyle}"><img class="scene-image" src="${this._escape(state.imageSrc)}" data-fallbacks="${this._escape((state.imageFallbacks || []).join("|"))}" alt="${this._escape(this._houseLabel(state.activeHouse, state.variant))}" />${garageSolarArrayHtml}${imageOverlayHtml}${flowHtml}${metricHtml}${statusHtml}</div>
             ${this.config.show_metric_tiles !== false ? `<div class="grid">${gridHtml}</div>${environmentSectionHtml}${largeConsumerSectionHtml}` : ""}
           `}
       </ha-card>

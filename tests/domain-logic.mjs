@@ -87,6 +87,10 @@ import {
   normalizeHouse,
 } from "../modules/house-variants.js";
 import {
+  garageSolarArraySvg,
+  GARAGE_SOLAR_PANEL_COUNT,
+} from "../modules/garage-solar-array.js";
+import {
   buildInverterEntries,
   normalizeInverterDisplay,
   normalizeInverters,
@@ -103,6 +107,10 @@ function gridLabel(kind) {
 assert.equal(normalizeInverterDisplay("name power temperature"), "details");
 assert.equal(normalizeHouse("single-family-home-landscape"), "single_family_home_landscape");
 assert.equal(HOUSE_VARIANTS.single_family_home_landscape.aspectRatio, "16 / 9");
+const garageSolarOverlay = garageSolarArraySvg({ activeHouse: "single_family_home", hasCustomImage: false });
+assert.equal((garageSolarOverlay.match(/<polygon /g) || []).length, GARAGE_SOLAR_PANEL_COUNT);
+assert.equal(garageSolarArraySvg({ activeHouse: "single_family_home", hasCustomImage: true }), "");
+assert.equal(garageSolarArraySvg({ activeHouse: "bungalow", hasCustomImage: false }), "");
 const detailedInverter = normalizeInverters([{
   label: "Garage",
   power_entity: "sensor.garage_inverter_power",

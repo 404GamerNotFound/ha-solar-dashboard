@@ -1051,7 +1051,7 @@ export function createDashboardEditorClass({
     const next = this._cloneConfig(this._config || {});
     next.batteries = normalizeBatteries(next.batteries || []);
     const number = next.batteries.length + 2;
-    next.batteries.push({ id: `battery_${Date.now()}`, label: `${this._t("editor.battery", {}, "Battery")} ${number}`, level_entity: "", flow_power_entity: "", voltage_entity: "", charge_power_entity: "", discharge_power_entity: "", min_soc_entity: "", max_soc_entity: "", temperature_entity: "", cycles_today_entity: "", left: Math.min(96, 49 + (number - 1) * 10), top: 66, show_image: true, show_footer: true, visible: true });
+    next.batteries.push({ id: `battery_${Date.now()}`, label: `${this._t("editor.battery", {}, "Battery")} ${number}`, level_entity: "", flow_power_entity: "", flow_inverted: false, voltage_entity: "", charge_power_entity: "", discharge_power_entity: "", min_soc_entity: "", max_soc_entity: "", temperature_entity: "", cycles_today_entity: "", left: Math.min(96, 49 + (number - 1) * 10), top: 66, show_image: true, show_footer: true, visible: true });
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -1173,7 +1173,7 @@ export function createDashboardEditorClass({
       const attributes = stateObj?.attributes || {};
       const domain = entityId.split(".")[0] || "";
       const name = attributes.friendly_name || attributes.name || entityId;
-      const unit = attributes.unit_of_measurement || "";
+      const unit = attributes.unit_of_measurement || attributes.native_unit_of_measurement || "";
       const deviceClass = attributes.device_class || "";
       const stateClass = attributes.state_class || "";
       const haystack = this._normalizeSearchText([
@@ -1393,7 +1393,7 @@ export function createDashboardEditorClass({
       { path: "entities.battery_flow_power_voltage", ...voltageTarget, required: [["battery", "batterie", "speicher", "akku"]], include: [batteryTerms, ...voltageTarget.include], threshold: 58 },
       { path: "entities.battery_charge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["charge", "charging", "laden", "ladeleistung"]], include: [batteryTerms, { terms: ["charge", "charging", "laden", "ladeleistung"], weight: 30 }], exclude: ["discharge", "entladen", "entlade", "soc", "temperature", "temperatur"], threshold: 62 },
       { path: "entities.battery_discharge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["discharge", "discharging", "entladen", "entladeleistung"]], include: [batteryTerms, { terms: ["discharge", "discharging", "entladen", "entladeleistung"], weight: 30 }], exclude: ["charge", "charging", "laden", "ladeleistung", "soc", "temperature", "temperatur"], threshold: 62 },
-      { path: "entities.battery_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c"], required: [["battery", "batterie", "speicher", "akku"], ["temperature", "temperatur", "temp"]], include: [batteryTerms, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["power", "leistung", "soc"], threshold: 58 },
+      { path: "entities.battery_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c", "°f", "f", "fahrenheit"], required: [["battery", "batterie", "speicher", "akku"], ["temperature", "temperatur", "temp"]], include: [batteryTerms, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["power", "leistung", "soc"], threshold: 58 },
       { path: "entities.battery_cycles_today", domains: ["sensor"], required: [["battery", "batterie", "speicher", "akku"], ["cycle", "cycles", "zyklen", "vollzyklen"], ["today", "heute", "daily", "tag"]], include: [batteryTerms, { terms: ["cycle", "cycles", "zyklen", "vollzyklen", "today", "heute", "daily", "tag"], weight: 34 }], exclude: ["power", "leistung", "soc", "temperature", "temperatur"], threshold: 58 },
       { path: "entities.inverter_power", ...powerTarget, required: [["inverter", "wechselrichter", "wr"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, ...powerTarget.include], exclude: ["battery", "batterie", "soc", "temperature"], threshold: 56 },
       { path: "entities.inverter_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c", "°f", "f"], required: [["inverter", "wechselrichter", "wr"], ["temperature", "temperatur", "temp"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["battery", "batterie", "power", "leistung"], threshold: 58 },
@@ -1465,7 +1465,7 @@ export function createDashboardEditorClass({
     if (path.startsWith("environment_sensors.")) return "environment";
     if (path.startsWith("floorplan.")) return "floorplan";
     if (path.startsWith("custom_kpis.")) return "advanced";
-    if (path === "entities.electricity_price") return "advisor";
+    if (path === "entities.electricity_price") return "energy";
     if (path === "weather_entity") return "setup";
     if (path.startsWith("entities.") || path.startsWith("energy_entities.")) return "energy";
     return "setup";
@@ -1702,6 +1702,9 @@ export function createDashboardEditorClass({
           </label>
           <label>${this._labelText(this._t("editor.exportEnergyCounterEntity", {}, "Export energy counter"), this._t("editor.helpImportExportFinance", {}, "Use cumulative kWh counters. The card calculates today's amount from local midnight."))}
             <input data-path="energy_entities.export_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.grid_export_energy_total" value="${this._escape(exportCounterValue)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.electricityPriceEntity", {}, "Electricity price sensor"), this._t("editor.helpElectricityPriceEntity", {}, "Current price per kWh. It overrides the fixed import price while its state is numeric."))}
+            <input data-path="entities.electricity_price" list="ha-solar-dashboard-entities" placeholder="sensor.electricity_price" value="${this._escape(this._config.entities?.electricity_price || "")}" autocomplete="off" />
           </label>
           <label>${this._escape(this._t("editor.gridImportPrice", {}, "Grid import price per kWh"))}
             <input type="number" min="0" step="0.0001" data-path="grid_import_price" value="${this._escape(this._config.grid_import_price ?? "")}" />
@@ -2275,6 +2278,7 @@ export function createDashboardEditorClass({
         <label>${this._escape(this._t("editor.batteryLabel", {}, "Battery name"))}<input data-path="batteries.${index}.label" value="${this._escape(battery.label)}" /></label>
         ${this._renderBatteryEntityFields(`batteries.${index}`, battery)}
         <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="batteries.${index}.flow_inverted" ${battery.flow_inverted === true ? "checked" : ""}/> ${this._labelText(this._t("editor.batteryFlowInverted"), this._t("editor.helpBatteryFlowInverted"))}</label>
           <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_image" ${battery.show_image !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show on image"))}</label>
           <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_footer" ${battery.show_footer !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowFooter", {}, "Show below image"))}</label>
         </div>
@@ -2286,6 +2290,7 @@ export function createDashboardEditorClass({
       <label>${this._labelText(this._t("editor.batteryFlowEntity"), this._t("editor.helpSignedBattery", {}, "Use one signed sensor when possible: positive means charging, negative means discharging."))}
         <input data-path="entities.battery_flow_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_power" value="${this._escape(this._config.entities?.battery_flow_power || "")}" autocomplete="off" />
       </label>
+      <label class="inline"><input type="checkbox" data-path="battery_flow_inverted" ${this._config.battery_flow_inverted === true ? "checked" : ""}/> ${this._labelText(this._t("editor.batteryFlowInverted"), this._t("editor.helpBatteryFlowInverted"))}</label>
       ${this._renderLabelVisibilityOptions("battery_flow_power")}
       <label>${this._escape(this._t("editor.voltageEntity", {}, "Voltage entity"))}
         <input data-path="entities.battery_flow_power_voltage" list="ha-solar-dashboard-entities" placeholder="sensor.battery_voltage" value="${this._escape(this._config.entities?.battery_flow_power_voltage || "")}" autocomplete="off" />
@@ -3871,6 +3876,7 @@ export function createDashboardEditorClass({
           <label class="inline"><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_garage_solar_array" ${this._config.show_garage_solar_array !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGarageSolarArray"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> ${this._escape(this._t("editor.showWeatherStatus"))}</label>
@@ -3884,9 +3890,6 @@ export function createDashboardEditorClass({
         </label>
         <label>${this._escape(this._t("editor.advisorEvSurplusThreshold", {}, "EV surplus threshold (W)"))}
           <input type="number" min="0" max="1000000" step="50" data-path="advisor_ev_surplus_threshold" value="${this._escape(this._config.advisor_ev_surplus_threshold ?? ADVISOR_DEFAULTS.evSurplusThreshold)}" />
-        </label>
-        <label>${this._escape(this._t("editor.electricityPriceEntity", {}, "Electricity price entity"))}
-          <input data-path="entities.electricity_price" list="ha-solar-dashboard-entities" placeholder="sensor.electricity_price" value="${this._escape(this._config.entities?.electricity_price || "")}" autocomplete="off" />
         </label>
       </div>
     `;
@@ -3996,8 +3999,8 @@ export function createDashboardEditorClass({
       {
         key: "advisor",
         label: this._t("editor.tabAdvisor", {}, "Advisor"),
-        status: this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]) }),
-        content: `${this._renderSetupWizard("advisor")}${renderEditorCard(this._t("editor.sectionAdvisor", {}, "Advisor and prices"), this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]), advanced: true }), advisorSettingsHtml)}`,
+        status: this._statusText({ advanced: true }),
+        content: `${this._renderSetupWizard("advisor")}${renderEditorCard(this._t("editor.sectionAdvisor", {}, "Advisor"), this._statusText({ advanced: true }), advisorSettingsHtml)}`,
       },
       {
         key: "advanced",

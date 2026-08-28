@@ -8,8 +8,9 @@ export function firstConfiguredPrice(values = []) {
   return values.map((value) => normalizeGridPrice(value)).find((value) => value !== "") ?? "";
 }
 
-export function gridImportPrice(config = {}) {
+export function gridImportPrice(config = {}, currentPrice = "") {
   return firstConfiguredPrice([
+    currentPrice,
     config.grid_import_price,
     config.import_price,
     config.electricity_import_price,
@@ -85,6 +86,7 @@ export function localDateKey(date = new Date()) {
 export function gridFinanceItems({
   config = {},
   importPrice = gridImportPrice(config),
+  importPriceIsDynamic = false,
   exportPrice = gridExportPrice(config),
   importInfo,
   exportInfo,
@@ -96,7 +98,9 @@ export function gridFinanceItems({
       kind: "import",
       price: importPrice,
       info: importInfo,
-      label: translate("gridFinance.importCost", {}, "Today cost"),
+      label: importPriceIsDynamic
+        ? translate("gridFinance.importCostCurrentRate", {}, "Today cost at current rate")
+        : translate("gridFinance.importCost", {}, "Today cost"),
     },
     {
       kind: "export",

@@ -518,7 +518,7 @@ export function createAdvisorEngineMethods({
     }
 
     if (Number.isFinite(snapshot.batteryTemperatureCelsius)) {
-      const tempValue = `${snapshot.batteryTemperatureCelsius.toFixed(Math.abs(snapshot.batteryTemperatureCelsius) >= 100 || Number.isInteger(snapshot.batteryTemperatureCelsius) ? 0 : 1)} °C`;
+      const tempValue = this._formatBatteryTemperatureValue(snapshot.batteryTemperatureCelsius);
       if (snapshot.batteryTemperatureCelsius <= 0 || snapshot.batteryTemperatureCelsius >= 55) {
         add("critical", 94, this._t("advisor.batteryStatus", {}, "Battery"), snapshot.batteryTemperatureCelsius <= 0
           ? this._t("advisor.batteryTemperatureLow", {}, "House battery temperature is low. Charging power may be limited and battery stress can increase.")
@@ -930,7 +930,7 @@ export function createAdvisorEngineMethods({
         ].filter(Boolean).join(" ")
         : "");
       if (snapshot.batteryFlow?.direction) addValue("Batteriefluss", `${this._batteryFlowDirectionLabel(snapshot.batteryFlow.direction)} ${this._formatBatteryFlowValue(snapshot.batteryFlow)}`);
-      if (Number.isFinite(snapshot.batteryTemperatureCelsius)) addValue(this._t("tooltip.temperature", {}, "Temperature"), `${snapshot.batteryTemperatureCelsius.toFixed(Number.isInteger(snapshot.batteryTemperatureCelsius) ? 0 : 1)} °C`);
+      if (Number.isFinite(snapshot.batteryTemperatureCelsius)) addValue(this._t("tooltip.temperature", {}, "Temperature"), this._formatBatteryTemperatureValue(snapshot.batteryTemperatureCelsius));
       if (Number.isFinite(snapshot.batteryCyclesToday)) addValue(this._t("editor.batteryCyclesTodayEntity", {}, "Battery cycles today entity"), snapshot.batteryCyclesToday.toFixed(snapshot.batteryCyclesToday % 1 === 0 ? 0 : 1));
     }
     if (isWallbox) {

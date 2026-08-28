@@ -109,6 +109,7 @@ assert.equal(normalizeHouse("single-family-home-landscape"), "single_family_home
 assert.equal(HOUSE_VARIANTS.single_family_home_landscape.aspectRatio, "16 / 9");
 const garageSolarOverlay = garageSolarArraySvg({ activeHouse: "single_family_home", hasCustomImage: false });
 assert.equal((garageSolarOverlay.match(/<polygon /g) || []).length, GARAGE_SOLAR_PANEL_COUNT);
+assert.equal(garageSolarArraySvg({ activeHouse: "single_family_home", hasCustomImage: false, showGarageSolarArray: false }), "");
 assert.equal(garageSolarArraySvg({ activeHouse: "single_family_home", hasCustomImage: true }), "");
 assert.equal(garageSolarArraySvg({ activeHouse: "bungalow", hasCustomImage: false }), "");
 const detailedInverter = normalizeInverters([{
@@ -129,6 +130,7 @@ assert.deepEqual(normalizeBatteries([{ entity: "sensor.battery_2_soc", battery_f
   label: "Battery 2",
   level_entity: "sensor.battery_2_soc",
   flow_power_entity: "sensor.battery_2_power",
+  flow_inverted: false,
   voltage_entity: "",
   charge_power_entity: "",
   discharge_power_entity: "",
@@ -243,6 +245,8 @@ assert.equal(baseConfig.unit_system, "auto");
 assert.equal(baseConfig.records_range, "14d");
 assert.equal(baseConfig.advisor_surplus_threshold, 111);
 assert.equal(baseConfig.history_request_concurrency, 4);
+assert.equal(baseConfig.show_garage_solar_array, true);
+assert.equal(baseConfig.battery_flow_inverted, false);
 assert.equal(baseConfig.show_electric_vehicle, true);
 assert.equal(baseConfig.electric_vehicle.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE);
 assert.deepEqual(baseConfig.electric_vehicle.display, {});
@@ -275,6 +279,8 @@ assert.deepEqual(baseConfig.garden.manual_actions, []);
 assert.equal(createEditorBaseConfig({ floorplanLabel: "Etage 1" }).floorplan.floors[0].label, "Etage 1");
 assert.equal(createEditorBaseConfig().electric_vehicle.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE);
 assert.equal(createEditorBaseConfig().garden.image, DEFAULT_GARDEN_IMAGE);
+assert.equal(createEditorBaseConfig().show_garage_solar_array, true);
+assert.equal(createEditorBaseConfig().battery_flow_inverted, false);
 const stubConfig = createStubCardConfig({ cardType: "demo-card" });
 assert.equal(stubConfig.type, "custom:demo-card");
 assert.equal(stubConfig.visible_boxes.import_export_power, true);
@@ -356,6 +362,8 @@ assert.equal(gardenConfig.manual_actions[0].entity, "script.bewaesserung_rasen_l
 assert.equal(normalizeGridPrice("0,32"), 0.32);
 assert.equal(normalizeGridPrice(""), "");
 assert.equal(gridImportPrice({ grid_import_price: "", import_price: "0.31" }), 0.31);
+assert.equal(gridImportPrice({ grid_import_price: "0.31" }, "0.4187"), 0.4187);
+assert.equal(gridImportPrice({ grid_import_price: "0.31" }, "unavailable"), 0.31);
 assert.equal(gridExportPrice({ feed_in_tariff: "0.082" }), 0.082);
 assert.equal(formatMoneyValue(3.5, { currency: "€", language: "de" }), "3,50 €");
 assert.equal(formatMoneyValue(3.5, { currency: "$", language: "en" }), "$3.50");
@@ -372,6 +380,14 @@ const financeItems = gridFinanceItems({
 });
 assert.equal(financeItems.length, 1);
 assert.equal(gridFinanceLabel(financeItems[0], { formatMoney: (value) => `${value.toFixed(2)} EUR` }), "Today cost: 1.36 EUR");
+const dynamicFinanceItems = gridFinanceItems({
+  config: {},
+  importPrice: 0.4187,
+  importPriceIsDynamic: true,
+  importInfo: { amount: 4.25 },
+  translate: (_key, _values, fallback) => fallback,
+});
+assert.equal(gridFinanceLabel(dynamicFinanceItems[0], { formatMoney: (value) => `${value.toFixed(2)} EUR` }), "Today cost at current rate: 1.78 EUR");
 
 assert.equal(isVolumeUnit("gal"), true);
 assert.equal(valueAsCubicMeters(1, "gal")?.toFixed(6), "0.003785");
@@ -557,6 +573,34 @@ editorPanel._normalizeFloorplan = () => ({ floors: [] });
 editorPanel._render = () => {};
 assert.doesNotThrow(() => editorPanel.setConfig({ entities: { battery_level: "sensor.battery_1_soc" }, batteries: [{ entity: "sensor.battery_2_soc" }] }));
 assert.equal(editorPanel._config.batteries[0].level_entity, "sensor.battery_2_soc");
+const invertedPrimaryBatteryCard = new DashboardCard();
+invertedPrimaryBatteryCard.config = {
+  entities: { battery_flow_power: "sensor.battery_power" },
+  batteries: [],
+};
+invertedPrimaryBatteryCard._hass = { states: {
+  "sensor.battery_power": { state: "-1200", attributes: { unit_of_measurement: "W" } },
+} };
+assert.equal(invertedPrimaryBatteryCard._batteryFlowInfo().direction, "discharge");
+invertedPrimaryBatteryCard.config.battery_flow_inverted = true;
+assert.equal(invertedPrimaryBatteryCard._batteryFlowInfo().direction, "charge");
+invertedPrimaryBatteryCard.config.entities = { battery_charge_power: "sensor.battery_charge" };
+invertedPrimaryBatteryCard._hass.states["sensor.battery_charge"] = { state: "750", attributes: { unit_of_measurement: "W" } };
+assert.equal(invertedPrimaryBatteryCard._batteryFlowInfo().direction, "charge");
+const fahrenheitBatteryCard = new DashboardCard();
+fahrenheitBatteryCard.config = {
+  entities: { battery_temperature: "sensor.battery_temperature" },
+  units: { temperature: "°F" },
+};
+fahrenheitBatteryCard._hass = { states: {
+  "sensor.battery_temperature": { state: "100", attributes: { native_unit_of_measurement: "°F" } },
+} };
+assert.equal(fahrenheitBatteryCard._getEntityUnit("sensor.battery_temperature"), "°F");
+assert.equal(fahrenheitBatteryCard._batteryTemperatureLabel(), "Temp 100 °F");
+assert.equal(fahrenheitBatteryCard._batteryTemperatureCelsius(), (100 - 32) * (5 / 9));
+assert.equal(fahrenheitBatteryCard._formatBatteryTemperatureValue(fahrenheitBatteryCard._batteryTemperatureCelsius()), "100 °F");
+fahrenheitBatteryCard.config.units.temperature = "°C";
+assert.equal(fahrenheitBatteryCard._batteryTemperatureLabel(), "Temp 37.8 °C");
 const inverterDetailsCard = new DashboardCard();
 inverterDetailsCard.config = {
   entities: {
@@ -652,6 +696,10 @@ assert.equal(multiBatteryCard._batteryReserveThreshold(additionalBatteryMetric),
 assert.equal(multiBatteryCard._batteryFullThreshold(additionalBatteryMetric), 95);
 assert.equal(multiBatteryCard._batteryCyclesTodayForMetric(additionalBatteryMetric), 1.5);
 assert.equal(multiBatteryCard._batteryFlowInfoForMetric(additionalBatteryMetric).direction, "discharge");
+multiBatteryCard.config.batteries[0].flow_inverted = true;
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(multiBatteryCard._additionalBatteryMetrics()[0]).direction, "charge");
+assert.equal(multiBatteryCard._batteryFlowInfo().direction, "charge");
+multiBatteryCard.config.batteries[0].flow_inverted = false;
 assert.equal(multiBatteryCard._formatBatteryFlowValue(undefined), "");
 assert.match(multiBatteryCard._formatBatteryFlowValue(), /1\.20? kW/);
 assert.equal(multiBatteryCard._visibleHudMetrics(multiBatteryCard._currentVariant).filter((metric) => metric.battery).length, 1);

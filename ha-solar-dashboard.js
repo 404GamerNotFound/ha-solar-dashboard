@@ -106,6 +106,7 @@ function normalizeBatteries(batteries) {
       label: clean(item.label || item.name || `Battery ${number}`),
       level_entity: clean(item.level_entity || item.soc_entity || item.entity || item.entity_id),
       flow_power_entity: clean(item.flow_power_entity || item.battery_flow_power || item.power_entity),
+      flow_inverted: item.flow_inverted === true || item.battery_flow_inverted === true || item.invert_flow === true,
       voltage_entity: clean(item.voltage_entity || item.battery_voltage),
       charge_power_entity: clean(item.charge_power_entity || item.battery_charge_power),
       discharge_power_entity: clean(item.discharge_power_entity || item.battery_discharge_power),
@@ -642,7 +643,7 @@ function createAdvisorEngineMethods({
     }
 
     if (Number.isFinite(snapshot.batteryTemperatureCelsius)) {
-      const tempValue = `${snapshot.batteryTemperatureCelsius.toFixed(Math.abs(snapshot.batteryTemperatureCelsius) >= 100 || Number.isInteger(snapshot.batteryTemperatureCelsius) ? 0 : 1)} °C`;
+      const tempValue = this._formatBatteryTemperatureValue(snapshot.batteryTemperatureCelsius);
       if (snapshot.batteryTemperatureCelsius <= 0 || snapshot.batteryTemperatureCelsius >= 55) {
         add("critical", 94, this._t("advisor.batteryStatus", {}, "Battery"), snapshot.batteryTemperatureCelsius <= 0
           ? this._t("advisor.batteryTemperatureLow", {}, "House battery temperature is low. Charging power may be limited and battery stress can increase.")
@@ -1054,7 +1055,7 @@ function createAdvisorEngineMethods({
         ].filter(Boolean).join(" ")
         : "");
       if (snapshot.batteryFlow?.direction) addValue("Batteriefluss", `${this._batteryFlowDirectionLabel(snapshot.batteryFlow.direction)} ${this._formatBatteryFlowValue(snapshot.batteryFlow)}`);
-      if (Number.isFinite(snapshot.batteryTemperatureCelsius)) addValue(this._t("tooltip.temperature", {}, "Temperature"), `${snapshot.batteryTemperatureCelsius.toFixed(Number.isInteger(snapshot.batteryTemperatureCelsius) ? 0 : 1)} °C`);
+      if (Number.isFinite(snapshot.batteryTemperatureCelsius)) addValue(this._t("tooltip.temperature", {}, "Temperature"), this._formatBatteryTemperatureValue(snapshot.batteryTemperatureCelsius));
       if (Number.isFinite(snapshot.batteryCyclesToday)) addValue(this._t("editor.batteryCyclesTodayEntity", {}, "Battery cycles today entity"), snapshot.batteryCyclesToday.toFixed(snapshot.batteryCyclesToday % 1 === 0 ? 0 : 1));
     }
     if (isWallbox) {
@@ -2147,8 +2148,9 @@ function firstConfiguredPrice(values = []) {
   return values.map((value) => normalizeGridPrice(value)).find((value) => value !== "") ?? "";
 }
 
-function gridImportPrice(config = {}) {
+function gridImportPrice(config = {}, currentPrice = "") {
   return firstConfiguredPrice([
+    currentPrice,
     config.grid_import_price,
     config.import_price,
     config.electricity_import_price,
@@ -2224,6 +2226,7 @@ function localDateKey(date = new Date()) {
 function gridFinanceItems({
   config = {},
   importPrice = gridImportPrice(config),
+  importPriceIsDynamic = false,
   exportPrice = gridExportPrice(config),
   importInfo,
   exportInfo,
@@ -2235,7 +2238,9 @@ function gridFinanceItems({
       kind: "import",
       price: importPrice,
       info: importInfo,
-      label: translate("gridFinance.importCost", {}, "Today cost"),
+      label: importPriceIsDynamic
+        ? translate("gridFinance.importCostCurrentRate", {}, "Today cost at current rate")
+        : translate("gridFinance.importCost", {}, "Today cost"),
     },
     {
       kind: "export",
@@ -3351,6 +3356,8 @@ function createBaseCardConfig({
     show_charts: true,
     show_records: true,
     show_power_flows: false,
+    show_garage_solar_array: true,
+    battery_flow_inverted: false,
     show_status_label: true,
     show_weather_status: false,
     show_grid_status_tile: true,
@@ -3443,6 +3450,8 @@ function createEditorBaseConfig({ floorplanLabel = "Level 1" } = {}) {
     show_advisor: true,
     show_charts: true,
     show_records: true,
+    show_garage_solar_array: true,
+    battery_flow_inverted: false,
     region_profile: "auto",
     unit_system: "auto",
     large_consumers: [],
@@ -6130,7 +6139,7 @@ function createDashboardEditorClass({
     const next = this._cloneConfig(this._config || {});
     next.batteries = normalizeBatteries(next.batteries || []);
     const number = next.batteries.length + 2;
-    next.batteries.push({ id: `battery_${Date.now()}`, label: `${this._t("editor.battery", {}, "Battery")} ${number}`, level_entity: "", flow_power_entity: "", voltage_entity: "", charge_power_entity: "", discharge_power_entity: "", min_soc_entity: "", max_soc_entity: "", temperature_entity: "", cycles_today_entity: "", left: Math.min(96, 49 + (number - 1) * 10), top: 66, show_image: true, show_footer: true, visible: true });
+    next.batteries.push({ id: `battery_${Date.now()}`, label: `${this._t("editor.battery", {}, "Battery")} ${number}`, level_entity: "", flow_power_entity: "", flow_inverted: false, voltage_entity: "", charge_power_entity: "", discharge_power_entity: "", min_soc_entity: "", max_soc_entity: "", temperature_entity: "", cycles_today_entity: "", left: Math.min(96, 49 + (number - 1) * 10), top: 66, show_image: true, show_footer: true, visible: true });
     this._config = next;
     this._dispatchConfig(next);
     this._render();
@@ -6252,7 +6261,7 @@ function createDashboardEditorClass({
       const attributes = stateObj?.attributes || {};
       const domain = entityId.split(".")[0] || "";
       const name = attributes.friendly_name || attributes.name || entityId;
-      const unit = attributes.unit_of_measurement || "";
+      const unit = attributes.unit_of_measurement || attributes.native_unit_of_measurement || "";
       const deviceClass = attributes.device_class || "";
       const stateClass = attributes.state_class || "";
       const haystack = this._normalizeSearchText([
@@ -6472,7 +6481,7 @@ function createDashboardEditorClass({
       { path: "entities.battery_flow_power_voltage", ...voltageTarget, required: [["battery", "batterie", "speicher", "akku"]], include: [batteryTerms, ...voltageTarget.include], threshold: 58 },
       { path: "entities.battery_charge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["charge", "charging", "laden", "ladeleistung"]], include: [batteryTerms, { terms: ["charge", "charging", "laden", "ladeleistung"], weight: 30 }], exclude: ["discharge", "entladen", "entlade", "soc", "temperature", "temperatur"], threshold: 62 },
       { path: "entities.battery_discharge_power", ...powerTarget, required: [["battery", "batterie", "speicher", "akku"], ["discharge", "discharging", "entladen", "entladeleistung"]], include: [batteryTerms, { terms: ["discharge", "discharging", "entladen", "entladeleistung"], weight: 30 }], exclude: ["charge", "charging", "laden", "ladeleistung", "soc", "temperature", "temperatur"], threshold: 62 },
-      { path: "entities.battery_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c"], required: [["battery", "batterie", "speicher", "akku"], ["temperature", "temperatur", "temp"]], include: [batteryTerms, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["power", "leistung", "soc"], threshold: 58 },
+      { path: "entities.battery_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c", "°f", "f", "fahrenheit"], required: [["battery", "batterie", "speicher", "akku"], ["temperature", "temperatur", "temp"]], include: [batteryTerms, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["power", "leistung", "soc"], threshold: 58 },
       { path: "entities.battery_cycles_today", domains: ["sensor"], required: [["battery", "batterie", "speicher", "akku"], ["cycle", "cycles", "zyklen", "vollzyklen"], ["today", "heute", "daily", "tag"]], include: [batteryTerms, { terms: ["cycle", "cycles", "zyklen", "vollzyklen", "today", "heute", "daily", "tag"], weight: 34 }], exclude: ["power", "leistung", "soc", "temperature", "temperatur"], threshold: 58 },
       { path: "entities.inverter_power", ...powerTarget, required: [["inverter", "wechselrichter", "wr"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, ...powerTarget.include], exclude: ["battery", "batterie", "soc", "temperature"], threshold: 56 },
       { path: "entities.inverter_temperature", domains: ["sensor"], deviceClasses: ["temperature"], units: ["°c", "c", "°f", "f"], required: [["inverter", "wechselrichter", "wr"], ["temperature", "temperatur", "temp"]], include: [{ terms: ["inverter", "wechselrichter", "wr"], weight: 38 }, { terms: ["temperature", "temperatur", "temp"], weight: 30 }], exclude: ["battery", "batterie", "power", "leistung"], threshold: 58 },
@@ -6544,7 +6553,7 @@ function createDashboardEditorClass({
     if (path.startsWith("environment_sensors.")) return "environment";
     if (path.startsWith("floorplan.")) return "floorplan";
     if (path.startsWith("custom_kpis.")) return "advanced";
-    if (path === "entities.electricity_price") return "advisor";
+    if (path === "entities.electricity_price") return "energy";
     if (path === "weather_entity") return "setup";
     if (path.startsWith("entities.") || path.startsWith("energy_entities.")) return "energy";
     return "setup";
@@ -6781,6 +6790,9 @@ function createDashboardEditorClass({
           </label>
           <label>${this._labelText(this._t("editor.exportEnergyCounterEntity", {}, "Export energy counter"), this._t("editor.helpImportExportFinance", {}, "Use cumulative kWh counters. The card calculates today's amount from local midnight."))}
             <input data-path="energy_entities.export_power.entity" list="ha-solar-dashboard-entities" placeholder="sensor.grid_export_energy_total" value="${this._escape(exportCounterValue)}" autocomplete="off" />
+          </label>
+          <label>${this._labelText(this._t("editor.electricityPriceEntity", {}, "Electricity price sensor"), this._t("editor.helpElectricityPriceEntity", {}, "Current price per kWh. It overrides the fixed import price while its state is numeric."))}
+            <input data-path="entities.electricity_price" list="ha-solar-dashboard-entities" placeholder="sensor.electricity_price" value="${this._escape(this._config.entities?.electricity_price || "")}" autocomplete="off" />
           </label>
           <label>${this._escape(this._t("editor.gridImportPrice", {}, "Grid import price per kWh"))}
             <input type="number" min="0" step="0.0001" data-path="grid_import_price" value="${this._escape(this._config.grid_import_price ?? "")}" />
@@ -7354,6 +7366,7 @@ function createDashboardEditorClass({
         <label>${this._escape(this._t("editor.batteryLabel", {}, "Battery name"))}<input data-path="batteries.${index}.label" value="${this._escape(battery.label)}" /></label>
         ${this._renderBatteryEntityFields(`batteries.${index}`, battery)}
         <div class="checkbox-grid">
+          <label class="inline"><input type="checkbox" data-path="batteries.${index}.flow_inverted" ${battery.flow_inverted === true ? "checked" : ""}/> ${this._labelText(this._t("editor.batteryFlowInverted"), this._t("editor.helpBatteryFlowInverted"))}</label>
           <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_image" ${battery.show_image !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show on image"))}</label>
           <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_footer" ${battery.show_footer !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowFooter", {}, "Show below image"))}</label>
         </div>
@@ -7365,6 +7378,7 @@ function createDashboardEditorClass({
       <label>${this._labelText(this._t("editor.batteryFlowEntity"), this._t("editor.helpSignedBattery", {}, "Use one signed sensor when possible: positive means charging, negative means discharging."))}
         <input data-path="entities.battery_flow_power" list="ha-solar-dashboard-entities" placeholder="sensor.battery_power" value="${this._escape(this._config.entities?.battery_flow_power || "")}" autocomplete="off" />
       </label>
+      <label class="inline"><input type="checkbox" data-path="battery_flow_inverted" ${this._config.battery_flow_inverted === true ? "checked" : ""}/> ${this._labelText(this._t("editor.batteryFlowInverted"), this._t("editor.helpBatteryFlowInverted"))}</label>
       ${this._renderLabelVisibilityOptions("battery_flow_power")}
       <label>${this._escape(this._t("editor.voltageEntity", {}, "Voltage entity"))}
         <input data-path="entities.battery_flow_power_voltage" list="ha-solar-dashboard-entities" placeholder="sensor.battery_voltage" value="${this._escape(this._config.entities?.battery_flow_power_voltage || "")}" autocomplete="off" />
@@ -8950,6 +8964,7 @@ function createDashboardEditorClass({
           <label class="inline"><input type="checkbox" data-path="show_house_selector" ${this._config.show_house_selector !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showHouseSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_energy_range_selector" ${this._config.show_energy_range_selector === true ? "checked" : ""}/> ${this._escape(this._t("editor.showEnergyRangeSelector"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_power_flows" ${this._config.show_power_flows === true ? "checked" : ""}/> ${this._escape(this._t("editor.showPowerFlows"))}</label>
+          <label class="inline"><input type="checkbox" data-path="show_garage_solar_array" ${this._config.show_garage_solar_array !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGarageSolarArray"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_grid_status_tile" ${this._config.show_grid_status_tile !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showGridStatusTile"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_status_label" ${this._config.show_status_label !== false ? "checked" : ""}/> ${this._escape(this._t("editor.showStatusLabel"))}</label>
           <label class="inline"><input type="checkbox" data-path="show_weather_status" ${this._config.show_weather_status === true ? "checked" : ""}/> ${this._escape(this._t("editor.showWeatherStatus"))}</label>
@@ -8963,9 +8978,6 @@ function createDashboardEditorClass({
         </label>
         <label>${this._escape(this._t("editor.advisorEvSurplusThreshold", {}, "EV surplus threshold (W)"))}
           <input type="number" min="0" max="1000000" step="50" data-path="advisor_ev_surplus_threshold" value="${this._escape(this._config.advisor_ev_surplus_threshold ?? ADVISOR_DEFAULTS.evSurplusThreshold)}" />
-        </label>
-        <label>${this._escape(this._t("editor.electricityPriceEntity", {}, "Electricity price entity"))}
-          <input data-path="entities.electricity_price" list="ha-solar-dashboard-entities" placeholder="sensor.electricity_price" value="${this._escape(this._config.entities?.electricity_price || "")}" autocomplete="off" />
         </label>
       </div>
     `;
@@ -9075,8 +9087,8 @@ function createDashboardEditorClass({
       {
         key: "advisor",
         label: this._t("editor.tabAdvisor", {}, "Advisor"),
-        status: this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]) }),
-        content: `${this._renderSetupWizard("advisor")}${renderEditorCard(this._t("editor.sectionAdvisor", {}, "Advisor and prices"), this._statusText({ configured: this._countConfigured([this._config.entities?.electricity_price]), advanced: true }), advisorSettingsHtml)}`,
+        status: this._statusText({ advanced: true }),
+        content: `${this._renderSetupWizard("advisor")}${renderEditorCard(this._t("editor.sectionAdvisor", {}, "Advisor"), this._statusText({ advanced: true }), advisorSettingsHtml)}`,
       },
       {
         key: "advanced",
@@ -9704,8 +9716,8 @@ function createWeatherImageMethods({
 
 const GARAGE_SOLAR_PANEL_COUNT = 6;
 
-function garageSolarArraySvg({ activeHouse, hasCustomImage } = {}) {
-  if (activeHouse !== "single_family_home" || hasCustomImage) return "";
+function garageSolarArraySvg({ activeHouse, hasCustomImage, showGarageSolarArray = true } = {}) {
+  if (activeHouse !== "single_family_home" || hasCustomImage || showGarageSolarArray === false) return "";
 
   return `
     <svg class="garage-solar-array" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
@@ -12124,6 +12136,7 @@ const I18N = {
     "editor.batteryCyclesTodayEntity": "Battery cycles today entity",
     "editor.batteryDischargeEntity": "Battery discharge entity",
     "editor.batteryFlowEntity": "Battery flow entity (+/-)",
+    "editor.batteryFlowInverted": "Invert charge/discharge direction",
     "editor.batteryMaxSocEntity": "Battery max SoC entity",
     "editor.batteryMinSocEntity": "Battery min SoC entity",
     "editor.batteryTemperatureEntity": "Battery temperature entity",
@@ -12161,6 +12174,7 @@ const I18N = {
     "editor.importEnergyCounterEntity": "Import energy counter",
     "editor.exportEnergyCounterEntity": "Export energy counter",
     "editor.helpImportExportFinance": "Use cumulative kWh counters. The card calculates today's amount from local midnight.",
+    "editor.helpElectricityPriceEntity": "Current price per kWh. It overrides the fixed import price while its state is numeric.",
     "editor.gridImportPrice": "Grid import price per kWh",
     "editor.gridExportPrice": "Feed-in tariff per kWh",
     "editor.currency": "Currency",
@@ -12271,6 +12285,7 @@ const I18N = {
     "editor.showGridStatusTile": "Show grid status tile",
     "editor.showMetricTiles": "Show metric boxes below image",
     "editor.showPowerFlows": "Show animated power flows",
+    "editor.showGarageSolarArray": "Show garage solar panels",
     "editor.showStatusLabel": "Show image status label",
     "editor.showTitle": "Show title",
     "editor.showWeatherStatus": "Show current weather in status label",
@@ -12333,6 +12348,7 @@ const I18N = {
     "editor.helpEnergyCounter": "Optional cumulative energy counter used for 1h, 24h, month, year, and total views.",
     "editor.helpSignedGrid": "Use one sensor where positive values mean grid import and negative values mean export. Leave it empty when using separate import and export sensors.",
     "editor.helpSignedBattery": "Use one signed sensor when possible: positive means charging, negative means discharging.",
+    "editor.helpBatteryFlowInverted": "Use this only when the signed flow sensor reports positive while discharging and negative while charging. Separate charge/discharge sensors are not affected.",
     "editor.helpFooterOrder": "Controls the order of tiles below the image. Lower numbers appear earlier.",
     "editor.helpTileWidth": "Controls how wide the footer tile is on desktop. Mobile width is capped automatically.",
     "editor.helpImagePosition": "Position of the box on the selected image in percent.",
@@ -12479,6 +12495,7 @@ const I18N = {
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor unavailable",
     "gridFinance.importCost": "Today cost",
+    "gridFinance.importCostCurrentRate": "Today cost at current rate",
     "gridFinance.exportRevenue": "Today revenue",
     "view.records": "Records",
     "records.count": "{count} records",
@@ -12791,6 +12808,7 @@ const I18N = {
     "editor.batteryCyclesTodayEntity": "Batterie-Zyklen-heute-Entität",
     "editor.batteryDischargeEntity": "Batterie-Entlade-Entität",
     "editor.batteryFlowEntity": "Batteriefluss-Entität (+/-)",
+    "editor.batteryFlowInverted": "Lade-/Entladerichtung umkehren",
     "editor.batteryMaxSocEntity": "Batterie-Max-SoC-Entität",
     "editor.batteryMinSocEntity": "Batterie-Min-SoC-Entität",
     "editor.batteryTemperatureEntity": "Batterie-Temperatur-Entität",
@@ -12828,6 +12846,7 @@ const I18N = {
     "editor.importEnergyCounterEntity": "Bezugs-Energiezähler",
     "editor.exportEnergyCounterEntity": "Einspeise-Energiezähler",
     "editor.helpImportExportFinance": "Kumulative kWh-Zähler verwenden. Die Karte berechnet den heutigen Wert ab lokalem Tagesbeginn.",
+    "editor.helpElectricityPriceEntity": "Aktueller Preis pro kWh. Solange der Sensor einen numerischen Wert liefert, überschreibt er den festen Bezugspreis.",
     "editor.gridImportPrice": "Bezugskosten pro kWh",
     "editor.gridExportPrice": "Einspeisevergütung pro kWh",
     "editor.currency": "Währung",
@@ -12938,6 +12957,7 @@ const I18N = {
     "editor.showGridStatusTile": "Netzstatus-Kachel anzeigen",
     "editor.showMetricTiles": "Messwertboxen unter dem Bild anzeigen",
     "editor.showPowerFlows": "Animierte Stromflüsse anzeigen",
+    "editor.showGarageSolarArray": "PV-Module auf dem Garagendach anzeigen",
     "editor.showStatusLabel": "Statuslabel im Bild anzeigen",
     "editor.showTitle": "Titel anzeigen",
     "editor.showWeatherStatus": "Aktuelles Wetter im Statuslabel anzeigen",
@@ -13000,6 +13020,7 @@ const I18N = {
     "editor.helpEnergyCounter": "Optionaler kumulativer Energiezähler für 1h, 24h, Monat, Jahr und Gesamtansicht.",
     "editor.helpSignedGrid": "Nutze einen Sensor, bei dem positive Werte Netzbezug und negative Werte Einspeisung bedeuten. Leer lassen, wenn getrennte Sensoren genutzt werden.",
     "editor.helpSignedBattery": "Wenn möglich einen Vorzeichen-Sensor nutzen: positiv lädt, negativ entlädt.",
+    "editor.helpBatteryFlowInverted": "Nur aktivieren, wenn der Vorzeichen-Sensor beim Entladen positive und beim Laden negative Werte liefert. Getrennte Lade-/Entlade-Sensoren bleiben unverändert.",
     "editor.helpFooterOrder": "Legt die Reihenfolge der Kacheln unter dem Bild fest. Niedrigere Werte erscheinen früher.",
     "editor.helpTileWidth": "Legt fest, wie breit die Footer-Kachel auf dem Desktop ist. Mobil wird die Breite automatisch begrenzt.",
     "editor.helpImagePosition": "Position der Box auf dem ausgewählten Bild in Prozent.",
@@ -13146,6 +13167,7 @@ const I18N = {
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor nicht verfügbar",
     "gridFinance.importCost": "Kosten heute",
+    "gridFinance.importCostCurrentRate": "Kosten heute zum aktuellen Tarif",
     "gridFinance.exportRevenue": "Einnahmen heute",
     "view.records": "Rekorde",
     "records.count": "{count} Rekorde",
@@ -13458,6 +13480,7 @@ const I18N = {
     "editor.batteryCyclesTodayEntity": "Entidad de ciclos de batería de hoy",
     "editor.batteryDischargeEntity": "Entidad de descarga de batería",
     "editor.batteryFlowEntity": "Entidad de flujo de batería (+/-)",
+    "editor.batteryFlowInverted": "Invertir la dirección de carga/descarga",
     "editor.batteryMaxSocEntity": "Entidad SoC máximo de batería",
     "editor.batteryMinSocEntity": "Entidad SoC mínimo de batería",
     "editor.batteryTemperatureEntity": "Entidad de temperatura de batería",
@@ -13495,6 +13518,7 @@ const I18N = {
     "editor.importEnergyCounterEntity": "Contador de energía importada",
     "editor.exportEnergyCounterEntity": "Contador de energía exportada",
     "editor.helpImportExportFinance": "Usa contadores kWh acumulativos. La tarjeta calcula el valor de hoy desde la medianoche local.",
+    "editor.helpElectricityPriceEntity": "Precio actual por kWh. Sustituye el precio fijo de compra mientras su estado sea numérico.",
     "editor.gridImportPrice": "Precio de importación por kWh",
     "editor.gridExportPrice": "Tarifa de inyección por kWh",
     "editor.currency": "Moneda",
@@ -13605,6 +13629,7 @@ const I18N = {
     "editor.showGridStatusTile": "Mostrar mosaico de red",
     "editor.showMetricTiles": "Mostrar cajas de métricas bajo la imagen",
     "editor.showPowerFlows": "Mostrar flujos de energía animados",
+    "editor.showGarageSolarArray": "Mostrar paneles solares del garaje",
     "editor.showStatusLabel": "Mostrar etiqueta de estado en la imagen",
     "editor.showTitle": "Mostrar título",
     "editor.showWeatherStatus": "Mostrar clima actual en la etiqueta de estado",
@@ -13667,6 +13692,7 @@ const I18N = {
     "editor.helpEnergyCounter": "Contador acumulado opcional para las vistas 1h, 24h, mes, año y total.",
     "editor.helpSignedGrid": "Usa un sensor donde los valores positivos signifiquen importación y los negativos exportación. Déjalo vacío si usas sensores separados.",
     "editor.helpSignedBattery": "Usa un sensor con signo si es posible: positivo significa carga y negativo descarga.",
+    "editor.helpBatteryFlowInverted": "Úsalo solo si el sensor con signo informa positivo al descargar y negativo al cargar. Los sensores de carga/descarga separados no se ven afectados.",
     "editor.helpFooterOrder": "Controla el orden de los mosaicos bajo la imagen. Los números más bajos aparecen antes.",
     "editor.helpTileWidth": "Controla el ancho del mosaico inferior en escritorio. En móvil se limita automáticamente.",
     "editor.helpImagePosition": "Posición de la caja en la imagen seleccionada en porcentaje.",
@@ -13813,6 +13839,7 @@ const I18N = {
     "warning.sensorOffline": "Sensor sin conexión",
     "warning.sensorUnavailable": "Sensor no disponible",
     "gridFinance.importCost": "Coste hoy",
+    "gridFinance.importCostCurrentRate": "Coste hoy a la tarifa actual",
     "gridFinance.exportRevenue": "Ingresos hoy",
     "view.records": "Récords",
     "records.count": "{count} récords",
@@ -14125,6 +14152,7 @@ const I18N = {
     "editor.batteryCyclesTodayEntity": "Entité cycles batterie aujourd’hui",
     "editor.batteryDischargeEntity": "Entité de décharge batterie",
     "editor.batteryFlowEntity": "Entité de flux batterie (+/-)",
+    "editor.batteryFlowInverted": "Inverser le sens charge/décharge",
     "editor.batteryMaxSocEntity": "Entité SoC max. batterie",
     "editor.batteryMinSocEntity": "Entité SoC min. batterie",
     "editor.batteryTemperatureEntity": "Entité température batterie",
@@ -14162,6 +14190,7 @@ const I18N = {
     "editor.importEnergyCounterEntity": "Compteur d'énergie importée",
     "editor.exportEnergyCounterEntity": "Compteur d'énergie exportée",
     "editor.helpImportExportFinance": "Utilisez des compteurs kWh cumulatifs. La carte calcule la valeur du jour depuis minuit local.",
+    "editor.helpElectricityPriceEntity": "Prix actuel par kWh. Il remplace le prix d'achat fixe tant que son état est numérique.",
     "editor.gridImportPrice": "Prix d'import par kWh",
     "editor.gridExportPrice": "Tarif d'injection par kWh",
     "editor.currency": "Devise",
@@ -14272,6 +14301,7 @@ const I18N = {
     "editor.showGridStatusTile": "Afficher la tuile réseau",
     "editor.showMetricTiles": "Afficher les boîtes de mesure sous l'image",
     "editor.showPowerFlows": "Afficher les flux d'énergie animés",
+    "editor.showGarageSolarArray": "Afficher les panneaux solaires du garage",
     "editor.showStatusLabel": "Afficher le libellé d'état dans l'image",
     "editor.showTitle": "Afficher le titre",
     "editor.showWeatherStatus": "Afficher la météo actuelle dans le libellé d'état",
@@ -14334,6 +14364,7 @@ const I18N = {
     "editor.helpEnergyCounter": "Compteur d'énergie cumulée optionnel pour les vues 1h, 24h, mois, année et total.",
     "editor.helpSignedGrid": "Utilisez un capteur où les valeurs positives signifient import et les valeurs négatives export. Laissez vide si vous utilisez deux capteurs.",
     "editor.helpSignedBattery": "Utilisez un capteur signé si possible : positif signifie charge, négatif décharge.",
+    "editor.helpBatteryFlowInverted": "Utilisez cette option uniquement si le capteur signé indique une valeur positive pendant la décharge et négative pendant la charge. Les capteurs de charge/décharge séparés ne sont pas concernés.",
     "editor.helpFooterOrder": "Contrôle l'ordre des tuiles sous l'image. Les nombres plus bas apparaissent plus tôt.",
     "editor.helpTileWidth": "Contrôle la largeur de la tuile inférieure sur bureau. Sur mobile, elle est limitée automatiquement.",
     "editor.helpImagePosition": "Position de la boîte sur l'image sélectionnée en pourcentage.",
@@ -14480,6 +14511,7 @@ const I18N = {
     "warning.sensorOffline": "Capteur hors ligne",
     "warning.sensorUnavailable": "Capteur indisponible",
     "gridFinance.importCost": "Coût aujourd'hui",
+    "gridFinance.importCostCurrentRate": "Coût aujourd'hui au tarif actuel",
     "gridFinance.exportRevenue": "Revenus aujourd'hui",
     "view.records": "Records",
     "records.count": "{count} records",
@@ -14792,6 +14824,7 @@ const I18N = {
     "editor.batteryCyclesTodayEntity": "Encja cykli baterii dziś",
     "editor.batteryDischargeEntity": "Encja rozładowania baterii",
     "editor.batteryFlowEntity": "Encja przepływu baterii (+/-)",
+    "editor.batteryFlowInverted": "Odwróć kierunek ładowania/rozładowania",
     "editor.batteryMaxSocEntity": "Encja maks. SoC baterii",
     "editor.batteryMinSocEntity": "Encja min. SoC baterii",
     "editor.batteryTemperatureEntity": "Encja temperatury baterii",
@@ -14829,6 +14862,7 @@ const I18N = {
     "editor.importEnergyCounterEntity": "Licznik energii importowanej",
     "editor.exportEnergyCounterEntity": "Licznik energii eksportowanej",
     "editor.helpImportExportFinance": "Użyj skumulowanych liczników kWh. Karta liczy dzisiejszą wartość od lokalnej północy.",
+    "editor.helpElectricityPriceEntity": "Aktualna cena za kWh. Zastępuje stałą cenę zakupu, gdy jej stan jest liczbą.",
     "editor.gridImportPrice": "Cena importu z sieci za kWh",
     "editor.gridExportPrice": "Taryfa oddawania do sieci za kWh",
     "editor.currency": "Waluta",
@@ -14939,6 +14973,7 @@ const I18N = {
     "editor.showGridStatusTile": "Pokaż kafelek sieci",
     "editor.showMetricTiles": "Pokaż pola metryk pod obrazem",
     "editor.showPowerFlows": "Pokaż animowane przepływy energii",
+    "editor.showGarageSolarArray": "Pokaż panele słoneczne na garażu",
     "editor.showStatusLabel": "Pokaż etykietę statusu na obrazie",
     "editor.showTitle": "Pokaż tytuł",
     "editor.showWeatherStatus": "Pokaż aktualną pogodę w etykiecie statusu",
@@ -15001,6 +15036,7 @@ const I18N = {
     "editor.helpEnergyCounter": "Opcjonalny licznik energii skumulowanej dla widoków 1h, 24h, miesiąc, rok i łącznie.",
     "editor.helpSignedGrid": "Użyj czujnika, w którym wartości dodatnie oznaczają import, a ujemne eksport. Pozostaw puste, jeśli używasz osobnych czujników.",
     "editor.helpSignedBattery": "Jeśli to możliwe, użyj czujnika ze znakiem: dodatni oznacza ładowanie, ujemny rozładowanie.",
+    "editor.helpBatteryFlowInverted": "Użyj tylko wtedy, gdy czujnik ze znakiem pokazuje wartości dodatnie podczas rozładowywania i ujemne podczas ładowania. Osobne czujniki ładowania i rozładowania nie są zmieniane.",
     "editor.helpFooterOrder": "Steruje kolejnością kafelków pod obrazem. Niższe liczby pojawiają się wcześniej.",
     "editor.helpTileWidth": "Steruje szerokością kafelka dolnego na komputerze. Na telefonie szerokość jest ograniczana automatycznie.",
     "editor.helpImagePosition": "Pozycja pola na wybranym obrazie w procentach.",
@@ -15147,6 +15183,7 @@ const I18N = {
     "warning.sensorOffline": "Sensor offline",
     "warning.sensorUnavailable": "Sensor niedostępny",
     "gridFinance.importCost": "Koszt dzisiaj",
+    "gridFinance.importCostCurrentRate": "Koszt dzisiaj według aktualnej taryfy",
     "gridFinance.exportRevenue": "Przychód dzisiaj",
     "view.records": "Rekordy",
     "records.count": "{count} rekordów",
@@ -15721,7 +15758,8 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _getEntityUnit(entityId) {
-    return this._getEntity(entityId)?.attributes?.unit_of_measurement;
+    const attributes = this._getEntity(entityId)?.attributes || {};
+    return attributes.unit_of_measurement || attributes.native_unit_of_measurement;
   }
 
   _getEntityLastUpdated(entityId) {
@@ -16543,7 +16581,16 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _gridImportPrice() {
-    return gridImportPrice(this.config);
+    return gridImportPrice(this.config, this._currentElectricityPrice());
+  }
+
+  _currentElectricityPrice() {
+    const entityId = this.config.entities?.electricity_price || "";
+    return entityId ? normalizeGridPrice(this._getEntityValue(entityId, undefined)) : "";
+  }
+
+  _usesDynamicGridImportPrice() {
+    return this._currentElectricityPrice() !== "";
   }
 
   _gridExportPrice() {
@@ -16629,6 +16676,7 @@ class HaSolarDashboardCard extends HTMLElement {
     return gridFinanceItems({
       config: this.config,
       importPrice,
+      importPriceIsDynamic: this._usesDynamicGridImportPrice(),
       exportPrice,
       importInfo: importPrice !== "" ? this._gridDailyEnergyInfo("import") : undefined,
       exportInfo: exportPrice !== "" ? this._gridDailyEnergyInfo("export") : undefined,
@@ -17152,8 +17200,8 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _batteryFlowInfo() {
-    const base = this._batteryFlowInfoForEntities(this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power);
-    const additional = normalizeBatteries(this.config.batteries || []).map((battery) => this._batteryFlowInfoForEntities(battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity)).filter(Boolean);
+    const base = this._batteryFlowInfoForEntities(this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power, this.config.battery_flow_inverted === true);
+    const additional = normalizeBatteries(this.config.batteries || []).map((battery) => this._batteryFlowInfoForEntities(battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity, battery.flow_inverted)).filter(Boolean);
     const flows = [base, ...additional].filter(Boolean);
     if (!flows.length) return undefined;
     const selected = flows.some((flow) => flow.kind !== "energy") ? flows.filter((flow) => flow.kind !== "energy") : flows;
@@ -17162,11 +17210,11 @@ class HaSolarDashboardCard extends HTMLElement {
     return { direction: net > 0 ? "charge" : "discharge", entityId: selected.map((flow) => flow.entityId).filter(Boolean).join(","), amount: Math.abs(net), kind: selected[0].kind, unit: selected[0].unit };
   }
 
-  _batteryFlowInfoForEntities(signedEntityId, chargeEntityId, dischargeEntityId) {
+  _batteryFlowInfoForEntities(signedEntityId, chargeEntityId, dischargeEntityId, invertSignedFlow = false) {
     const signedValue = this._entityFlowValue(signedEntityId);
     if (signedValue && signedValue.amount !== 0) {
       return {
-        direction: signedValue.amount > 0 ? "charge" : "discharge",
+        direction: (signedValue.amount > 0) !== invertSignedFlow ? "charge" : "discharge",
         entityId: signedEntityId,
         amount: Math.abs(signedValue.amount),
         kind: signedValue.kind,
@@ -17197,7 +17245,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _batteryFlowInfoForMetric(metric) {
     if (metric?.battery) {
-      return this._batteryFlowInfoForEntities(metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity);
+      return this._batteryFlowInfoForEntities(metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity, metric.battery.flow_inverted);
     }
     return metric?.key === "battery_level" ? this._batteryFlowInfo() : undefined;
   }
@@ -17345,21 +17393,31 @@ class HaSolarDashboardCard extends HTMLElement {
     return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
   }
 
-  _formatTemperatureLabel(rawValue, entityUnit = "°C") {
+  _temperatureTargetUnit(entityUnit = "") {
+    const configuredUnit = String(this.config?.units?.temperature ?? "").trim();
+    if (!configuredUnit || configuredUnit.toLowerCase() === "auto") return entityUnit || "°C";
+    return configuredUnit;
+  }
+
+  _formatTemperatureDisplay(rawValue, entityUnit = "°C", targetUnit = entityUnit || "°C") {
+    const formatted = this._formatTemperatureValue(rawValue, entityUnit || targetUnit || "°C", targetUnit || entityUnit || "°C");
+    return formatted === "—" ? "" : formatted.replace(/\.0 (?=°[CF]$)/, " ");
+  }
+
+  _formatTemperatureLabel(rawValue, entityUnit = "°C", targetUnit = entityUnit || "°C") {
     const normalized = String(rawValue ?? "").trim().toLowerCase();
     if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return "";
-    const numericValue = Number(String(rawValue).replace(",", "."));
-    const unit = entityUnit || "°C";
-    const value = Number.isFinite(numericValue)
-      ? `${Math.abs(numericValue) >= 100 || Number.isInteger(numericValue) ? numericValue.toFixed(0) : numericValue.toFixed(1)} ${unit}`
-      : `${String(rawValue).trim()}${unit && !String(rawValue).includes(unit) ? ` ${unit}` : ""}`;
+    const value = this._formatTemperatureDisplay(rawValue, entityUnit, targetUnit);
+    if (!value) return "";
     return this._t("value.temperature", { value }, `Temp ${value}`);
   }
 
   _batteryTemperatureLabel() {
     const entityId = this._batteryTemperatureEntityId();
     if (!entityId) return "";
-    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "°C");
+    const entityUnit = this._getEntityUnit(entityId);
+    const targetUnit = this._temperatureTargetUnit(entityUnit);
+    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), entityUnit || targetUnit, targetUnit);
   }
 
   _batteryTemperatureEntityIdForMetric(metric) {
@@ -17370,7 +17428,9 @@ class HaSolarDashboardCard extends HTMLElement {
   _batteryTemperatureLabelForMetric(metric) {
     const entityId = this._batteryTemperatureEntityIdForMetric(metric);
     if (!entityId) return "";
-    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "°C");
+    const entityUnit = this._getEntityUnit(entityId);
+    const targetUnit = this._temperatureTargetUnit(entityUnit);
+    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), entityUnit || targetUnit, targetUnit);
   }
 
   _batteryVoltageEntityId() {
@@ -17410,9 +17470,13 @@ class HaSolarDashboardCard extends HTMLElement {
     if (!entityId) return undefined;
     const value = numericState(this._getEntityValue(entityId, undefined));
     if (!Number.isFinite(value)) return undefined;
-    const unit = String(this._getEntityUnit(entityId) || "°C").trim().toLowerCase();
+    const unit = String(this._getEntityUnit(entityId) || this._temperatureTargetUnit()).trim().toLowerCase();
     if (unit.includes("°f") || unit === "f" || unit.includes("fahrenheit")) return (value - 32) * (5 / 9);
     return value;
+  }
+
+  _formatBatteryTemperatureValue(celsius) {
+    return this._formatTemperatureDisplay(celsius, "°C", this._temperatureTargetUnit());
   }
 
   _renderBatteryTemperature(metric, { placement = "footer" } = {}) {
@@ -18357,6 +18421,7 @@ class HaSolarDashboardCard extends HTMLElement {
       imageSrc,
       imageFallbacks,
       hasCustomImage: Boolean(customImage.src),
+      showGarageSolarArray: this.config.show_garage_solar_array !== false,
     };
   }
 

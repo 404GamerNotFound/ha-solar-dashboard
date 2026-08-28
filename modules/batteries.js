@@ -11,6 +11,7 @@ export function normalizeBatteries(batteries) {
       label: clean(item.label || item.name || `Battery ${number}`),
       level_entity: clean(item.level_entity || item.soc_entity || item.entity || item.entity_id),
       flow_power_entity: clean(item.flow_power_entity || item.battery_flow_power || item.power_entity),
+      flow_inverted: item.flow_inverted === true || item.battery_flow_inverted === true || item.invert_flow === true,
       voltage_entity: clean(item.voltage_entity || item.battery_voltage),
       charge_power_entity: clean(item.charge_power_entity || item.battery_charge_power),
       discharge_power_entity: clean(item.discharge_power_entity || item.battery_discharge_power),

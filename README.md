@@ -216,6 +216,9 @@ entities:
   # Option B: separate entities; used when the signed entity is empty
   import_power: sensor.netzbezug_leistung
   export_power: sensor.netzeinspeisung_leistung
+  # Optional: current price per kWh; overrides grid_import_price while available
+  electricity_price: sensor.strompreis_aktuell
+battery_flow_inverted: false # Set to true when the signed battery sensor uses the opposite convention
 visible_boxes:
   wallbox_power: false
   wallbox2_power: false
@@ -245,6 +248,7 @@ currency_position: auto
 show_grid_daily_finance: true
 show_grid_status_tile: true
 show_power_flows: false
+show_garage_solar_array: false
 advisor_max_suggestions: 8
 image_overlays:
   smoke:
@@ -392,6 +396,7 @@ large_consumers:
 - `show_weather_status` (boolean, default: `false`; adds the current weather state to the bottom-right status label)
 - `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` or split import/export entities are configured)
 - `show_power_flows` (boolean, default: `false`; shows animated SVG power flow lines between configured image/HUD positions when enabled)
+- `show_garage_solar_array` (boolean, default: `true`; shows the decorative solar-panel overlay on the garage roof of the built-in single-family-home image)
 - `image_overlays.smoke.enabled` / `image_overlays.heatpump.enabled` (boolean, default: `false`; shows the smoke or heat pump overlay on the house image)
 - `image_overlays.<overlay>.label` (string, optional; custom label shown in the image badge and bottom tile, for example `Gas` or `Wärmepumpe`)
 - `image_overlays.smoke.entity` (entity id, optional; cumulative gas meter used to show consumption for the selected period)
@@ -410,7 +415,9 @@ large_consumers:
 - `labels.import_export_import` / `labels.import_export_export` / `labels.import_export_neutral` (strings, optional; custom direction labels for the import/export display, for example `Grid import`, `Feed-in`, and `Self-sufficient`)
 - `energy_entities.<entity_key>.entity` (entity id, optional; cumulative kWh counter used like the gas meter: `1h`, `24h`, `1 month`, and `1 year` are calculated from Home Assistant history, while `Total` shows the current counter value)
 - `energy_entities.import_power.entity` / `energy_entities.export_power.entity` (entity ids, optional; cumulative grid import/export kWh counters used to calculate today's grid cost and feed-in revenue from local midnight)
-- `grid_import_price` / `grid_export_price` (numbers, optional; price or feed-in tariff per kWh, multiplied with today's import/export kWh counters)
+- `entities.import_export_power` (entity id, optional; signed live grid-power sensor. Positive values mean grid import and negative values mean feed-in; it has priority over separate `entities.import_power` / `entities.export_power` sensors)
+- `entities.electricity_price` (entity id, optional; current import price per kWh, for example from Tibber or aWATTar. A numeric state overrides `grid_import_price`; the displayed daily cost is explicitly labelled as an estimate at the current tariff.)
+- `grid_import_price` / `grid_export_price` (numbers, optional; fixed price or feed-in tariff per kWh. `grid_import_price` is the fallback when no valid `entities.electricity_price` state is available; both are multiplied with today's import/export kWh counters)
 - `currency` (string, default: `€`; use a symbol such as `€` or an ISO code such as `EUR`)
 - `currency_position` (string, default: `auto`; options: `auto`, `prefix`, `suffix`; `auto` keeps `€` after the amount and places common prefix symbols such as `$` before the amount)
 - `show_grid_daily_finance` (boolean, default: `true`; shows today's grid costs and feed-in revenue as compact labels on the import/export HUD and tile when counters and prices are configured)
@@ -424,10 +431,12 @@ large_consumers:
 - `entities.water_meter` (entity id, optional; cumulative water meter shown as a HUD box and summary tile using `units.water_meter` / `units.volume`; when the value-range selector is enabled, `1h`, `24h`, `1 month`, and `1 year` show consumption from Home Assistant history, while `Total` shows the current meter value)
 - `entities.battery_level` (entity id)
 - `entities.battery_flow_power` (entity id, optional; signed battery power or energy shown on the battery HUD, positive values mean charging/incoming and negative values mean discharging/outgoing; the badge follows the entity unit)
+- `battery_flow_inverted` (boolean, default: `false`; reverses the charge/discharge direction of `entities.battery_flow_power` when its signed convention is inverted; separate charge/discharge entities are unaffected)
+- `batteries[].flow_inverted` (boolean, default: `false`; applies the same reversal independently to the signed flow sensor of an additional battery)
 - `entities.battery_charge_power` / `entities.battery_discharge_power` (entity ids, optional; separate incoming/outgoing battery power or energy values, used when `battery_flow_power` is not configured; the badge follows the entity unit)
 - `entities.battery_min_soc` (entity id, optional; battery minimum/reserve SoC used by the Advisor Dashboard and low-battery warning; falls back to `battery_low_threshold`)
 - `entities.battery_max_soc` (entity id, optional; battery maximum/target SoC used by the Advisor Dashboard so exported surplus is treated as expected when the battery is already at its target)
-- `entities.battery_temperature` (entity id, optional; battery temperature badge shown on the battery HUD and tile)
+- `entities.battery_temperature` (entity id, optional; battery temperature badge shown on the battery HUD and tile, converted to `units.temperature`; Fahrenheit source sensors are supported)
 - `entities.battery_cycles_today` (entity id, optional; daily/full cycles used by the Advisor Dashboard to warn about frequent battery cycling)
 - `entities.inverter_power` (entity id)
 - `entities.inverter_temperature` (entity id, optional; temperature for the base inverter in detailed display)
@@ -466,7 +475,7 @@ large_consumers:
 - `units.power` (string, default: `auto`; power values are shown in `W` below `1000 W` and in `kW` with two decimals from `1000 W`)
 - `units.battery` (string, default: `%`)
 - `units.volume` / `units.water_meter` (string, default: `m³`; water values are displayed in cubic meters by default, even when the entity reports liters or gallons; use `gal` for US gallons)
-- `units.temperature`, `units.precipitation`, `units.pressure`, `units.flow`, `units.distance` (strings, optional; regional target units used by Garden and EV displays, for example `°F`, `in`, `psi`, `gal/min`, and `mi`)
+- `units.temperature`, `units.precipitation`, `units.pressure`, `units.flow`, `units.distance` (strings, optional; regional target units used by temperature badges, the Advisor, Garden, and EV displays, for example `°F`, `in`, `psi`, `gal/min`, and `mi`)
 - `units.<entity_key>` (string, optional; overrides the unit for a single metric, for example `units.wallbox_power: W`; `auto` respects Home Assistant units such as `W`, `kW`, and `kWh`)
 - `power_display_mode` (string, default: `auto_kw`; options: `raw`, `auto_kw`)
 - `power_decimals` (number, default: `2`; used for kW values in `auto_kw` mode, range: `0`-`3`)

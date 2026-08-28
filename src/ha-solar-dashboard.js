@@ -665,7 +665,8 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _getEntityUnit(entityId) {
-    return this._getEntity(entityId)?.attributes?.unit_of_measurement;
+    const attributes = this._getEntity(entityId)?.attributes || {};
+    return attributes.unit_of_measurement || attributes.native_unit_of_measurement;
   }
 
   _getEntityLastUpdated(entityId) {
@@ -1487,7 +1488,16 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _gridImportPrice() {
-    return gridImportPrice(this.config);
+    return gridImportPrice(this.config, this._currentElectricityPrice());
+  }
+
+  _currentElectricityPrice() {
+    const entityId = this.config.entities?.electricity_price || "";
+    return entityId ? normalizeGridPrice(this._getEntityValue(entityId, undefined)) : "";
+  }
+
+  _usesDynamicGridImportPrice() {
+    return this._currentElectricityPrice() !== "";
   }
 
   _gridExportPrice() {
@@ -1573,6 +1583,7 @@ class HaSolarDashboardCard extends HTMLElement {
     return gridFinanceItems({
       config: this.config,
       importPrice,
+      importPriceIsDynamic: this._usesDynamicGridImportPrice(),
       exportPrice,
       importInfo: importPrice !== "" ? this._gridDailyEnergyInfo("import") : undefined,
       exportInfo: exportPrice !== "" ? this._gridDailyEnergyInfo("export") : undefined,
@@ -2096,8 +2107,8 @@ class HaSolarDashboardCard extends HTMLElement {
   }
 
   _batteryFlowInfo() {
-    const base = this._batteryFlowInfoForEntities(this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power);
-    const additional = normalizeBatteries(this.config.batteries || []).map((battery) => this._batteryFlowInfoForEntities(battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity)).filter(Boolean);
+    const base = this._batteryFlowInfoForEntities(this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power, this.config.battery_flow_inverted === true);
+    const additional = normalizeBatteries(this.config.batteries || []).map((battery) => this._batteryFlowInfoForEntities(battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity, battery.flow_inverted)).filter(Boolean);
     const flows = [base, ...additional].filter(Boolean);
     if (!flows.length) return undefined;
     const selected = flows.some((flow) => flow.kind !== "energy") ? flows.filter((flow) => flow.kind !== "energy") : flows;
@@ -2106,11 +2117,11 @@ class HaSolarDashboardCard extends HTMLElement {
     return { direction: net > 0 ? "charge" : "discharge", entityId: selected.map((flow) => flow.entityId).filter(Boolean).join(","), amount: Math.abs(net), kind: selected[0].kind, unit: selected[0].unit };
   }
 
-  _batteryFlowInfoForEntities(signedEntityId, chargeEntityId, dischargeEntityId) {
+  _batteryFlowInfoForEntities(signedEntityId, chargeEntityId, dischargeEntityId, invertSignedFlow = false) {
     const signedValue = this._entityFlowValue(signedEntityId);
     if (signedValue && signedValue.amount !== 0) {
       return {
-        direction: signedValue.amount > 0 ? "charge" : "discharge",
+        direction: (signedValue.amount > 0) !== invertSignedFlow ? "charge" : "discharge",
         entityId: signedEntityId,
         amount: Math.abs(signedValue.amount),
         kind: signedValue.kind,
@@ -2141,7 +2152,7 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _batteryFlowInfoForMetric(metric) {
     if (metric?.battery) {
-      return this._batteryFlowInfoForEntities(metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity);
+      return this._batteryFlowInfoForEntities(metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity, metric.battery.flow_inverted);
     }
     return metric?.key === "battery_level" ? this._batteryFlowInfo() : undefined;
   }
@@ -2289,21 +2300,31 @@ class HaSolarDashboardCard extends HTMLElement {
     return aliases.map((key) => this.config.entities?.[key]).find(Boolean) || "";
   }
 
-  _formatTemperatureLabel(rawValue, entityUnit = "°C") {
+  _temperatureTargetUnit(entityUnit = "") {
+    const configuredUnit = String(this.config?.units?.temperature ?? "").trim();
+    if (!configuredUnit || configuredUnit.toLowerCase() === "auto") return entityUnit || "°C";
+    return configuredUnit;
+  }
+
+  _formatTemperatureDisplay(rawValue, entityUnit = "°C", targetUnit = entityUnit || "°C") {
+    const formatted = this._formatTemperatureValue(rawValue, entityUnit || targetUnit || "°C", targetUnit || entityUnit || "°C");
+    return formatted === "—" ? "" : formatted.replace(/\.0 (?=°[CF]$)/, " ");
+  }
+
+  _formatTemperatureLabel(rawValue, entityUnit = "°C", targetUnit = entityUnit || "°C") {
     const normalized = String(rawValue ?? "").trim().toLowerCase();
     if (!normalized || ["unknown", "unavailable", "none", "null", "offline"].includes(normalized)) return "";
-    const numericValue = Number(String(rawValue).replace(",", "."));
-    const unit = entityUnit || "°C";
-    const value = Number.isFinite(numericValue)
-      ? `${Math.abs(numericValue) >= 100 || Number.isInteger(numericValue) ? numericValue.toFixed(0) : numericValue.toFixed(1)} ${unit}`
-      : `${String(rawValue).trim()}${unit && !String(rawValue).includes(unit) ? ` ${unit}` : ""}`;
+    const value = this._formatTemperatureDisplay(rawValue, entityUnit, targetUnit);
+    if (!value) return "";
     return this._t("value.temperature", { value }, `Temp ${value}`);
   }
 
   _batteryTemperatureLabel() {
     const entityId = this._batteryTemperatureEntityId();
     if (!entityId) return "";
-    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "°C");
+    const entityUnit = this._getEntityUnit(entityId);
+    const targetUnit = this._temperatureTargetUnit(entityUnit);
+    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), entityUnit || targetUnit, targetUnit);
   }
 
   _batteryTemperatureEntityIdForMetric(metric) {
@@ -2314,7 +2335,9 @@ class HaSolarDashboardCard extends HTMLElement {
   _batteryTemperatureLabelForMetric(metric) {
     const entityId = this._batteryTemperatureEntityIdForMetric(metric);
     if (!entityId) return "";
-    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId) || "°C");
+    const entityUnit = this._getEntityUnit(entityId);
+    const targetUnit = this._temperatureTargetUnit(entityUnit);
+    return this._formatTemperatureLabel(this._getEntityValue(entityId, undefined), entityUnit || targetUnit, targetUnit);
   }
 
   _batteryVoltageEntityId() {
@@ -2354,9 +2377,13 @@ class HaSolarDashboardCard extends HTMLElement {
     if (!entityId) return undefined;
     const value = numericState(this._getEntityValue(entityId, undefined));
     if (!Number.isFinite(value)) return undefined;
-    const unit = String(this._getEntityUnit(entityId) || "°C").trim().toLowerCase();
+    const unit = String(this._getEntityUnit(entityId) || this._temperatureTargetUnit()).trim().toLowerCase();
     if (unit.includes("°f") || unit === "f" || unit.includes("fahrenheit")) return (value - 32) * (5 / 9);
     return value;
+  }
+
+  _formatBatteryTemperatureValue(celsius) {
+    return this._formatTemperatureDisplay(celsius, "°C", this._temperatureTargetUnit());
   }
 
   _renderBatteryTemperature(metric, { placement = "footer" } = {}) {
@@ -3301,6 +3328,7 @@ class HaSolarDashboardCard extends HTMLElement {
       imageSrc,
       imageFallbacks,
       hasCustomImage: Boolean(customImage.src),
+      showGarageSolarArray: this.config.show_garage_solar_array !== false,
     };
   }
 

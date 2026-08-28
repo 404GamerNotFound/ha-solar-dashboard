@@ -1,7 +1,7 @@
 const GARAGE_SOLAR_PANEL_COUNT = 6;
 
-export function garageSolarArraySvg({ activeHouse, hasCustomImage } = {}) {
-  if (activeHouse !== "single_family_home" || hasCustomImage) return "";
+export function garageSolarArraySvg({ activeHouse, hasCustomImage, showGarageSolarArray = true } = {}) {
+  if (activeHouse !== "single_family_home" || hasCustomImage || showGarageSolarArray === false) return "";
 
   return `
     <svg class="garage-solar-array" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">

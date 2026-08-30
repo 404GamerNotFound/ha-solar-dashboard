@@ -492,6 +492,7 @@
   "warning.sensorUnavailable": "Sensor unavailable",
   "gridFinance.importCost": "Today cost",
   "gridFinance.importCostCurrentRate": "Today cost at current rate",
+  "gridFinance.currentRate": "Current tariff: {value}",
   "gridFinance.exportRevenue": "Today revenue",
   "view.records": "Records",
   "records.count": "{count} records",

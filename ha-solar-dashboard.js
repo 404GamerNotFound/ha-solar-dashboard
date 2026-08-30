@@ -2144,6 +2144,20 @@ function normalizeGridPrice(value) {
   return Number.isFinite(number) ? Math.max(0, number) : "";
 }
 
+// Dynamic price entities use different currency and energy denominations. Keep
+// all finance calculations in the card's canonical unit: currency per kWh.
+function normalizeElectricityPrice(value, unit = "") {
+  const price = normalizeGridPrice(value);
+  if (price === "") return "";
+
+  const normalizedUnit = String(unit || "").trim().toLowerCase().replace(/\s+/g, "");
+  const isCent = /(?:^|\/)(?:ct|cent|cents|c€|¢|p)(?:\/|per)/.test(normalizedUnit);
+  const energyUnit = normalizedUnit.match(/(?:\/|per)(kwh|mwh|wh)$/)?.[1];
+  const energyFactor = energyUnit === "mwh" ? 0.001 : energyUnit === "wh" ? 1000 : 1;
+
+  return Number((price * (isCent ? 0.01 : 1) * energyFactor).toPrecision(15));
+}
+
 function firstConfiguredPrice(values = []) {
   return values.map((value) => normalizeGridPrice(value)).find((value) => value !== "") ?? "";
 }
@@ -12496,6 +12510,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor unavailable",
     "gridFinance.importCost": "Today cost",
     "gridFinance.importCostCurrentRate": "Today cost at current rate",
+    "gridFinance.currentRate": "Current tariff: {value}",
     "gridFinance.exportRevenue": "Today revenue",
     "view.records": "Records",
     "records.count": "{count} records",
@@ -13168,6 +13183,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor nicht verfügbar",
     "gridFinance.importCost": "Kosten heute",
     "gridFinance.importCostCurrentRate": "Kosten heute zum aktuellen Tarif",
+    "gridFinance.currentRate": "Aktueller Tarif: {value}",
     "gridFinance.exportRevenue": "Einnahmen heute",
     "view.records": "Rekorde",
     "records.count": "{count} Rekorde",
@@ -13840,6 +13856,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor no disponible",
     "gridFinance.importCost": "Coste hoy",
     "gridFinance.importCostCurrentRate": "Coste hoy a la tarifa actual",
+    "gridFinance.currentRate": "Tarifa actual: {value}",
     "gridFinance.exportRevenue": "Ingresos hoy",
     "view.records": "Récords",
     "records.count": "{count} récords",
@@ -14512,6 +14529,7 @@ const I18N = {
     "warning.sensorUnavailable": "Capteur indisponible",
     "gridFinance.importCost": "Coût aujourd'hui",
     "gridFinance.importCostCurrentRate": "Coût aujourd'hui au tarif actuel",
+    "gridFinance.currentRate": "Tarif actuel : {value}",
     "gridFinance.exportRevenue": "Revenus aujourd'hui",
     "view.records": "Records",
     "records.count": "{count} records",
@@ -15184,6 +15202,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor niedostępny",
     "gridFinance.importCost": "Koszt dzisiaj",
     "gridFinance.importCostCurrentRate": "Koszt dzisiaj według aktualnej taryfy",
+    "gridFinance.currentRate": "Aktualna taryfa: {value}",
     "gridFinance.exportRevenue": "Przychód dzisiaj",
     "view.records": "Rekordy",
     "records.count": "{count} rekordów",
@@ -16586,7 +16605,9 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _currentElectricityPrice() {
     const entityId = this.config.entities?.electricity_price || "";
-    return entityId ? normalizeGridPrice(this._getEntityValue(entityId, undefined)) : "";
+    return entityId
+      ? normalizeElectricityPrice(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId))
+      : "";
   }
 
   _usesDynamicGridImportPrice() {
@@ -16689,15 +16710,26 @@ class HaSolarDashboardCard extends HTMLElement {
     return gridFinanceLabel(item, { formatMoney: (value) => this._formatMoney(value) });
   }
 
+  _gridCurrentPriceLabel() {
+    const price = this._currentElectricityPrice();
+    if (price === "") return "";
+    const value = `${this._formatMoney(price)} / kWh`;
+    return this._t("gridFinance.currentRate", { value }, `Current tariff: ${value}`);
+  }
+
   _renderGridDailyFinanceRow(metric, { placement = "footer" } = {}) {
     if (metric.key !== "import_export_power") return "";
     const items = this._gridDailyFinanceItems();
-    if (items.length === 0) return "";
+    const currentPriceLabel = this._gridCurrentPriceLabel();
+    if (items.length === 0 && !currentPriceLabel) return "";
     const badges = items.map((item) => {
       const text = this._gridDailyFinanceLabel(item.kind);
       return `<span class="finance-badge ${this._escape(item.kind)}" data-grid-finance="${this._escape(item.kind)}" title="${this._escape(text)}" aria-label="${this._escape(text)}">${this._escape(text)}</span>`;
     }).join("");
-    return `<div class="meta-row finance-meta-row finance-meta-row-${this._escape(placement)}">${badges}</div>`;
+    const priceBadge = currentPriceLabel
+      ? `<span class="finance-badge current-price" data-grid-price="current" title="${this._escape(currentPriceLabel)}" aria-label="${this._escape(currentPriceLabel)}">${this._escape(currentPriceLabel)}</span>`
+      : "";
+    return `<div class="meta-row finance-meta-row finance-meta-row-${this._escape(placement)}">${priceBadge}${badges}</div>`;
   }
 
   _configuredLabel(key, fallback) {
@@ -18712,6 +18744,7 @@ class HaSolarDashboardCard extends HTMLElement {
       phaseActions: this._cacheElementsByAttribute("data-phase-action"),
       voltages: this._cacheElementsByAttribute("data-voltage"),
       gridFinances: this._cacheElementsByAttribute("data-grid-finance"),
+      gridPrices: this._cacheElementsByAttribute("data-grid-price"),
       pvLabels: this._cacheElementsByAttribute("data-pv-label"),
       overlayLabels: this._cacheElementsByAttribute("data-overlay-label"),
       overlayValues: this._cacheElementsByAttribute("data-overlay-value"),
@@ -19289,6 +19322,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .finance-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:100%; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .finance-badge.import { color:#fdba74; background:rgba(251,146,60,.14); box-shadow:inset 0 0 0 1px rgba(253,186,116,.2); }
         .finance-badge.export { color:#86efac; background:rgba(52,211,153,.14); box-shadow:inset 0 0 0 1px rgba(134,239,172,.2); }
+        .finance-badge.current-price { color:#93c5fd; background:rgba(96,165,250,.14); box-shadow:inset 0 0 0 1px rgba(147,197,253,.22); }
         .finance-badge:empty { display:none; }
         .voltage-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:86px; border-radius:999px; padding:2px 5px; background:rgba(250,204,21,.14); color:#fde047; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(250,204,21,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .voltage-badge:empty { display:none; }
@@ -19612,6 +19646,13 @@ class HaSolarDashboardCard extends HTMLElement {
         element.setAttribute("aria-label", voltageTitle);
       });
       if (metric.key === "import_export_power") {
+        const currentPriceLabel = this._gridCurrentPriceLabel();
+        this._cachedDomElements("gridPrices", "current").forEach((element) => {
+          if (element.textContent !== currentPriceLabel) element.textContent = currentPriceLabel;
+          element.style.display = currentPriceLabel ? "inline-flex" : "none";
+          element.setAttribute("title", currentPriceLabel);
+          element.setAttribute("aria-label", currentPriceLabel);
+        });
         ["import", "export"].forEach((kind) => {
           const financeLabel = this._gridDailyFinanceLabel(kind);
           this._cachedDomElements("gridFinances", kind).forEach((element) => {

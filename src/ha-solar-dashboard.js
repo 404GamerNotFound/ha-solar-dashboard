@@ -85,6 +85,7 @@ import {
   gridFinanceLabel,
   gridImportPrice,
   localDateKey,
+  normalizeElectricityPrice,
   normalizeGridPrice,
   todayStartDate,
 } from "../modules/grid-finance.js";
@@ -1493,7 +1494,9 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _currentElectricityPrice() {
     const entityId = this.config.entities?.electricity_price || "";
-    return entityId ? normalizeGridPrice(this._getEntityValue(entityId, undefined)) : "";
+    return entityId
+      ? normalizeElectricityPrice(this._getEntityValue(entityId, undefined), this._getEntityUnit(entityId))
+      : "";
   }
 
   _usesDynamicGridImportPrice() {
@@ -1596,15 +1599,26 @@ class HaSolarDashboardCard extends HTMLElement {
     return gridFinanceLabel(item, { formatMoney: (value) => this._formatMoney(value) });
   }
 
+  _gridCurrentPriceLabel() {
+    const price = this._currentElectricityPrice();
+    if (price === "") return "";
+    const value = `${this._formatMoney(price)} / kWh`;
+    return this._t("gridFinance.currentRate", { value }, `Current tariff: ${value}`);
+  }
+
   _renderGridDailyFinanceRow(metric, { placement = "footer" } = {}) {
     if (metric.key !== "import_export_power") return "";
     const items = this._gridDailyFinanceItems();
-    if (items.length === 0) return "";
+    const currentPriceLabel = this._gridCurrentPriceLabel();
+    if (items.length === 0 && !currentPriceLabel) return "";
     const badges = items.map((item) => {
       const text = this._gridDailyFinanceLabel(item.kind);
       return `<span class="finance-badge ${this._escape(item.kind)}" data-grid-finance="${this._escape(item.kind)}" title="${this._escape(text)}" aria-label="${this._escape(text)}">${this._escape(text)}</span>`;
     }).join("");
-    return `<div class="meta-row finance-meta-row finance-meta-row-${this._escape(placement)}">${badges}</div>`;
+    const priceBadge = currentPriceLabel
+      ? `<span class="finance-badge current-price" data-grid-price="current" title="${this._escape(currentPriceLabel)}" aria-label="${this._escape(currentPriceLabel)}">${this._escape(currentPriceLabel)}</span>`
+      : "";
+    return `<div class="meta-row finance-meta-row finance-meta-row-${this._escape(placement)}">${priceBadge}${badges}</div>`;
   }
 
   _configuredLabel(key, fallback) {
@@ -3619,6 +3633,7 @@ class HaSolarDashboardCard extends HTMLElement {
       phaseActions: this._cacheElementsByAttribute("data-phase-action"),
       voltages: this._cacheElementsByAttribute("data-voltage"),
       gridFinances: this._cacheElementsByAttribute("data-grid-finance"),
+      gridPrices: this._cacheElementsByAttribute("data-grid-price"),
       pvLabels: this._cacheElementsByAttribute("data-pv-label"),
       overlayLabels: this._cacheElementsByAttribute("data-overlay-label"),
       overlayValues: this._cacheElementsByAttribute("data-overlay-value"),
@@ -4234,6 +4249,13 @@ class HaSolarDashboardCard extends HTMLElement {
         element.setAttribute("aria-label", voltageTitle);
       });
       if (metric.key === "import_export_power") {
+        const currentPriceLabel = this._gridCurrentPriceLabel();
+        this._cachedDomElements("gridPrices", "current").forEach((element) => {
+          if (element.textContent !== currentPriceLabel) element.textContent = currentPriceLabel;
+          element.style.display = currentPriceLabel ? "inline-flex" : "none";
+          element.setAttribute("title", currentPriceLabel);
+          element.setAttribute("aria-label", currentPriceLabel);
+        });
         ["import", "export"].forEach((kind) => {
           const financeLabel = this._gridDailyFinanceLabel(kind);
           this._cachedDomElements("gridFinances", kind).forEach((element) => {

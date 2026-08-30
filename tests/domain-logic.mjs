@@ -51,6 +51,7 @@ import {
   gridFinanceLabel,
   gridImportPrice,
   localDateKey,
+  normalizeElectricityPrice,
   normalizeGridPrice,
   todayStartDate,
 } from "../modules/grid-finance.js";
@@ -361,6 +362,9 @@ assert.equal(gardenConfig.manual_actions[0].entity, "script.bewaesserung_rasen_l
 
 assert.equal(normalizeGridPrice("0,32"), 0.32);
 assert.equal(normalizeGridPrice(""), "");
+assert.equal(normalizeElectricityPrice("13,196", "ct/kWh"), 0.13196);
+assert.equal(normalizeElectricityPrice("131.96", "€/MWh"), 0.13196);
+assert.equal(normalizeElectricityPrice("0.13196", "€/kWh"), 0.13196);
 assert.equal(gridImportPrice({ grid_import_price: "", import_price: "0.31" }), 0.31);
 assert.equal(gridImportPrice({ grid_import_price: "0.31" }, "0.4187"), 0.4187);
 assert.equal(gridImportPrice({ grid_import_price: "0.31" }, "unavailable"), 0.31);
@@ -601,6 +605,19 @@ assert.equal(fahrenheitBatteryCard._batteryTemperatureCelsius(), (100 - 32) * (5
 assert.equal(fahrenheitBatteryCard._formatBatteryTemperatureValue(fahrenheitBatteryCard._batteryTemperatureCelsius()), "100 °F");
 fahrenheitBatteryCard.config.units.temperature = "°C";
 assert.equal(fahrenheitBatteryCard._batteryTemperatureLabel(), "Temp 37.8 °C");
+const dynamicPriceCard = new DashboardCard();
+dynamicPriceCard.config = {
+  currency: "€",
+  currency_position: "auto",
+  entities: { electricity_price: "sensor.electricity_price" },
+};
+dynamicPriceCard._hass = { states: {
+  "sensor.electricity_price": { state: "13.196", attributes: { unit_of_measurement: "ct/kWh" } },
+} };
+assert.equal(dynamicPriceCard._currentElectricityPrice(), 0.13196);
+assert.equal(dynamicPriceCard._gridImportPrice(), 0.13196);
+assert.equal(dynamicPriceCard._gridCurrentPriceLabel(), "Current tariff: 0.13 € / kWh");
+assert.match(dynamicPriceCard._renderGridDailyFinanceRow({ key: "import_export_power" }), /data-grid-price="current"/);
 const inverterDetailsCard = new DashboardCard();
 inverterDetailsCard.config = {
   entities: {

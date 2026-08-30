@@ -4,6 +4,20 @@ export function normalizeGridPrice(value) {
   return Number.isFinite(number) ? Math.max(0, number) : "";
 }
 
+// Dynamic price entities use different currency and energy denominations. Keep
+// all finance calculations in the card's canonical unit: currency per kWh.
+export function normalizeElectricityPrice(value, unit = "") {
+  const price = normalizeGridPrice(value);
+  if (price === "") return "";
+
+  const normalizedUnit = String(unit || "").trim().toLowerCase().replace(/\s+/g, "");
+  const isCent = /(?:^|\/)(?:ct|cent|cents|c€|¢|p)(?:\/|per)/.test(normalizedUnit);
+  const energyUnit = normalizedUnit.match(/(?:\/|per)(kwh|mwh|wh)$/)?.[1];
+  const energyFactor = energyUnit === "mwh" ? 0.001 : energyUnit === "wh" ? 1000 : 1;
+
+  return Number((price * (isCent ? 0.01 : 1) * energyFactor).toPrecision(15));
+}
+
 export function firstConfiguredPrice(values = []) {
   return values.map((value) => normalizeGridPrice(value)).find((value) => value !== "") ?? "";
 }

@@ -492,7 +492,7 @@
   "warning.sensorUnavailable": "Capteur indisponible",
   "gridFinance.importCost": "Coût aujourd'hui",
   "gridFinance.importCostCurrentRate": "Coût aujourd'hui au tarif actuel",
-  "gridFinance.currentRate": "Tarif actuel : {value}",
+  "gridFinance.currentRate": "{value}\nTarif actuel",
   "gridFinance.exportRevenue": "Revenus aujourd'hui",
   "view.records": "Records",
   "records.count": "{count} records",

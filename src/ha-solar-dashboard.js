@@ -1603,7 +1603,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const price = this._currentElectricityPrice();
     if (price === "") return "";
     const value = `${this._formatMoney(price)} / kWh`;
-    return this._t("gridFinance.currentRate", { value }, `Current tariff: ${value}`);
+    return this._t("gridFinance.currentRate", { value }, `${value}\nCurrent rate`);
   }
 
   _renderGridDailyFinanceRow(metric, { placement = "footer" } = {}) {

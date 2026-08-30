@@ -616,7 +616,7 @@ dynamicPriceCard._hass = { states: {
 } };
 assert.equal(dynamicPriceCard._currentElectricityPrice(), 0.13196);
 assert.equal(dynamicPriceCard._gridImportPrice(), 0.13196);
-assert.equal(dynamicPriceCard._gridCurrentPriceLabel(), "Current tariff: 0.13 € / kWh");
+assert.equal(dynamicPriceCard._gridCurrentPriceLabel(), "0.13 € / kWh\nCurrent rate");
 assert.match(dynamicPriceCard._renderGridDailyFinanceRow({ key: "import_export_power" }), /data-grid-price="current"/);
 const inverterDetailsCard = new DashboardCard();
 inverterDetailsCard.config = {

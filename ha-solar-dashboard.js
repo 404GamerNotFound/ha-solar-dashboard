@@ -12510,7 +12510,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor unavailable",
     "gridFinance.importCost": "Today cost",
     "gridFinance.importCostCurrentRate": "Today cost at current rate",
-    "gridFinance.currentRate": "Current tariff: {value}",
+    "gridFinance.currentRate": "{value}\nCurrent rate",
     "gridFinance.exportRevenue": "Today revenue",
     "view.records": "Records",
     "records.count": "{count} records",
@@ -13183,7 +13183,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor nicht verfügbar",
     "gridFinance.importCost": "Kosten heute",
     "gridFinance.importCostCurrentRate": "Kosten heute zum aktuellen Tarif",
-    "gridFinance.currentRate": "Aktueller Tarif: {value}",
+    "gridFinance.currentRate": "{value}\nAkt. Tarif",
     "gridFinance.exportRevenue": "Einnahmen heute",
     "view.records": "Rekorde",
     "records.count": "{count} Rekorde",
@@ -13856,7 +13856,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor no disponible",
     "gridFinance.importCost": "Coste hoy",
     "gridFinance.importCostCurrentRate": "Coste hoy a la tarifa actual",
-    "gridFinance.currentRate": "Tarifa actual: {value}",
+    "gridFinance.currentRate": "{value}\nTarifa actual",
     "gridFinance.exportRevenue": "Ingresos hoy",
     "view.records": "Récords",
     "records.count": "{count} récords",
@@ -14529,7 +14529,7 @@ const I18N = {
     "warning.sensorUnavailable": "Capteur indisponible",
     "gridFinance.importCost": "Coût aujourd'hui",
     "gridFinance.importCostCurrentRate": "Coût aujourd'hui au tarif actuel",
-    "gridFinance.currentRate": "Tarif actuel : {value}",
+    "gridFinance.currentRate": "{value}\nTarif actuel",
     "gridFinance.exportRevenue": "Revenus aujourd'hui",
     "view.records": "Records",
     "records.count": "{count} records",
@@ -15202,7 +15202,7 @@ const I18N = {
     "warning.sensorUnavailable": "Sensor niedostępny",
     "gridFinance.importCost": "Koszt dzisiaj",
     "gridFinance.importCostCurrentRate": "Koszt dzisiaj według aktualnej taryfy",
-    "gridFinance.currentRate": "Aktualna taryfa: {value}",
+    "gridFinance.currentRate": "{value}\nAkt. taryfa",
     "gridFinance.exportRevenue": "Przychód dzisiaj",
     "view.records": "Rekordy",
     "records.count": "{count} rekordów",
@@ -16714,7 +16714,7 @@ class HaSolarDashboardCard extends HTMLElement {
     const price = this._currentElectricityPrice();
     if (price === "") return "";
     const value = `${this._formatMoney(price)} / kWh`;
-    return this._t("gridFinance.currentRate", { value }, `Current tariff: ${value}`);
+    return this._t("gridFinance.currentRate", { value }, `${value}\nCurrent rate`);
   }
 
   _renderGridDailyFinanceRow(metric, { placement = "footer" } = {}) {
@@ -19322,7 +19322,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .finance-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:100%; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .finance-badge.import { color:#fdba74; background:rgba(251,146,60,.14); box-shadow:inset 0 0 0 1px rgba(253,186,116,.2); }
         .finance-badge.export { color:#86efac; background:rgba(52,211,153,.14); box-shadow:inset 0 0 0 1px rgba(134,239,172,.2); }
-        .finance-badge.current-price { color:#93c5fd; background:rgba(96,165,250,.14); box-shadow:inset 0 0 0 1px rgba(147,197,253,.22); }
+        .finance-badge.current-price { justify-content:center; color:#93c5fd; background:rgba(96,165,250,.14); box-shadow:inset 0 0 0 1px rgba(147,197,253,.22); white-space:pre-line; text-align:center; }
         .finance-badge:empty { display:none; }
         .voltage-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:86px; border-radius:999px; padding:2px 5px; background:rgba(250,204,21,.14); color:#fde047; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(250,204,21,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .voltage-badge:empty { display:none; }

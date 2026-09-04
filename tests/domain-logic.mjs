@@ -575,8 +575,96 @@ editorPanel._floorplanFloorLabel = () => "Level 1";
 editorPanel._normalizeEnvironmentSensors = () => [];
 editorPanel._normalizeFloorplan = () => ({ floors: [] });
 editorPanel._render = () => {};
+editorPanel._ensureTranslationsForRender = () => {};
 assert.doesNotThrow(() => editorPanel.setConfig({ entities: { battery_level: "sensor.battery_1_soc" }, batteries: [{ entity: "sensor.battery_2_soc" }] }));
 assert.equal(editorPanel._config.batteries[0].level_entity, "sensor.battery_2_soc");
+
+const configEchoEditor = new DashboardEditorPanel();
+configEchoEditor._floorplanFloorLabel = () => "Level 1";
+configEchoEditor._ensureTranslationsForRender = () => {};
+let configEchoRenderRequests = 0;
+configEchoEditor._requestRender = () => {
+  configEchoRenderRequests += 1;
+};
+configEchoEditor.setConfig({ title: "Solar" });
+configEchoEditor.setConfig({ title: "Solar" });
+assert.equal(configEchoRenderRequests, 1);
+
+const cachedEntityEditor = new DashboardEditorPanel();
+cachedEntityEditor._hass = { states: {
+  "sensor.zeta": { state: "1", attributes: {} },
+  "sensor.alpha": { state: "2", attributes: {} },
+} };
+const firstEntityOptions = cachedEntityEditor._entityOptions();
+assert.deepEqual(firstEntityOptions, ["sensor.alpha", "sensor.zeta"]);
+assert.strictEqual(cachedEntityEditor._entityOptions(), firstEntityOptions);
+assert.strictEqual(cachedEntityEditor._entityOptionsMarkup(), cachedEntityEditor._entityOptionsMarkup());
+
+const suggestionCacheEditor = new DashboardEditorPanel();
+suggestionCacheEditor._hass = { states: { "sensor.pv": { state: "1200", attributes: {} } } };
+suggestionCacheEditor._config = { entities: {} };
+suggestionCacheEditor._configFingerprint = suggestionCacheEditor._configFingerprintFor(suggestionCacheEditor._config);
+suggestionCacheEditor._entityCatalog = () => [{ entityId: "sensor.pv", stateObj: { state: "1200" }, haystack: "pv", domain: "sensor" }];
+suggestionCacheEditor._autoDetectTargetsForScope = () => [{ path: "entities.pv_roof_power", threshold: 50 }];
+suggestionCacheEditor._pathValue = () => "";
+suggestionCacheEditor._entityLabelForPath = () => "PV roof";
+suggestionCacheEditor._autoDetectScopeForPath = () => "energy";
+let suggestionScoreCalls = 0;
+suggestionCacheEditor._scoreEntityForTarget = () => {
+  suggestionScoreCalls += 1;
+  return 100;
+};
+assert.equal(suggestionCacheEditor._autoDetectSuggestions("energy").length, 1);
+assert.equal(suggestionCacheEditor._autoDetectSuggestions("energy").length, 1);
+assert.equal(suggestionScoreCalls, 1);
+
+const wizardEditor = new DashboardEditorPanel();
+wizardEditor._hass = { states: { "sensor.pv": { state: "1200", attributes: {} } } };
+wizardEditor._config = {};
+wizardEditor._wizardMessage = () => "";
+let wizardSuggestionCalls = 0;
+wizardEditor._autoDetectSuggestions = () => {
+  wizardSuggestionCalls += 1;
+  return [];
+};
+wizardEditor._isSetupWizardOpen = () => false;
+wizardEditor._renderSetupWizard("all");
+assert.equal(wizardSuggestionCalls, 0);
+wizardEditor._isSetupWizardOpen = () => true;
+wizardEditor._renderSetupWizard("all");
+assert.equal(wizardSuggestionCalls, 1);
+
+const activeTabEditor = new DashboardEditorPanel();
+const activeTabRoot = {
+  innerHTML: "",
+  querySelector: () => null,
+  querySelectorAll: () => [],
+};
+activeTabEditor.attachShadow = () => {
+  activeTabEditor.shadowRoot = activeTabRoot;
+  return activeTabRoot;
+};
+activeTabEditor._hass = { states: {} };
+activeTabEditor._config = { entities: {} };
+activeTabEditor._normalizeViewMode = (value) => value;
+activeTabEditor._renderSetupWizard = () => "";
+let inactiveTabRenderCalls = 0;
+activeTabEditor._renderMetricGroups = () => {
+  inactiveTabRenderCalls += 1;
+  return "";
+};
+activeTabEditor._renderElectricVehicleEditor = () => {
+  inactiveTabRenderCalls += 1;
+  return "";
+};
+activeTabEditor._renderGardenEditor = () => {
+  inactiveTabRenderCalls += 1;
+  return "";
+};
+activeTabEditor._render();
+assert.equal(inactiveTabRenderCalls, 0);
+assert.match(activeTabRoot.innerHTML, /data-editor-tab-panel="setup"/);
+assert.doesNotMatch(activeTabRoot.innerHTML, /data-editor-tab-panel="energy"/);
 const invertedPrimaryBatteryCard = new DashboardCard();
 invertedPrimaryBatteryCard.config = {
   entities: { battery_flow_power: "sensor.battery_power" },

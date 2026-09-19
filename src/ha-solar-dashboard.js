@@ -2502,12 +2502,16 @@ class HaSolarDashboardCard extends HTMLElement {
     return entityUnit ? `${formatted} ${entityUnit}` : String(formatted);
   }
 
-  _pvLabelText(metric, label) {
-    const title = this._t(label.labelKey, {}, label.suffix);
+  _pvLabelParts(metric, label) {
+    const labelText = this._t(label.labelKey, {}, label.suffix);
     const value = label.source === "metric"
       ? this._formatReading(metric)
       : this._formatPvLabelEntityValue(this._pvLabelEntityId(metric, label), label.unit);
-    return value && value !== "—" ? `${title}: ${value}` : "";
+    return {
+      label: labelText,
+      value: value && value !== "—" ? value : "",
+      text: value && value !== "—" ? [labelText, value].join(": ") : "",
+    };
   }
 
   _renderPvLabel(metric, label, { placement = "footer" } = {}) {
@@ -2515,10 +2519,14 @@ class HaSolarDashboardCard extends HTMLElement {
     const key = this._pvLabelKey(metric, label);
     if (!this._showLabelIn(key, placement)) return "";
     if (label.source === "entity" && !this._pvLabelEntityId(metric, label)) return "";
-    const text = this._pvLabelText(metric, label);
+    const parts = this._pvLabelParts(metric, label);
+    const { text } = parts;
     const tooltip = text || this._t(label.labelKey, {}, label.suffix);
     return `
-      <span class="pv-badge${this._labelVisibilityClass(key, placement)}" data-pv-label="${this._escape(key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${text ? "" : "display:none"}">${this._escape(text)}</span>
+      <span class="pv-badge${this._labelVisibilityClass(key, placement)}" data-pv-label="${this._escape(key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${text ? "" : "display:none"}">
+        <span class="pv-badge-label" data-pv-label-title>${this._escape(parts.label)}</span>
+        <strong class="pv-badge-value" data-pv-label-value>${this._escape(parts.value)}</strong>
+      </span>
     `;
   }
 
@@ -4269,10 +4277,18 @@ class HaSolarDashboardCard extends HTMLElement {
       if (this._isPvMetric(metric)) {
         PV_LABELS.forEach((label) => {
           const key = this._pvLabelKey(metric, label);
-          const text = this._pvLabelText(metric, label);
+          const parts = this._pvLabelParts(metric, label);
+          const { text } = parts;
           this._cachedDomElements("pvLabels", key).forEach((element) => {
-            if (element.textContent !== text) element.textContent = text;
-            element.style.display = text ? "inline-flex" : "none";
+            const labelElement = element.querySelector("[data-pv-label-title]");
+            const valueElement = element.querySelector("[data-pv-label-value]");
+            if (labelElement && valueElement) {
+              if (labelElement.textContent !== parts.label) labelElement.textContent = parts.label;
+              if (valueElement.textContent !== parts.value) valueElement.textContent = parts.value;
+            } else if (element.textContent !== text) {
+              element.textContent = text;
+            }
+            element.style.display = text ? "grid" : "none";
             element.setAttribute("title", text);
             element.setAttribute("aria-label", text);
           });

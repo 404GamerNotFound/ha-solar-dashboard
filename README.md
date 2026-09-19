@@ -552,6 +552,19 @@ The actual files belong here:
 
 If Home Assistant reports `rainy` during daylight, the card first tries `/local/solar/house_day_rainy.png`, then `/local/solar/house_night_rainy.png`, then `/local/solar/house_day.png`, and finally `/local/solar/house_night.png`. If none of the custom candidates can be loaded, the built-in image fallback chain is still used.
 
+### Custom vehicle images
+
+The E-Auto view uses its own image fields. Save a car image below /config/www/ and use its browser path, starting with /local/—not the filesystem path—in electric_vehicle:
+
+~~~yaml
+electric_vehicle:
+  image: /local/solar/cars/my-car.png
+  day_image: /local/solar/cars/my-car-day.png
+  night_image: /local/solar/cars/my-car-night.png
+~~~
+
+These correspond to /config/www/solar/cars/... on the Home Assistant host. image is the fallback image; day_image and night_image override it according to sun.sun. The vehicle image fields only change the E-Auto picture—they do not configure or control charging. For compatibility, local/..., /config/www/..., and /homeassistant/www/... are converted to /local/..., but the explicit /local/... form is recommended.
+
 ## Built-in image overview
 
 The previews below are intentionally small so the README stays lightweight while still showing the available variants.

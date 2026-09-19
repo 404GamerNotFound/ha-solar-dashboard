@@ -3527,6 +3527,7 @@ export function createDashboardEditorClass({
           <label>${this._labelText(this._t("editor.electricVehicleNightImage", {}, "Vehicle night image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
             <input data-path="electric_vehicle.night_image" placeholder="/local/eauto/eauto_night.png" value="${this._escape(nightImage)}" autocomplete="off" />
           </label>
+          <p class="field-note">${this._escape(this._t("editor.electricVehicleImagePathHelp", {}, "Custom vehicle image: save it under /config/www/... and enter /local/... here, for example /local/solar/cars/my-car.png. This only changes the vehicle picture, not charging."))}</p>
           <label>${this._labelText(this._t("editor.electricVehicleEvccLoadpoint", {}, "evcc loadpoint slug"), this._t("editor.electricVehicleEvccLoadpointHelp", {}, "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities."))}
             <input data-path="electric_vehicle.evcc_loadpoint" placeholder="garage_delta_ac_max" value="${this._escape(evccLoadpoint)}" autocomplete="off" />
           </label>

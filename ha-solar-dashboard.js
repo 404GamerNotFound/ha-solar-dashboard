@@ -3508,6 +3508,21 @@ const ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS = Object.freeze({
 const ELECTRIC_VEHICLE_IMAGE_BADGE_COLUMNS = 4;
 const ELECTRIC_VEHICLE_IMAGE_BADGE_ROWS = 4;
 
+function normalizeElectricVehicleImagePath(value = "", fallback = "") {
+  const path = String(value || "").trim().replace(/\\/g, "/");
+  if (!path) return fallback;
+  if (/^(?:(?:https?:)?\/\/|data:|blob:)/i.test(path)) return path;
+
+  const localPath = path.match(/^\/?local\/+(.+)$/i);
+  if (localPath) return `/local/${localPath[1]}`;
+
+  const homeAssistantPath = path.match(/^\/?(?:config\/)?www\/+(.+)$/i)
+    || path.match(/^\/?homeassistant\/(?:config\/)?www\/+(.+)$/i);
+  if (homeAssistantPath) return `/local/${homeAssistantPath[1]}`;
+
+  return path;
+}
+
 const ELECTRIC_VEHICLE_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "status", labelKey: "ev.status", label: "Status", group: "state", kind: "status", aliases: ["ev_status", "loadpoint_status", "wallbox_status"] }),
   Object.freeze({ key: "pv_status_text", labelKey: "ev.pvStatusText", label: "PV status text", group: "state", kind: "text", evccDomain: "sensor", evccSuffix: "pv_action_value", aliases: ["ev_pv_status_text", "evcc_pv_status_text", "evcc_pv_action_value", "pv_action_value", "loadpoint_pv_action_value", "wallbox_pv_action_value"] }),
@@ -3751,9 +3766,9 @@ function normalizeElectricVehicleConfig(config = {}) {
   const loadpoint = normalizeElectricVehicleLoadpoint(source.evcc_loadpoint || source.loadpoint_slug || source.loadpoint_id || source.loadpoint);
   return {
     title: String(source.title || source.label || "").trim(),
-    image: String(source.image || source.image_path || source.car_image || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE,
-    day_image: String(source.day_image || source.image_day || source.eauto_day_image || "").trim(),
-    night_image: String(source.night_image || source.image_night || source.eauto_night_image || "").trim(),
+    image: normalizeElectricVehicleImagePath(source.image || source.image_path || source.car_image, DEFAULT_ELECTRIC_VEHICLE_IMAGE),
+    day_image: normalizeElectricVehicleImagePath(source.day_image || source.image_day || source.eauto_day_image),
+    night_image: normalizeElectricVehicleImagePath(source.night_image || source.image_night || source.eauto_night_image),
     wallbox: normalizeElectricVehicleWallbox(source.wallbox || source.wallbox_key || source.loadpoint || source.loadpoint_id),
     evcc_loadpoint: loadpoint,
     evcc_prefix: normalizeElectricVehiclePrefix(source.evcc_prefix || source.integration_prefix || source.prefix),
@@ -8629,6 +8644,7 @@ function createDashboardEditorClass({
           <label>${this._labelText(this._t("editor.electricVehicleNightImage", {}, "Vehicle night image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
             <input data-path="electric_vehicle.night_image" placeholder="/local/eauto/eauto_night.png" value="${this._escape(nightImage)}" autocomplete="off" />
           </label>
+          <p class="field-note">${this._escape(this._t("editor.electricVehicleImagePathHelp", {}, "Custom vehicle image: save it under /config/www/... and enter /local/... here, for example /local/solar/cars/my-car.png. This only changes the vehicle picture, not charging."))}</p>
           <label>${this._labelText(this._t("editor.electricVehicleEvccLoadpoint", {}, "evcc loadpoint slug"), this._t("editor.electricVehicleEvccLoadpointHelp", {}, "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities."))}
             <input data-path="electric_vehicle.evcc_loadpoint" placeholder="garage_delta_ac_max" value="${this._escape(evccLoadpoint)}" autocomplete="off" />
           </label>
@@ -9336,6 +9352,7 @@ function createDashboardEditorClass({
         .field-label-text{display:inline-flex;align-items:center;gap:5px;min-width:0}
         .field-help{display:inline-grid;place-items:center;width:16px;height:16px;flex:0 0 auto;border-radius:999px;background:color-mix(in srgb,var(--editor-accent) 18%,var(--editor-surface));color:var(--editor-accent);font-size:11px;font-weight:900;cursor:help}
         .field-note{margin:0;color:var(--editor-muted);font-size:12px;line-height:1.35}
+        .settings-grid>.field-note{grid-column:1/-1}
         .inline{display:flex;align-items:center;gap:8px;min-width:0;font-weight:650}
         .inline input{width:auto;min-width:auto;padding:0}
         .template-row{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
@@ -12697,6 +12714,9 @@ const I18N = {
     "ev.gridExport": "Export",
     "editor.electricVehicleDayImage": "Vehicle day image",
     "editor.electricVehicleNightImage": "Vehicle night image",
+    "editor.electricVehicleImage": "Custom vehicle image",
+    "editor.electricVehicleImageHelp": "Store custom images under /config/www/ and enter them here as /local/.... Bundled images may stay relative; complete https:// URLs are also supported.",
+    "editor.electricVehicleImagePathHelp": "Custom vehicle image: save the file under /config/www/... and enter its web path as /local/..., for example /local/solar/cars/my-car.png. This only changes the vehicle picture, not charging.",
     "editor.electricVehicleEvccLoadpoint": "evcc loadpoint slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
@@ -13370,6 +13390,9 @@ const I18N = {
     "ev.gridExport": "Einspeisung",
     "editor.electricVehicleDayImage": "Fahrzeug-Tagbild",
     "editor.electricVehicleNightImage": "Fahrzeug-Nachtbild",
+    "editor.electricVehicleImage": "Eigenes Fahrzeugbild",
+    "editor.electricVehicleImageHelp": "Eigene Bilder unter /config/www/ ablegen und hier als /local/... eintragen. Eingebaute Bilder dürfen relativ bleiben; vollständige https://-URLs sind ebenfalls möglich.",
+    "editor.electricVehicleImagePathHelp": "Eigenes Fahrzeugbild: Datei unter /config/www/... ablegen und hier den Webpfad /local/... eintragen, z. B. /local/solar/autos/mein-auto.png. Dieses Feld ändert nur das Fahrzeugbild, nicht den Ladevorgang.",
     "editor.electricVehicleEvccLoadpoint": "evcc-Loadpoint-Slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optionaler marq24/ha-evcc-Slug. Beispiel: garage_delta_ac_max ordnet sensor.evcc_garage_delta_ac_max_charge_power und verwandte Entitäten automatisch zu.",
     "editor.electricVehicleEvccPrefix": "evcc-Entitätspräfix",
@@ -14043,6 +14066,9 @@ const I18N = {
     "ev.gridExport": "Export",
     "editor.electricVehicleDayImage": "Vehicle day image",
     "editor.electricVehicleNightImage": "Vehicle night image",
+    "editor.electricVehicleImage": "Imagen personalizada del vehículo",
+    "editor.electricVehicleImageHelp": "Guarda las imágenes personalizadas en /config/www/ e introdúcelas aquí como /local/.... Las imágenes incluidas pueden mantenerse relativas; también se admiten URL https:// completas.",
+    "editor.electricVehicleImagePathHelp": "Imagen personalizada del vehículo: guarda el archivo en /config/www/... e introduce su ruta web como /local/..., por ejemplo /local/solar/autos/mi-auto.png. Esto solo cambia la imagen del vehículo, no la carga.",
     "editor.electricVehicleEvccLoadpoint": "evcc loadpoint slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
@@ -14716,6 +14742,9 @@ const I18N = {
     "ev.gridExport": "Export",
     "editor.electricVehicleDayImage": "Vehicle day image",
     "editor.electricVehicleNightImage": "Vehicle night image",
+    "editor.electricVehicleImage": "Image personnalisée du véhicule",
+    "editor.electricVehicleImageHelp": "Placez les images personnalisées dans /config/www/ et saisissez-les ici sous la forme /local/.... Les images intégrées peuvent rester relatives ; les URL https:// complètes sont aussi prises en charge.",
+    "editor.electricVehicleImagePathHelp": "Image personnalisée du véhicule : placez le fichier dans /config/www/... et saisissez son chemin web sous la forme /local/..., par exemple /local/solar/voitures/ma-voiture.png. Cela ne modifie que l'image du véhicule, pas la recharge.",
     "editor.electricVehicleEvccLoadpoint": "evcc loadpoint slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
@@ -15389,6 +15418,9 @@ const I18N = {
     "ev.gridExport": "Export",
     "editor.electricVehicleDayImage": "Vehicle day image",
     "editor.electricVehicleNightImage": "Vehicle night image",
+    "editor.electricVehicleImage": "Własny obraz pojazdu",
+    "editor.electricVehicleImageHelp": "Zapisz własne obrazy w /config/www/ i wpisz je tutaj jako /local/.... Obrazy dołączone do karty mogą pozostać względne; obsługiwane są też pełne adresy https://.",
+    "editor.electricVehicleImagePathHelp": "Własny obraz pojazdu: zapisz plik w /config/www/... i wpisz jego ścieżkę internetową jako /local/..., np. /local/solar/auta/moje-auto.png. Zmienia to tylko obraz pojazdu, a nie ładowanie.",
     "editor.electricVehicleEvccLoadpoint": "evcc loadpoint slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
@@ -17717,12 +17749,16 @@ class HaSolarDashboardCard extends HTMLElement {
     return entityUnit ? `${formatted} ${entityUnit}` : String(formatted);
   }
 
-  _pvLabelText(metric, label) {
-    const title = this._t(label.labelKey, {}, label.suffix);
+  _pvLabelParts(metric, label) {
+    const labelText = this._t(label.labelKey, {}, label.suffix);
     const value = label.source === "metric"
       ? this._formatReading(metric)
       : this._formatPvLabelEntityValue(this._pvLabelEntityId(metric, label), label.unit);
-    return value && value !== "—" ? `${title}: ${value}` : "";
+    return {
+      label: labelText,
+      value: value && value !== "—" ? value : "",
+      text: value && value !== "—" ? [labelText, value].join(": ") : "",
+    };
   }
 
   _renderPvLabel(metric, label, { placement = "footer" } = {}) {
@@ -17730,10 +17766,14 @@ class HaSolarDashboardCard extends HTMLElement {
     const key = this._pvLabelKey(metric, label);
     if (!this._showLabelIn(key, placement)) return "";
     if (label.source === "entity" && !this._pvLabelEntityId(metric, label)) return "";
-    const text = this._pvLabelText(metric, label);
+    const parts = this._pvLabelParts(metric, label);
+    const { text } = parts;
     const tooltip = text || this._t(label.labelKey, {}, label.suffix);
     return `
-      <span class="pv-badge${this._labelVisibilityClass(key, placement)}" data-pv-label="${this._escape(key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${text ? "" : "display:none"}">${this._escape(text)}</span>
+      <span class="pv-badge${this._labelVisibilityClass(key, placement)}" data-pv-label="${this._escape(key)}" title="${this._escape(tooltip)}" aria-label="${this._escape(tooltip)}" style="${text ? "" : "display:none"}">
+        <span class="pv-badge-label" data-pv-label-title>${this._escape(parts.label)}</span>
+        <strong class="pv-badge-value" data-pv-label-value>${this._escape(parts.value)}</strong>
+      </span>
     `;
   }
 
@@ -19380,7 +19420,7 @@ class HaSolarDashboardCard extends HTMLElement {
         @media (prefers-reduced-motion:reduce){ .flow-line-pulse{animation:none;stroke-dashoffset:0;opacity:var(--flow-reduced-opacity);} }
         .metric { --tile-accent:var(--text-main); --tile-glow:transparent; position:absolute; z-index:3; width:clamp(82px,15%,118px); transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center center; background:linear-gradient(135deg,var(--hud-box-bg),rgba(8,16,38,calc(var(--hud-box-opacity) * .82))); border:1px solid color-mix(in srgb,var(--tile-accent) 48%,rgba(255,255,255,.18)); backdrop-filter:blur(4px); border-radius:10px; padding:7px 9px; box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 22px var(--tile-glow); pointer-events:auto; cursor:pointer; box-sizing:border-box; }
         .metric.inverter-metric-details { width:clamp(9.75rem,24%,14rem); container-type:inline-size; }
-        .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; }
+        .metric .label,.tile .name { color:var(--text-muted); font-size:.74rem; line-height:1.2; overflow-wrap:anywhere; }
         .metric .value-row { display:flex; align-items:center; gap:5px; min-width:0; max-width:100%; }
         .tile .tile-value-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; max-width:100%; margin-top:2px; }
         .metric .value,.tile .num { color:var(--tile-accent); font-size:.92rem; font-weight:700; line-height:1.25; overflow-wrap:anywhere; }
@@ -19391,7 +19431,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .inverter-details { display:grid; gap:7px; min-width:0; width:100%; }
         .inverter-detail { display:grid; grid-template-columns:minmax(0,1fr) max-content; grid-template-areas:"name readings" "meter meter"; align-items:baseline; column-gap:clamp(.35rem,4cqi,.85rem); row-gap:3px; min-width:0; padding-bottom:7px; border-bottom:1px solid color-mix(in srgb,var(--tile-accent) 24%,rgba(255,255,255,.12)); }
         .inverter-detail:last-child { padding-bottom:0; border-bottom:0; }
-        .inverter-detail-name { grid-area:name; min-width:0; color:var(--text-muted); font-size:.76em; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .inverter-detail-name { grid-area:name; min-width:0; color:var(--text-muted); font-size:.76em; font-weight:800; overflow-wrap:anywhere; }
         .inverter-detail-readings { grid-area:readings; display:flex; align-items:baseline; justify-content:flex-end; gap:clamp(.35rem,4cqi,.85rem); min-width:0; white-space:nowrap; }
         .inverter-detail-power { min-width:0; color:var(--tile-accent); font-weight:800; white-space:nowrap; }
         .inverter-detail-temperature { min-width:0; color:#fdba74; font-size:.82em; font-weight:800; white-space:nowrap; }
@@ -19421,9 +19461,11 @@ class HaSolarDashboardCard extends HTMLElement {
         .time-badge:empty { display:none; }
         .phase-action-badge { display:block; flex:1 1 100%; min-width:0; width:fit-content; max-width:100%; border-radius:8px; padding:3px 7px; background:rgba(168,85,247,.14); color:#d8b4fe; font-size:.62rem; line-height:1.16; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(216,180,254,.2); white-space:normal; overflow-wrap:anywhere; text-overflow:clip; }
         .phase-action-badge:empty { display:none; }
-        .pv-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:100%; border-radius:999px; padding:2px 5px; background:rgba(255,194,51,.14); color:#fde68a; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(253,230,138,.22); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .pv-badge { display:grid; grid-template-columns:minmax(0,1fr); justify-items:start; gap:1px; flex:1 1 100%; width:100%; min-width:0; max-width:100%; box-sizing:border-box; border-radius:7px; padding:3px 5px; background:rgba(255,194,51,.14); color:#fde68a; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(253,230,138,.22); overflow-wrap:anywhere; }
+        .pv-badge-label,.pv-badge-value { min-width:0; overflow-wrap:anywhere; }
+        .pv-badge-value { color:#fff1aa; font-size:1.06em; line-height:1.12; }
         .pv-badge:empty { display:none; }
-        .finance-badge { display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; max-width:100%; border-radius:999px; padding:2px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .finance-badge { display:inline-flex; align-items:center; flex:1 1 100%; width:100%; min-width:0; max-width:100%; box-sizing:border-box; border-radius:7px; padding:3px 5px; background:rgba(255,255,255,.1); color:#dbeafe; font-size:.62rem; line-height:1.1; font-weight:800; letter-spacing:0; white-space:pre-line; overflow-wrap:anywhere; box-shadow:inset 0 0 0 1px rgba(219,234,254,.18); }
         .finance-badge.import { color:#fdba74; background:rgba(251,146,60,.14); box-shadow:inset 0 0 0 1px rgba(253,186,116,.2); }
         .finance-badge.export { color:#86efac; background:rgba(52,211,153,.14); box-shadow:inset 0 0 0 1px rgba(134,239,172,.2); }
         .finance-badge.current-price { justify-content:center; color:#93c5fd; background:rgba(96,165,250,.14); box-shadow:inset 0 0 0 1px rgba(147,197,253,.22); white-space:pre-line; text-align:center; }
@@ -19457,7 +19499,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .advisor-state { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:color-mix(in srgb,var(--advisor-accent) 14%,rgba(255,255,255,.08)); color:var(--advisor-accent); text-transform:none; }
         .advisor-metrics { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; min-width:0; }
         .advisor-metric { --tile-accent:var(--text-main); --tile-glow:transparent; display:grid; gap:2px; min-width:0; padding:7px 8px; border-radius:8px; background:rgba(255,255,255,.06); box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 0 16px var(--tile-glow); }
-        .advisor-metric span { color:var(--text-muted); font-size:.68rem; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .advisor-metric span { color:var(--text-muted); font-size:.68rem; line-height:1.15; overflow-wrap:anywhere; }
         .advisor-metric strong { color:var(--tile-accent,var(--text-main)); font-size:.82rem; line-height:1.2; overflow-wrap:anywhere; }
         .advisor-items-head { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; color:var(--text-muted); font-size:.72rem; line-height:1.2; font-weight:800; text-transform:uppercase; letter-spacing:0; }
         .advisor-items-head strong { flex:0 0 auto; border-radius:999px; padding:4px 7px; background:rgba(255,255,255,.08); color:var(--text-main); font-size:.7rem; line-height:1.1; text-transform:none; }
@@ -19579,7 +19621,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .electric-vehicle-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.03) contrast(1.02); }
         .electric-vehicle-badges { position:absolute; inset:0; pointer-events:none; }
         .electric-vehicle-badge { --tile-accent:#34d399; --tile-glow:transparent; position:absolute; display:grid; gap:1px; min-width:86px; max-width:148px; padding:6px 8px; border-radius:9px; border:1px solid color-mix(in srgb,var(--tile-accent) 46%,rgba(255,255,255,.18)); background:rgba(8,16,38,.7); box-shadow:0 8px 20px rgba(0,0,0,.28),0 0 20px var(--tile-glow); backdrop-filter:blur(4px); transform:translate(-50%,-50%); pointer-events:auto; cursor:pointer; }
-        .electric-vehicle-badge span,.electric-vehicle-tile span { min-width:0; color:var(--text-muted); font-size:.66rem; line-height:1.15; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .electric-vehicle-badge span,.electric-vehicle-tile span { min-width:0; color:var(--text-muted); font-size:.66rem; line-height:1.15; font-weight:800; overflow-wrap:anywhere; }
         .electric-vehicle-badge strong,.electric-vehicle-tile strong { min-width:0; color:var(--tile-accent,#34d399); font-size:.86rem; line-height:1.2; font-weight:900; overflow-wrap:anywhere; }
         .electric-vehicle-pv-status { max-width:min(60%,calc(100% - 20px)); pointer-events:auto; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .electric-vehicle-section { display:grid; gap:8px; min-width:0; }
@@ -19609,7 +19651,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .garden-image { display:block; width:100%; height:100%; object-fit:cover; filter:saturate(1.06) contrast(1.02); }
         .garden-overlay { position:absolute; inset:0; pointer-events:none; }
         .garden-badge { --tile-glow:transparent; position:absolute; display:grid; gap:1px; min-width:86px; max-width:154px; padding:7px 9px; border-radius:10px; border:1px solid color-mix(in srgb,var(--tile-accent,#2dd4bf) 44%,rgba(255,255,255,.18)); background:rgba(8,16,38,.68); box-shadow:0 8px 22px rgba(0,0,0,.3),0 0 20px var(--tile-glow); backdrop-filter:blur(5px); transform:translate(-50%,-50%); pointer-events:auto; cursor:pointer; }
-        .garden-badge span,.garden-tile span { min-width:0; color:var(--text-muted); font-size:.66rem; line-height:1.15; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .garden-badge span,.garden-tile span { min-width:0; color:var(--text-muted); font-size:.66rem; line-height:1.15; font-weight:800; overflow-wrap:anywhere; }
         .garden-badge strong,.garden-tile strong { min-width:0; color:var(--tile-accent,#2dd4bf); font-size:.9rem; line-height:1.2; font-weight:900; overflow-wrap:anywhere; }
         .garden-badge-mower { left:13%; top:10%; }
         .garden-badge-water { left:84%; top:11%; }
@@ -19622,7 +19664,7 @@ class HaSolarDashboardCard extends HTMLElement {
         .garden-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; min-width:0; }
         .garden-tile { --tile-accent:#2dd4bf; --tile-glow:transparent; display:grid; gap:3px; min-width:0; padding:10px; border-radius:8px; border:1px solid color-mix(in srgb,var(--tile-accent) 32%,rgba(255,255,255,.1)); background:linear-gradient(135deg,rgba(12,20,38,.78),rgba(12,20,38,.62)); box-shadow:inset 3px 0 0 var(--tile-accent),0 8px 20px rgba(0,0,0,.18),0 0 18px var(--tile-glow); cursor:pointer; text-align:left; color:var(--text-main); font:inherit; }
         .garden-action-tile { appearance:none; border-style:solid; }
-        .garden-tile-note { min-width:0; color:#dbeafe; font-size:.66rem; line-height:1.15; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .garden-tile-note { min-width:0; color:#dbeafe; font-size:.66rem; line-height:1.15; font-weight:800; overflow-wrap:anywhere; }
         .garden-empty { display:grid; place-items:center; min-height:120px; padding:18px; border-radius:8px; border:1px dashed rgba(255,255,255,.16); color:var(--text-muted); text-align:center; font-size:.86rem; }
         @media (max-width:700px){ .hide-mobile{display:none!important;} .house-select,.energy-range-select{width:100%;max-width:none;} .header-controls{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;} .metric{width:clamp(68px,18%,96px);padding:5px 7px;} .metric .label{font-size:.62rem;} .metric .value{font-size:.76rem;} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tile{grid-column:span var(--tile-mobile-columns);} .advisor-head{display:grid;} .advisor-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.advisor-items{grid-template-columns:minmax(0,1fr);} .chart-head,.chart-dashboard-head,.electric-vehicle-head,.garden-head{display:grid;} .chart-actions{justify-content:end;} .chart-grid{grid-template-columns:minmax(0,1fr);} .record-loading-item{grid-template-columns:1fr;align-items:start;gap:2px;} .electric-vehicle-head span,.garden-head span{max-width:100%;justify-self:start;} .electric-vehicle-badge{max-width:164px;} .electric-vehicle-grid,.garden-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .electric-vehicle-mode-toggle{grid-template-columns:repeat(2,minmax(0,1fr));} .garden-badge{min-width:78px;max-width:124px;padding:5px 7px;} .garden-badge span{font-size:.6rem;} .garden-badge strong{font-size:.76rem;} }
         @media (min-width:701px){ .hide-desktop{display:none!important;} }
@@ -19770,10 +19812,18 @@ class HaSolarDashboardCard extends HTMLElement {
       if (this._isPvMetric(metric)) {
         PV_LABELS.forEach((label) => {
           const key = this._pvLabelKey(metric, label);
-          const text = this._pvLabelText(metric, label);
+          const parts = this._pvLabelParts(metric, label);
+          const { text } = parts;
           this._cachedDomElements("pvLabels", key).forEach((element) => {
-            if (element.textContent !== text) element.textContent = text;
-            element.style.display = text ? "inline-flex" : "none";
+            const labelElement = element.querySelector("[data-pv-label-title]");
+            const valueElement = element.querySelector("[data-pv-label-value]");
+            if (labelElement && valueElement) {
+              if (labelElement.textContent !== parts.label) labelElement.textContent = parts.label;
+              if (valueElement.textContent !== parts.value) valueElement.textContent = parts.value;
+            } else if (element.textContent !== text) {
+              element.textContent = text;
+            }
+            element.style.display = text ? "grid" : "none";
             element.setAttribute("title", text);
             element.setAttribute("aria-label", text);
           });

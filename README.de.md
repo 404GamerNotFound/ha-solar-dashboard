@@ -98,6 +98,19 @@ Die Dateien müssen dann tatsächlich hier liegen:
 
 Wenn `weather_entity` z. B. `rainy` meldet und es Tag ist, versucht die Karte zuerst `/local/solar/house_day_rainy.png`, dann `/local/solar/house_night_rainy.png`, danach `/local/solar/house_day.png` und zuletzt `/local/solar/house_night.png`. Wenn keine eigene Datei geladen werden kann, fällt die Karte weiterhin auf die mitgelieferten Standardbilder zurück.
 
+### Eigene Fahrzeugbilder
+
+Die E-Auto-Ansicht hat eigene Bildfelder. Lege das Autobild unter /config/www/ ab und trage in electric_vehicle den Browserpfad mit /local/ ein – nicht den Dateisystempfad:
+
+~~~yaml
+electric_vehicle:
+  image: /local/solar/autos/mein-auto.png
+  day_image: /local/solar/autos/mein-auto-tag.png
+  night_image: /local/solar/autos/mein-auto-nacht.png
+~~~
+
+Die Dateien liegen auf dem Home-Assistant-Host entsprechend unter /config/www/solar/autos/.... image dient als Fallback; day_image und night_image überschreiben es passend zu sun.sun. Diese Felder ändern ausschließlich das Bild in der E-Auto-Ansicht, nicht die Ladefunktion. Zur Kompatibilität werden local/..., /config/www/... und /homeassistant/www/... automatisch in /local/... umgewandelt; empfohlen ist immer die explizite Form /local/....
+
 ## Installation (HACS)
 
 1. Repository in HACS als **Custom repository** mit Typ **Dashboard** hinzufügen.

@@ -708,6 +708,21 @@ const ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS = Object.freeze({
 const ELECTRIC_VEHICLE_IMAGE_BADGE_COLUMNS = 4;
 const ELECTRIC_VEHICLE_IMAGE_BADGE_ROWS = 4;
 
+function normalizeElectricVehicleImagePath(value = "", fallback = "") {
+  const path = String(value || "").trim().replace(/\\/g, "/");
+  if (!path) return fallback;
+  if (/^(?:(?:https?:)?\/\/|data:|blob:)/i.test(path)) return path;
+
+  const localPath = path.match(/^\/?local\/+(.+)$/i);
+  if (localPath) return `/local/${localPath[1]}`;
+
+  const homeAssistantPath = path.match(/^\/?(?:config\/)?www\/+(.+)$/i)
+    || path.match(/^\/?homeassistant\/(?:config\/)?www\/+(.+)$/i);
+  if (homeAssistantPath) return `/local/${homeAssistantPath[1]}`;
+
+  return path;
+}
+
 const ELECTRIC_VEHICLE_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "status", labelKey: "ev.status", label: "Status", group: "state", kind: "status", aliases: ["ev_status", "loadpoint_status", "wallbox_status"] }),
   Object.freeze({ key: "pv_status_text", labelKey: "ev.pvStatusText", label: "PV status text", group: "state", kind: "text", evccDomain: "sensor", evccSuffix: "pv_action_value", aliases: ["ev_pv_status_text", "evcc_pv_status_text", "evcc_pv_action_value", "pv_action_value", "loadpoint_pv_action_value", "wallbox_pv_action_value"] }),
@@ -951,9 +966,9 @@ function normalizeElectricVehicleConfig(config = {}) {
   const loadpoint = normalizeElectricVehicleLoadpoint(source.evcc_loadpoint || source.loadpoint_slug || source.loadpoint_id || source.loadpoint);
   return {
     title: String(source.title || source.label || "").trim(),
-    image: String(source.image || source.image_path || source.car_image || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE,
-    day_image: String(source.day_image || source.image_day || source.eauto_day_image || "").trim(),
-    night_image: String(source.night_image || source.image_night || source.eauto_night_image || "").trim(),
+    image: normalizeElectricVehicleImagePath(source.image || source.image_path || source.car_image, DEFAULT_ELECTRIC_VEHICLE_IMAGE),
+    day_image: normalizeElectricVehicleImagePath(source.day_image || source.image_day || source.eauto_day_image),
+    night_image: normalizeElectricVehicleImagePath(source.night_image || source.image_night || source.eauto_night_image),
     wallbox: normalizeElectricVehicleWallbox(source.wallbox || source.wallbox_key || source.loadpoint || source.loadpoint_id),
     evcc_loadpoint: loadpoint,
     evcc_prefix: normalizeElectricVehiclePrefix(source.evcc_prefix || source.integration_prefix || source.prefix),
@@ -5829,6 +5844,7 @@ function createDashboardEditorClass({
           <label>${this._labelText(this._t("editor.electricVehicleNightImage", {}, "Vehicle night image"), this._t("editor.electricVehicleImageHelp", {}, "Relative bundled assets, /local/... paths and full URLs are supported."))}
             <input data-path="electric_vehicle.night_image" placeholder="/local/eauto/eauto_night.png" value="${this._escape(nightImage)}" autocomplete="off" />
           </label>
+          <p class="field-note">${this._escape(this._t("editor.electricVehicleImagePathHelp", {}, "Custom vehicle image: save it under /config/www/... and enter /local/... here, for example /local/solar/cars/my-car.png. This only changes the vehicle picture, not charging."))}</p>
           <label>${this._labelText(this._t("editor.electricVehicleEvccLoadpoint", {}, "evcc loadpoint slug"), this._t("editor.electricVehicleEvccLoadpointHelp", {}, "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities."))}
             <input data-path="electric_vehicle.evcc_loadpoint" placeholder="garage_delta_ac_max" value="${this._escape(evccLoadpoint)}" autocomplete="off" />
           </label>
@@ -6536,6 +6552,7 @@ function createDashboardEditorClass({
         .field-label-text{display:inline-flex;align-items:center;gap:5px;min-width:0}
         .field-help{display:inline-grid;place-items:center;width:16px;height:16px;flex:0 0 auto;border-radius:999px;background:color-mix(in srgb,var(--editor-accent) 18%,var(--editor-surface));color:var(--editor-accent);font-size:11px;font-weight:900;cursor:help}
         .field-note{margin:0;color:var(--editor-muted);font-size:12px;line-height:1.35}
+        .settings-grid>.field-note{grid-column:1/-1}
         .inline{display:flex;align-items:center;gap:8px;min-width:0;font-weight:650}
         .inline input{width:auto;min-width:auto;padding:0}
         .template-row{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
@@ -8834,6 +8851,9 @@ const I18N = {
     "ev.gridExport": "Export",
     "editor.electricVehicleDayImage": "Vehicle day image",
     "editor.electricVehicleNightImage": "Vehicle night image",
+    "editor.electricVehicleImage": "Custom vehicle image",
+    "editor.electricVehicleImageHelp": "Store custom images under /config/www/ and enter them here as /local/.... Bundled images may stay relative; complete https:// URLs are also supported.",
+    "editor.electricVehicleImagePathHelp": "Custom vehicle image: save the file under /config/www/... and enter its web path as /local/..., for example /local/solar/cars/my-car.png. This only changes the vehicle picture, not charging.",
     "editor.electricVehicleEvccLoadpoint": "evcc loadpoint slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
@@ -9507,6 +9527,9 @@ const I18N = {
     "ev.gridExport": "Einspeisung",
     "editor.electricVehicleDayImage": "Fahrzeug-Tagbild",
     "editor.electricVehicleNightImage": "Fahrzeug-Nachtbild",
+    "editor.electricVehicleImage": "Eigenes Fahrzeugbild",
+    "editor.electricVehicleImageHelp": "Eigene Bilder unter /config/www/ ablegen und hier als /local/... eintragen. Eingebaute Bilder dürfen relativ bleiben; vollständige https://-URLs sind ebenfalls möglich.",
+    "editor.electricVehicleImagePathHelp": "Eigenes Fahrzeugbild: Datei unter /config/www/... ablegen und hier den Webpfad /local/... eintragen, z. B. /local/solar/autos/mein-auto.png. Dieses Feld ändert nur das Fahrzeugbild, nicht den Ladevorgang.",
     "editor.electricVehicleEvccLoadpoint": "evcc-Loadpoint-Slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optionaler marq24/ha-evcc-Slug. Beispiel: garage_delta_ac_max ordnet sensor.evcc_garage_delta_ac_max_charge_power und verwandte Entitäten automatisch zu.",
     "editor.electricVehicleEvccPrefix": "evcc-Entitätspräfix",
@@ -10180,6 +10203,9 @@ const I18N = {
     "ev.gridExport": "Export",
     "editor.electricVehicleDayImage": "Vehicle day image",
     "editor.electricVehicleNightImage": "Vehicle night image",
+    "editor.electricVehicleImage": "Imagen personalizada del vehículo",
+    "editor.electricVehicleImageHelp": "Guarda las imágenes personalizadas en /config/www/ e introdúcelas aquí como /local/.... Las imágenes incluidas pueden mantenerse relativas; también se admiten URL https:// completas.",
+    "editor.electricVehicleImagePathHelp": "Imagen personalizada del vehículo: guarda el archivo en /config/www/... e introduce su ruta web como /local/..., por ejemplo /local/solar/autos/mi-auto.png. Esto solo cambia la imagen del vehículo, no la carga.",
     "editor.electricVehicleEvccLoadpoint": "evcc loadpoint slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
@@ -10853,6 +10879,9 @@ const I18N = {
     "ev.gridExport": "Export",
     "editor.electricVehicleDayImage": "Vehicle day image",
     "editor.electricVehicleNightImage": "Vehicle night image",
+    "editor.electricVehicleImage": "Image personnalisée du véhicule",
+    "editor.electricVehicleImageHelp": "Placez les images personnalisées dans /config/www/ et saisissez-les ici sous la forme /local/.... Les images intégrées peuvent rester relatives ; les URL https:// complètes sont aussi prises en charge.",
+    "editor.electricVehicleImagePathHelp": "Image personnalisée du véhicule : placez le fichier dans /config/www/... et saisissez son chemin web sous la forme /local/..., par exemple /local/solar/voitures/ma-voiture.png. Cela ne modifie que l'image du véhicule, pas la recharge.",
     "editor.electricVehicleEvccLoadpoint": "evcc loadpoint slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",
@@ -11526,6 +11555,9 @@ const I18N = {
     "ev.gridExport": "Export",
     "editor.electricVehicleDayImage": "Vehicle day image",
     "editor.electricVehicleNightImage": "Vehicle night image",
+    "editor.electricVehicleImage": "Własny obraz pojazdu",
+    "editor.electricVehicleImageHelp": "Zapisz własne obrazy w /config/www/ i wpisz je tutaj jako /local/.... Obrazy dołączone do karty mogą pozostać względne; obsługiwane są też pełne adresy https://.",
+    "editor.electricVehicleImagePathHelp": "Własny obraz pojazdu: zapisz plik w /config/www/... i wpisz jego ścieżkę internetową jako /local/..., np. /local/solar/auta/moje-auto.png. Zmienia to tylko obraz pojazdu, a nie ładowanie.",
     "editor.electricVehicleEvccLoadpoint": "evcc loadpoint slug",
     "editor.electricVehicleEvccLoadpointHelp": "Optional marq24/ha-evcc slug. Example: garage_delta_ac_max auto-maps sensor.evcc_garage_delta_ac_max_charge_power and related entities.",
     "editor.electricVehicleEvccPrefix": "evcc entity prefix",

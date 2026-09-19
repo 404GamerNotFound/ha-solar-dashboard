@@ -29,6 +29,21 @@ export const ELECTRIC_VEHICLE_HERO_BADGE_POSITIONS = Object.freeze({
 const ELECTRIC_VEHICLE_IMAGE_BADGE_COLUMNS = 4;
 const ELECTRIC_VEHICLE_IMAGE_BADGE_ROWS = 4;
 
+export function normalizeElectricVehicleImagePath(value = "", fallback = "") {
+  const path = String(value || "").trim().replace(/\\/g, "/");
+  if (!path) return fallback;
+  if (/^(?:(?:https?:)?\/\/|data:|blob:)/i.test(path)) return path;
+
+  const localPath = path.match(/^\/?local\/+(.+)$/i);
+  if (localPath) return `/local/${localPath[1]}`;
+
+  const homeAssistantPath = path.match(/^\/?(?:config\/)?www\/+(.+)$/i)
+    || path.match(/^\/?homeassistant\/(?:config\/)?www\/+(.+)$/i);
+  if (homeAssistantPath) return `/local/${homeAssistantPath[1]}`;
+
+  return path;
+}
+
 export const ELECTRIC_VEHICLE_ENTITY_DEFINITIONS = Object.freeze([
   Object.freeze({ key: "status", labelKey: "ev.status", label: "Status", group: "state", kind: "status", aliases: ["ev_status", "loadpoint_status", "wallbox_status"] }),
   Object.freeze({ key: "pv_status_text", labelKey: "ev.pvStatusText", label: "PV status text", group: "state", kind: "text", evccDomain: "sensor", evccSuffix: "pv_action_value", aliases: ["ev_pv_status_text", "evcc_pv_status_text", "evcc_pv_action_value", "pv_action_value", "loadpoint_pv_action_value", "wallbox_pv_action_value"] }),
@@ -272,9 +287,9 @@ export function normalizeElectricVehicleConfig(config = {}) {
   const loadpoint = normalizeElectricVehicleLoadpoint(source.evcc_loadpoint || source.loadpoint_slug || source.loadpoint_id || source.loadpoint);
   return {
     title: String(source.title || source.label || "").trim(),
-    image: String(source.image || source.image_path || source.car_image || DEFAULT_ELECTRIC_VEHICLE_IMAGE).trim() || DEFAULT_ELECTRIC_VEHICLE_IMAGE,
-    day_image: String(source.day_image || source.image_day || source.eauto_day_image || "").trim(),
-    night_image: String(source.night_image || source.image_night || source.eauto_night_image || "").trim(),
+    image: normalizeElectricVehicleImagePath(source.image || source.image_path || source.car_image, DEFAULT_ELECTRIC_VEHICLE_IMAGE),
+    day_image: normalizeElectricVehicleImagePath(source.day_image || source.image_day || source.eauto_day_image),
+    night_image: normalizeElectricVehicleImagePath(source.night_image || source.image_night || source.eauto_night_image),
     wallbox: normalizeElectricVehicleWallbox(source.wallbox || source.wallbox_key || source.loadpoint || source.loadpoint_id),
     evcc_loadpoint: loadpoint,
     evcc_prefix: normalizeElectricVehiclePrefix(source.evcc_prefix || source.integration_prefix || source.prefix),

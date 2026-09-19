@@ -36,6 +36,8 @@ import {
 } from "../modules/charts.js";
 import {
   DEFAULT_ELECTRIC_VEHICLE_IMAGE,
+  createElectricVehicleDashboardMethods,
+  normalizeElectricVehicleImagePath,
   normalizeElectricVehicleConfig,
 } from "../modules/electric-vehicle.js";
 import {
@@ -253,6 +255,21 @@ assert.equal(baseConfig.electric_vehicle.image, DEFAULT_ELECTRIC_VEHICLE_IMAGE);
 assert.deepEqual(baseConfig.electric_vehicle.display, {});
 assert.equal(baseConfig.show_garden, true);
 assert.equal(baseConfig.garden.image, DEFAULT_GARDEN_IMAGE);
+
+assert.equal(normalizeElectricVehicleImagePath("local/solar/cars/my-car.png"), "/local/solar/cars/my-car.png");
+assert.equal(normalizeElectricVehicleImagePath("/config/www/solar/cars/my-car.png"), "/local/solar/cars/my-car.png");
+assert.equal(normalizeElectricVehicleImagePath("/homeassistant/www/solar/cars/my-car.png"), "/local/solar/cars/my-car.png");
+assert.equal(normalizeElectricVehicleImagePath("https://example.com/my-car.png"), "https://example.com/my-car.png");
+assert.equal(normalizeElectricVehicleConfig({ image: "local/solar/cars/my-car.png" }).image, "/local/solar/cars/my-car.png");
+assert.equal(normalizeElectricVehicleConfig({ day_image: "/config/www/solar/cars/my-car-day.png" }).day_image, "/local/solar/cars/my-car-day.png");
+const electricVehicleImageMethods = createElectricVehicleDashboardMethods({
+  assetUrl: (path) => `asset:${path}`,
+});
+const electricVehicleImageContext = {
+  ...electricVehicleImageMethods,
+  config: { electric_vehicle: { image: "local/solar/cars/my-car.png" } },
+};
+assert.equal(electricVehicleImageContext._electricVehicleImageUrls()[0], "/local/solar/cars/my-car.png");
 
 const usRegionalConfig = applyRegionalDefaults({
   ...baseConfig,

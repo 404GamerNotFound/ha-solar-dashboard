@@ -5507,7 +5507,7 @@ function createDashboardEditorClass({
   _shouldRenderAfterInput(path = "", parts = []) {
     const root = parts[0] || path;
     const lastPart = parts[parts.length - 1] || "";
-    if (path === "house" || path === "image" || path === "day_image") return true;
+    if (["house", "image", "day_image", "rain_image", "day_rain_image"].includes(path)) return true;
     if (path === "region_profile" || path === "unit_system") return true;
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
@@ -7652,6 +7652,7 @@ function createDashboardEditorClass({
     const label = this._overlayLabel(key);
     const defaultLabel = this._t(`overlay.${key}`, {}, key);
     const enabled = config.enabled === true;
+    const showImage = config.show_image !== false;
     const left = Number.isFinite(Number(config.left)) ? Number(config.left) : 50;
     const top = Number.isFinite(Number(config.top)) ? Number(config.top) : 50;
     const width = Number.isFinite(Number(config.width ?? config.size)) ? Number(config.width ?? config.size) : 12;
@@ -7706,6 +7707,7 @@ function createDashboardEditorClass({
         </summary>
         <div class="box-body">
           <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.enabled" ${enabled ? "checked" : ""}/> ${this._escape(this._t("editor.overlayEnable", { label }))}</label>
+          <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.show_image" ${showImage ? "checked" : ""}/> ${this._escape(this._t("editor.overlayShowImage", {}, "Show image"))}</label>
           <label>${this._escape(this._t("editor.overlayLabel"))}
             <input data-path="image_overlays.${key}.label" placeholder="${this._escape(defaultLabel)}" value="${this._escape(this._config.image_overlays?.[key]?.label || "")}" />
           </label>
@@ -9062,6 +9064,8 @@ function createDashboardEditorClass({
           <label>${this._escape(this._t("editor.unitSystem", {}, "Unit system"))} <select data-path="unit_system">${unitSystemOptions}</select></label>
           <label>${this._labelText(this._t("editor.customImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
           <label>${this._labelText(this._t("editor.customDayImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
+          <label>${this._labelText(this._t("editor.customRainImage", {}, "Custom Rainy Night Image"), this._t("editor.helpCustomRainImages", {}, "Store custom rainy images in Home Assistant under /config/www/ and enter them as /local/.... They take precedence when weather_entity reports rain."))} <input data-path="rain_image" placeholder="/local/solar/house_night_rainy.png" value="${this._escape(this._config.rain_image || "")}" /></label>
+          <label>${this._labelText(this._t("editor.customRainDayImage", {}, "Custom Rainy Day Image"), this._t("editor.helpCustomRainImages", {}, "Store custom rainy images in Home Assistant under /config/www/ and enter them as /local/.... They take precedence when weather_entity reports rain."))} <input data-path="day_rain_image" placeholder="/local/solar/house_day_rainy.png" value="${this._escape(this._config.day_rain_image || "")}" /></label>
           <label>${this._escape(this._t("editor.weatherEntity"))}
             <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />
           </label>
@@ -9713,20 +9717,34 @@ function imageFormatFiles(file) {
 function customImageFiles({
   image = "",
   dayImage = "",
+  rainImage = "",
+  dayRainImage = "",
   isDaylight = false,
   weatherState = "",
   suffixMap = WEATHER_IMAGE_SUFFIXES,
 } = {}) {
   const standardFile = String(image || "").trim();
   const daylightFile = String(dayImage || "").trim();
+  const rainyFile = String(rainImage || "").trim();
+  const daylightRainyFile = String(dayRainImage || "").trim();
   const primaryFile = isDaylight && daylightFile ? daylightFile : standardFile;
-  if (!primaryFile) return [];
   const fallbackFile = isDaylight ? standardFile : daylightFile;
+  const primaryRainyFile = isDaylight && daylightRainyFile ? daylightRainyFile : rainyFile;
+  const fallbackRainyFile = isDaylight ? rainyFile : daylightRainyFile;
+  const hasRainyWeather = weatherSuffixes(weatherState, suffixMap).includes("rainy");
+  if (!primaryFile && !(hasRainyWeather && (primaryRainyFile || fallbackRainyFile))) return [];
+  const explicitRainyFiles = hasRainyWeather
+    ? [
+      primaryRainyFile,
+      fallbackRainyFile && fallbackRainyFile !== primaryRainyFile ? fallbackRainyFile : "",
+    ]
+    : [];
   const weatherFiles = weatherSuffixes(weatherState, suffixMap).flatMap((suffix) => [
     imageWithSuffix(primaryFile, suffix),
     fallbackFile && fallbackFile !== primaryFile ? imageWithSuffix(fallbackFile, suffix) : "",
   ]);
   return [
+    ...explicitRainyFiles,
     ...weatherFiles,
     primaryFile,
     ...(fallbackFile && fallbackFile !== primaryFile ? [fallbackFile] : []),
@@ -9736,6 +9754,8 @@ function customImageFiles({
 function customImage({
   image = "",
   dayImage = "",
+  rainImage = "",
+  dayRainImage = "",
   isDaylight = false,
   weatherState = "",
   suffixMap = WEATHER_IMAGE_SUFFIXES,
@@ -9743,6 +9763,8 @@ function customImage({
   const urls = [...new Set(customImageFiles({
     image,
     dayImage,
+    rainImage,
+    dayRainImage,
     isDaylight,
     weatherState,
     suffixMap,
@@ -9791,7 +9813,7 @@ function createWeatherImageMethods({
     },
 
     _imageStateKey() {
-      return `${this._isDaylight()}|${this._weatherState()}|${this.config?.image || ""}|${this.config?.day_image || ""}`;
+      return `${this._isDaylight()}|${this._weatherState()}|${this.config?.image || ""}|${this.config?.day_image || ""}|${this.config?.rain_image || ""}|${this.config?.day_rain_image || ""}`;
     },
 
     _imageWithSuffix(file, suffix) {
@@ -9829,6 +9851,8 @@ function createWeatherImageMethods({
       return customImage({
         image: this.config?.image,
         dayImage: this.config?.day_image,
+        rainImage: this.config?.rain_image,
+        dayRainImage: this.config?.day_rain_image,
         isDaylight: this._isDaylight(),
         weatherState: this._weatherState(),
         suffixMap,
@@ -10079,6 +10103,10 @@ function createFloorplanRendererMethods({
   };
 }
 
+function overlayImageVisible(config = {}) {
+  return config?.show_image !== false;
+}
+
 function createOverlayRendererMethods({
   DEFAULT_IMAGE_OVERLAYS,
   IMAGE_OVERLAY_KEYS,
@@ -10126,6 +10154,7 @@ function createOverlayRendererMethods({
       return IMAGE_OVERLAY_KEYS.map((key) => {
         const config = this._overlayConfig(activeHouse, key);
         if (config.enabled !== true) return "";
+        const showImage = overlayImageVisible(config);
         const left = this._overlayNumber(config.left, this._overlayDefault(activeHouse, key).left ?? 50, 0, 100);
         const top = this._overlayNumber(config.top, this._overlayDefault(activeHouse, key).top ?? 50, 0, 100);
         const width = this._overlayNumber(config.width ?? config.size, this._overlayDefault(activeHouse, key).width ?? 12, 2, 60);
@@ -10140,15 +10169,19 @@ function createOverlayRendererMethods({
           `--overlay-scale-x:${scaleX}`,
           `--overlay-translate-y:${translateY}`,
         ].join(";");
-        const [src, ...fallbacks] = this._overlayAssetUrls(key);
+        const [src, ...fallbacks] = showImage ? this._overlayAssetUrls(key) : [];
         const reading = this._formatOverlayReading(key);
         const visibilityKey = `overlay_${key}`;
         const readingHtml = this.config.image_overlays?.[key]?.entity && this._labelVisibility(visibilityKey).image
           ? `<div class="overlay-reading${this._labelVisibilityClass(visibilityKey, "image")}"><span class="overlay-reading-label" data-overlay-label="${this._escape(key)}">${this._escape(label)}</span><span class="overlay-reading-value" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</span></div>`
           : "";
+        if (!showImage && !readingHtml) return "";
+        const imageHtml = showImage
+          ? `<img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(src)}" data-fallbacks="${this._escape(fallbacks.join("|"))}" alt="${this._escape(label)}" loading="lazy" />`
+          : "";
         return `
-          <div class="image-overlay-wrap image-overlay-wrap-${this._escape(key)}" style="${this._escape(style)}">
-            <img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(src)}" data-fallbacks="${this._escape(fallbacks.join("|"))}" alt="${this._escape(label)}" loading="lazy" />
+          <div class="image-overlay-wrap image-overlay-wrap-${this._escape(key)}${showImage ? "" : " image-overlay-wrap-no-image"}" style="${this._escape(style)}">
+            ${imageHtml}
             ${readingHtml}
           </div>
         `;
@@ -12267,6 +12300,8 @@ const I18N = {
     "charts.title": "Entity history",
     "editor.customDayImage": "Custom Day Image",
     "editor.customImage": "Custom Image",
+    "editor.customRainDayImage": "Custom Rainy Day Image",
+    "editor.customRainImage": "Custom Rainy Night Image",
     "editor.batteryChargeEntity": "Battery charge entity",
     "editor.batteryCyclesTodayEntity": "Battery cycles today entity",
     "editor.batteryDischargeEntity": "Battery discharge entity",
@@ -12350,6 +12385,7 @@ const I18N = {
     "editor.maxPowerKw": "Expected max power (kW/kWp)",
     "editor.optionalDayImage": "Optional daylight image",
     "editor.helpCustomImages": "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png.",
+    "editor.helpCustomRainImages": "Store custom rainy images in Home Assistant under /config/www/ and enter them as /local/.... They take precedence when weather_entity reports rain.",
     "editor.powerDecimals": "Power decimals",
     "editor.powerDisplayMode": "Power display mode",
     "editor.rawMode": "Raw value + configured unit",
@@ -12357,6 +12393,7 @@ const I18N = {
     "editor.autoWKw": "Auto W/kW",
     "editor.advisorMaxSuggestions": "Advisor suggestions",
     "editor.overlayEnable": "Show {label}",
+    "editor.overlayShowImage": "Show image",
     "editor.overlayLabel": "Label",
     "editor.overlayOrientation": "Orientation",
     "editor.overlayOrientationLeft": "Left side",
@@ -12943,6 +12980,8 @@ const I18N = {
     "charts.title": "Entitätsverlauf",
     "editor.customDayImage": "Eigenes Tagbild",
     "editor.customImage": "Eigenes Bild",
+    "editor.customRainDayImage": "Eigenes Regenbild (Tag)",
+    "editor.customRainImage": "Eigenes Regenbild (Nacht)",
     "editor.batteryChargeEntity": "Batterie-Lade-Entität",
     "editor.batteryCyclesTodayEntity": "Batterie-Zyklen-heute-Entität",
     "editor.batteryDischargeEntity": "Batterie-Entlade-Entität",
@@ -13026,6 +13065,7 @@ const I18N = {
     "editor.maxPowerKw": "Erwartete Maximalleistung (kW/kWp)",
     "editor.optionalDayImage": "Optionales Tagesbild",
     "editor.helpCustomImages": "Lege eigene Bilder in Home Assistant unter /config/www/ ab und trage sie als /local/... ein. Wenn weather_entity gesetzt ist, werden passende Suffixe automatisch versucht, zum Beispiel /local/solar/house_day_rainy.png vor /local/solar/house_day.png.",
+    "editor.helpCustomRainImages": "Lege eigene Regenbilder in Home Assistant unter /config/www/ ab und trage sie als /local/... ein. Sie werden bevorzugt verwendet, wenn weather_entity Regen meldet.",
     "editor.powerDecimals": "Leistungs-Nachkommastellen",
     "editor.powerDisplayMode": "Leistungsanzeige",
     "editor.rawMode": "Rohwert + konfigurierte Einheit",
@@ -13033,6 +13073,7 @@ const I18N = {
     "editor.autoWKw": "Automatisch W/kW",
     "editor.advisorMaxSuggestions": "Advisor-Hinweise",
     "editor.overlayEnable": "{label} anzeigen",
+    "editor.overlayShowImage": "Bild anzeigen",
     "editor.overlayLabel": "Label",
     "editor.overlayOrientation": "Ausrichtung",
     "editor.overlayOrientationLeft": "Links am Haus",
@@ -13619,6 +13660,8 @@ const I18N = {
     "charts.title": "Historial de entidades",
     "editor.customDayImage": "Imagen diurna personalizada",
     "editor.customImage": "Imagen personalizada",
+    "editor.customRainDayImage": "Imagen de lluvia personalizada (día)",
+    "editor.customRainImage": "Imagen de lluvia personalizada (noche)",
     "editor.batteryChargeEntity": "Entidad de carga de batería",
     "editor.batteryCyclesTodayEntity": "Entidad de ciclos de batería de hoy",
     "editor.batteryDischargeEntity": "Entidad de descarga de batería",
@@ -13702,6 +13745,7 @@ const I18N = {
     "editor.maxPowerKw": "Potencia máxima (kW/kWp)",
     "editor.optionalDayImage": "Imagen diurna opcional",
     "editor.helpCustomImages": "Guarda las imágenes personalizadas en Home Assistant bajo /config/www/ e introdúcelas como /local/.... Cuando weather_entity está configurada, se prueban automáticamente los sufijos correspondientes, por ejemplo /local/solar/house_day_rainy.png antes de /local/solar/house_day.png.",
+    "editor.helpCustomRainImages": "Guarda las imágenes de lluvia personalizadas en Home Assistant bajo /config/www/ e introdúcelas como /local/.... Se usan primero cuando weather_entity informa de lluvia.",
     "editor.powerDecimals": "Decimales de potencia",
     "editor.powerDisplayMode": "Modo de potencia",
     "editor.rawMode": "Valor bruto + unidad configurada",
@@ -13709,6 +13753,7 @@ const I18N = {
     "editor.autoWKw": "Auto W/kW",
     "editor.advisorMaxSuggestions": "Sugerencias del asesor",
     "editor.overlayEnable": "Mostrar {label}",
+    "editor.overlayShowImage": "Mostrar imagen",
     "editor.overlayLabel": "Etiqueta",
     "editor.overlayOrientation": "Orientación",
     "editor.overlayOrientationLeft": "Lado izquierdo",
@@ -14295,6 +14340,8 @@ const I18N = {
     "charts.title": "Historique des entités",
     "editor.customDayImage": "Image de jour personnalisée",
     "editor.customImage": "Image personnalisée",
+    "editor.customRainDayImage": "Image pluvieuse personnalisée (jour)",
+    "editor.customRainImage": "Image pluvieuse personnalisée (nuit)",
     "editor.batteryChargeEntity": "Entité de charge batterie",
     "editor.batteryCyclesTodayEntity": "Entité cycles batterie aujourd’hui",
     "editor.batteryDischargeEntity": "Entité de décharge batterie",
@@ -14378,6 +14425,7 @@ const I18N = {
     "editor.maxPowerKw": "Puissance max. (kW/kWp)",
     "editor.optionalDayImage": "Image de jour optionnelle",
     "editor.helpCustomImages": "Stockez les images personnalisées dans Home Assistant sous /config/www/ et saisissez-les sous la forme /local/.... Quand weather_entity est configurée, les suffixes correspondants sont essayés automatiquement, par exemple /local/solar/house_day_rainy.png avant /local/solar/house_day.png.",
+    "editor.helpCustomRainImages": "Stockez les images pluvieuses personnalisées dans Home Assistant sous /config/www/ et saisissez-les sous la forme /local/.... Elles sont utilisées en priorité lorsque weather_entity signale de la pluie.",
     "editor.powerDecimals": "Décimales de puissance",
     "editor.powerDisplayMode": "Mode d'affichage de la puissance",
     "editor.rawMode": "Valeur brute + unité configurée",
@@ -14385,6 +14433,7 @@ const I18N = {
     "editor.autoWKw": "Auto W/kW",
     "editor.advisorMaxSuggestions": "Suggestions du conseiller",
     "editor.overlayEnable": "Afficher {label}",
+    "editor.overlayShowImage": "Afficher l'image",
     "editor.overlayLabel": "Libellé",
     "editor.overlayOrientation": "Orientation",
     "editor.overlayOrientationLeft": "Côté gauche",
@@ -14971,6 +15020,8 @@ const I18N = {
     "charts.title": "Historia encji",
     "editor.customDayImage": "Własny obraz dzienny",
     "editor.customImage": "Własny obraz",
+    "editor.customRainDayImage": "Własny obraz deszczowy (dzień)",
+    "editor.customRainImage": "Własny obraz deszczowy (noc)",
     "editor.batteryChargeEntity": "Encja ładowania baterii",
     "editor.batteryCyclesTodayEntity": "Encja cykli baterii dziś",
     "editor.batteryDischargeEntity": "Encja rozładowania baterii",
@@ -15054,6 +15105,7 @@ const I18N = {
     "editor.maxPowerKw": "Maks. moc (kW/kWp)",
     "editor.optionalDayImage": "Opcjonalny obraz dzienny",
     "editor.helpCustomImages": "Zapisz własne obrazy w Home Assistant w /config/www/ i wpisz je jako /local/.... Gdy ustawiono weather_entity, pasujące sufiksy są sprawdzane automatycznie, na przykład /local/solar/house_day_rainy.png przed /local/solar/house_day.png.",
+    "editor.helpCustomRainImages": "Zapisz własne obrazy deszczowe w Home Assistant w /config/www/ i wpisz je jako /local/.... Są używane w pierwszej kolejności, gdy weather_entity zgłasza deszcz.",
     "editor.powerDecimals": "Miejsca dziesiętne mocy",
     "editor.powerDisplayMode": "Tryb wyświetlania mocy",
     "editor.rawMode": "Wartość surowa + skonfigurowana jednostka",
@@ -15061,6 +15113,7 @@ const I18N = {
     "editor.autoWKw": "Auto W/kW",
     "editor.advisorMaxSuggestions": "Sugestie doradcy",
     "editor.overlayEnable": "Pokaż {label}",
+    "editor.overlayShowImage": "Pokaż obraz",
     "editor.overlayLabel": "Etykieta",
     "editor.overlayOrientation": "Orientacja",
     "editor.overlayOrientationLeft": "Lewa strona",
@@ -19408,6 +19461,8 @@ class HaSolarDashboardCard extends HTMLElement {
         .image-overlay { display:block; width:100%; height:auto; transform:scaleX(var(--overlay-scale-x,1)); transform-origin:center bottom; filter:drop-shadow(0 8px 12px rgba(0,0,0,.24)); }
         .image-overlay-smoke { opacity:.78; filter:blur(.15px); mix-blend-mode:screen; }
         .overlay-reading { position:absolute; left:calc(100% + 7px); top:50%; transform:translateY(-50%) scale(var(--hud-box-scale)); transform-origin:left center; display:grid; gap:1px; min-width:64px; max-width:118px; border-radius:9px; border:1px solid color-mix(in srgb,var(--tile-accent,#f3f6ff) 42%,rgba(255,255,255,.2)); background:rgba(8,16,38,.72); color:var(--tile-accent,#f3f6ff); font-size:.76rem; line-height:1.15; font-weight:800; padding:5px 7px; box-shadow:0 8px 20px rgba(0,0,0,.28); backdrop-filter:blur(4px); overflow-wrap:anywhere; }
+        .image-overlay-wrap-no-image { transform:translate(-50%,-50%); }
+        .image-overlay-wrap-no-image .overlay-reading { left:50%; top:50%; transform:translate(-50%,-50%) scale(var(--hud-box-scale)); transform-origin:center; }
         .overlay-reading-label { color:var(--text-muted); font-size:.64rem; font-weight:700; }
         .overlay-reading-value { color:var(--tile-accent,#f3f6ff); }
         .image-overlay-wrap-smoke .overlay-reading { --tile-accent:#ffc233; left:68%; top:88%; }

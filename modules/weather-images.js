@@ -74,20 +74,34 @@ export function imageFormatFiles(file) {
 export function customImageFiles({
   image = "",
   dayImage = "",
+  rainImage = "",
+  dayRainImage = "",
   isDaylight = false,
   weatherState = "",
   suffixMap = WEATHER_IMAGE_SUFFIXES,
 } = {}) {
   const standardFile = String(image || "").trim();
   const daylightFile = String(dayImage || "").trim();
+  const rainyFile = String(rainImage || "").trim();
+  const daylightRainyFile = String(dayRainImage || "").trim();
   const primaryFile = isDaylight && daylightFile ? daylightFile : standardFile;
-  if (!primaryFile) return [];
   const fallbackFile = isDaylight ? standardFile : daylightFile;
+  const primaryRainyFile = isDaylight && daylightRainyFile ? daylightRainyFile : rainyFile;
+  const fallbackRainyFile = isDaylight ? rainyFile : daylightRainyFile;
+  const hasRainyWeather = weatherSuffixes(weatherState, suffixMap).includes("rainy");
+  if (!primaryFile && !(hasRainyWeather && (primaryRainyFile || fallbackRainyFile))) return [];
+  const explicitRainyFiles = hasRainyWeather
+    ? [
+      primaryRainyFile,
+      fallbackRainyFile && fallbackRainyFile !== primaryRainyFile ? fallbackRainyFile : "",
+    ]
+    : [];
   const weatherFiles = weatherSuffixes(weatherState, suffixMap).flatMap((suffix) => [
     imageWithSuffix(primaryFile, suffix),
     fallbackFile && fallbackFile !== primaryFile ? imageWithSuffix(fallbackFile, suffix) : "",
   ]);
   return [
+    ...explicitRainyFiles,
     ...weatherFiles,
     primaryFile,
     ...(fallbackFile && fallbackFile !== primaryFile ? [fallbackFile] : []),
@@ -97,6 +111,8 @@ export function customImageFiles({
 export function customImage({
   image = "",
   dayImage = "",
+  rainImage = "",
+  dayRainImage = "",
   isDaylight = false,
   weatherState = "",
   suffixMap = WEATHER_IMAGE_SUFFIXES,
@@ -104,6 +120,8 @@ export function customImage({
   const urls = [...new Set(customImageFiles({
     image,
     dayImage,
+    rainImage,
+    dayRainImage,
     isDaylight,
     weatherState,
     suffixMap,
@@ -152,7 +170,7 @@ export function createWeatherImageMethods({
     },
 
     _imageStateKey() {
-      return `${this._isDaylight()}|${this._weatherState()}|${this.config?.image || ""}|${this.config?.day_image || ""}`;
+      return `${this._isDaylight()}|${this._weatherState()}|${this.config?.image || ""}|${this.config?.day_image || ""}|${this.config?.rain_image || ""}|${this.config?.day_rain_image || ""}`;
     },
 
     _imageWithSuffix(file, suffix) {
@@ -190,6 +208,8 @@ export function createWeatherImageMethods({
       return customImage({
         image: this.config?.image,
         dayImage: this.config?.day_image,
+        rainImage: this.config?.rain_image,
+        dayRainImage: this.config?.day_rain_image,
         isDaylight: this._isDaylight(),
         weatherState: this._weatherState(),
         suffixMap,

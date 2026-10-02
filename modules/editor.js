@@ -390,7 +390,7 @@ export function createDashboardEditorClass({
   _shouldRenderAfterInput(path = "", parts = []) {
     const root = parts[0] || path;
     const lastPart = parts[parts.length - 1] || "";
-    if (path === "house" || path === "image" || path === "day_image") return true;
+    if (["house", "image", "day_image", "rain_image", "day_rain_image"].includes(path)) return true;
     if (path === "region_profile" || path === "unit_system") return true;
     if (root === "positions" || root === "visible_boxes") return true;
     if (root === "image_overlays") return true;
@@ -2535,6 +2535,7 @@ export function createDashboardEditorClass({
     const label = this._overlayLabel(key);
     const defaultLabel = this._t(`overlay.${key}`, {}, key);
     const enabled = config.enabled === true;
+    const showImage = config.show_image !== false;
     const left = Number.isFinite(Number(config.left)) ? Number(config.left) : 50;
     const top = Number.isFinite(Number(config.top)) ? Number(config.top) : 50;
     const width = Number.isFinite(Number(config.width ?? config.size)) ? Number(config.width ?? config.size) : 12;
@@ -2589,6 +2590,7 @@ export function createDashboardEditorClass({
         </summary>
         <div class="box-body">
           <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.enabled" ${enabled ? "checked" : ""}/> ${this._escape(this._t("editor.overlayEnable", { label }))}</label>
+          <label class="inline"><input type="checkbox" data-path="image_overlays.${key}.show_image" ${showImage ? "checked" : ""}/> ${this._escape(this._t("editor.overlayShowImage", {}, "Show image"))}</label>
           <label>${this._escape(this._t("editor.overlayLabel"))}
             <input data-path="image_overlays.${key}.label" placeholder="${this._escape(defaultLabel)}" value="${this._escape(this._config.image_overlays?.[key]?.label || "")}" />
           </label>
@@ -3945,6 +3947,8 @@ export function createDashboardEditorClass({
           <label>${this._escape(this._t("editor.unitSystem", {}, "Unit system"))} <select data-path="unit_system">${unitSystemOptions}</select></label>
           <label>${this._labelText(this._t("editor.customImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="image" placeholder="/local/solar/single_family_home/single_family_home.png or https://..." value="${this._escape(this._config.image || "")}" /></label>
           <label>${this._labelText(this._t("editor.customDayImage"), this._t("editor.helpCustomImages", {}, "Store custom images in Home Assistant under /config/www/ and enter them as /local/.... When weather_entity is set, matching suffixes are tried automatically, for example /local/solar/house_day_rainy.png before /local/solar/house_day.png."))} <input data-path="day_image" placeholder="${this._escape(this._t("editor.optionalDayImage"))}" value="${this._escape(this._config.day_image || "")}" /></label>
+          <label>${this._labelText(this._t("editor.customRainImage", {}, "Custom Rainy Night Image"), this._t("editor.helpCustomRainImages", {}, "Store custom rainy images in Home Assistant under /config/www/ and enter them as /local/.... They take precedence when weather_entity reports rain."))} <input data-path="rain_image" placeholder="/local/solar/house_night_rainy.png" value="${this._escape(this._config.rain_image || "")}" /></label>
+          <label>${this._labelText(this._t("editor.customRainDayImage", {}, "Custom Rainy Day Image"), this._t("editor.helpCustomRainImages", {}, "Store custom rainy images in Home Assistant under /config/www/ and enter them as /local/.... They take precedence when weather_entity reports rain."))} <input data-path="day_rain_image" placeholder="/local/solar/house_day_rainy.png" value="${this._escape(this._config.day_rain_image || "")}" /></label>
           <label>${this._escape(this._t("editor.weatherEntity"))}
             <input data-path="weather_entity" list="ha-solar-dashboard-entities" placeholder="weather.home" value="${this._escape(this._config.weather_entity || "")}" autocomplete="off" />
           </label>

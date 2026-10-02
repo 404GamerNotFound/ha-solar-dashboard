@@ -40,7 +40,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 
 - Selectable house layouts from the `images` folder: `single_family_home`, `single_family_home_landscape`, `duplex_house`, `terraced_middle_house`, `apartment_building`, `apartment_building_balcony_solar`, `bungalow`, `city_villa`, and `city_villa_pitched_roof`. The landscape single-family home provides more horizontal space for HUD boxes and moves the solar shed to the right.
 - Automatic day/night image switching via `sun.sun`, plus optional weather-specific image suffixes from `weather_entity`.
-- Custom standard/night and daylight images via `/local/...` or full `https://...` image URLs.
+- Custom standard/night, daylight, rainy-night, and rainy-day images via `/local/...` or full `https://...` image URLs.
 - Image HUD boxes and footer tiles for roof PV, shed PV, PV total, house consumption, battery, inverter, EV chargers, water meter, grid import/export, and additional consumers.
 - Free X/Y positioning for all image HUD boxes, image overlays, EV badges, garden badges, and floorplan elements.
 - Optional animated power flow overlay between configured image elements.
@@ -111,7 +111,7 @@ A custom Home Assistant Lovelace card for HACS that renders a modern PV/energy o
 - Environment sensor tiles for temperature, hot water, outdoor values, pressure, humidity, air quality, CO2, PM2.5, AQI, and custom sensors.
 - Additional large consumer tiles for washing machine, dishwasher, fan heater, dryer, domestic hot water heat pump, and custom devices.
 - Multiple PV roof strings and additional inverters with sum, values, dominant, or detailed per-inverter display modes.
-- Optional smoke/gas and heat pump image overlays with labels, entities, period selection, position, size, and orientation controls.
+- Optional smoke/gas and heat pump image overlays with labels, entities, period selection, position, size, orientation controls, and an independent image toggle.
 
 ## Installation (HACS)
 
@@ -253,6 +253,7 @@ advisor_max_suggestions: 8
 image_overlays:
   smoke:
     enabled: false
+    show_image: true
     label: Gas
     entity: sensor.zaehlerstand_2
     period: 1h
@@ -397,7 +398,8 @@ large_consumers:
 - `show_grid_status_tile` (boolean, default: `true`; shows a grid status tile when `entities.import_export_power` or split import/export entities are configured)
 - `show_power_flows` (boolean, default: `false`; shows animated SVG power flow lines between configured image/HUD positions when enabled)
 - `show_garage_solar_array` (boolean, default: `true`; shows the decorative solar-panel overlay on the garage roof of the built-in single-family-home image)
-- `image_overlays.smoke.enabled` / `image_overlays.heatpump.enabled` (boolean, default: `false`; shows the smoke or heat pump overlay on the house image)
+- `image_overlays.smoke.enabled` / `image_overlays.heatpump.enabled` (boolean, default: `false`; enables the associated reading and dashboard tile)
+- `image_overlays.<overlay>.show_image` (boolean, default: `true`; set to `false` to hide only the smoke or heat-pump graphic while retaining its configured reading and dashboard tile)
 - `image_overlays.<overlay>.label` (string, optional; custom label shown in the image badge and bottom tile, for example `Gas` or `Wärmepumpe`)
 - `image_overlays.smoke.entity` (entity id, optional; cumulative gas meter used to show consumption for the selected period)
 - `image_overlays.smoke.period` (string, default: `1h`; supported values: `30m`, `1h`, `24h`)
@@ -409,6 +411,8 @@ large_consumers:
 - `weather_entity` (string, optional; uses weather-specific image suffixes when present, for example `_sunny`, `_rainy`, `_cloudy`, `_snowy`, `_thunderstorm`)
 - `image` (string, optional custom standard/night image; supports `/local/...` or `https://...`; when `weather_entity` is configured, matching weather suffixes are tried first, for example `/local/solar/house_night_rainy.png`)
 - `day_image` (string, optional custom daylight image used when `daylight_entity` indicates daylight; during daylight, matching weather suffixes are tried first, for example `/local/solar/house_day_rainy.png`)
+- `rain_image` (string, optional custom rainy night image; takes precedence when `weather_entity` reports a rainy state)
+- `day_rain_image` (string, optional custom rainy day image; takes precedence during daylight when `weather_entity` reports a rainy state)
 - `visible_boxes.<entity_key>` (boolean, default: `true`; set to `false` to hide one HUD box and its summary tile; supported keys are `pv_roof_power`, `pv_shed_power`, `pv_total_power`, `house_consumption_power`, `battery_level`, `inverter_power`, `wallbox_power`, `wallbox2_power`, `water_meter`, and `import_export_power`)
 - `boxes.<entity_key>` (boolean, legacy alias for `visible_boxes.<entity_key>`)
 - `labels.<entity_key>` (string, optional; custom label for HUD boxes and summary tiles, for example `PV Dach`, `Speicher` or `Wallbox Garage`)
@@ -539,6 +543,8 @@ Custom images follow the same suffix rule. Put the files below Home Assistant's 
 weather_entity: weather.home
 image: /local/solar/house_night.png
 day_image: /local/solar/house_day.png
+rain_image: /local/solar/house_night_rainy.png
+day_rain_image: /local/solar/house_day_rainy.png
 ```
 
 The actual files belong here:
@@ -550,7 +556,7 @@ The actual files belong here:
 /config/www/solar/house_day_rainy.png
 ```
 
-If Home Assistant reports `rainy` during daylight, the card first tries `/local/solar/house_day_rainy.png`, then `/local/solar/house_night_rainy.png`, then `/local/solar/house_day.png`, and finally `/local/solar/house_night.png`. If none of the custom candidates can be loaded, the built-in image fallback chain is still used.
+The optional `rain_image` and `day_rain_image` fields directly select the rainy night and day image; they take priority for `rainy`, `pouring`, and other rain-containing weather states. If one is not configured or cannot load, the existing `_rainy` suffix convention is tried next, followed by the regular custom images and then the built-in image fallback chain.
 
 ### Custom vehicle images
 

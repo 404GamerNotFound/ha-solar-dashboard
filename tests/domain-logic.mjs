@@ -94,6 +94,10 @@ import {
   GARAGE_SOLAR_PANEL_COUNT,
 } from "../modules/garage-solar-array.js";
 import {
+  createOverlayRendererMethods,
+  overlayImageVisible,
+} from "../modules/overlay-renderer.js";
+import {
   buildInverterEntries,
   normalizeInverterDisplay,
   normalizeInverters,
@@ -115,6 +119,28 @@ assert.equal((garageSolarOverlay.match(/<polygon /g) || []).length, GARAGE_SOLAR
 assert.equal(garageSolarArraySvg({ activeHouse: "single_family_home", hasCustomImage: false, showGarageSolarArray: false }), "");
 assert.equal(garageSolarArraySvg({ activeHouse: "single_family_home", hasCustomImage: true }), "");
 assert.equal(garageSolarArraySvg({ activeHouse: "bungalow", hasCustomImage: false }), "");
+assert.equal(overlayImageVisible(), true);
+assert.equal(overlayImageVisible({ show_image: false }), false);
+const gasReadingWithoutSmokeImage = createOverlayRendererMethods({
+  DEFAULT_IMAGE_OVERLAYS: {},
+  IMAGE_OVERLAY_KEYS: ["smoke"],
+  imageFormatFiles: () => [],
+  assetUrl: () => "",
+})._renderImageOverlays.call({
+  config: { image_overlays: { smoke: { enabled: true, show_image: false, entity: "sensor.gas" } } },
+  _overlayConfig: () => ({ enabled: true, show_image: false, entity: "sensor.gas", left: 50, top: 20, width: 9 }),
+  _overlayDefault: () => ({ left: 50, top: 20, width: 9 }),
+  _overlayNumber: (value) => value,
+  _overlayLabel: () => "Gas",
+  _overlayAssetUrls: () => [],
+  _formatOverlayReading: () => "1.20 m³",
+  _labelVisibility: () => ({ image: true }),
+  _labelVisibilityClass: () => "",
+  _escape: (value) => String(value),
+}, "single_family_home");
+assert.match(gasReadingWithoutSmokeImage, /overlay-reading/);
+assert.match(gasReadingWithoutSmokeImage, /1\.20 m³/);
+assert.doesNotMatch(gasReadingWithoutSmokeImage, /<img/);
 const detailedInverter = normalizeInverters([{
   label: "Garage",
   power_entity: "sensor.garage_inverter_power",
@@ -217,6 +243,37 @@ assert.deepEqual(customWeatherImage.fallbacks, [
   "/local/solar/house_day.png",
   "/local/solar/house_night.png",
 ]);
+
+const explicitRainyImage = customImage({
+  image: "/local/solar/house_night.png",
+  dayImage: "/local/solar/house_day.png",
+  rainImage: "/local/solar/custom-rain-night.webp",
+  dayRainImage: "/local/solar/custom-rain-day.webp",
+  isDaylight: true,
+  weatherState: "rainy",
+});
+assert.equal(explicitRainyImage.src, "/local/solar/custom-rain-day.webp");
+assert.deepEqual(explicitRainyImage.fallbacks.slice(0, 3), [
+  "/local/solar/custom-rain-night.webp",
+  "/local/solar/house_day_rainy.png",
+  "/local/solar/house_night_rainy.png",
+]);
+assert.equal(customImage({
+  rainImage: "/local/solar/custom-rain-night.webp",
+  dayRainImage: "/local/solar/custom-rain-day.webp",
+  isDaylight: false,
+  weatherState: "pouring",
+}).src, "/local/solar/custom-rain-night.webp");
+assert.equal(customImage({
+  dayRainImage: "/local/solar/custom-rain-day.webp",
+  isDaylight: false,
+  weatherState: "rainy",
+}).src, "/local/solar/custom-rain-day.webp");
+assert.equal(customImage({
+  rainImage: "/local/solar/custom-rain-night.webp",
+  isDaylight: false,
+  weatherState: "sunny",
+}).src, undefined);
 
 assert.equal(normalizeEnergyRange("hourly"), "1h");
 assert.equal(normalizeEnergyRange("60m"), "1h");

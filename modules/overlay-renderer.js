@@ -1,3 +1,7 @@
+export function overlayImageVisible(config = {}) {
+  return config?.show_image !== false;
+}
+
 export function createOverlayRendererMethods({
   DEFAULT_IMAGE_OVERLAYS,
   IMAGE_OVERLAY_KEYS,
@@ -45,6 +49,7 @@ export function createOverlayRendererMethods({
       return IMAGE_OVERLAY_KEYS.map((key) => {
         const config = this._overlayConfig(activeHouse, key);
         if (config.enabled !== true) return "";
+        const showImage = overlayImageVisible(config);
         const left = this._overlayNumber(config.left, this._overlayDefault(activeHouse, key).left ?? 50, 0, 100);
         const top = this._overlayNumber(config.top, this._overlayDefault(activeHouse, key).top ?? 50, 0, 100);
         const width = this._overlayNumber(config.width ?? config.size, this._overlayDefault(activeHouse, key).width ?? 12, 2, 60);
@@ -59,15 +64,19 @@ export function createOverlayRendererMethods({
           `--overlay-scale-x:${scaleX}`,
           `--overlay-translate-y:${translateY}`,
         ].join(";");
-        const [src, ...fallbacks] = this._overlayAssetUrls(key);
+        const [src, ...fallbacks] = showImage ? this._overlayAssetUrls(key) : [];
         const reading = this._formatOverlayReading(key);
         const visibilityKey = `overlay_${key}`;
         const readingHtml = this.config.image_overlays?.[key]?.entity && this._labelVisibility(visibilityKey).image
           ? `<div class="overlay-reading${this._labelVisibilityClass(visibilityKey, "image")}"><span class="overlay-reading-label" data-overlay-label="${this._escape(key)}">${this._escape(label)}</span><span class="overlay-reading-value" data-overlay-value="${this._escape(key)}">${this._escape(reading)}</span></div>`
           : "";
+        if (!showImage && !readingHtml) return "";
+        const imageHtml = showImage
+          ? `<img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(src)}" data-fallbacks="${this._escape(fallbacks.join("|"))}" alt="${this._escape(label)}" loading="lazy" />`
+          : "";
         return `
-          <div class="image-overlay-wrap image-overlay-wrap-${this._escape(key)}" style="${this._escape(style)}">
-            <img class="image-overlay image-overlay-${this._escape(key)}" src="${this._escape(src)}" data-fallbacks="${this._escape(fallbacks.join("|"))}" alt="${this._escape(label)}" loading="lazy" />
+          <div class="image-overlay-wrap image-overlay-wrap-${this._escape(key)}${showImage ? "" : " image-overlay-wrap-no-image"}" style="${this._escape(style)}">
+            ${imageHtml}
             ${readingHtml}
           </div>
         `;

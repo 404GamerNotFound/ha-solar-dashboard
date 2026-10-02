@@ -49,7 +49,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Im visuellen Editor können unter Batterie 1 weitere Batterien ergänzt werden. Jede zusätzliche Batterie unterstützt eigene Entitäten für SoC, signierten Leistungsfluss oder getrennte Lade-/Entladeleistung, Spannung, Min-/Max-SoC, Temperatur und Tageszyklen. Jede Batterie erhält eine eigene Box auf dem Hausbild, eine eigene Kachel und eine separat konfigurierbare Position im Layout-Editor. Bestehende Konfigurationen bleiben als Batterie 1 vollständig kompatibel.
 - Advisor-Diagnosen für veraltete Sensorwerte, hohen Netzbezug trotz voller Batterie, Batterie-Temperaturlimits, sehr tiefen SoC, häufige Tageszyklen und gleichzeitige Import-/Exportwerte bei getrennten Netzsensoren
 - Animierte Stromfluss-Linien zwischen den vorhandenen Bildelementen, basierend auf den konfigurierten HUD-Positionen ohne Anpassung der Bilddateien
-- Optionale Gas- und Wärmepumpen-Overlays mit eigener Aktivierung, frei definierbarem Label, Entität, Position, Größe und Ausrichtung der Wärmepumpe; Gas kann einen Zählerverbrauch für 30 Minuten, 1 Stunde oder 24 Stunden anzeigen
+- Optionale Gas- und Wärmepumpen-Overlays mit eigener Aktivierung, frei definierbarem Label, Entität, Position, Größe und Ausrichtung der Wärmepumpe; Gas kann einen Zählerverbrauch für 30 Minuten, 1 Stunde oder 24 Stunden anzeigen. Mit `image_overlays.smoke.show_image: false` bleibt die Gas-Anzeige aktiv, während nur das Rauchbild ausgeblendet wird.
 - PV, Wechselrichter und Wallbox können Auslastungsbalken anhand konfigurierbarer kW/kWp-Maximalwerte anzeigen
 - Optionale Import-/Export-Box im Bild, standardmäßig unten rechts beim Stromkabel positioniert, plus Netzstatus-Kachel mit Bezug, Einspeisung oder Autarkie; unterstützt einen Vorzeichen-Sensor oder getrennte Bezugs-/Einspeise-Sensoren
 - Währungsformatierung über `currency_position: auto | prefix | suffix`; typische Prefix-Symbole wie `$` werden bei `auto` vor den Betrag gesetzt
@@ -72,7 +72,7 @@ Eine benutzerdefinierte Home-Assistant-Lovelace-Karte für HACS mit moderner PV-
 - Eigene Umgebungs-Kachelebene für Sensorwerte wie Innentemperatur, Warmwasser, Außentemperatur, Luftdruck oder Luftqualität; standardmäßig wird die Einheit der Entität verwendet
 - Variante `apartment_building_balcony_solar` für Balkonsolar mit PV-Leistung, Batterie und Wechselrichter
 - Dezentes Statuslabel im Bild mit letzter Aktualisierung und optionalem Wetterstatus
-- Optionale Wetterbilder per `weather_entity`, zum Beispiel `_sunny`, `_rainy`, `_cloudy`, `_snowy` oder `_thunderstorm`
+- Optionale Wetterbilder per `weather_entity`, zum Beispiel `_sunny`, `_rainy`, `_cloudy`, `_snowy` oder `_thunderstorm`, mit eigenen Regenbildern für Tag und Nacht
 - UI- und Editor-Labels folgen automatisch der Home-Assistant-Sprache (`en`, `de`, `es`, `fr`, `pl`)
 - Optionale Ansichtsauswahl oben in der Karte für `Hausansicht`, `E-Auto`, `Garten`, `Grundriss`, `Advisor`, `Charts` und `Rekorde`; die Bereiche können im Editor ein- und ausgeblendet werden
 - In der Home-Assistant-Kartenauswahl mit Preview registriert
@@ -85,6 +85,8 @@ Eigene Bilder legst du in Home Assistant unter `/config/www/` ab und trägst sie
 weather_entity: weather.home
 image: /local/solar/house_night.png
 day_image: /local/solar/house_day.png
+rain_image: /local/solar/house_night_rainy.png
+day_rain_image: /local/solar/house_day_rainy.png
 ```
 
 Die Dateien müssen dann tatsächlich hier liegen:
@@ -96,7 +98,7 @@ Die Dateien müssen dann tatsächlich hier liegen:
 /config/www/solar/house_day_rainy.png
 ```
 
-Wenn `weather_entity` z. B. `rainy` meldet und es Tag ist, versucht die Karte zuerst `/local/solar/house_day_rainy.png`, dann `/local/solar/house_night_rainy.png`, danach `/local/solar/house_day.png` und zuletzt `/local/solar/house_night.png`. Wenn keine eigene Datei geladen werden kann, fällt die Karte weiterhin auf die mitgelieferten Standardbilder zurück.
+`rain_image` und `day_rain_image` legen die eigenen Regenbilder für Nacht und Tag direkt fest. Sie haben bei `rainy`, `pouring` und weiteren Regenzuständen Vorrang. Fehlt eines der Bilder oder kann es nicht geladen werden, folgt weiterhin die bisherige `_rainy`-Dateinamenlogik, danach die normalen eigenen Bilder und zuletzt die mitgelieferten Standardbilder.
 
 ### Eigene Fahrzeugbilder
 

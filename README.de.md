@@ -120,6 +120,12 @@ Die Dateien liegen auf dem Home-Assistant-Host entsprechend unter /config/www/so
 3. Home Assistant neu starten (oder Ressourcen neu laden).
 4. Karte in Lovelace hinzufügen.
 
+### Update schlägt wegen zu großer Release-Assets fehl
+
+Die Release-Workflows veröffentlichen das JavaScript-Bundle und die vorhandenen WebP-Bilder. PNG-Originale bleiben im Repository; die Karte bevorzugt bereits WebP. Das Skript `scripts/release-assets.mjs` prüft die Gesamtgröße gegen **104.857.600 Byte (100 MiB)** und berücksichtigt dabei auch zusätzliche Anhänge im bestehenden Release.
+
+Für betroffene Releases wie `v2.3.10` den Workflow **HACS Release Asset Repair** auf dem Branch mit dieser Korrektur starten und den betroffenen Tag angeben. Er verwendet den aktuellen Paketierungscode mit den Originaldateien des gewählten Tags. Erst nach erfolgreichem Upload und Prüfung aller WebP-Dateien werden die gleichnamigen alten PNG-Assets entfernt. Andere Anhänge bleiben erhalten. Fehlen einem älteren Tag WebP-Dateien, bricht die Reparatur mit einer Fehlermeldung ab. Nach erfolgreicher Reparatur das Update erneut starten.
+
 ## Regionalprofile und Einheiten
 
 Mit `region_profile` setzt du schnell passende Voreinstellungen für EU- oder US-Installationen. Mit `unit_system` steuerst du nur das Einheitensystem. Einzelne explizit gesetzte Optionen gewinnen immer gegenüber dem Profil.

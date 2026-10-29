@@ -18,22 +18,37 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-assets-${{ inputs.tag || github.event.release.tag_name || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - name: Resolve release tag
         id: release
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event_name }}" = "release" ]; then
-            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          if [ -n "$INPUT_TAG" ]; then
+            echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            echo "tag=$EVENT_TAG" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout
+      - name: Checkout release tooling
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+
+      - name: Preserve current release tooling
+        run: cp scripts/release-assets.mjs "$RUNNER_TEMP/ha-solar-release-assets.mjs"
+
+      - name: Checkout release tag
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.release.outputs.tag }}
@@ -58,22 +73,20 @@ jobs:
         run: npm test
 
       - name: Prepare release assets
-        run: |
-          mkdir -p release-assets
-          cp ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
-          find images -type f -name '*.png' -exec cp {} release-assets/ \;
+        run: node "$RUNNER_TEMP/ha-solar-release-assets.mjs" prepare
 
       - name: Ensure release exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
-          gh release view "${{ steps.release.outputs.tag }}" >/dev/null 2>&1 || \
-            gh release create "${{ steps.release.outputs.tag }}" \
-              --title "${{ steps.release.outputs.tag }}" \
-              --notes "Automated release for ${{ steps.release.outputs.tag }}"
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+            gh release create "$RELEASE_TAG" \
+              --title "$RELEASE_TAG" \
+              --notes "Automated release for $RELEASE_TAG"
 
       - name: Publish release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "${{ steps.release.outputs.tag }}" release-assets/* --clobber
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: node "$RUNNER_TEMP/ha-solar-release-assets.mjs" publish release-assets "$RELEASE_TAG"

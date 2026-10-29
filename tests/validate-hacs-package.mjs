@@ -242,14 +242,15 @@ function validateReleaseWorkflows() {
     assertExists(workflowPath);
     if (!existsSync(join(root, workflowPath))) continue;
     const workflow = readText(workflowPath);
-    if (!workflow.includes("find images -type f -name '*.png' -exec cp {} release-assets/ \\;")) {
-      fail(`${workflowPath} must collect every PNG image as a flattened release asset`);
+    if (!workflow.includes('node "$RUNNER_TEMP/ha-solar-release-assets.mjs" prepare')) {
+      fail(`${workflowPath} must prepare size-checked WebP release assets`);
     }
-    if (workflow.includes("release delete-asset")) {
-      fail(`${workflowPath} must not delete unrelated release assets`);
+    if (!workflow.includes('node "$RUNNER_TEMP/ha-solar-release-assets.mjs" publish release-assets "$RELEASE_TAG"')) {
+      fail(`${workflowPath} must publish assets with targeted PNG cleanup and a total size check`);
     }
-    if (!workflow.includes("release-assets/* --clobber")) {
-      fail(`${workflowPath} must upload and replace all collected release assets`);
+    if (!workflow.includes('ref: ${{ github.workflow_sha }}')
+      || !workflow.includes('cp scripts/release-assets.mjs "$RUNNER_TEMP/ha-solar-release-assets.mjs"')) {
+      fail(`${workflowPath} must preserve current release tooling before checking out an older tag`);
     }
   }
   const releaseWorkflow = readText(".github/workflows/release.yml");

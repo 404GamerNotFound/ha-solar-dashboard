@@ -4,17 +4,29 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to repair, for example v1.0.8"
+        description: "Release tag to repair, for example v2.3.10"
         required: true
         type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-assets-${{ inputs.tag || github.event.release.tag_name || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   repair-assets:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout release tooling
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+
+      - name: Preserve current release tooling
+        run: cp scripts/release-assets.mjs "$RUNNER_TEMP/ha-solar-release-assets.mjs"
+
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
@@ -29,12 +41,10 @@ jobs:
         run: npm test
 
       - name: Collect release assets
-        run: |
-          mkdir -p release-assets
-          cp ha-solar-dashboard.js release-assets/ha-solar-dashboard.js
-          find images -type f -name '*.png' -exec cp {} release-assets/ \;
+        run: node "$RUNNER_TEMP/ha-solar-release-assets.mjs" prepare
 
       - name: Upload assets to existing release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.inputs.tag }}" release-assets/* --clobber
+          RELEASE_TAG: ${{ github.event.inputs.tag }}
+        run: node "$RUNNER_TEMP/ha-solar-release-assets.mjs" publish release-assets "$RELEASE_TAG"

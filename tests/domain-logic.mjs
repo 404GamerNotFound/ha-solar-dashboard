@@ -174,6 +174,25 @@ assert.deepEqual(normalizeBatteries([{ entity: "sensor.battery_2_soc", battery_f
   visible: true,
 });
 
+// Normalization must survive repeated editor/card round trips without moving boxes
+// or conflating batteries with the same (possibly sanitized) name.
+const normalizedBatteries = normalizeBatteries([
+  { label: "Garage battery", entity: "sensor.a", left: "", top: " " },
+  { label: "Garage battery", entity: "sensor.b" },
+  { id: "Garage_battery_2", entity: "sensor.c", left: 70, top: 60 },
+  { label: "Garage/battery", entity: "sensor.d" },
+  { id: "  ", entity: "sensor.e", left: null, top: null },
+]);
+assert.deepEqual(normalizedBatteries.map((battery) => battery.id), [
+  "Garage_battery", "Garage_battery_3", "Garage_battery_2", "Garage_battery_4", "battery_6",
+]);
+assert.deepEqual(normalizeBatteries(normalizedBatteries), normalizedBatteries);
+assert.equal(normalizedBatteries[0].left, "");
+assert.equal(normalizedBatteries[0].top, "");
+assert.equal(normalizedBatteries[4].left, "");
+assert.equal(normalizeBatteries([{ left: 0, top: 150 }])[0].left, 4);
+assert.equal(normalizeBatteries([{ left: 0, top: 150 }])[0].top, 96);
+
 assert.deepEqual(imageFormatFiles("house.png"), ["house.webp", "house.png"]);
 assert.deepEqual(imageFormatFiles("house.jpg"), ["house.jpg"]);
 assert.equal(imageWithSuffix("/local/solar/house_day.png", "rainy"), "/local/solar/house_day_rainy.png");
@@ -900,6 +919,35 @@ assert.match(additionalBatteryMeta, /data-battery-cycles="batteries\.garage"/);
 multiBatteryCard._hass.states["sensor.battery_2_soc"].state = "15";
 assert.equal(multiBatteryCard._metricWarning(additionalBatteryMetric).type, "battery-low");
 multiBatteryCard._hass.states["sensor.battery_2_soc"].state = "45";
+
+// Each tile keeps its own flow while system consumers retain the net flow.
+const primaryBatteryMetric = { key: "battery_level" };
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(primaryBatteryMetric), undefined);
+assert.deepEqual(multiBatteryCard._batteryFlowEntityIdsForMetric(primaryBatteryMetric), []);
+assert.equal(multiBatteryCard._renderBatteryFlow(primaryBatteryMetric), "");
+multiBatteryCard.config.entities.battery_flow_power = "sensor.battery_1_power";
+multiBatteryCard._hass.states["sensor.battery_1_power"] = { state: "2", attributes: { unit_of_measurement: "kW" } };
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(primaryBatteryMetric).amount, 2000);
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(primaryBatteryMetric).direction, "charge");
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(additionalBatteryMetric).amount, 1200);
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(additionalBatteryMetric).direction, "discharge");
+assert.equal(multiBatteryCard._batteryFlowInfo().amount, 800);
+assert.deepEqual(multiBatteryCard._batteryFlowEntityIdsForMetric(primaryBatteryMetric), ["sensor.battery_1_power"]);
+multiBatteryCard._hass.states["sensor.battery_1_power"].state = "1.2";
+assert.equal(multiBatteryCard._batteryFlowInfo(), undefined);
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(primaryBatteryMetric).amount, 1200);
+multiBatteryCard._hass.states["sensor.battery_1_power"].state = "unavailable";
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(primaryBatteryMetric), undefined);
+assert.equal(multiBatteryCard._batteryFlowInfoForMetric(additionalBatteryMetric).amount, 1200);
+
+assert.deepEqual(multiBatteryCard._metricPosition(multiBatteryCard._currentVariant, additionalBatteryMetric.key), { left: 59, top: 66 });
+multiBatteryCard.config.batteries.push(...normalizeBatteries([
+  { id: "hidden", entity: "sensor.hidden", show_image: false, show_footer: false },
+  { id: "third", entity: "sensor.third" },
+]));
+assert.deepEqual(multiBatteryCard._metricPosition(multiBatteryCard._currentVariant, "batteries.third"), { left: 79, top: 66 });
+multiBatteryCard.config.positions.battery_level = { left: 90 };
+assert.equal(multiBatteryCard._metricPosition(multiBatteryCard._currentVariant, "batteries.third").left, 96);
 
 const lateBatteryStateCard = new DashboardCard();
 lateBatteryStateCard.config = {

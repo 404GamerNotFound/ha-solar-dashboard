@@ -66,3 +66,19 @@ Similar to the existing PV string configuration, every additional battery has it
 - HACS package validation passed
 - Domain logic tests passed
 - Whitespace and patch validation passed
+
+## Fehlerkorrekturen bei mehreren Batterien
+
+### Technische Beschreibung
+
+- `normalizeBatteries()` erhält leere oder nicht gesetzte Koordinaten auch bei wiederholter Normalisierung. Zuvor wurde der Leerstring durch `Number("")` als 0 interpretiert und anschließend auf 4 % begrenzt. Dadurch konnten zusätzliche Batterien nach erneutem Laden oben links übereinander liegen.
+- Batteriekennungen werden nach der Bereinigung auf Eindeutigkeit geprüft. Bei Kollisionen entstehen deterministische Suffixe, ohne bereits vorhandene Kennungen zu übernehmen. Gleich benannte Batterien erhalten damit getrennte DOM-Zuordnungen für Werte, Metadaten und Positionen.
+- `_batteryFlowInfoForMetric()` und `_batteryFlowEntityIdsForMetric()` verwenden für Batterie 1 ausschließlich deren eigene Sensoren. Zuvor zeigte Batterie 1 den saldierten Fluss aller Batterien, auch wenn ihr eigener Leistungssensor fehlte oder nicht verfügbar war. Die systemweite Saldierung in `_batteryFlowInfo()` bleibt für Gesamtberechnungen erhalten.
+- Automatische Positionen basieren auf der vollständigen Konfigurationsreihenfolge. Das Ausblenden anderer Batterien verändert deshalb nicht mehr den Positionsindex. Automatische X-Positionen werden im Dashboard und Editor auf den zulässigen Bereich begrenzt.
+- Die auslieferbaren Dashboard- und Editor-Bundles wurden neu erzeugt.
+
+### Prüfung
+
+Regressionstests decken wiederholte Normalisierung, leere Koordinaten, doppelte und kollidierende Kennungen, getrennte Lade-/Entladeleistungen, W-/kW-Umrechnung, einen ausgeglichenen Gesamtfluss, fehlende und nicht verfügbare Primärsensoren sowie Positionen bei ausgeblendeten Batterien ab.
+
+`npm run build` und `npm test` (HACS-Paketprüfung und Domain-Logiktests) sind erfolgreich. Ein Live-Test in Home Assistant wurde nicht durchgeführt. Bereits als 4 % gespeicherte Positionen bleiben explizite Koordinaten und müssen bei Bedarf im Editor neu gesetzt werden.

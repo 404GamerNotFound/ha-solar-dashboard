@@ -2362,7 +2362,7 @@ export function createDashboardEditorClass({
           <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_image" ${battery.show_image !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show on image"))}</label>
           <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_footer" ${battery.show_footer !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowFooter", {}, "Show below image"))}</label>
         </div>
-        <label>${this._labelText(`${this._t("editor.xPosition")} (${battery.left === "" ? 59 + index * 10 : battery.left})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}<input type="range" min="4" max="96" step="1" data-path="batteries.${index}.left" value="${this._escape(battery.left === "" ? 59 + index * 10 : battery.left)}" /></label>
+        <label>${this._labelText(`${this._t("editor.xPosition")} (${battery.left === "" ? Math.min(96, 59 + index * 10) : battery.left})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}<input type="range" min="4" max="96" step="1" data-path="batteries.${index}.left" value="${this._escape(battery.left === "" ? Math.min(96, 59 + index * 10) : battery.left)}" /></label>
         <label>${this._labelText(`${this._t("editor.yPosition")} (${battery.top === "" ? 66 : battery.top})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}<input type="range" min="4" max="96" step="1" data-path="batteries.${index}.top" value="${this._escape(battery.top === "" ? 66 : battery.top)}" /></label>
       </div>`).join("");
     return `
@@ -3040,7 +3040,7 @@ export function createDashboardEditorClass({
         key: `metric:${metricKey}`,
         label: battery.label || `${this._t("editor.battery", {}, "Battery")} ${index + 2}`,
         scope: "house",
-        left: Number(battery.left === "" ? (Number(base.left) || 49) + (index + 1) * 10 : battery.left),
+        left: Number(battery.left === "" ? Math.min(96, (Number(base.left) || 49) + (index + 1) * 10) : battery.left),
         top: Number(battery.top === "" ? (Number(base.top) || 66) : battery.top),
         leftPath: `batteries.${index}.left`,
         topPath: `batteries.${index}.top`,

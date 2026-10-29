@@ -1,83 +1,55 @@
-# Release Notes — Custom Rain Images & Gas Overlay Controls
+# Release Notes — Multiple Battery Fixes
 
 [![Stars](https://img.shields.io/github/stars/404GamerNotFound/ha-solar-dashboard?style=for-the-badge&logo=github&logoColor=white&label=Stars&color=blue)](https://github.com/404GamerNotFound/ha-solar-dashboard/stargazers)
-[![Sponsors](https://img.shields.io/github/sponsors/404GamerNotFound?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sponsors/404GamerNotFound)
+[![Sponsors](https://img.shields.io/github/sponsors/404GamerNotFound?style=for-the-badge&logo=github&logoColor=white&label=Sponsors&color=blue)](https://github.com/sponsors/404GamerNotFound)
 [![PayPal](https://img.shields.io/badge/PayPal-ME-blue?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/TonyBrueser)
-[![Revolut](https://img.shields.io/badge/Revolut-ME-blue?style=for-the-badge&logo=Revolut&logoColor=white)](https://revolut.me/tony1995)
+[![Revolut](https://img.shields.io/badge/Revolut-ME-blue?style=for-the-badge&logo=revolut&logoColor=white)](https://revolut.me/tony1995)
 
 ## Summary
 
-This release adds explicit custom rain images for day and night and repairs the gas/smoke overlay. Gas values can now remain visible without rendering the smoke graphic. Existing configurations remain compatible; all new settings are optional.
+This release fixes incorrect power-flow readings and unstable layout positions when multiple home batteries are configured. Each battery keeps its own readings and a unique internal identity, while system-wide calculations continue to use the combined net flow.
 
-## Custom Rain Images
+## Independent Battery Readings
 
-The card now offers direct fields for separate rainy night and rainy day house images. Configure them in the editor or with the following YAML:
+- Battery 1 now displays only its own charging or discharging power, instead of the net power of all configured batteries.
+- Additional batteries retain their own independent power-flow readings.
+- A missing or unavailable Battery 1 power sensor no longer causes another battery's power to appear on its tile.
+- Simultaneous charging and discharging remain visible per battery, even when their combined net flow is zero.
 
-~~~yaml
-weather_entity: weather.home
-image: /local/solar/house_night.png
-day_image: /local/solar/house_day.png
-rain_image: /local/solar/house_night_rainy.png
-day_rain_image: /local/solar/house_day_rainy.png
-~~~
+## Stable Battery Layout
 
-- `rain_image` is preferred for rainy nighttime conditions.
-- `day_rain_image` is preferred during daylight.
-- Rain-related states such as `rainy`, `pouring`, and `lightning-rainy` use the configured rain images first.
-- The existing `_rainy` filename convention remains as a fallback, followed by normal custom and bundled images.
-- A single configured rain image can be used as the fallback for the other time of day.
-
-Fixes #38.
-
-## Gas Overlay Without Smoke
-
-The bundled smoke asset now has a clean transparent background in both PNG and WebP formats. The gas reading can be displayed independently of the smoke graphic:
-
-~~~yaml
-image_overlays:
-  smoke:
-    enabled: true
-    show_image: false
-    entity: sensor.zaehlerstand_2
-    period: 1h
-~~~
-
-- `enabled: true` keeps the gas reading and dashboard tile active.
-- `show_image: false` hides only the visual smoke overlay.
-- The on-image Gas badge and footer tile remain available according to their label-visibility settings.
-- The editor now exposes a dedicated **Show image** control for image overlays.
-
-Fixes #37.
+- Unset positions stay unset across repeated editor and dashboard normalization. They no longer turn into 4% coordinates and stack battery boxes in the upper-left corner.
+- Batteries with identical names or colliding sanitized IDs receive unique internal IDs, keeping DOM updates and position lookups separate.
+- Hiding another battery no longer changes the configuration index used for automatic positioning.
+- Automatic horizontal positions are capped at the supported image boundary in the dashboard and editor.
 
 ## Technical Changes
 
-- Added explicit custom rain-image resolution with day/night-aware fallback ordering.
-- Added regression coverage for custom rain images and rendering gas values without an image element.
-- Replaced the smoke image assets with transparent PNG and WebP variants.
-- Added the `image_overlays.<overlay>.show_image` setting, defaulting to `true` for compatibility.
-- Updated English, German, Spanish, French, and Polish editor translations.
-- Updated English and German documentation.
-- Regenerated the HACS distributable bundles:
-  - `ha-solar-dashboard.js`
-  - `ha-solar-dashboard-editor.js`
+- Made battery-coordinate normalization preserve empty, null, and omitted values while clamping explicit numeric positions.
+- Added deterministic ID collision handling that reserves existing IDs before generating suffixes.
+- Separated per-battery power sensor lookup and rendering from system-wide net-flow aggregation.
+- Based automatic position lookup on the complete normalized battery configuration.
+- Added regression coverage for normalization round trips, colliding IDs, opposing flows, W/kW conversion, unavailable sensors, and hidden-battery positioning.
+- Updated the technical multi-battery documentation and regenerated both HACS bundles.
+- Updated the package and runtime version to `2.3.10`.
 
 ## Compatibility
 
-- Existing weather-image suffixes and custom house images continue to work unchanged.
-- Existing smoke and heat-pump overlays continue to show their images unless `show_image` is explicitly set to `false`.
-- No migration is required.
-- No known breaking changes.
+- Existing primary and additional battery configurations remain supported.
+- System-wide battery net-flow calculations remain available.
+- No configuration migration is required.
+- Positions previously saved explicitly as 4% cannot be distinguished from intentional positions. Adjust those positions in the editor if needed.
 
 ## Validation
 
 - `npm run build`
-- `npm test`
-- JavaScript syntax validation passed.
-- HACS package validation passed.
-- Domain logic tests passed.
+- `npm test` — HACS package validation and domain logic tests
+- `node scripts/build.mjs --check`
+- `git diff --check`
+- No live Home Assistant installation test was performed.
 
 ## Support
 
 If you enjoy the project, you can support its continued development through [GitHub Sponsors](https://github.com/sponsors/404GamerNotFound), [PayPal](https://www.paypal.com/paypalme/TonyBrueser), or [Revolut](https://revolut.me/tony1995).
 
-**Full Changelog**: https://github.com/404GamerNotFound/ha-solar-dashboard/compare/v2.3.8...v2.3.9
+**Full Changelog**: https://github.com/404GamerNotFound/ha-solar-dashboard/compare/v2.3.9...v2.3.10

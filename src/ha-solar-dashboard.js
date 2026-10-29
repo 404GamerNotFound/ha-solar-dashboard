@@ -2159,16 +2159,16 @@ class HaSolarDashboardCard extends HTMLElement {
       return [metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity].filter(Boolean);
     }
     if (metric?.key !== "battery_level") return [];
-    const primary = [this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power];
-    const additional = normalizeBatteries(this.config.batteries || []).flatMap((battery) => [battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity]);
-    return [...primary, ...additional].filter(Boolean);
+    return [this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power].filter(Boolean);
   }
 
   _batteryFlowInfoForMetric(metric) {
     if (metric?.battery) {
       return this._batteryFlowInfoForEntities(metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity, metric.battery.flow_inverted);
     }
-    return metric?.key === "battery_level" ? this._batteryFlowInfo() : undefined;
+    return metric?.key === "battery_level"
+      ? this._batteryFlowInfoForEntities(this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power, this.config.battery_flow_inverted === true)
+      : undefined;
   }
 
   _formatBatteryFlowValue(info) {
@@ -3265,10 +3265,11 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _metricPosition(variant, key) {
     if (String(key || "").startsWith("batteries.")) {
-      const index = this._additionalBatteryMetrics().findIndex((metric) => metric.key === key);
+      const batteries = normalizeBatteries(this.config.batteries || []);
+      const index = batteries.findIndex((battery) => `batteries.${battery.id}` === key);
       const base = { ...(variant.positions.battery_level || {}), ...(this.config.positions.battery_level || {}) };
-      const battery = this._additionalBatteryMetrics().find((metric) => metric.key === key)?.battery;
-      return { left: battery?.left === "" ? (base.left ?? 49) + (index + 1) * 10 : battery?.left, top: battery?.top === "" ? base.top ?? 66 : battery?.top };
+      const battery = batteries[index];
+      return { left: battery?.left === "" ? Math.min(96, Math.max(4, Number(base.left ?? 49) + (index + 1) * 10)) : battery?.left, top: battery?.top === "" ? base.top ?? 66 : battery?.top };
     }
     if (String(key || "").startsWith("environment_sensors.")) {
       const metric = this._environmentSensorMetrics({ placement: "image" }).find((item) => item.key === key)

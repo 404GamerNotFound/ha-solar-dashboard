@@ -1,5 +1,5 @@
-const HA_SOLAR_DASHBOARD_VERSION = "2.3.9";
-const HA_SOLAR_DASHBOARD_BUILD = "v2.3.9";
+const HA_SOLAR_DASHBOARD_VERSION = "2.3.10";
+const HA_SOLAR_DASHBOARD_BUILD = "v2.3.10";
 globalThis.__HA_SOLAR_DASHBOARD_VERSION__ = HA_SOLAR_DASHBOARD_VERSION;
 globalThis.__HA_SOLAR_DASHBOARD_BUILD__ = HA_SOLAR_DASHBOARD_BUILD;
 (function registerHaSolarDashboardBootstrap() {
@@ -95,14 +95,32 @@ function sortAdvisorItems(items = []) {
 
 function clean(value) { return String(value || "").trim(); }
 
+function batteryPosition(value) {
+  if (value == null || String(value).trim() === "") return "";
+  return Number.isFinite(Number(value)) ? Math.min(96, Math.max(4, Number(value))) : "";
+}
+
 function normalizeBatteries(batteries) {
   const source = Array.isArray(batteries) ? batteries : batteries && typeof batteries === "object"
     ? Object.entries(batteries).map(([id, value]) => value && typeof value === "object" ? { id, ...value } : { id, level_entity: value }) : [];
+  const usedIds = new Set();
+  const baseIds = source.map((raw, index) => {
+    const item = raw && typeof raw === "object" ? raw : {};
+    return clean(item.id || item.key || item.name || item.label || `battery_${index + 2}`).replace(/[^\w-]+/g, "_") || `battery_${index + 2}`;
+  });
+  const reservedIds = new Set(baseIds);
   return source.map((raw, index) => {
     const item = raw && typeof raw === "object" ? raw : { level_entity: raw };
     const number = index + 2;
+    const baseId = baseIds[index];
+    let id = baseId;
+    let suffix = 2;
+    while (usedIds.has(id)) {
+      do { id = `${baseId}_${suffix++}`; } while (reservedIds.has(id));
+    }
+    usedIds.add(id);
     return {
-      id: clean(item.id || item.key || item.name || item.label || `battery_${number}`).replace(/[^\w-]+/g, "_"),
+      id,
       label: clean(item.label || item.name || `Battery ${number}`),
       level_entity: clean(item.level_entity || item.soc_entity || item.entity || item.entity_id),
       flow_power_entity: clean(item.flow_power_entity || item.battery_flow_power || item.power_entity),
@@ -114,8 +132,8 @@ function normalizeBatteries(batteries) {
       max_soc_entity: clean(item.max_soc_entity || item.battery_max_soc),
       temperature_entity: clean(item.temperature_entity || item.battery_temperature),
       cycles_today_entity: clean(item.cycles_today_entity || item.battery_cycles_today),
-      left: Number.isFinite(Number(item.left ?? item.x)) ? Math.min(96, Math.max(4, Number(item.left ?? item.x))) : "",
-      top: Number.isFinite(Number(item.top ?? item.y)) ? Math.min(96, Math.max(4, Number(item.top ?? item.y))) : "",
+      left: batteryPosition(item.left ?? item.x),
+      top: batteryPosition(item.top ?? item.y),
       show_image: item.show_image !== false && item.image !== false,
       show_footer: item.show_footer !== false && item.footer !== false && item.tile !== false,
       visible: item.enabled === false ? false : item.visible !== false,
@@ -7479,7 +7497,7 @@ function createDashboardEditorClass({
           <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_image" ${battery.show_image !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowImage", {}, "Show on image"))}</label>
           <label class="inline"><input type="checkbox" data-path="batteries.${index}.show_footer" ${battery.show_footer !== false ? "checked" : ""}/> ${this._escape(this._t("editor.labelShowFooter", {}, "Show below image"))}</label>
         </div>
-        <label>${this._labelText(`${this._t("editor.xPosition")} (${battery.left === "" ? 59 + index * 10 : battery.left})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}<input type="range" min="4" max="96" step="1" data-path="batteries.${index}.left" value="${this._escape(battery.left === "" ? 59 + index * 10 : battery.left)}" /></label>
+        <label>${this._labelText(`${this._t("editor.xPosition")} (${battery.left === "" ? Math.min(96, 59 + index * 10) : battery.left})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}<input type="range" min="4" max="96" step="1" data-path="batteries.${index}.left" value="${this._escape(battery.left === "" ? Math.min(96, 59 + index * 10) : battery.left)}" /></label>
         <label>${this._labelText(`${this._t("editor.yPosition")} (${battery.top === "" ? 66 : battery.top})`, this._t("editor.helpImagePosition", {}, "Position of the box on the house image in percent."))}<input type="range" min="4" max="96" step="1" data-path="batteries.${index}.top" value="${this._escape(battery.top === "" ? 66 : battery.top)}" /></label>
       </div>`).join("");
     return `
@@ -8157,7 +8175,7 @@ function createDashboardEditorClass({
         key: `metric:${metricKey}`,
         label: battery.label || `${this._t("editor.battery", {}, "Battery")} ${index + 2}`,
         scope: "house",
-        left: Number(battery.left === "" ? (Number(base.left) || 49) + (index + 1) * 10 : battery.left),
+        left: Number(battery.left === "" ? Math.min(96, (Number(base.left) || 49) + (index + 1) * 10) : battery.left),
         top: Number(battery.top === "" ? (Number(base.top) || 66) : battery.top),
         leftPath: `batteries.${index}.left`,
         topPath: `batteries.${index}.top`,
@@ -17459,16 +17477,16 @@ class HaSolarDashboardCard extends HTMLElement {
       return [metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity].filter(Boolean);
     }
     if (metric?.key !== "battery_level") return [];
-    const primary = [this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power];
-    const additional = normalizeBatteries(this.config.batteries || []).flatMap((battery) => [battery.flow_power_entity, battery.charge_power_entity, battery.discharge_power_entity]);
-    return [...primary, ...additional].filter(Boolean);
+    return [this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power].filter(Boolean);
   }
 
   _batteryFlowInfoForMetric(metric) {
     if (metric?.battery) {
       return this._batteryFlowInfoForEntities(metric.battery.flow_power_entity, metric.battery.charge_power_entity, metric.battery.discharge_power_entity, metric.battery.flow_inverted);
     }
-    return metric?.key === "battery_level" ? this._batteryFlowInfo() : undefined;
+    return metric?.key === "battery_level"
+      ? this._batteryFlowInfoForEntities(this.config.entities?.battery_flow_power, this.config.entities?.battery_charge_power, this.config.entities?.battery_discharge_power, this.config.battery_flow_inverted === true)
+      : undefined;
   }
 
   _formatBatteryFlowValue(info) {
@@ -18565,10 +18583,11 @@ class HaSolarDashboardCard extends HTMLElement {
 
   _metricPosition(variant, key) {
     if (String(key || "").startsWith("batteries.")) {
-      const index = this._additionalBatteryMetrics().findIndex((metric) => metric.key === key);
+      const batteries = normalizeBatteries(this.config.batteries || []);
+      const index = batteries.findIndex((battery) => `batteries.${battery.id}` === key);
       const base = { ...(variant.positions.battery_level || {}), ...(this.config.positions.battery_level || {}) };
-      const battery = this._additionalBatteryMetrics().find((metric) => metric.key === key)?.battery;
-      return { left: battery?.left === "" ? (base.left ?? 49) + (index + 1) * 10 : battery?.left, top: battery?.top === "" ? base.top ?? 66 : battery?.top };
+      const battery = batteries[index];
+      return { left: battery?.left === "" ? Math.min(96, Math.max(4, Number(base.left ?? 49) + (index + 1) * 10)) : battery?.left, top: battery?.top === "" ? base.top ?? 66 : battery?.top };
     }
     if (String(key || "").startsWith("environment_sensors.")) {
       const metric = this._environmentSensorMetrics({ placement: "image" }).find((item) => item.key === key)

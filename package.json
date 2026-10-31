@@ -1,6 +1,6 @@
 {
   "name": "ha-solar-dashboard",
-  "version": "2.3.10",
+  "version": "2.3.12",
   "private": true,
   "description": "Validation checks for the HA Solar Dashboard HACS dashboard card.",
   "scripts": {
